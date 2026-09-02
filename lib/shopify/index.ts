@@ -19,6 +19,7 @@ import {
   getProductQuery,
   getProductRecommendationsQuery,
   getProductTypesQuery,
+  getProductsByIdsQuery,
   getProductsQuery,
 } from "./queries/product";
 import { predictiveSearchQuery, searchProductsQuery } from "./queries/search";
@@ -101,6 +102,29 @@ export async function getProductRecommendations(productHandle: string): Promise<
   });
 
   return (data.productRecommendations ?? []).map(normalizeProductCard);
+}
+
+
+/**
+ * Products by gid, for metafields that store product references.
+ *
+ * Deliberately NOT a `products(query: "handle:…")` search: the Storefront
+ * filter has no handle term and silently ignores it, returning the whole
+ * catalogue as though it had matched. `nodes(ids:)` is exact.
+ *
+ * Order follows the reference order, and anything unpublished drops out.
+ */
+export async function getProductsByIds(ids: string[]): Promise<ProductCard[]> {
+  if (ids.length === 0) return [];
+
+  const data = await shopifyFetch<{ nodes: Maybe<ShopifyProductCard>[] }>({
+    query: getProductsByIdsQuery,
+    variables: { ids },
+    tags: [TAGS.products],
+    revalidate: REVALIDATE.products,
+  });
+
+  return data.nodes.filter(Boolean).map((node) => normalizeProductCard(node!));
 }
 
 export async function getProductTypes(first = 250): Promise<string[]> {
@@ -308,4 +332,45 @@ export async function predictiveSearch(query: string, limit = 6) {
     collections: data.predictiveSearch?.collections ?? [],
     pages: data.predictiveSearch?.pages ?? [],
   };
+}
+
+/* -------------------------------------------------------------------------- *
+ * Designers
+ * -------------------------------------------------------------------------- */
+
+/**
+ * Products attributed to a designer, reached through the collections that
+ * credit them.
+ *
+ * There is no direct route: the Storefront `products(query:)` filter cannot
+ * match a metafield. Both `metafields.custom.designer:<gid>` and
+ * `metafield:custom.designer:<gid>` were tested against the live API — the first
+ * returns nothing, the second returns the *unfiltered* catalogue, and neither
+ * errors. Since every seeded product inherits its designer from its collection,
+ * going via the collection is exact.
+ */
+export async function getProductsByDesigner(
+  designerHandle: string,
+  { first = 12 }: { first?: number } = {},
+): Promise<{ products: ProductCard[]; collections: CollectionCard[] }> {
+  const all = await getCollections({ first: 100 });
+  const collections = all.items.filter((item) => item.designer?.handle === designerHandle);
+
+  if (collections.length === 0) return { products: [], collections: [] };
+
+  const pages = await Promise.all(
+    collections.map((collection) =>
+      getCollectionProducts({ handle: collection.handle, first }).then((page) => page.items),
+    ),
+  );
+
+  // A product can sit in more than one of a designer's collections.
+  const seen = new Set<string>();
+  const products = pages.flat().filter((product) => {
+    if (seen.has(product.id)) return false;
+    seen.add(product.id);
+    return true;
+  });
+
+  return { products: products.slice(0, first), collections };
 }

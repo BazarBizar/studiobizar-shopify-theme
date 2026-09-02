@@ -4,7 +4,7 @@ import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 
 /** The grounds the designs actually use. See `globals.css` section H. */
-export type Surface = "light" | "dark" | "olive" | "mocha" | "black";
+export type Surface = "light" | "dark" | "olive" | "blue" | "mocha" | "black";
 
 /**
  * Every page composes its own shell rather than inheriting one from the root

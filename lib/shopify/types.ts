@@ -183,6 +183,12 @@ export type Product = ProductCard & {
   metafields: MetafieldMap;
 };
 
+export type DesignerRef = {
+  handle: string;
+  name: Maybe<string>;
+  studio: Maybe<string>;
+};
+
 export type CollectionCard = {
   id: string;
   handle: string;
@@ -192,6 +198,7 @@ export type CollectionCard = {
   logo: Maybe<ShopifyImage>;
   isSignature: boolean;
   sortOrder: Maybe<number>;
+  designer: Maybe<DesignerRef>;
 };
 
 export type Collection = CollectionCard & {

@@ -1,5 +1,5 @@
 import Image from "next/image";
-import Link from "next/link";
+import { ButtonLink } from "@/components/ui/button";
 
 import { Container } from "@/components/ui/container";
 import { cdnImage } from "@/lib/shopify/transforms";
@@ -51,9 +51,9 @@ export function MediaText({
             <div className="sb-prose mt-6" dangerouslySetInnerHTML={{ __html: html }} />
           )}
           {link && (
-            <Link href={link.href} className="text-button sb-underline mt-8 inline-block">
+            <ButtonLink href={link.href} variant="text" className="mt-8">
               {link.label}
-            </Link>
+            </ButtonLink>
           )}
         </div>
       </div>

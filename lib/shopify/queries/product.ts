@@ -56,3 +56,21 @@ export const getProductTypesQuery = /* GraphQL */ `
     }
   }
 `;
+
+/**
+ * Exact lookup by gid. Needed because the Storefront `products(query:)` filter
+ * has no `handle:` term — it silently ignores one and returns the unfiltered
+ * catalogue, which looks like a match rather than an error.
+ */
+export const getProductsByIdsQuery = withFragments(
+  /* GraphQL */ `
+    query GetProductsByIds($ids: [ID!]!) {
+      nodes(ids: $ids) {
+        ... on Product {
+          ...ProductCardParts
+        }
+      }
+    }
+  `,
+  PRODUCT_CARD_DEPS,
+);

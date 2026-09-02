@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { ProductCardSkeleton } from "@/components/ui/skeleton";
+import { ButtonLink } from "@/components/ui/button";
 import { cdnImage } from "@/lib/shopify/transforms";
 import {
   MAX_QTY,
@@ -39,9 +40,9 @@ export function InquiryList() {
     return (
       <div className="border-t border-border py-16">
         <p className="text-body text-muted">Your inquiry is empty.</p>
-        <Link href="/shop" className="text-button sb-underline mt-4 inline-block">
+        <ButtonLink href="/shop" className="mt-4">
           Browse products
-        </Link>
+        </ButtonLink>
       </div>
     );
   }

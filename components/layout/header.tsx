@@ -30,7 +30,15 @@ export async function Header() {
   ]);
 
   return (
-    <header className="relative z-40 text-foreground">
+    /*
+     * Sticky, and opaque once it is — a transparent bar would let the page
+     * scroll through it. `bg-background` resolves against the surrounding
+     * `data-surface`, so it is dark wood on the landing page and earth on Shop
+     * without a per-page override.
+     *
+     * z-40 keeps it under the two drawers at z-50, which are meant to cover it.
+     */
+    <header className="sticky top-0 z-40 bg-background text-foreground">
       <Container className="flex items-center gap-6 py-5">
         <Logo className="h-5 w-[11.47rem]" />
 

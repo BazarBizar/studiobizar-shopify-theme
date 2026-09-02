@@ -1,6 +1,6 @@
-import Link from "next/link";
 
 import { PageShell } from "@/components/layout/page-shell";
+import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 
 export default function ProductNotFound() {
@@ -11,9 +11,9 @@ export default function ProductNotFound() {
         <p className="text-body mt-4 max-w-[36rem] text-muted">
           It may have been renamed or withdrawn from the catalogue.
         </p>
-        <Link href="/shop" className="text-button sb-underline mt-8 inline-block">
+        <ButtonLink href="/shop" variant="solid" className="mt-8">
           Browse all products
-        </Link>
+        </ButtonLink>
       </Container>
     </PageShell>
   );

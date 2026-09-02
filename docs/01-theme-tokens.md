@@ -43,7 +43,7 @@ Wrap a section in `data-surface` and every semantic utility inside it rebinds:
 <footer data-surface="olive"> <!-- bg-background is now #41473E, text-foreground #EBE8E3 -->
 ```
 
-Available: `light` (default), `dark`, `olive`, `mocha`, `black`.
+Available: `light` (default), `dark`, `olive`, `blue`, `mocha`, `black`.
 
 Semantic aliases, all rebound per surface: `--color-background`, `--color-foreground`,
 `--color-surface`, `--color-muted`, `--color-border`, `--color-primary`,
@@ -78,13 +78,29 @@ Line-height is `normal` throughout, matching Figma's "Auto".
 
 The last three are additions to the brief's table, measured in the designs.
 
-### Typeface — UNRESOLVED
+### Typeface — Helvetica Neue
 
-The PDFs export text as **Type 3 fonts with glyph outlines** and carry no `BaseFont`,
-`FontFile` or XMP metadata, so the family is not recoverable from `/public/figma`.
+Confirmed by the client. It is a **licensed Linotype/Monotype face**, so there is nothing to fetch
+from a font CDN and `next/font/google` does not apply. The PDFs could never have told us this
+either — Figma exported their text as Type 3 outlines with no font metadata.
 
-`Inter` is wired as a placeholder in `app/layout.tsx` behind `--font-sb-heading` and
-`--font-sb-body`. Swapping it is a one-line change in that file.
+Declared as a stack:
+
+| Layer | Value |
+|---|---|
+| `--font-sb-heading` / `--font-sb-body` in `:root` | `"Helvetica Neue"` |
+| appended in `@theme inline` | `"HelveticaNeue", Helvetica, Arial, ui-sans-serif, system-ui, sans-serif` |
+
+That renders natively on macOS and iOS. Windows and Android fall back to Arial, which is
+metrically compatible with Helvetica — so the layout does not shift, but the letterforms differ.
+
+**To render it identically everywhere:** license the webfont, drop the `.woff2` files into
+`app/fonts/`, and wire `next/font/local` to set `--font-sb-body`. The worked example is in the
+comment at the top of `app/layout.tsx`. The fallback chain stays where it is, so nothing else
+changes.
+
+`lib/brand.ts` carries the same stack as `BRAND.fontStack` for the emails. The PDF uses pdf-lib's
+standard Helvetica, which is the same design.
 
 ## Layout
 
@@ -96,13 +112,20 @@ Measured from the Shop All product grid (image placement matrices):
 
 | Token | Value | Utility |
 |---|---|---|
-| `--sb-canvas` | 108rem (1728px) | `max-w-canvas` |
+| `--sb-canvas` | 108rem (1728px) | reference only — see below |
 | `--sb-gutter` | 1.25rem (20px) | `px-gutter` |
 | `--sb-grid-gap` | 0.625rem (10px) | `gap-grid-gap` |
 | `--sb-space-2xl` | 7.5rem → 4rem mobile | `py-section` |
 | `--sb-ratio-card` | 4 / 5 | `aspect-card` |
 
-Custom utilities: `sb-container` (max-width + gutter), `sb-grid-4` (2-up mobile → 4-up ≥750px).
+Custom utilities: `sb-container` (gutter only), `sb-grid-4` (2-up mobile → 4-up ≥750px),
+`sb-prose`, `sb-underline`, `sb-masonry`.
+
+**`sb-container` is deliberately not capped at `--sb-canvas`.** The designs run edge to edge —
+content spans 18.5 → 1708 on the 1728 frame, about 1.2% of the width each side. Centring at 1728px
+put 116px of dead margin either side on a 1920 display, five times the design, and the layout read
+as boxed rather than full-bleed. `--sb-canvas` remains as the reference width the measurements were
+taken from.
 
 **No `px` in Tailwind classes.** Use the scale (`p-4`, `gap-6`) or rem-based arbitrary values.
 

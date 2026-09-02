@@ -20,16 +20,27 @@ Checked against the Shopify Admin and Storefront APIs.
   definitions (18 PRODUCT / 10 COLLECTION / 8 PAGE), 11 pages, 5 menus. `node index.js verify`
   reports OK on everything.
 
-**Blocked on content**
+**Content status** — all seeded, see [modules/seeding.md](modules/seeding.md)
 
-- **All metaobjects are empty** — `designer`, `project`, `captioned_image`, `contact_channel`,
-  `faq_item`, `service` have zero entries. Projects, Designers, Gallery, Services and Contact have
-  nothing to render. (`inquiry` is written by the storefront, not seeded content.)
-- **Product metafields are 1-of-18 filled** — only `custom.colour`. The lower half of Shop Detail
-  (specs, four accordions, The Idea, The Designer, downloads) has no source data. No product tags.
-- **One collection exists** (`frontpage`). The designs need four signature collections
-  (Duna, Safari, Hardy, Arc Teak) plus the Shop All category set. All 10 collection metafields empty.
-- **No page metafields set**, so Landing, Our Story, Service and Contact have no CMS content.
+Verified through the Storefront API with `yarn check:content`:
+
+| Entity | Count |
+|---|---|
+| `designer` | 10 |
+| `project` | 10 |
+| `captioned_image` | 15 (12 project + 3 home hero) |
+| `service` | 10 |
+| `contact_channel` | 8 |
+| `faq_item` | 10 |
+| `inquiry` | 0 — written by the storefront, never seeded |
+| Collections | 13 (12 signature + `frontpage`), all with designer + hero image |
+| Products with metafields | **144**, across the 12 collections |
+
+PAGE metafields set on `home` (8), `contact`, `our-story`, `our-services` and `gallery`.
+
+The remaining ~1,450 products carry only `colour` from the original import, so their Shop Detail
+pages render the upper half and hide the rest — the intended graceful degradation.
+
 
 ## Schema decision
 
@@ -67,16 +78,16 @@ parallel with the UI work.
 | 4 | Shop Detail | `/shop/[handle]` | 3, S1 | **done** |
 | 5 | Inquiry drawer, form, API + metaobject | `/inquiry` | 4 | **done** |
 | 6 | Inquiry PDF + Resend emails | `/api/inquiry` | 5 | **done** |
-| S1 | Seed product + collection data | — | 1 | **next** |
+| S1 | Seed products, collections + designers | — | 1 | **done** |
 | S2 | Add `service` + `inquiry` definitions | — | — | **done** |
-| S3 | Seed metaobject entries — 10 each | — | S2 | data |
-| 7 | Collections list + detail | `/collections` | 3, S1 | queued |
-| 8 | Projects overview (L/M) + detail | `/projects` | 2, S3 | queued |
-| 9 | Designers list + detail | `/designers` | 3, S3 | queued |
-| 10 | Gallery + lightbox | `/gallery` | 2, S3 | queued |
-| 11 | Our Story · Service · Contact · Legal · FAQ | `/(site)/*` | 2, S3 | queued |
-| 12 | Landing page | `/` | 7–11 | queued |
-| 13 | Search, 404, error, loading | `/search` | 3, 8, 9 | queued |
+| S3 | Seed project / gallery / service / contact / FAQ entries | — | S2 | **done** |
+| 7 | Collections list + detail | `/collections` | 3, S1 | **done** |
+| 8 | Projects overview (L/M) + detail | `/projects` | 2, S3 | **done** |
+| 9 | Designers list + detail | `/designers` | 3, S3 | **done** |
+| 10 | Gallery + lightbox | `/gallery` | 2, S3 | **done** |
+| 11 | Our Story · Service · Contact · Legal · FAQ | `/(site)/*` | 2, S3 | **done** |
+| 12 | Landing page | `/` | 7–11 | **done** |
+| 13 | Search, 404, error, loading | `/search` | 3, 8, 9 | **next** |
 | 14 | SEO + performance polish | all | 12, 13 | queued |
 
 ## Done so far
@@ -131,17 +142,71 @@ parallel with the UI work.
 - `inquiry-pdf.ts` deleted from the root; the `tsconfig` exclusion is gone
 - `yarn check:pdf` — 24 assertions incl. pagination and no price anywhere
 
-`inquiry-pdf.ts` and `schema-push` are excluded in `tsconfig.json` so `yarn build` passes; the
-first exclusion is removed in Step 6 when that file moves to `lib/pdf/`.
+**S1 — seeding** — see [`modules/seeding.md`](modules/seeding.md)
+
+- 10 `designer` metaobjects, 4 signature collections, 48 products × 14–15 metafields, 22 files
+- `yarn seed` (idempotent, `--dry-run` supported); `POST /api/revalidate` drops the ISR cache
+- Shop Detail now renders all four sections against real data
+
+**Step 7 — Collections** — see [pages/collections.md](pages/collections.md)
+
+- `/collections` 4-up cards on 3:5 media with a wordmark overlay; `/collections/[handle]` with a
+  128px wordmark hero, The Idea, The Designer, product grid, In Context and the contact block
+- `/api/products` gained `collection=`, so the detail page reuses the Shop All infinite-scroll grid
+- Shared `ContactCta` and `GoBack` now exist for the six pages that close with them
+
+**Step 8 + S3 projects** — see [pages/projects.md](pages/projects.md)
+
+- `/projects` with category chips and the L/M density toggle, both in the URL; `/projects/[handle]`
+  with hero, meta column, lightbox gallery, Featured Items and Other Projects
+- 10 projects + 12 captioned images seeded; `lib/shopify/entities.ts` normalises the metaobjects
+- **Fixed a silent data bug:** the Storefront `products(query:)` filter has no `handle:` term and
+  ignores it, returning everything — replaced with an exact `nodes(ids:)` lookup
+
+**Step 9 — Designers** — see [pages/designers.md](pages/designers.md)
+
+- `/designers` 4-up on mocha; `/designers/[handle]` with portrait, bio, collections and
+  "Designed by" grid, plus `Person` JSON-LD
+- **Storefront product search cannot filter on a metafield** (all three syntaxes tested and
+  documented), so a designer's products are reached via the collections that credit them
+
+**Step 10 — Gallery** — see [pages/gallery.md](pages/gallery.md)
+
+- The Gallery PDF turned out to be **the lightbox spec, not a page** — no header/footer, 1444px
+  frame, and its counter drawn in Figma annotation purple. Built both: the viewer to spec, and the
+  `/gallery` route the brief lists
+- `components/ui/lightbox.tsx` is now shared with Projects Detail; masonry via `react-masonry-css`
+- `yarn seed:pages` creates the `gallery` page and attaches the 12 captioned images
+
+**Step 11 + rest of S3** — see [pages/content-pages.md](pages/content-pages.md)
+
+- `/our-story`, `/services`, `/contact`, `/faq`, `/legal/[handle]` (allow-listed, prerendered)
+- Added the missing **charcoal-blue surface**; Contact uses a dark-wood footer per the design
+- Service and Contact carry **real copy** — 10 service names and 8 contact channels transcribed
+- Contact gets its own richer form + `POST /api/contact` (email-only, degrades without a key)
+
+**Step 12 — Landing page** — see [pages/landing.md](pages/landing.md)
+
+- All 11 sections in design order, on dark wood; hero takes any number of slides
+- **Collections expanded 4 → 12**, all signature, each with 12 products and an image
+- Three new PAGE metafields (`new_in`, `monthly_selection`, `story_image`) pushed via schema-push
+  — and added to `PAGE_METAFIELDS`, without which the fragment never requests them
+- Carousels via `embla-carousel-react`, read with `useSyncExternalStore`
+- **Instagram row is live via Behold** — see [modules/instagram.md](modules/instagram.md); set
+  `BEHOLD_FEED_ID` in `.env`, falls back to the gallery metafield when unset or unreachable
+
+Only `schema-push` is excluded from type-checking now — it is plain JS with its own conventions.
 
 ## Open questions
 
+**Resolved:** the typeface is **Helvetica Neue** — see [01-theme-tokens.md](01-theme-tokens.md).
+Licensed, so it renders as a system stack until the webfont files are supplied.
+
 | Question | Needed by | Default if unanswered |
 |---|---|---|
-| Which typeface do the designs use? | Step 3 | Ship on Inter, swap later (one line) |
 | Confirm slate / earl-grey / terracotta / camel | Step 3 | Leave unused |
 | Confirm the Shop All chip labels and grouping (some PDF glyphs unreadable) | Step 7 | Ship the 11 groups in `categories.ts` |
-| Is Gallery a page or a component spec? Frame is 1444px, no header/footer | Step 10 | Build as a full page |
+
 | Seeded content — invented copy or real Studio Bizar text? | S3 | Invent, clearly marked |
 | Publish the 432 draft products? | Step 3 | Leave draft |
 | Which platform is each of the six footer social icons, and their URLs? | Step 11 | Icons 4–6 stay unlinked |

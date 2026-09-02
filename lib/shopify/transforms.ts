@@ -3,6 +3,7 @@ import { shopifyUrlToRoute } from "../routes";
 import type {
   Collection,
   CollectionCard,
+  DesignerRef,
   Maybe,
   Metafield,
   MetafieldMap,
@@ -286,6 +287,17 @@ export function normalizeProduct(product: ShopifyProduct): Product {
   };
 }
 
+/** The `by …` byline on a collection card comes from the linked designer entry. */
+export function designerRefFrom(entry: Maybe<ShopifyMetaobject>): Maybe<DesignerRef> {
+  if (!entry) return null;
+  const fields = toFieldMap(entry.fields);
+  return {
+    handle: entry.handle,
+    name: fieldText(fields, "name"),
+    studio: fieldText(fields, "studio"),
+  };
+}
+
 export function normalizeCollectionCard(collection: ShopifyCollection): CollectionCard {
   const metafields = toMetafieldMap(collection.metafields);
   return {
@@ -297,6 +309,7 @@ export function normalizeCollectionCard(collection: ShopifyCollection): Collecti
     logo: metafieldImage(metafields, "hero_logo"),
     isSignature: metafieldBool(metafields, "is_signature"),
     sortOrder: metafieldInt(metafields, "sort_order"),
+    designer: designerRefFrom(metafieldMetaobject(metafields, "designer")),
   };
 }
 

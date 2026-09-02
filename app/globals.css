@@ -26,8 +26,8 @@
   --color-off-black: #1d1d1b; /* [figma] true black, Gallery + Project detail    */
 
   /* Named in the brief but absent from all 14 designs. Confirm before use. */
-  --color-slate: #6e7784; /* [provisional] */
-  --color-earl-grey: #8a8880; /* [provisional] */
+  --color-slate: #302f2d; /* [provisional] */
+  --color-earl-grey: #ebe8e3; /* [provisional] */
   --color-terracotta: #a65a3f; /* [provisional] */
   --color-camel: #c4a582; /* [provisional] */
 }
@@ -46,6 +46,14 @@
   --sb-primary: var(--color-dark-wood);
   --sb-primary-foreground: var(--color-earth);
   --sb-accent: var(--color-charcoal-blue);
+
+  /* ---------------------------------------------------------------------
+     TYPEFACE — Helvetica Neue, a licensed Linotype face. Nothing is fetched;
+     it renders natively on macOS/iOS and falls back to Helvetica → Arial.
+     Wire next/font/local here (see app/layout.tsx) to serve the real webfont.
+     --------------------------------------------------------------------- */
+  --font-sb-heading: "Helvetica Neue";
+  --font-sb-body: "Helvetica Neue";
 
   /* ---------------------------------------------------------------------
      C. TYPE SCALE — desktop. Sizes verified against the PDF text matrices.
@@ -84,7 +92,7 @@
   --sb-space-md: 1.75rem;
   --sb-space-lg: 3rem;
   --sb-space-xl: 5rem;
-  --sb-space-2xl: 7.5rem; /* section rhythm between page blocks */
+  --sb-space-2xl: 11rem; /* 176px — measured gap between landing sections */
 
   /* Product card media, from the 415×519 card frame = 4:5. */
   --sb-ratio-card: 4 / 5;
@@ -124,7 +132,7 @@
     --fs-sku: 0.8125rem; /* 13px */
     --fs-display: 2.5rem; /* 40px */
     --fs-display-lg: 4rem; /* 64px */
-    --sb-space-2xl: 4rem;
+    --sb-space-2xl: 5.5rem; /* 88px */
     --sb-space-xl: 3rem;
   }
 }
@@ -146,8 +154,12 @@
   --color-accent: var(--sb-accent);
 
   /* type — generates .text-h1 … .text-sku, responsive via the vars above */
-  --font-heading: var(--font-sb-heading), ui-sans-serif, system-ui, sans-serif;
-  --font-body: var(--font-sb-body), ui-sans-serif, system-ui, sans-serif;
+  --font-heading:
+    var(--font-sb-heading), "HelveticaNeue", Helvetica, Arial, ui-sans-serif,
+    system-ui, sans-serif;
+  --font-body:
+    var(--font-sb-body), "HelveticaNeue", Helvetica, Arial, ui-sans-serif,
+    system-ui, sans-serif;
 
   --text-h1: var(--fs-h1);
   --text-h1--line-height: normal;
@@ -240,6 +252,16 @@
   --sb-primary-foreground: var(--color-deep-mocha);
 }
 
+[data-surface="blue"] {
+  --sb-background: var(--color-charcoal-blue);
+  --sb-surface: var(--color-charcoal-blue);
+  --sb-foreground: var(--color-earth);
+  --sb-muted: color-mix(in srgb, var(--color-earth) 60%, transparent);
+  --sb-border: color-mix(in srgb, var(--color-earth) 26%, transparent);
+  --sb-primary: var(--color-earth);
+  --sb-primary-foreground: var(--color-charcoal-blue);
+}
+
 [data-surface="black"] {
   --sb-background: var(--color-off-black);
   --sb-surface: var(--color-off-black);
@@ -261,7 +283,9 @@
   body {
     background-color: var(--sb-background);
     color: var(--sb-foreground);
-    font-family: var(--font-sb-body), ui-sans-serif, system-ui, sans-serif;
+    font-family:
+      var(--font-sb-body), "HelveticaNeue", Helvetica, Arial, ui-sans-serif,
+      system-ui, sans-serif;
     font-size: var(--fs-body);
     line-height: normal;
     -webkit-font-smoothing: antialiased;
@@ -273,7 +297,9 @@
   h4,
   h5,
   h6 {
-    font-family: var(--font-sb-heading), ui-sans-serif, system-ui, sans-serif;
+    font-family:
+      var(--font-sb-heading), "HelveticaNeue", Helvetica, Arial, ui-sans-serif,
+      system-ui, sans-serif;
     font-weight: 400;
     line-height: normal;
     text-wrap: balance;
@@ -307,10 +333,17 @@
 /* =============================================================================
    J. PAGE SHELL
    ========================================================================== */
+/**
+ * Edge-to-edge with a hairline gutter, which is what the designs actually do:
+ * content runs 18.5 → 1708 on the 1728 frame, i.e. ~1.2% of the width each
+ * side. Deliberately NOT capped at --sb-canvas — centring the content at 1728px
+ * puts 116px of dead margin either side on a 1920 display, five times the
+ * design, and the layout reads as boxed instead of full-bleed.
+ *
+ * --sb-canvas stays as the reference width the measurements came from.
+ */
 @utility sb-container {
   width: 100%;
-  max-width: var(--sb-canvas);
-  margin-inline: auto;
   padding-inline: var(--sb-gutter);
 }
 
@@ -387,5 +420,21 @@
 
   & strong {
     font-weight: 600;
+  }
+}
+
+/* react-masonry-css needs its own column styling; the gap matches the grid. */
+@utility sb-masonry {
+  display: flex;
+  width: auto;
+  margin-left: calc(var(--sb-grid-gap) * -1);
+}
+
+@utility sb-masonry-column {
+  padding-left: var(--sb-grid-gap);
+  background-clip: padding-box;
+
+  & > figure {
+    margin-bottom: var(--sb-grid-gap);
   }
 }

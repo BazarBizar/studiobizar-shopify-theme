@@ -11,15 +11,18 @@ async function fetchPage({
   pageParam,
   category,
   sort,
+  collection,
 }: {
   pageParam?: string;
   category?: string;
   sort?: string;
+  collection?: string;
 }): Promise<Paginated<ProductCardType>> {
   const params = new URLSearchParams();
   if (pageParam) params.set("after", pageParam);
   if (category) params.set("category", category);
   if (sort) params.set("sort", sort);
+  if (collection) params.set("collection", collection);
 
   const response = await fetch(`/api/products?${params}`);
   if (!response.ok) throw new Error("Could not load more products.");
@@ -35,18 +38,21 @@ export function ProductGrid({
   initial,
   category,
   sort,
+  collection,
 }: {
   initial: Paginated<ProductCardType>;
   category?: string;
   sort?: string;
+  /** Pages through one collection instead of the whole catalogue. */
+  collection?: string;
 }) {
   const sentinel = useRef<HTMLDivElement>(null);
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isError, refetch } =
     useInfiniteQuery({
       // The key carries the filters, so switching category starts a fresh list.
-      queryKey: ["products", category ?? "all", sort ?? "relevance"],
-      queryFn: ({ pageParam }) => fetchPage({ pageParam, category, sort }),
+      queryKey: ["products", collection ?? category ?? "all", sort ?? "relevance"],
+      queryFn: ({ pageParam }) => fetchPage({ pageParam, category, sort, collection }),
       initialPageParam: undefined as string | undefined,
       getNextPageParam: (last) => (last.pageInfo.hasNextPage ? last.pageInfo.endCursor ?? undefined : undefined),
       initialData: { pages: [initial], pageParams: [undefined] },

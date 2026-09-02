@@ -52,6 +52,10 @@ export const PAGE_METAFIELDS = [
   "intro_body",
   "channels",
   "inquiry_types",
+  // Landing page
+  "new_in",
+  "monthly_selection",
+  "story_image",
 ] as const;
 
 /** Metaobject types provisioned by schema-push. */

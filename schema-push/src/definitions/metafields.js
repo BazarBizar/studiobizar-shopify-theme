@@ -113,6 +113,19 @@ const page = [
     validations: [metaobjectRef('contact_channel')],
   },
   { key: 'inquiry_types', name: 'Inquiry Types', type: 'list.single_line_text_field' },
+
+  /* ------------------------------------------------------------------ *
+   * Landing page. The home page picks which collection feeds each of its
+   * two product carousels, rather than the choice being hard-coded, so
+   * the rows can be re-pointed from the admin without a deploy.
+   * ------------------------------------------------------------------ */
+  { key: 'new_in', name: 'New In (collection)', type: 'collection_reference' },
+  {
+    key: 'monthly_selection',
+    name: 'Monthly Selection (collection)',
+    type: 'collection_reference',
+  },
+  { key: 'story_image', name: 'Story Image', type: 'file_reference', validations: [IMAGE_ONLY] },
 ];
 
 /**

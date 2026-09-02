@@ -43,7 +43,7 @@ export type InquiryEmailProps = {
 const styles = {
   body: {
     backgroundColor: BRAND.earth,
-    fontFamily: "Helvetica, Arial, sans-serif",
+    fontFamily: BRAND.fontStack,
     color: BRAND.ink,
     margin: 0,
     padding: "32px 0",

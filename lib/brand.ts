@@ -31,6 +31,10 @@ export const BRAND = {
   headerBg: "#DFDBD4", // [derived] earth darkened, for the table header band
   zebra: "#F5F3F0", // [derived] earth lightened, for alternating rows
   paper: "#FFFFFF",
+
+  /** Helvetica Neue, matching the storefront. The PDF uses the standard
+   *  Helvetica face, which is the same design. */
+  fontStack: "'Helvetica Neue', Helvetica, Arial, sans-serif",
 } as const;
 
 export type BrandColor = keyof typeof BRAND;

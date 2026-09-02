@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { ButtonLink } from "@/components/ui/button";
 
 import { ProductCard } from "@/components/product/product-card";
 import { Container } from "@/components/ui/container";
@@ -33,9 +33,7 @@ export function ProductRail({
 
       {viewAllHref && (
         <div className="mt-8">
-          <Link href={viewAllHref} className="text-button sb-underline">
-            view all
-          </Link>
+          <ButtonLink href={viewAllHref}>view all</ButtonLink>
         </div>
       )}
     </Container>
