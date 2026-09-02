@@ -1,0 +1,84 @@
+import Link from "next/link";
+
+import { Logo } from "@/components/layout/logo";
+import { NewsletterForm } from "@/components/layout/newsletter-form";
+import { SocialLinks } from "@/components/layout/social-links";
+import { Container } from "@/components/ui/container";
+import { FALLBACK_NAV, FOOTER_COLUMNS, MENUS } from "@/lib/navigation";
+import { getMenu } from "@/lib/shopify";
+import type { MenuLink } from "@/lib/shopify/types";
+import type { Surface } from "@/components/layout/page-shell";
+
+async function menuOrFallback(handle: string, fallback: MenuLink[]): Promise<MenuLink[]> {
+  try {
+    const items = await getMenu(handle);
+    return items.length ? items : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * Olive on almost every page; Contact puts it on dark wood, hence the prop.
+ */
+export async function Footer({ surface = "olive" }: { surface?: Surface }) {
+  const [about, info, legal] = await Promise.all([
+    menuOrFallback(MENUS.footerAbout, FALLBACK_NAV.footerAbout),
+    menuOrFallback(MENUS.footerInfo, FALLBACK_NAV.footerInfo),
+    menuOrFallback(MENUS.footerLegal, FALLBACK_NAV.footerLegal),
+  ]);
+
+  const columns: MenuLink[][] = [about, info, legal];
+
+  return (
+    <footer data-surface={surface} className="bg-background text-foreground">
+      <Container className="grid gap-12 py-12 lg:grid-cols-[1fr_auto_auto_auto_auto] lg:gap-16">
+        {/* Brand + newsletter */}
+        <div className="flex flex-col gap-8">
+          <div className="flex flex-col gap-4">
+            <Logo variant="mark" className="size-[5.625rem]" href={null} />
+            <p className="text-tertiary max-w-[12rem]">
+              Designed for life,
+              <br />
+              inspired by the world
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <p className="text-secondary max-w-[26.25rem]">
+              Sign up for our newsletters to receive seasonal promotions and updates on the latest
+              news of Studio Bizar.
+            </p>
+            <NewsletterForm />
+          </div>
+        </div>
+
+        {/* Link columns */}
+        {FOOTER_COLUMNS.map((column, index) => (
+          <nav key={column.key} aria-label={column.heading}>
+            <h2 className="text-h4 mb-4 uppercase tracking-[0.06em]">{column.heading}</h2>
+            <ul className="flex flex-col gap-3">
+              {columns[index].map((item) => (
+                <li key={item.id}>
+                  <Link href={item.href} className="text-secondary sb-underline">
+                    {item.title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        ))}
+
+        <div className="lg:justify-self-end">
+          <h2 className="sr-only">Follow Studio Bizar</h2>
+          <SocialLinks />
+        </div>
+      </Container>
+
+      <Container className="flex flex-col gap-2 pb-8 text-tertiary sm:flex-row sm:justify-end sm:gap-12">
+        <span>Belgium — (EUR)</span>
+        <span>© {new Date().getFullYear()} Studio Bizar</span>
+      </Container>
+    </footer>
+  );
+}

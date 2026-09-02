@@ -169,6 +169,57 @@ export const metaobjectDefinitions = [
       { key: 'sort_order', name: 'Sort Order', type: 'number_integer' },
     ],
   },
+
+  /* ------------------------------------------------------------------ *
+   * A6. service — the ten entries listed on the Our Services page.
+   * ------------------------------------------------------------------ */
+  {
+    type: 'service',
+    name: 'Service',
+    description: 'One offering in the Design Program, e.g. "Concept Development".',
+    displayNameKey: 'title',
+    publishable: false,
+    fields: [
+      { key: 'title', name: 'Title', type: 'single_line_text_field', required: true },
+      { key: 'body', name: 'Body', type: 'rich_text_field' },
+      { key: 'sort_order', name: 'Sort Order', type: 'number_integer' },
+    ],
+  },
+
+  /* ------------------------------------------------------------------ *
+   * A7. inquiry — a submitted product inquiry.
+   *
+   *     Written by the storefront (POST /api/inquiry), not by hand in the
+   *     admin, so `inquiry_id` doubles as the handle. `items` is JSON rather
+   *     than product references: it has to survive a product being renamed or
+   *     deleted, because it is a record of what was asked for at the time.
+   * ------------------------------------------------------------------ */
+  {
+    type: 'inquiry',
+    name: 'Inquiry',
+    description: 'A product inquiry submitted from the storefront.',
+    displayNameKey: 'inquiry_id',
+    publishable: false,
+    fields: [
+      { key: 'inquiry_id', name: 'Inquiry ID', type: 'single_line_text_field', required: true },
+      { key: 'submitted_at', name: 'Submitted At', type: 'date_time', required: true },
+      { key: 'customer_name', name: 'Customer Name', type: 'single_line_text_field', required: true },
+      { key: 'company', name: 'Company', type: 'single_line_text_field' },
+      { key: 'email', name: 'Email', type: 'single_line_text_field', required: true },
+      { key: 'phone', name: 'Phone', type: 'single_line_text_field' },
+      { key: 'message', name: 'Message', type: 'multi_line_text_field' },
+      { key: 'items', name: 'Items', type: 'json', required: true },
+      { key: 'total_products', name: 'Total Products', type: 'number_integer', required: true },
+      { key: 'total_quantity', name: 'Total Quantity', type: 'number_integer', required: true },
+      {
+        key: 'status',
+        name: 'Status',
+        type: 'single_line_text_field',
+        required: true,
+        validations: [choices('new', 'contacted', 'closed')],
+      },
+    ],
+  },
 ];
 
 /*
