@@ -1,0 +1,15 @@
+{
+  "name": "schema-push",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Provisions Studio Bizar metaobject and metafield definitions on Shopify via the Admin GraphQL API.",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "verify": "node index.js verify",
+    "plan": "node index.js push --dry-run",
+    "push": "node index.js push"
+  }
+}
