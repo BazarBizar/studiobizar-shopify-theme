@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { PageShell } from "@/components/layout/page-shell";
 import { AddToInquiry } from "@/components/product/add-to-inquiry";
+import { InContextGallery } from "@/components/product/in-context-gallery";
 import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductRail } from "@/components/product/product-rail";
 import { MediaText } from "@/components/sections/media-text";
@@ -15,9 +16,11 @@ import {
   getProductRecommendations,
   getProducts,
 } from "@/lib/shopify";
+import { normalizeCaptionedImage } from "@/lib/shopify/entities";
 import {
   metafieldImage,
   metafieldInt,
+  metafieldMetaobjects,
   metafieldRichText,
   metafieldText,
   toFieldMap,
@@ -133,10 +136,17 @@ export default async function ProductPage({ params }: PageProps<"/shop/[handle]"
       .catch(() => []),
   ]);
 
-  const specs = SPEC_ROWS.map((row) => ({
-    label: row.label,
-    value: metafieldText(metafields, row.key),
-  })).filter((row) => row.value);
+  const leadTime = metafieldText(metafields, "lead_time_weeks");
+
+  // Availability and lead time render as one row — "Made to order | Lead
+  // time of 12–16 weeks" — rather than two separate lines.
+  const specs = SPEC_ROWS.map((row) => {
+    const value = metafieldText(metafields, row.key);
+    return {
+      label: row.label,
+      value: row.key === "availability" && value && leadTime ? `${value} | ${leadTime}` : value,
+    };
+  }).filter((row) => row.value);
 
   const panels = PANELS.map((panel) => ({
     label: panel.label,
@@ -146,7 +156,9 @@ export default async function ProductPage({ params }: PageProps<"/shop/[handle]"
   const ideaBody = metafieldRichText(metafields, "idea_body");
   const ideaImage = metafieldImage(metafields, "idea_image");
   const moq = metafieldInt(metafields, "moq") ?? 1;
-  const leadTime = metafieldText(metafields, "lead_time_weeks");
+  const inContextImages = metafieldMetaobjects(metafields, "in_context_images").map(
+    normalizeCaptionedImage,
+  );
 
   return (
     <PageShell surface="light">
@@ -157,14 +169,17 @@ export default async function ProductPage({ params }: PageProps<"/shop/[handle]"
           <ProductGallery images={product.images} title={product.title} />
 
           <div className="max-w-[35rem]">
-            <nav aria-label="Breadcrumb" className="text-tertiary text-muted">
+            <nav
+              aria-label="Breadcrumb"
+              className="text-tertiary font-medium tracking-[0.02em] text-muted uppercase"
+            >
               <Link href="/shop" className="sb-underline">
                 products
               </Link>
               {product.productType && (
                 <>
-                  <span aria-hidden> › </span>
-                  <span>{product.productType.toLowerCase()}</span>
+                  <span aria-hidden> {">"} </span>
+                  <span>{product.productType}</span>
                 </>
               )}
             </nav>
@@ -185,6 +200,12 @@ export default async function ProductPage({ params }: PageProps<"/shop/[handle]"
               />
             )}
 
+            {inContextImages.length > 0 && (
+              <div className="mt-8 border-t border-border pt-8">
+                <InContextGallery images={inContextImages} title={product.title} />
+              </div>
+            )}
+
             {specs.length > 0 && (
               <dl className="mt-12 flex flex-col gap-3">
                 {specs.map((spec) => (
@@ -196,8 +217,7 @@ export default async function ProductPage({ params }: PageProps<"/shop/[handle]"
               </dl>
             )}
 
-            <p className="text-h4 mt-10">Price on request</p>
-            {leadTime && <p className="text-tertiary mt-1 text-muted">{leadTime}</p>}
+            <p className="text-h4 mt-10 border-t border-border pt-10 italic">Price on request</p>
 
             <div className="mt-5">
               {variant ? (
@@ -251,7 +271,16 @@ export default async function ProductPage({ params }: PageProps<"/shop/[handle]"
         </div>
       </Container>
 
-      {ideaBody && <MediaText title="The Idea" html={ideaBody} image={ideaImage} align="left" />}
+      {ideaBody && (
+        <MediaText
+          title="The Idea"
+          html={ideaBody}
+          image={ideaImage}
+          align="left"
+          surface="olive"
+          padding="wide"
+        />
+      )}
 
       {designer?.bio && (
         <MediaText

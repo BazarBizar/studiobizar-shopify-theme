@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function ProjectLoading() {
   return (
     <>
-      <Skeleton className="aspect-[16/10] w-full lg:aspect-[16/8]" />
+      <Skeleton className="aspect-[2/3] w-full sm:aspect-[16/10] lg:aspect-[16/8]" />
       <Container className="py-section">
         <Skeleton className="h-9 w-[20rem]" />
         <Skeleton className="mt-4 h-6 w-[26rem]" />

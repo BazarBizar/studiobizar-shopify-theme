@@ -115,7 +115,16 @@ export default async function CollectionPage({ params }: PageProps<"/collections
         )}
       </section>
 
-      {ideaBody && <MediaText title={ideaTitle} html={ideaBody} image={ideaImage} align="left" />}
+      {ideaBody && (
+        <MediaText
+          title={ideaTitle}
+          html={ideaBody}
+          image={ideaImage}
+          align="left"
+          surface="olive"
+          padding="wide"
+        />
+      )}
 
       {designer?.bio && (
         <MediaText
@@ -148,7 +157,7 @@ export default async function CollectionPage({ params }: PageProps<"/collections
             {inContext.map((project) => (
               <li key={project.handle}>
                 <Link href={`/projects/${project.handle}`} className="group block">
-                  <div className="relative aspect-wide overflow-hidden bg-foreground/5">
+                  <div className="relative aspect-[3/2] overflow-hidden bg-foreground/5 sm:aspect-wide">
                     {project.image && (
                       <Image
                         src={cdnImage(project.image.url, 1100)}

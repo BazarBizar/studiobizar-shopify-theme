@@ -9,6 +9,9 @@ import type { ProjectCard as ProjectCardType } from "@/lib/shopify/entities";
  *
  * `l` is one full-bleed project per row on 5:3; `m` is three across on 2:3.
  * Same card, same data — only the media aspect and the type scale change.
+ *
+ * Both collapse to the 3:4 measured on the 393px frames: one card per row at
+ * 353×467, whichever density the desktop view asked for.
  */
 export function ProjectCard({
   project,
@@ -26,7 +29,7 @@ export function ProjectCard({
     <article>
       <Link href={`/projects/${project.handle}`} className="group block">
         <div
-          className={`relative overflow-hidden bg-foreground/5 ${large ? "aspect-[5/3]" : "aspect-[2/3]"}`}
+          className={`relative aspect-[3/4] overflow-hidden bg-foreground/5 ${large ? "sm:aspect-[5/3]" : "sm:aspect-[2/3]"}`}
         >
           {image && (
             <Image

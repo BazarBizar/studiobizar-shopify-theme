@@ -25,6 +25,7 @@ type PageSeed = {
   featureImages?: string[];
   storyImage?: string;
   introBody?: string[];
+  projectsIntro?: string[];
   storyBlock?: string[];
   /** Collection handles for the two landing-page product carousels. */
   newIn?: string;
@@ -54,6 +55,9 @@ const PAGES: PageSeed[] = [
     storyImage: "public/image/owner.png",
     introBody: [
       "Through our Design Program, we deliver made-to-order pieces, private label collections and tailored solutions, supporting projects from concept to completion. We collaborate worldwide with architects, designers, project developers, hotels, restaurants and retail partners.",
+    ],
+    projectsIntro: [
+      "From private homes to hotels and restaurants, we work alongside architects and designers to furnish spaces that are built to be lived in, not just photographed.",
     ],
     storyBlock: [
       "Studio Bizar began in a warehouse in Kontich with a container of teak and no particular plan. What we knew was that furniture had got worse — thinner, faster, harder to repair — and that the makers who could do better were still there if you went looking.",
@@ -276,6 +280,16 @@ async function main() {
         key: "intro_body",
         type: "rich_text_field",
         value: richText(...seed.introBody),
+      });
+    }
+
+    if (seed.projectsIntro?.length) {
+      metafields.push({
+        ownerId: pageId,
+        namespace: "custom",
+        key: "projects_intro",
+        type: "rich_text_field",
+        value: richText(...seed.projectsIntro),
       });
     }
 

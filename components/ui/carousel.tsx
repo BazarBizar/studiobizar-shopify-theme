@@ -25,7 +25,10 @@ export function Carousel({
   ariaLabel: string;
   className?: string;
 }) {
-  const [emblaRef, embla] = useEmblaCarousel({ align: "start", containScroll: "trimSnaps" });
+  const [emblaRef, embla] = useEmblaCarousel({
+    align: "start",
+    containScroll: "trimSnaps",
+  });
 
   // Embla is an external store, so it is read through useSyncExternalStore
   // rather than mirrored into state from an effect.
@@ -66,13 +69,18 @@ export function Carousel({
    * unreadable against a photograph.
    */
   const arrow =
-    "absolute top-1/2 z-10 -translate-y-1/2 border border-foreground bg-background p-3 " +
-    "text-foreground transition-opacity hover:opacity-80 " +
+    "absolute top-1/2 z-10 -translate-y-1/2 border opacity-60 border-foreground bg-background p-3 " +
+    "text-foreground transition-opacity hover:opacity-40 " +
     "disabled:pointer-events-none disabled:opacity-0";
 
   return (
     <div className={cn("relative", className)}>
-      <div ref={emblaRef} className="overflow-hidden" role="region" aria-label={ariaLabel}>
+      <div
+        ref={emblaRef}
+        className="overflow-hidden"
+        role="region"
+        aria-label={ariaLabel}
+      >
         <div className="flex gap-grid-gap">
           {children.map((child, index) => (
             <div key={index} className={cn("min-w-0 shrink-0", slideClassName)}>
@@ -89,7 +97,7 @@ export function Carousel({
             onClick={() => embla?.scrollPrev()}
             disabled={!canScrollPrev}
             aria-label={`${ariaLabel}: previous`}
-            className={cn(arrow, "left-3")}
+            className={cn(arrow, "left-3 rounded-full")}
           >
             <ArrowLeft className="size-4" strokeWidth={1.5} aria-hidden />
           </button>
@@ -98,7 +106,7 @@ export function Carousel({
             onClick={() => embla?.scrollNext()}
             disabled={!canScrollNext}
             aria-label={`${ariaLabel}: next`}
-            className={cn(arrow, "right-3")}
+            className={cn(arrow, "right-3 rounded-full")}
           >
             <ArrowRight className="size-4" strokeWidth={1.5} aria-hidden />
           </button>

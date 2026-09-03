@@ -9,7 +9,7 @@ import type { InstagramPost } from "@/lib/instagram/behold";
 const PROFILE_URL = "https://www.instagram.com/studiobizarantwerp";
 
 /**
- * The five-up Instagram row.
+ * The six-up Instagram row.
  *
  * Prefers the live Behold feed; falls back to the page's `gallery` metafield
  * when `BEHOLD_FEED_ID` is unset or the feed is unreachable, so the section
@@ -23,10 +23,11 @@ export function InstagramRow({
   fallback: CaptionedImage[];
 }) {
   const live = posts.length > 0;
-  // Four images beside the text column, per the measured layout.
+  // Six images beside the text column — a full row at `sm:grid-cols-6` below,
+  // widened from the four-across measured layout.
   const tiles = live
-    ? posts.slice(0, 4)
-    : fallback.filter((item) => item.image).slice(0, 4);
+    ? posts.slice(0, 6)
+    : fallback.filter((item) => item.image).slice(0, 6);
 
   if (tiles.length === 0) return null;
 
@@ -48,7 +49,7 @@ export function InstagramRow({
           </ButtonLink>
         </div>
 
-        <ul className="grid grid-cols-2 gap-grid-gap sm:grid-cols-4">
+        <ul className="grid grid-cols-2 gap-grid-gap sm:grid-cols-6">
           {tiles.map((tile) => {
             const isPost = "permalink" in tile;
             const src = isPost ? tile.imageUrl : cdnImage(tile.image!.url, 700);
@@ -65,7 +66,7 @@ export function InstagramRow({
                   // Behold serves Instagram CDN URLs, which are already sized.
                   unoptimized={isPost}
                   className="object-cover transition-transform duration-500 ease-out-soft hover:scale-[1.03]"
-                  sizes="(max-width: 749px) 50vw, 20vw"
+                  sizes="(max-width: 749px) 50vw, 15vw"
                 />
               </div>
             );

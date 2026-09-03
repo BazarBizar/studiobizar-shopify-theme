@@ -39,11 +39,11 @@ export async function Header() {
      * z-40 keeps it under the two drawers at z-50, which are meant to cover it.
      */
     <header className="sticky top-0 z-40 bg-background text-foreground">
-      <Container className="flex items-center gap-6 py-5">
+      <Container className="flex items-center gap-13 py-5">
         <Logo className="h-5 w-[11.47rem]" />
 
         <nav aria-label="Primary" className="hidden lg:block">
-          <ul className="flex items-center gap-10">
+          <ul className="flex items-center gap-9">
             {primary.map((item) => (
               <li key={item.id}>
                 <Link href={item.href} className="text-secondary sb-underline">
@@ -54,9 +54,9 @@ export async function Header() {
           </ul>
         </nav>
 
-        <div className="ml-auto flex items-center gap-6">
+        <div className="ml-auto flex items-center gap-[4.3rem]">
           <nav aria-label="Secondary" className="hidden lg:block">
-            <ul className="flex items-center gap-8">
+            <ul className="flex items-center gap-5">
               {secondary.map((item) => (
                 <li key={item.id}>
                   <Link href={item.href} className="text-tertiary sb-underline">

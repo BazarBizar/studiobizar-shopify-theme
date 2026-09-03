@@ -9,7 +9,7 @@ export default function CollectionsLoading() {
       <ul className="sb-grid-4 mt-12">
         {Array.from({ length: 4 }).map((_, index) => (
           <li key={index} className="flex flex-col gap-3">
-            <Skeleton className="aspect-[3/5] w-full" />
+            <Skeleton className="aspect-[3/2] w-full sm:aspect-[3/5]" />
             <Skeleton className="h-4 w-3/4" />
             <Skeleton className="h-3 w-1/2" />
           </li>

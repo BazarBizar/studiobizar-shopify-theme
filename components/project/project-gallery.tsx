@@ -17,6 +17,9 @@ const Lightbox = dynamic(() => import("@/components/ui/lightbox").then((m) => m.
  * The gallery block from `DESK - Projects Detail).pdf`: a lead image with the
  * `01 / 04   VIEW GALLERY +` control overlaid bottom-left and bottom-right, in
  * earth on the image.
+ *
+ * The mobile frame stacks the gallery as 353×529 portraits, so the lead takes
+ * that 2:3 below 750px rather than the desktop 16:9 letterbox.
  */
 export function ProjectGallery({ images, title }: { images: CaptionedImage[]; title: string }) {
   const [index, setIndex] = useState(-1);
@@ -35,7 +38,7 @@ export function ProjectGallery({ images, title }: { images: CaptionedImage[]; ti
           aria-label={`Open gallery, ${usable.length} images`}
           className="group relative block w-full overflow-hidden bg-foreground/5"
         >
-          <span className="relative block aspect-wide w-full">
+          <span className="relative block aspect-[2/3] w-full sm:aspect-wide">
             <Image
               src={cdnImage(lead.image!.url, 1800)}
               alt={lead.image!.altText ?? title}

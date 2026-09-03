@@ -106,6 +106,9 @@ const page = [
     validations: [metaobjectRef('captioned_image')],
   },
   { key: 'intro_body', name: 'Intro Body', type: 'rich_text_field' },
+  // Landing page's "Selected Project" band — separate from `intro_body`,
+  // which that page already spends on "Our Services".
+  { key: 'projects_intro', name: 'Projects Intro', type: 'rich_text_field' },
   {
     key: 'channels',
     name: 'Contact Channels',

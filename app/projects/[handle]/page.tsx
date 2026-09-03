@@ -116,7 +116,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[hand
       <ProjectJsonLd project={project} />
 
       {project.heroImage && (
-        <div className="relative aspect-[16/10] w-full overflow-hidden lg:aspect-[16/8]">
+        <div className="relative aspect-[2/3] w-full overflow-hidden sm:aspect-[16/10] lg:aspect-[16/8]">
           <Image
             src={cdnImage(project.heroImage.url, 2400)}
             alt={project.heroImage.altText ?? project.title}

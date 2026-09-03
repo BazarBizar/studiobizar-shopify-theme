@@ -13,7 +13,7 @@ export default function ProjectsLoading() {
       <ul className="mt-10 grid gap-grid-gap gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }).map((_, index) => (
           <li key={index} className="flex flex-col gap-3">
-            <Skeleton className="aspect-[2/3] w-full" />
+            <Skeleton className="aspect-[3/4] w-full sm:aspect-[2/3]" />
             <Skeleton className="h-5 w-2/3" />
             <Skeleton className="h-4 w-1/2" />
           </li>

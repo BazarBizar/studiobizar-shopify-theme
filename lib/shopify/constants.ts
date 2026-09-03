@@ -56,6 +56,7 @@ export const PAGE_METAFIELDS = [
   "new_in",
   "monthly_selection",
   "story_image",
+  "projects_intro",
 ] as const;
 
 /** Metaobject types provisioned by schema-push. */

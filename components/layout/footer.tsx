@@ -32,12 +32,14 @@ export async function Footer({ surface = "olive" }: { surface?: Surface }) {
 
   return (
     <footer data-surface={surface} className="bg-background text-foreground">
-      <Container className="grid gap-12 py-12 lg:grid-cols-[1fr_auto_auto_auto_auto] lg:gap-16">
+      <Container className="grid gap-12 py-12 lg:grid-cols-[1fr_auto_auto_auto_auto] lg:gap-[12.3rem]">
         {/* Brand + newsletter */}
-        <div className="flex flex-col gap-8">
-          <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-[4.65rem]">
+          <div className="flex flex-col gap-7">
             <Logo variant="mark" className="size-[5.625rem]" href={null} />
-            <p className="text-tertiary max-w-[12rem]">
+            {/* Measured at 12px — smaller than `text-tertiary` (14px), which
+                is used everywhere else in the footer. */}
+            <p className="max-w-[12rem] text-[0.75rem]">
               Designed for life,
               <br />
               inspired by the world

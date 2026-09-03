@@ -1,27 +1,38 @@
 "use client";
 
-import { Search, ShoppingBag } from "lucide-react";
+import { ChevronDown, Search, ShoppingBag, User } from "lucide-react";
 import Link from "next/link";
 
 import { ROUTES } from "@/lib/routes";
 import { selectTotalQuantity, useInquiryCart } from "@/store/inquiry-cart";
 import { useUi } from "@/store/ui";
 
-/** The right cluster: language switch, search and the inquiry bag. */
+/** The right cluster: language switch, account, search and the inquiry bag. */
 export function HeaderActions() {
   const count = useInquiryCart(selectTotalQuantity);
   const hydrated = useInquiryCart((state) => state.hydrated);
   const openDrawer = useUi((state) => state.openInquiryDrawer);
 
   return (
-    <div className="flex items-center gap-5">
+    <div className="flex items-center gap-4">
       <button
         type="button"
-        className="text-micro tracking-[0.08em] uppercase opacity-80 transition-opacity hover:opacity-100"
+        className="flex items-center gap-1 text-micro tracking-[0.08em] uppercase opacity-80 transition-opacity hover:opacity-100"
         // A second locale is not configured yet; the control is in the design.
         aria-label="Language: English"
       >
         EN
+        <ChevronDown className="size-3" strokeWidth={1.5} aria-hidden />
+      </button>
+
+      <button
+        type="button"
+        className="transition-opacity hover:opacity-70"
+        // No customer-account system in this inquiry-only build; the icon is
+        // in the design. Same treatment as the language switch above.
+        aria-label="Account"
+      >
+        <User className="size-[1.15rem]" strokeWidth={1.5} aria-hidden />
       </button>
 
       <Link

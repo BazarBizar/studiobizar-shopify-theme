@@ -94,6 +94,22 @@
   --sb-space-xl: 5rem;
   --sb-space-2xl: 11rem; /* 176px — measured gap between landing sections */
 
+  /* Section rhythm — the vertical air between bands. The measured 176px is a
+     1728px-frame number; at real viewport widths it reads as dead space, so
+     the default is fluid and lands around 56px on a phone and ~104px on the
+     design canvas. Two ways to retune it:
+       · everywhere — change `--sb-section` here;
+       · one band or one component — put `section-sm` (…-xs/-md/-lg/-xl) on
+         any wrapper and every `py-section` inside it follows, because the
+         utility stays live (see section G).
+     For a single edge there are also `py-section-sm`, `pt-section-lg`, … */
+  --sb-section-xs: clamp(1.5rem, 3vw, 2.5rem); /* 24 → 40px  */
+  --sb-section-sm: clamp(2.5rem, 4.5vw, 4rem); /* 40 → 64px  */
+  --sb-section-md: clamp(3.5rem, 6vw, 6.5rem); /* 56 → 104px */
+  --sb-section-lg: clamp(5rem, 8vw, 9rem); /* 80 → 144px */
+  --sb-section-xl: var(--sb-space-2xl); /* 176px, as measured */
+  --sb-section: var(--sb-section-md);
+
   /* Product card media, from the 415×519 card frame = 4:5. */
   --sb-ratio-card: 4 / 5;
   --sb-ratio-wide: 16 / 9;
@@ -116,8 +132,8 @@
   --sb-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 }
 
-/* Mobile type scale — the brief's breakpoint. No mobile design exists; these
-   are the documented mobile sizes, applied to the same components. */
+/* Mobile type scale — the brief's breakpoint, and the sizes measured off the
+   393px frames in public/figma/Mobile (h1 30, body 15, secondary 13). */
 @media (max-width: 749px) {
   :root {
     --fs-h1: 1.875rem; /* 30px */
@@ -189,9 +205,19 @@
   --text-micro--line-height: normal;
 
   /* layout */
+  /* `sm:` is the one mobile/desktop line in this project, so it is pinned to
+     the brief's 750px rather than Tailwind's 640px default — the type scale
+     below and every `sizes="(max-width: 749px)"` already switch there, and a
+     `sm:` at 640 left a 110px band running desktop layout at mobile type. */
+  --breakpoint-sm: 750px;
   --spacing-gutter: var(--sb-gutter);
   --spacing-grid-gap: var(--sb-grid-gap);
-  --spacing-section: var(--sb-space-2xl);
+  --spacing-section: var(--sb-section);
+  --spacing-section-xs: var(--sb-section-xs);
+  --spacing-section-sm: var(--sb-section-sm);
+  --spacing-section-md: var(--sb-section-md);
+  --spacing-section-lg: var(--sb-section-lg);
+  --spacing-section-xl: var(--sb-section-xl);
   --container-canvas: var(--sb-canvas);
 
   --radius-none: var(--sb-radius-none);
@@ -345,6 +371,28 @@
 @utility sb-container {
   width: 100%;
   padding-inline: var(--sb-gutter);
+}
+
+/**
+ * Retune the section rhythm for one band and everything inside it — the same
+ * trick `data-surface` plays with colour. `<Container className="py-section
+ * section-sm">` tightens that block alone; on an outer wrapper it retunes
+ * every section-spaced child at once, with no per-element overrides.
+ */
+@utility section-xs {
+  --sb-section: var(--sb-section-xs);
+}
+@utility section-sm {
+  --sb-section: var(--sb-section-sm);
+}
+@utility section-md {
+  --sb-section: var(--sb-section-md);
+}
+@utility section-lg {
+  --sb-section: var(--sb-section-lg);
+}
+@utility section-xl {
+  --sb-section: var(--sb-section-xl);
 }
 
 /* The 4-up product / collection grid from Shop All, collapsing on mobile. */

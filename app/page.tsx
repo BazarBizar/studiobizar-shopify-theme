@@ -44,28 +44,38 @@ export const metadata: Metadata = {
 /** Every carousel row on this page shows at most twelve. */
 const ROW_LIMIT = 12;
 
-/** Heading + copy + a text link, repeated by Our Services and Our Story. */
-function IntroBlock({
-  title,
-  html,
-  href,
-  label,
-}: {
+type IntroProps = {
   title: string;
   html: string;
   href: string;
   label: string;
-}) {
+};
+
+/**
+ * Heading + copy + a text link. `IntroBody` is the bare block, for when it
+ * already sits inside a Container — nesting one Container in another doubles
+ * the gutter and pushes the copy out of line with the rest of the page.
+ */
+function IntroBody({ title, html, href, label }: IntroProps) {
   return (
-    <Container className="py-section">
+    <>
       <h2 className="text-h2">{title}</h2>
       <div
         className="sb-prose mt-6 max-w-[44rem]"
         dangerouslySetInnerHTML={{ __html: html }}
       />
-      <ButtonLink href={href} className="mt-8">
+      <ButtonLink href={href} className="mt-8" variant="outline">
         {label}
       </ButtonLink>
+    </>
+  );
+}
+
+/** The same block on its own band, as Our Services and Our Story use it. */
+function IntroBlock(props: IntroProps) {
+  return (
+    <Container className="py-section">
+      <IntroBody {...props} />
     </Container>
   );
 }
@@ -107,6 +117,7 @@ export default async function HomePage() {
   );
   const storyImage = metafieldImage(metafields, "story_image");
   const servicesHtml = metafieldRichText(metafields, "intro_body");
+  const projectsIntroHtml = metafieldRichText(metafields, "projects_intro");
   const storyHtml = metafieldRichText(metafields, "story_block_1");
 
   // Which collection feeds each product row is chosen in the admin, not here.
@@ -138,7 +149,7 @@ export default async function HomePage() {
             first: ROW_LIMIT,
           }).then((p) => p.items)
         : Promise.resolve([]),
-      getInstagramPosts(5),
+      getInstagramPosts(6),
     ]);
 
   const collections = collectionsPage.items
@@ -172,11 +183,11 @@ export default async function HomePage() {
         />
       )}
 
-      {featureImages.length > 0 && <CaptionedRow images={featureImages} />}
+      {/* {featureImages.length > 0 && <CaptionedRow images={featureImages} />} */}
 
       {projects.length > 0 && (
         <Container className="pb-section">
-          <RowHeading title="Selected Projects" href="/projects" />
+          {/* <RowHeading title="Selected Projects" href="/projects" /> */}
           <ul className="grid gap-grid-gap gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
             {projects.map((project) => (
               <li key={project.handle}>
@@ -184,6 +195,17 @@ export default async function HomePage() {
               </li>
             ))}
           </ul>
+
+          {projectsIntroHtml && (
+            <div className="mt-section-sm">
+              <IntroBody
+                title="Selected Project"
+                html={projectsIntroHtml}
+                href="/projects"
+                label="read more"
+              />
+            </div>
+          )}
         </Container>
       )}
 

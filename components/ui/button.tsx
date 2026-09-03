@@ -18,20 +18,21 @@ import { cn } from "@/lib/utils/cn";
 
 export type ButtonVariant = "solid" | "outline" | "text";
 
+// 212 × 26 on the 393px frames, 251 × 33 on the desktop ones.
 const base =
-  "text-button inline-flex items-center justify-center transition-colors";
+  "h-[1.625rem] min-w-[13.25rem] sm:h-[2rem] sm:min-w-[16rem] text-button uppercase inline-flex items-center font-medium justify-center transition-colors";
 
 const VARIANTS: Record<ButtonVariant, string> = {
   // 251 × 33 measured; min-width so a longer label still fits.
   solid: cn(
     base,
-    "h-[2.0625rem] min-w-[15.6875rem] gap-2 px-6",
+    " gap-2 px-6 ",
     "bg-primary text-primary-foreground hover:opacity-85",
     "disabled:cursor-not-allowed disabled:opacity-40",
   ),
   outline: cn(
     base,
-    "h-12 gap-2 border border-foreground px-8",
+    " gap-2 border border-foreground px-8",
     "hover:bg-foreground hover:text-background",
     "disabled:cursor-not-allowed disabled:opacity-40",
   ),

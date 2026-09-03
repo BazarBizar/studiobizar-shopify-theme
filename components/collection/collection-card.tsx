@@ -6,7 +6,9 @@ import type { CollectionCard as CollectionCardType } from "@/lib/shopify/types";
 
 /**
  * A 3:5 image with the collection wordmark laid over it, then the title and the
- * designer byline — the card from `DESK - Collections All.pdf`.
+ * designer byline — the card from `DESK - Collections All.pdf`. The mobile
+ * frame runs it full width at 353×235, so the media turns landscape (3:2)
+ * below 750px rather than becoming a 588px-tall portrait.
  *
  * The design uses a supplied logo per collection (`custom.hero_logo`). Where
  * none is set the title is typeset instead, which is why the wordmark below can
@@ -34,7 +36,7 @@ export function CollectionCard({
         href={`/collections/${collection.handle}`}
         className="group block mb-5"
       >
-        <div className="relative aspect-3/5 overflow-hidden bg-foreground/5">
+        <div className="relative aspect-3/2 overflow-hidden bg-foreground/5 sm:aspect-3/5">
           {image && (
             <Image
               src={cdnImage(image.url, 830)}

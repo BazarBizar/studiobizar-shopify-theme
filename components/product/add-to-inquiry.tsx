@@ -1,24 +1,41 @@
 "use client";
 
-import { Minus, Plus } from "lucide-react";
+import { Minus, Plus, Share2 } from "lucide-react";
 import { useState } from "react";
 
 import { MAX_QTY, useInquiryCart, type InquiryItem } from "@/store/inquiry-cart";
 
 /**
- * The qty stepper and `enquire` button — a 133×48 and a 372×48 outlined box in
- * the design. There is no price and no stock check; the button only ever adds
- * to the inquiry list.
+ * The qty stepper, `enquire` button and share icon — a 133×48, 372×48 and
+ * 48×48 outlined box in the design. There is no price and no stock check; the
+ * enquire button only ever adds to the inquiry list.
  */
 export function AddToInquiry({ item, moq = 1 }: { item: Omit<InquiryItem, "qty">; moq?: number }) {
   const [qty, setQty] = useState(Math.max(1, moq));
   const [added, setAdded] = useState(false);
+  const [shared, setShared] = useState(false);
   const add = useInquiryCart((state) => state.add);
 
   function onAdd() {
     add(item, qty);
     setAdded(true);
     window.setTimeout(() => setAdded(false), 2400);
+  }
+
+  async function onShare() {
+    const url = window.location.href;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: item.title, url });
+      } catch {
+        // The user cancelled the share sheet — nothing to report.
+      }
+      return;
+    }
+
+    await navigator.clipboard.writeText(url);
+    setShared(true);
+    window.setTimeout(() => setShared(false), 2400);
   }
 
   return (
@@ -69,10 +86,25 @@ export function AddToInquiry({ item, moq = 1 }: { item: Omit<InquiryItem, "qty">
         >
           enquire
         </button>
+
+        <button
+          type="button"
+          onClick={onShare}
+          aria-label="Share this product"
+          className="flex size-12 shrink-0 items-center justify-center border border-foreground transition-colors hover:bg-foreground hover:text-background"
+        >
+          <Share2 className="size-4" strokeWidth={1.5} aria-hidden />
+        </button>
       </div>
 
       <p role="status" aria-live="polite" className="text-tertiary min-h-[1.2em] text-muted">
-        {added ? "Added to your inquiry." : moq > 1 ? `Minimum order ${moq} pieces.` : ""}
+        {added
+          ? "Added to your inquiry."
+          : shared
+            ? "Link copied."
+            : moq > 1
+              ? `Minimum order ${moq} pieces.`
+              : ""}
       </p>
     </div>
   );

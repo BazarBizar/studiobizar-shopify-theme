@@ -111,7 +111,8 @@ async function main() {
         {namespace:"custom",key:"gallery"},{namespace:"custom",key:"intro_body"},
         {namespace:"custom",key:"story_block_1"},{namespace:"custom",key:"channels"},
         {namespace:"custom",key:"inquiry_types"},{namespace:"custom",key:"new_in"},
-        {namespace:"custom",key:"monthly_selection"},{namespace:"custom",key:"story_image"}
+        {namespace:"custom",key:"monthly_selection"},{namespace:"custom",key:"story_image"},
+        {namespace:"custom",key:"projects_intro"}
       ]){ key } } } }`);
 
   for (const page of pages.pages.nodes) {
