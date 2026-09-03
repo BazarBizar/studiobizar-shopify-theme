@@ -168,8 +168,17 @@ export const productCardFragment = /* GraphQL */ `
     id
     handle
     title
-    featuredImage {
-      ...ImageParts
+    tags
+    images(first: 2) {
+      nodes {
+        ...ImageParts
+      }
+    }
+    variants(first: 1) {
+      nodes {
+        id
+        title
+      }
     }
     metafields(identifiers: ${identifiers(PRODUCT_CARD_METAFIELDS)}) {
       ...MetafieldParts

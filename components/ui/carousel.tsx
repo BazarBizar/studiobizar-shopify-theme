@@ -19,11 +19,14 @@ export function Carousel({
   slideClassName = "w-[78%] sm:w-[46%] lg:w-[calc(25%-0.5rem)]",
   ariaLabel,
   className,
+  gap = "grid-gap",
 }: {
   children: React.ReactNode[];
   slideClassName?: string;
   ariaLabel: string;
   className?: string;
+  /** `none` butts slides edge to edge — In Context on Collections Detail. */
+  gap?: "grid-gap" | "none";
 }) {
   const [emblaRef, embla] = useEmblaCarousel({
     align: "start",
@@ -81,7 +84,7 @@ export function Carousel({
         role="region"
         aria-label={ariaLabel}
       >
-        <div className="flex gap-grid-gap">
+        <div className={cn("flex", gap === "grid-gap" && "gap-grid-gap")}>
           {children.map((child, index) => (
             <div key={index} className={cn("min-w-0 shrink-0", slideClassName)}>
               {child}

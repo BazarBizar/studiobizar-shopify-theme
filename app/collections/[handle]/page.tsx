@@ -3,13 +3,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { CollectionHighlightGrid } from "@/components/collection/collection-highlight-grid";
 import { PageShell } from "@/components/layout/page-shell";
 import { ContactCta } from "@/components/sections/contact-cta";
 import { MediaText } from "@/components/sections/media-text";
-import { ProductGrid } from "@/components/shop/product-grid";
+import { Carousel } from "@/components/ui/carousel";
 import { Container } from "@/components/ui/container";
 import { GoBack } from "@/components/ui/go-back";
-import { PRODUCTS_PER_PAGE, getCollection, getCollectionProducts } from "@/lib/shopify";
+import { getCollection, getCollectionProducts } from "@/lib/shopify";
 import {
   cdnImage,
   fieldImage,
@@ -48,7 +49,9 @@ export default async function CollectionPage({ params }: PageProps<"/collections
   const collection = await getCollection(handle);
   if (!collection) notFound();
 
-  const products = await getCollectionProducts({ handle, first: PRODUCTS_PER_PAGE });
+  // The mosaic below shows at most 10 — the top of the collection, not every
+  // product in it (Shop All is where the whole catalogue pages through).
+  const products = await getCollectionProducts({ handle, first: 10 });
 
   const metafields = collection.metafields;
   const ideaTitle = metafieldText(metafields, "idea_title") ?? "The Idea";
@@ -115,15 +118,10 @@ export default async function CollectionPage({ params }: PageProps<"/collections
         )}
       </section>
 
+      {/* Light, unlike Shop Detail's own "The Idea" — this page alternates
+          the other way round. */}
       {ideaBody && (
-        <MediaText
-          title={ideaTitle}
-          html={ideaBody}
-          image={ideaImage}
-          align="left"
-          surface="olive"
-          padding="wide"
-        />
+        <MediaText title={ideaTitle} html={ideaBody} image={ideaImage} align="left" padding="wide" />
       )}
 
       {designer?.bio && (
@@ -133,6 +131,8 @@ export default async function CollectionPage({ params }: PageProps<"/collections
           image={designer.portrait}
           align="right"
           link={{ href: `/designers/${designer.handle}`, label: "learn more" }}
+          surface="olive"
+          padding="wide"
         />
       )}
 
@@ -146,37 +146,40 @@ export default async function CollectionPage({ params }: PageProps<"/collections
         )}
 
         <div className="mt-12">
-          <ProductGrid initial={products} collection={handle} />
+          <CollectionHighlightGrid products={products.items} />
         </div>
       </Container>
 
+      {/* Full-bleed on charcoal-blue — the one section on this page with no
+          page gutter on its images, edge to edge across the row. */}
       {inContext.length > 0 && (
-        <Container className="pb-section">
-          <h2 className="text-h2 mb-8">In Context</h2>
-          <ul className="grid gap-grid-gap sm:grid-cols-2 lg:grid-cols-3">
+        <section data-surface="blue" className="bg-background py-section text-foreground">
+          <Container>
+            <h2 className="text-h2 mb-8">In Context</h2>
+          </Container>
+
+          <Carousel ariaLabel="In Context" gap="none" slideClassName="w-full sm:w-1/2 lg:w-1/3">
             {inContext.map((project) => (
-              <li key={project.handle}>
-                <Link href={`/projects/${project.handle}`} className="group block">
-                  <div className="relative aspect-[3/2] overflow-hidden bg-foreground/5 sm:aspect-wide">
-                    {project.image && (
-                      <Image
-                        src={cdnImage(project.image.url, 1100)}
-                        alt={project.image.altText ?? project.title ?? ""}
-                        fill
-                        className="object-cover transition-transform duration-500 ease-out-soft group-hover:scale-[1.03]"
-                        sizes="(max-width: 749px) 100vw, 33vw"
-                      />
-                    )}
-                  </div>
-                  <h3 className="text-h3 mt-3">{project.title}</h3>
-                  {project.location && (
-                    <p className="text-secondary text-muted">{project.location}</p>
+              <Link key={project.handle} href={`/projects/${project.handle}`} className="group block">
+                <div className="relative aspect-3/4 overflow-hidden bg-foreground/10">
+                  {project.image && (
+                    <Image
+                      src={cdnImage(project.image.url, 1100)}
+                      alt={project.image.altText ?? project.title ?? ""}
+                      fill
+                      className="object-cover transition-transform duration-500 ease-out-soft group-hover:scale-[1.03]"
+                      sizes="(max-width: 749px) 100vw, (max-width: 1023px) 50vw, 33vw"
+                    />
                   )}
-                </Link>
-              </li>
+                </div>
+                <div className="px-gutter mt-3">
+                  <h3 className="text-h4">{project.title}</h3>
+                  {project.location && <p className="text-secondary text-muted italic">{project.location}</p>}
+                </div>
+              </Link>
             ))}
-          </ul>
-        </Container>
+          </Carousel>
+        </section>
       )}
 
       <ContactCta />

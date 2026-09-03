@@ -255,13 +255,19 @@ export const fieldRichText = (map: MetaobjectFieldMap, key: string): string =>
 
 export function normalizeProductCard(product: ShopifyProductCard): ProductCard {
   const metafields = toMetafieldMap(product.metafields);
+  const defaultVariant = product.variants?.nodes[0];
+  const images = product.images?.nodes ?? [];
   return {
     id: product.id,
     handle: product.handle,
     title: product.title,
-    image: product.featuredImage,
-    isNew: metafieldBool(metafields, "is_new"),
+    image: images[0] ?? null,
+    hoverImage: images[1] ?? null,
+    tags: product.tags ?? [],
     collectionLabel: metafieldText(metafields, "collection_label"),
+    defaultVariantId: defaultVariant?.id ?? null,
+    defaultVariantTitle:
+      defaultVariant && defaultVariant.title !== "Default Title" ? defaultVariant.title : null,
   };
 }
 

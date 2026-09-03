@@ -12,7 +12,7 @@ export function ContactCta() {
         Whether you have a question about an order, a product, or would like more information about
         what we do, we’d love to hear from you.
       </p>
-      <ButtonLink href="/contact" className="mt-8">
+      <ButtonLink href="/contact" variant="outline" className="mt-8">
         contact us
       </ButtonLink>
     </Container>

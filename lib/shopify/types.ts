@@ -77,7 +77,9 @@ export type ShopifyProductCard = {
   id: string;
   handle: string;
   title: string;
-  featuredImage: Maybe<ShopifyImage>;
+  tags: string[];
+  images: { nodes: ShopifyImage[] };
+  variants: { nodes: { id: string; title: string }[] };
   metafields: Maybe<Metafield>[];
 };
 
@@ -157,8 +159,14 @@ export type ProductCard = {
   handle: string;
   title: string;
   image: Maybe<ShopifyImage>;
-  isNew: boolean;
+  /** Second product photo — crossfades in on card hover. */
+  hoverImage: Maybe<ShopifyImage>;
+  /** Real Shopify tags — the card badge is the first one, e.g. "New", "Sale". */
+  tags: string[];
   collectionLabel: Maybe<string>;
+  /** For the quick-add on the card itself; null for a product with no variants. */
+  defaultVariantId: Maybe<string>;
+  defaultVariantTitle: Maybe<string>;
 };
 
 export type ProductVariantOption = {

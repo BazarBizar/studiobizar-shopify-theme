@@ -289,6 +289,7 @@ export default async function ProductPage({ params }: PageProps<"/shop/[handle]"
           image={designer.portrait}
           align="right"
           link={{ href: `/designers/${designer.handle}`, label: "learn more" }}
+          padding="wide"
         />
       )}
 

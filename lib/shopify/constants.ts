@@ -6,14 +6,13 @@
 export const METAFIELD_NAMESPACE = "custom";
 
 /** Keys needed to render a product card in a grid. Kept deliberately small. */
-export const PRODUCT_CARD_METAFIELDS = ["is_new", "collection_label"] as const;
+export const PRODUCT_CARD_METAFIELDS = ["collection_label"] as const;
 
 /** Everything Shop Detail renders. Mirrors schema-push's PRODUCT definitions. */
 export const PRODUCT_DETAIL_METAFIELDS = [
   "designer",
   "collection_label",
   "signature_collection",
-  "is_new",
   "material_finish",
   "colour",
   "upholstery",
