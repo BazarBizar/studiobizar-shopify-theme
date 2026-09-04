@@ -59,7 +59,7 @@ export function Lightbox({
           if (item.video) {
             return {
               type: "video" as const,
-              poster: cdnImage(item.image!.url, 2400),
+              poster: cdnImage(item.image!.url),
               width: item.video.width ?? undefined,
               height: item.video.height ?? undefined,
               sources: [{ src: item.video.url, type: item.video.mimeType }],
@@ -68,7 +68,7 @@ export function Lightbox({
           }
 
           return {
-            src: cdnImage(item.image!.url, 2400),
+            src: cdnImage(item.image!.url),
             alt: item.image!.altText ?? title ?? "",
             description,
           };

@@ -41,7 +41,7 @@ export function InstagramRow({
         >
           {tiles.map((tile) => {
             const isPost = "permalink" in tile;
-            const src = isPost ? tile.imageUrl : cdnImage(tile.image!.url, 700);
+            const src = isPost ? tile.imageUrl : cdnImage(tile.image!.url);
             const alt = isPost
               ? (tile.caption ?? "Studio Bizar on Instagram")
               : (tile.image!.altText ?? tile.caption ?? "");

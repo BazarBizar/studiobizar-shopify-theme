@@ -53,7 +53,7 @@ export function MediaText({
         {image && (
           <figure className="relative aspect-[2/3] w-full overflow-hidden bg-foreground/5">
             <Image
-              src={cdnImage(image.url, 1100)}
+              src={cdnImage(image.url)}
               alt={image.altText ?? ""}
               fill
               className="object-cover"

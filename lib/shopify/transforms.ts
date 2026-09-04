@@ -43,12 +43,19 @@ export const nodesOf = <T>(connection: Maybe<{ nodes: T[] }> | undefined): T[] =
 
 /**
  * Sizes an image with the Shopify CDN's own transform. Vercel's optimizer is
- * switched off in next.config.ts, so this is how images get resized.
+ * switched off in next.config.ts (`unoptimized: true`), so there is no
+ * automatic per-device/per-DPR srcset happening anywhere above this — the
+ * number passed in is exactly the pixel width served, retina or not. Leave
+ * `width` unset to skip the transform entirely and serve Shopify's original
+ * master file; that's the right call for anything a person actually looks at
+ * (hero art, product/project photography, the lightbox). Pass it only for
+ * small, repeated, low-scrutiny chrome — a cart-line thumbnail, a thumbnail
+ * rail — where an oversized fetch is pure waste with nothing to see.
  */
-export function cdnImage(url: string, width: number, height?: number): string {
+export function cdnImage(url: string, width?: number, height?: number): string {
   try {
     const parsed = new URL(url);
-    parsed.searchParams.set("width", String(width));
+    if (width) parsed.searchParams.set("width", String(width));
     if (height) parsed.searchParams.set("height", String(height));
     return parsed.toString();
   } catch {

@@ -60,7 +60,7 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
                     {product.image && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={cdnImage(product.image.url, 415)}
+                        src={cdnImage(product.image.url)}
                         alt={product.image.altText ?? product.title}
                         width={415}
                         height={519}

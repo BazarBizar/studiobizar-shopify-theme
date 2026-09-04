@@ -100,7 +100,7 @@ export function InquiryDrawer() {
                     >
                       {item.image && (
                         <Image
-                          src={cdnImage(item.image, 160)}
+                          src={cdnImage(item.image, 256)}
                           alt=""
                           fill
                           className="object-cover"

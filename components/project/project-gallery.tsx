@@ -54,7 +54,7 @@ export function ProjectGallery({ images, title }: { images: CaptionedImage[]; ti
               ref={videoRef}
               key={current.handle}
               src={current.video.url}
-              poster={current.image ? cdnImage(current.image.url, 1800) : undefined}
+              poster={current.image ? cdnImage(current.image.url) : undefined}
               autoPlay
               loop
               muted={muted}
@@ -69,7 +69,7 @@ export function ProjectGallery({ images, title }: { images: CaptionedImage[]; ti
             />
           ) : (
             <Image
-              src={cdnImage(current.image!.url, 1800)}
+              src={cdnImage(current.image!.url)}
               alt={current.image!.altText ?? title}
               fill
               priority

@@ -65,7 +65,7 @@ export function HeroSlider({ slides }: { slides: CaptionedImage[] }) {
             >
               <div className="relative aspect-[2/3] w-full sm:aspect-[16/10] lg:aspect-[16/7]">
                 <Image
-                  src={cdnImage(slide.image!.url, 2400)}
+                  src={cdnImage(slide.image!.url)}
                   alt={slide.image!.altText ?? slide.caption ?? ""}
                   fill
                   priority={index === 0}

@@ -51,7 +51,7 @@ export function ProductGallery({ images, title }: { images: ShopifyImage[]; titl
       <div className="relative aspect-card w-full overflow-hidden bg-foreground/5">
         <Image
           key={current.url}
-          src={cdnImage(current.url, 1400)}
+          src={cdnImage(current.url)}
           alt={current.altText ?? title}
           fill
           priority

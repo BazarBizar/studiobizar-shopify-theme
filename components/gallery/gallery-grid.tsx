@@ -41,7 +41,7 @@ export function GalleryGrid({ images }: { images: CaptionedImage[] }) {
               className="group block w-full overflow-hidden bg-foreground/10"
             >
               <Image
-                src={cdnImage(item.image!.url, 1100)}
+                src={cdnImage(item.image!.url)}
                 alt={item.image!.altText ?? item.caption ?? ""}
                 width={item.image!.width ?? 1100}
                 height={item.image!.height ?? 1400}

@@ -9,7 +9,7 @@ export default function ShopLoading() {
 
       <div className="mt-12 flex flex-wrap gap-x-8 gap-y-3">
         {Array.from({ length: 8 }).map((_, index) => (
-          <Skeleton key={index} className="h-4 w-[7rem]" />
+          <Skeleton key={index} className="h-4 w-28" />
         ))}
       </div>
 

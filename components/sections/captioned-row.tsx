@@ -20,7 +20,7 @@ export function CaptionedRow({ images }: { images: CaptionedImage[] }) {
             <figure>
               <div className="relative aspect-[3/4] overflow-hidden bg-foreground/10">
                 <Image
-                  src={cdnImage(item.image!.url, 1100)}
+                  src={cdnImage(item.image!.url)}
                   alt={item.image!.altText ?? item.caption ?? ""}
                   fill
                   className="object-cover"

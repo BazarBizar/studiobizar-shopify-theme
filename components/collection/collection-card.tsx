@@ -39,7 +39,7 @@ export function CollectionCard({
         <div className="relative aspect-3/2 overflow-hidden bg-foreground/5 sm:aspect-3/5">
           {image && (
             <Image
-              src={cdnImage(image.url, 830)}
+              src={cdnImage(image.url)}
               alt={image.altText ?? collection.title}
               fill
               className="object-cover transition-transform duration-500 ease-out-soft group-hover:scale-[1.03]"
@@ -53,7 +53,7 @@ export function CollectionCard({
           >
             {collection.logo ? (
               <Image
-                src={cdnImage(collection.logo.url, 600)}
+                src={cdnImage(collection.logo.url)}
                 alt=""
                 width={300}
                 height={100}

@@ -263,7 +263,7 @@ export default async function HomePage() {
       {storyImage && (
         <div className="relative aspect-[16/10] w-full overflow-hidden lg:aspect-[16/7]">
           <Image
-            src={cdnImage(storyImage.url, 2400)}
+            src={cdnImage(storyImage.url)}
             alt={storyImage.altText ?? "Studio Bizar"}
             fill
             className="object-cover"

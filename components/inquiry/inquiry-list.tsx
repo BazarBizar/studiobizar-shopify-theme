@@ -61,7 +61,7 @@ export function InquiryList() {
             >
               {item.image && (
                 <Image
-                  src={cdnImage(item.image, 200)}
+                  src={cdnImage(item.image, 320)}
                   alt=""
                   fill
                   className="object-cover"
@@ -71,7 +71,10 @@ export function InquiryList() {
             </Link>
 
             <div className="min-w-0">
-              <Link href={`/shop/${item.productHandle}`} className="text-secondary sb-underline">
+              <Link
+                href={`/shop/${item.productHandle}`}
+                className="text-secondary sb-underline"
+              >
                 {item.title}
               </Link>
               {item.variantTitle && (
@@ -81,7 +84,7 @@ export function InquiryList() {
             </div>
 
             <div className="flex items-center gap-5">
-              <div className="flex h-10 w-[7rem] items-center justify-between border border-foreground px-3">
+              <div className="flex h-10 w-28 items-center justify-between border border-foreground px-3">
                 <button
                   type="button"
                   onClick={() => updateQty(item.variantId, item.qty - 1)}
@@ -127,7 +130,11 @@ export function InquiryList() {
           </div>
         </dl>
 
-        <button type="button" onClick={clear} className="text-button sb-underline text-muted">
+        <button
+          type="button"
+          onClick={clear}
+          className="text-button sb-underline text-muted"
+        >
           Clear inquiry
         </button>
       </div>

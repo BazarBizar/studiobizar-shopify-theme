@@ -33,7 +33,7 @@ export function ProjectCard({
         >
           {image && (
             <Image
-              src={cdnImage(image.url, large ? 2000 : 1100)}
+              src={cdnImage(image.url)}
               alt={image.altText ?? project.title}
               fill
               priority={priority}

@@ -11,13 +11,13 @@ import { cn } from "@/lib/utils/cn";
 import { useInquiryCart } from "@/store/inquiry-cart";
 
 const ASPECT = {
-  card: "aspect-card",
-  /** The double-width cell in the Collections Detail mosaic — 4:5 doubled. */
-  wide: "aspect-[8/5]",
+  card: "aspect-square",
+  /** The double-width cell in the Collections Detail mosaic — 1:1 doubled. */
+  wide: "aspect-[2/1]",
 } as const;
 
 /**
- * 415×519 media (4:5) with a tag badge inset top-left — the first of the
+ * A square media crop with a tag badge inset top-left — the first of the
  * product's real Shopify tags, e.g. "New" or "Sale" — then a bold title and
  * collection label with a `+` quick-add trailing it. No price and no
  * availability — by design.
@@ -64,7 +64,7 @@ export function ProductCard({
         <div className={cn("relative overflow-hidden bg-foreground/5", ASPECT[aspect])}>
           {product.image ? (
             <Image
-              src={cdnImage(product.image.url, 830)}
+              src={cdnImage(product.image.url)}
               alt={product.image.altText ?? product.title}
               fill
               priority={priority}
@@ -74,7 +74,7 @@ export function ProductCard({
 
           {product.hoverImage && (
             <Image
-              src={cdnImage(product.hoverImage.url, 830)}
+              src={cdnImage(product.hoverImage.url)}
               alt=""
               fill
               aria-hidden

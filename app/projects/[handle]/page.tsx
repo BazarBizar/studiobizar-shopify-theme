@@ -118,7 +118,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[hand
       {project.heroImage && (
         <div className="relative aspect-[2/3] w-full overflow-hidden sm:aspect-[16/10] lg:aspect-[16/8]">
           <Image
-            src={cdnImage(project.heroImage.url, 2400)}
+            src={cdnImage(project.heroImage.url)}
             alt={project.heroImage.altText ?? project.title}
             fill
             priority

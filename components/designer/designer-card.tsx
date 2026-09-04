@@ -15,7 +15,7 @@ export function DesignerCard({ designer, priority = false }: { designer: Designe
         <div className="relative aspect-card overflow-hidden bg-foreground/10">
           {designer.portrait && (
             <Image
-              src={cdnImage(designer.portrait.url, 830)}
+              src={cdnImage(designer.portrait.url)}
               alt={designer.portrait.altText ?? designer.name}
               fill
               priority={priority}

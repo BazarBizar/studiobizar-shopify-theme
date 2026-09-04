@@ -7,7 +7,7 @@ export default function ProjectsLoading() {
       <Skeleton className="h-9 w-[12rem]" />
       <div className="mt-12 flex flex-wrap gap-x-8 gap-y-3">
         {Array.from({ length: 4 }).map((_, index) => (
-          <Skeleton key={index} className="h-4 w-[7rem]" />
+          <Skeleton key={index} className="h-4 w-28" />
         ))}
       </div>
       <ul className="mt-10 grid gap-grid-gap gap-y-12 sm:grid-cols-2 lg:grid-cols-3">

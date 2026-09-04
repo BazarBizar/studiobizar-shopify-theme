@@ -94,7 +94,7 @@ export default async function CollectionPage({ params }: PageProps<"/collections
       <section data-surface="dark" className="relative isolate flex min-h-[32rem] items-center justify-center overflow-hidden lg:min-h-[44rem]">
         {collection.heroImage && (
           <Image
-            src={cdnImage(collection.heroImage.url, 2000)}
+            src={cdnImage(collection.heroImage.url)}
             alt={collection.heroImage.altText ?? collection.title}
             fill
             priority
@@ -105,7 +105,7 @@ export default async function CollectionPage({ params }: PageProps<"/collections
 
         {collection.logo ? (
           <Image
-            src={cdnImage(collection.logo.url, 1200)}
+            src={cdnImage(collection.logo.url)}
             alt={collection.title}
             width={600}
             height={200}
@@ -164,7 +164,7 @@ export default async function CollectionPage({ params }: PageProps<"/collections
                 <div className="relative aspect-3/4 overflow-hidden bg-foreground/10">
                   {project.image && (
                     <Image
-                      src={cdnImage(project.image.url, 1100)}
+                      src={cdnImage(project.image.url)}
                       alt={project.image.altText ?? project.title ?? ""}
                       fill
                       className="object-cover transition-transform duration-500 ease-out-soft group-hover:scale-[1.03]"

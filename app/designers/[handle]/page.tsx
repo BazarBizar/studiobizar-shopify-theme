@@ -79,7 +79,7 @@ export default async function DesignerPage({ params }: PageProps<"/designers/[ha
           {designer.portrait && (
             <figure className="relative aspect-[619/728] w-full overflow-hidden bg-foreground/10">
               <Image
-                src={cdnImage(designer.portrait.url, 1300)}
+                src={cdnImage(designer.portrait.url)}
                 alt={designer.portrait.altText ?? designer.name}
                 fill
                 priority
