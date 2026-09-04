@@ -149,7 +149,7 @@ export default async function HomePage() {
             first: ROW_LIMIT,
           }).then((p) => p.items)
         : Promise.resolve([]),
-      getInstagramPosts(6),
+      getInstagramPosts(10),
     ]);
 
   const collections = collectionsPage.items

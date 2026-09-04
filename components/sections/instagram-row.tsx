@@ -1,6 +1,7 @@
 import Image from "next/image";
 
 import { ButtonLink } from "@/components/ui/button";
+import { Carousel } from "@/components/ui/carousel";
 import { Container } from "@/components/ui/container";
 import { cdnImage } from "@/lib/shopify/transforms";
 import type { CaptionedImage } from "@/lib/shopify/entities";
@@ -9,7 +10,9 @@ import type { InstagramPost } from "@/lib/instagram/behold";
 const PROFILE_URL = "https://www.instagram.com/studiobizarantwerp";
 
 /**
- * The six-up Instagram row.
+ * A heading, a five-up carousel of square tiles with arrows over the first
+ * and last, and a bordered "join our community" link below — same band shape
+ * as `ProductRail`.
  *
  * Prefers the live Behold feed; falls back to the page's `gallery` metafield
  * when `BEHOLD_FEED_ID` is unset or the feed is unreachable, so the section
@@ -23,33 +26,19 @@ export function InstagramRow({
   fallback: CaptionedImage[];
 }) {
   const live = posts.length > 0;
-  // Six images beside the text column — a full row at `sm:grid-cols-6` below,
-  // widened from the four-across measured layout.
-  const tiles = live
-    ? posts.slice(0, 6)
-    : fallback.filter((item) => item.image).slice(0, 6);
+  const tiles = live ? posts : fallback.filter((item) => item.image);
 
   if (tiles.length === 0) return null;
 
   return (
-    <section
-      data-surface="light"
-      className="bg-background py-16 text-foreground"
-    >
-      <Container className="grid items-start gap-8 lg:grid-cols-[20rem_1fr] lg:gap-10">
-        <div className="flex flex-col items-start">
-          <h2 className="text-h2">Instagram</h2>
-          <ButtonLink
-            href={PROFILE_URL}
-            external
-            variant="text"
-            className="mt-6"
-          >
-            join our community
-          </ButtonLink>
-        </div>
+    <section data-surface="light" className="bg-background py-16 text-foreground">
+      <Container>
+        <h2 className="text-h2 mb-8">Instagram</h2>
 
-        <ul className="grid grid-cols-2 gap-grid-gap sm:grid-cols-6">
+        <Carousel
+          ariaLabel="Instagram"
+          slideClassName="w-[45%] sm:w-[30%] lg:w-[calc(20%-0.5rem)]"
+        >
           {tiles.map((tile) => {
             const isPost = "permalink" in tile;
             const src = isPost ? tile.imageUrl : cdnImage(tile.image!.url, 700);
@@ -66,33 +55,30 @@ export function InstagramRow({
                   // Behold serves Instagram CDN URLs, which are already sized.
                   unoptimized={isPost}
                   className="object-cover transition-transform duration-500 ease-out-soft hover:scale-[1.03]"
-                  sizes="(max-width: 749px) 50vw, 15vw"
+                  sizes="(max-width: 749px) 45vw, 20vw"
                 />
               </div>
             );
 
-            return (
-              <li key={isPost ? tile.id : tile.handle}>
-                {isPost ? (
-                  <a
-                    href={tile.permalink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={
-                      tile.caption
-                        ? `Instagram: ${tile.caption}`
-                        : "View on Instagram"
-                    }
-                  >
-                    {media}
-                  </a>
-                ) : (
-                  media
-                )}
-              </li>
+            return isPost ? (
+              <a
+                key={tile.id}
+                href={tile.permalink}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={tile.caption ? `Instagram: ${tile.caption}` : "View on Instagram"}
+              >
+                {media}
+              </a>
+            ) : (
+              <div key={tile.handle}>{media}</div>
             );
           })}
-        </ul>
+        </Carousel>
+
+        <ButtonLink href={PROFILE_URL} external variant="outline" className="mt-8">
+          join our community
+        </ButtonLink>
       </Container>
     </section>
   );
