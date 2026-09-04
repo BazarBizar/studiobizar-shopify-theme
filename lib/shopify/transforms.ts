@@ -18,7 +18,16 @@ import type {
   ShopifyMetaobject,
   ShopifyProduct,
   ShopifyProductCard,
+  ShopifyVideoSource,
 } from "./types";
+
+/** The one video a captioned_image entry can carry, resolved to a playable file. */
+export type ShopifyVideo = {
+  url: string;
+  mimeType: string;
+  width: Maybe<number>;
+  height: Maybe<number>;
+};
 
 /* -------------------------------------------------------------------------- *
  * Connections
@@ -62,6 +71,25 @@ export function imageFromReference(reference: Maybe<MetafieldReference>): Maybe<
     return (reference as Extract<MetafieldReference, { __typename: "Product" }>).featuredImage ?? null;
   }
   return null;
+}
+
+/** Picks the best playable file out of Shopify's per-resolution source list. */
+function bestVideoSource(sources: ShopifyVideoSource[]): Maybe<ShopifyVideoSource> {
+  const mp4 = sources.filter((source) => source.mimeType === "video/mp4");
+  const pool = mp4.length ? mp4 : sources;
+  return pool.reduce<Maybe<ShopifyVideoSource>>(
+    (best, source) => (!best || (source.width ?? 0) > (best.width ?? 0) ? source : best),
+    null,
+  );
+}
+
+/** Pulls a video out of a reference, for the one field that can carry one. */
+export function videoFromReference(reference: Maybe<MetafieldReference>): Maybe<ShopifyVideo> {
+  if (!reference || reference.__typename !== "Video") return null;
+  const video = reference as Extract<MetafieldReference, { __typename: "Video" }>;
+  const source = bestVideoSource(video.sources ?? []);
+  if (!source) return null;
+  return { url: source.url, mimeType: source.mimeType, width: source.width, height: source.height };
 }
 
 /* -------------------------------------------------------------------------- *
@@ -153,6 +181,9 @@ export function fieldInt(map: MetaobjectFieldMap, key: string): Maybe<number> {
 
 export const fieldImage = (map: MetaobjectFieldMap, key: string): Maybe<ShopifyImage> =>
   imageFromReference(map[key]?.reference ?? null);
+
+export const fieldVideo = (map: MetaobjectFieldMap, key: string): Maybe<ShopifyVideo> =>
+  videoFromReference(map[key]?.reference ?? null);
 
 export const fieldImages = (map: MetaobjectFieldMap, key: string): ShopifyImage[] =>
   (map[key]?.references?.nodes ?? [])

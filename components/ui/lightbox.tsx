@@ -2,6 +2,7 @@
 
 import Captions from "yet-another-react-lightbox/plugins/captions";
 import Counter from "yet-another-react-lightbox/plugins/counter";
+import Video from "yet-another-react-lightbox/plugins/video";
 import Base from "yet-another-react-lightbox";
 
 import "yet-another-react-lightbox/styles.css";
@@ -40,10 +41,11 @@ export function Lightbox({
       open
       index={index}
       close={onClose}
-      plugins={[Counter, Captions]}
+      plugins={[Counter, Captions, Video]}
       counter={{ container: { style: { top: "unset", bottom: 0, left: 0 } } }}
       captions={{ descriptionTextAlign: "start", showToggle: false }}
       carousel={{ finite: images.length <= 1 }}
+      video={{ autoPlay: true, controls: true }}
       styles={{
         // #1D1D1B, the ground measured in the spec.
         container: { backgroundColor: `${BRAND.offBlack}F5` },
@@ -51,11 +53,26 @@ export function Lightbox({
       }}
       slides={images
         .filter((item) => item.image)
-        .map((item) => ({
-          src: cdnImage(item.image!.url, 2400),
-          alt: item.image!.altText ?? title ?? "",
-          description: [item.caption, item.credit].filter(Boolean).join(" · ") || undefined,
-        }))}
+        .map((item) => {
+          const description = [item.caption, item.credit].filter(Boolean).join(" · ") || undefined;
+
+          if (item.video) {
+            return {
+              type: "video" as const,
+              poster: cdnImage(item.image!.url, 2400),
+              width: item.video.width ?? undefined,
+              height: item.video.height ?? undefined,
+              sources: [{ src: item.video.url, type: item.video.mimeType }],
+              description,
+            };
+          }
+
+          return {
+            src: cdnImage(item.image!.url, 2400),
+            alt: item.image!.altText ?? title ?? "",
+            description,
+          };
+        })}
     />
   );
 }

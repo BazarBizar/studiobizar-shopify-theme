@@ -9,7 +9,10 @@ import { getMenu } from "@/lib/shopify";
 import type { MenuLink } from "@/lib/shopify/types";
 import type { Surface } from "@/components/layout/page-shell";
 
-async function menuOrFallback(handle: string, fallback: MenuLink[]): Promise<MenuLink[]> {
+async function menuOrFallback(
+  handle: string,
+  fallback: MenuLink[],
+): Promise<MenuLink[]> {
   try {
     const items = await getMenu(handle);
     return items.length ? items : fallback;
@@ -32,7 +35,7 @@ export async function Footer({ surface = "olive" }: { surface?: Surface }) {
 
   return (
     <footer data-surface={surface} className="bg-background text-foreground">
-      <Container className="grid gap-12 py-12 lg:grid-cols-[1fr_auto_auto_auto_auto] lg:gap-[12.3rem]">
+      <Container className="grid gap-12 pt-12 pb-4 lg:grid-cols-[1fr_auto_auto_auto_auto] lg:gap-[12.3rem]">
         {/* Brand + newsletter */}
         <div className="flex flex-col gap-[4.65rem]">
           <div className="flex flex-col gap-7">
@@ -48,8 +51,8 @@ export async function Footer({ surface = "olive" }: { surface?: Surface }) {
 
           <div className="flex flex-col gap-4">
             <p className="text-secondary max-w-[26.25rem]">
-              Sign up for our newsletters to receive seasonal promotions and updates on the latest
-              news of Studio Bizar.
+              Sign up for our newsletters to receive seasonal promotions and
+              updates on the latest news of Studio Bizar.
             </p>
             <NewsletterForm />
           </div>
@@ -58,11 +61,16 @@ export async function Footer({ surface = "olive" }: { surface?: Surface }) {
         {/* Link columns */}
         {FOOTER_COLUMNS.map((column, index) => (
           <nav key={column.key} aria-label={column.heading}>
-            <h2 className="text-h4 mb-4 uppercase tracking-[0.06em]">{column.heading}</h2>
+            <h2 className="text-h4 mb-4 uppercase tracking-[0.06em]">
+              {column.heading}
+            </h2>
             <ul className="flex flex-col gap-3">
               {columns[index].map((item) => (
                 <li key={item.id}>
-                  <Link href={item.href} className="text-secondary sb-underline">
+                  <Link
+                    href={item.href}
+                    className="text-secondary sb-underline"
+                  >
                     {item.title}
                   </Link>
                 </li>
@@ -77,7 +85,7 @@ export async function Footer({ surface = "olive" }: { surface?: Surface }) {
         </div>
       </Container>
 
-      <Container className="flex flex-col gap-2 pb-8 text-tertiary sm:flex-row sm:justify-end sm:gap-12">
+      <Container className="flex flex-col gap-2 pb-4 text-tertiary sm:flex-row sm:justify-center sm:gap-12">
         <span>Belgium — (EUR)</span>
         <span>© {new Date().getFullYear()} Studio Bizar</span>
       </Container>

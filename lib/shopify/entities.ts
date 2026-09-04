@@ -7,7 +7,9 @@ import {
   fieldProducts,
   fieldRichText,
   fieldText,
+  fieldVideo,
   toFieldMap,
+  type ShopifyVideo,
 } from "./transforms";
 import type { Maybe, ShopifyImage, ShopifyMetaobject } from "./types";
 
@@ -19,6 +21,8 @@ import type { Maybe, ShopifyImage, ShopifyMetaobject } from "./types";
 export type CaptionedImage = {
   handle: string;
   image: Maybe<ShopifyImage>;
+  /** When set, this entry plays as a video — `image` is still its poster/thumb. */
+  video: Maybe<ShopifyVideo>;
   caption: Maybe<string>;
   altText: Maybe<string>;
   credit: Maybe<string>;
@@ -32,6 +36,7 @@ export function normalizeCaptionedImage(entry: ShopifyMetaobject): CaptionedImag
   return {
     handle: entry.handle,
     image: image ? { ...image, altText: altText ?? image.altText } : null,
+    video: fieldVideo(fields, "video"),
     caption: fieldText(fields, "caption"),
     altText,
     credit: fieldText(fields, "credit"),

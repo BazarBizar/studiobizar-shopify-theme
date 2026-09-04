@@ -31,11 +31,17 @@ export const metaobjectDefinitions = [
   {
     type: 'captioned_image',
     name: 'Captioned Image',
-    description: 'A single image with caption, alt text and photo credit.',
+    description: 'A single image with caption, alt text and photo credit. An optional video plays in its place — the image still serves as its poster frame and the thumbnail everywhere one is needed.',
     displayNameKey: 'caption',
     publishable: false,
     fields: [
       { key: 'image', name: 'Image', type: 'file_reference', required: true, validations: [IMAGE_ONLY] },
+      {
+        key: 'video',
+        name: 'Video',
+        type: 'file_reference',
+        validations: [{ name: 'file_type_options', value: JSON.stringify(['Video']) }],
+      },
       { key: 'caption', name: 'Caption', type: 'single_line_text_field' },
       { key: 'alt_text', name: 'Alt Text', type: 'single_line_text_field' },
       { key: 'credit', name: 'Credit', type: 'single_line_text_field' },

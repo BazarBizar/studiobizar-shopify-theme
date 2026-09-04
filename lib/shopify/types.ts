@@ -34,6 +34,14 @@ export type SEO = {
  * Metafields and references
  * -------------------------------------------------------------------------- */
 
+export type ShopifyVideoSource = {
+  url: string;
+  mimeType: string;
+  format: string;
+  height: Maybe<number>;
+  width: Maybe<number>;
+};
+
 export type MetafieldReference =
   | { __typename: "MediaImage"; id: string; alt: Maybe<string>; image: Maybe<ShopifyImage> }
   | {
@@ -41,6 +49,12 @@ export type MetafieldReference =
       id: string;
       url: Maybe<string>;
       mimeType: Maybe<string>;
+      previewImage: Maybe<ShopifyImage>;
+    }
+  | {
+      __typename: "Video";
+      id: string;
+      sources: ShopifyVideoSource[];
       previewImage: Maybe<ShopifyImage>;
     }
   | { __typename: "Metaobject"; id: string; handle: string; type: string; fields: MetaobjectField[] }

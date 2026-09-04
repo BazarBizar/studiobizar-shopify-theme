@@ -58,6 +58,19 @@ export const leafReferenceFragment = /* GraphQL */ `
         ...ImageParts
       }
     }
+    ... on Video {
+      id
+      sources {
+        url
+        mimeType
+        format
+        height
+        width
+      }
+      previewImage {
+        ...ImageParts
+      }
+    }
   }
 `;
 
@@ -96,6 +109,19 @@ export const referenceFragment = /* GraphQL */ `
       id
       url
       mimeType
+      previewImage {
+        ...ImageParts
+      }
+    }
+    ... on Video {
+      id
+      sources {
+        url
+        mimeType
+        format
+        height
+        width
+      }
       previewImage {
         ...ImageParts
       }
