@@ -2,7 +2,9 @@
  * The Online Store pages behind the header and footer navigation.
  *
  *   header   Products · Collections · Projects · Services
- *                                    About · Info · Professionals
+ *            About (Our Story · Our Artisans · Our Locations) ·
+ *            Info (Care & Maintenance · FAQ · Careers · Contact) ·
+ *            Professionals
  *   footer   ABOUT  Our Story · Our Services · Projects · Items
  *            INFO   FAQ · Careers · Contact
  *            LEGAL  Privacy Policy · Terms & Conditions ·
@@ -27,10 +29,13 @@ const placeholder = (title) =>
 
 export const pageDefinitions = [
   { handle: 'our-story', title: 'Our Story', body: placeholder('Our Story') },
+  { handle: 'our-artisans', title: 'Our Artisans', body: placeholder('Our Artisans') },
+  { handle: 'our-locations', title: 'Our Locations', body: placeholder('Our Locations') },
   { handle: 'our-services', title: 'Our Services', body: placeholder('Our Services') },
   { handle: 'projects', title: 'Projects', templateSuffix: 'projects' },
   { handle: 'professionals', title: 'Professionals', body: placeholder('Professionals') },
   { handle: 'faq', title: 'FAQ', body: placeholder('FAQ') },
+  { handle: 'care-maintenance', title: 'Care & Maintenance', body: placeholder('Care &amp; Maintenance') },
   { handle: 'careers', title: 'Careers', body: placeholder('Careers') },
   { handle: 'contact', title: 'Contact', templateSuffix: 'contact' },
 

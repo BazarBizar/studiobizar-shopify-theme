@@ -177,7 +177,29 @@ export const metaobjectDefinitions = [
   },
 
   /* ------------------------------------------------------------------ *
-   * A6. service — the ten entries listed on the Our Services page.
+   * A6. location — one showroom or workshop, listed on Our Locations.
+   * ------------------------------------------------------------------ */
+  {
+    type: 'location',
+    name: 'Location',
+    description: 'A showroom or workshop, for the Our Locations page.',
+    displayNameKey: 'name',
+    publishable: false,
+    fields: [
+      { key: 'name', name: 'Name', type: 'single_line_text_field', required: true },
+      { key: 'kind', name: 'Kind', type: 'single_line_text_field', validations: [choices('Showroom', 'Workshop')] },
+      { key: 'address', name: 'Address', type: 'multi_line_text_field', required: true },
+      { key: 'phone', name: 'Phone', type: 'single_line_text_field' },
+      { key: 'email', name: 'Email', type: 'single_line_text_field' },
+      { key: 'hours', name: 'Hours', type: 'multi_line_text_field' },
+      { key: 'image', name: 'Image', type: 'file_reference', validations: [IMAGE_ONLY] },
+      { key: 'map_url', name: 'Map URL', type: 'url' },
+      { key: 'sort_order', name: 'Sort Order', type: 'number_integer' },
+    ],
+  },
+
+  /* ------------------------------------------------------------------ *
+   * A7. service — the ten entries listed on the Our Services page.
    * ------------------------------------------------------------------ */
   {
     type: 'service',

@@ -350,32 +350,63 @@ export async function pushMenus(
 
     /* ---------------- Already there: append what is missing ---------------- */
     if (already) {
-      const liveTitles = new Set((already.items ?? []).map((i) => normalise(i.title)));
-      const missing = built.filter((b) => !liveTitles.has(normalise(b.input.title)));
+      const liveByTitle = new Map((already.items ?? []).map((i) => [normalise(i.title), i]));
+      const missing = built.filter((b) => !liveByTitle.has(normalise(b.input.title)));
 
-      if (!missing.length) {
+      // An item that already exists by title can still be missing children
+      // the definition now declares for it — "About" growing a submenu, say.
+      // One level deep only; this tool's menus never go past two.
+      const childPatches = [];
+      for (const item of definition.items) {
+        if (!item.items?.length) continue;
+        const live = liveByTitle.get(normalise(item.title));
+        if (!live) continue; // wholly new — covered by `missing` above
+        const liveChildTitles = new Set((live.items ?? []).map((c) => normalise(c.title)));
+        const builtChildren = item.items.map((child) => buildItemInput(child, context));
+        for (const note of builtChildren.map((b) => b.note).filter(Boolean)) log.warn(note);
+        const missingChildren = builtChildren.filter((b) => !liveChildTitles.has(normalise(b.input.title)));
+        if (missingChildren.length) childPatches.push({ live, missingChildren });
+      }
+
+      if (!missing.length && !childPatches.length) {
         log.result('SKIP', label, `exists · ${already.items?.length ?? 0} items`);
         results.push({ kind: 'menu', label: definition.handle, status: 'skipped' });
         continue;
       }
+
+      const summary = [
+        ...missing.map((b) => b.input.title),
+        ...childPatches.flatMap((p) => p.missingChildren.map((b) => `${p.live.title} > ${b.input.title}`)),
+      ].join(', ');
+
       if (!patch) {
-        log.result('SKIP', label, `exists · ${missing.length} item(s) missing`);
-        log.dim('  re-run without --no-patch to append them');
+        log.result('SKIP', label, `exists · missing ${summary}`);
+        log.dim('  re-run without --no-patch to apply them');
         results.push({ kind: 'menu', label: definition.handle, status: 'skipped' });
         continue;
       }
 
-      const titles = missing.map((b) => b.input.title).join(', ');
       const resultLabel = `${definition.handle} (items)`;
 
       if (dryRun) {
-        log.result('PLAN', label, `append ${titles}`);
+        log.result('PLAN', label, `apply ${summary}`);
         results.push({ kind: 'menu', label: resultLabel, status: 'planned' });
         continue;
       }
 
+      const childPatchByLiveId = new Map(childPatches.map((p) => [p.live.id, p]));
       const items = [
-        ...(already.items ?? []).map(existingItemToInput),
+        ...(already.items ?? []).map((node) => {
+          const patchEntry = childPatchByLiveId.get(node.id);
+          if (!patchEntry) return existingItemToInput(node);
+          return {
+            ...existingItemToInput(node),
+            items: [
+              ...(node.items ?? []).map(existingItemToInput),
+              ...patchEntry.missingChildren.map((b) => b.input),
+            ],
+          };
+        }),
         ...missing.map((b) => b.input),
       ];
 
@@ -393,7 +424,7 @@ export async function pushMenus(
           results.push({ kind: 'menu', label: resultLabel, status: 'failed', detail });
           continue;
         }
-        log.result('PATCH', label, `appended ${titles}`);
+        log.result('PATCH', label, `applied ${summary}`);
         results.push({ kind: 'menu', label: resultLabel, status: 'patched' });
       } catch (error) {
         log.result('FAIL', label, error.message.split('\n')[0]);

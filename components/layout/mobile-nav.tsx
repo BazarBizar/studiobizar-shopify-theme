@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
-import { Menu, X } from "lucide-react";
+import { ChevronDown, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -92,13 +92,41 @@ export function MobileNav({
 
               <nav aria-label="Secondary" className="mt-auto px-gutter pb-10">
                 <ul className="flex flex-col gap-3 border-t border-border pt-6">
-                  {secondary.map((item) => (
-                    <li key={item.id}>
-                      <Link href={item.href} onClick={() => setOpen(false)} className="text-secondary opacity-80">
-                        {item.title}
-                      </Link>
-                    </li>
-                  ))}
+                  {secondary.map((item) =>
+                    item.items.length > 0 ? (
+                      <li key={item.id}>
+                        <details className="group">
+                          <summary className="text-secondary flex cursor-pointer list-none items-center justify-between opacity-80 marker:content-none">
+                            {item.title}
+                            <ChevronDown
+                              className="size-4 transition-transform group-open:rotate-180"
+                              strokeWidth={1.5}
+                              aria-hidden
+                            />
+                          </summary>
+                          <ul className="mt-3 flex flex-col gap-3 pl-4">
+                            {item.items.map((child) => (
+                              <li key={child.id}>
+                                <Link
+                                  href={child.href}
+                                  onClick={() => setOpen(false)}
+                                  className="text-secondary opacity-70"
+                                >
+                                  {child.title}
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                        </details>
+                      </li>
+                    ) : (
+                      <li key={item.id}>
+                        <Link href={item.href} onClick={() => setOpen(false)} className="text-secondary opacity-80">
+                          {item.title}
+                        </Link>
+                      </li>
+                    ),
+                  )}
                 </ul>
               </nav>
             </motion.div>

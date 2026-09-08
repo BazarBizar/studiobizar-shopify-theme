@@ -7,6 +7,7 @@ import { Container } from "@/components/ui/container";
 import { FALLBACK_NAV, MENUS } from "@/lib/navigation";
 import { getMenu } from "@/lib/shopify";
 import type { MenuLink } from "@/lib/shopify/types";
+import { cn } from "@/lib/utils/cn";
 
 async function menuOrFallback(handle: string, fallback: MenuLink[]): Promise<MenuLink[]> {
   try {
@@ -58,10 +59,30 @@ export async function Header() {
           <nav aria-label="Secondary" className="hidden lg:block">
             <ul className="flex items-center gap-5">
               {secondary.map((item) => (
-                <li key={item.id}>
+                <li key={item.id} className="group relative">
                   <Link href={item.href} className="text-tertiary sb-underline">
                     {item.title}
                   </Link>
+
+                  {item.items.length > 0 && (
+                    <ul
+                      className={cn(
+                        "invisible absolute top-full left-0 z-10 mt-3 min-w-48 border border-border bg-background py-2 opacity-0 shadow-sm transition-[opacity,visibility] duration-150",
+                        "group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100",
+                      )}
+                    >
+                      {item.items.map((child) => (
+                        <li key={child.id}>
+                          <Link
+                            href={child.href}
+                            className="text-secondary block px-4 py-2 whitespace-nowrap hover:bg-foreground/5"
+                          >
+                            {child.title}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </li>
               ))}
             </ul>

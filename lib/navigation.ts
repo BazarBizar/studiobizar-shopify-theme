@@ -21,8 +21,27 @@ export const FALLBACK_NAV: Record<keyof typeof MENUS, MenuLink[]> = {
     { id: "f-services", title: "Services", href: "/services", items: [] },
   ],
   secondary: [
-    { id: "f-about", title: "About", href: "/our-story", items: [] },
-    { id: "f-info", title: "Info", href: "/faq", items: [] },
+    {
+      id: "f-about",
+      title: "About",
+      href: "/our-story",
+      items: [
+        { id: "f-our-story-sub", title: "Our Story", href: "/our-story" },
+        { id: "f-our-artisans", title: "Our Artisans", href: "/our-artisans" },
+        { id: "f-our-locations", title: "Our Locations", href: "/our-locations" },
+      ],
+    },
+    {
+      id: "f-info",
+      title: "Info",
+      href: "/faq",
+      items: [
+        { id: "f-care-maintenance", title: "Care & Maintenance", href: "/care-maintenance" },
+        { id: "f-faq-sub", title: "FAQ", href: "/faq" },
+        { id: "f-careers-sub", title: "Careers", href: "/careers" },
+        { id: "f-contact-sub", title: "Contact", href: "/contact" },
+      ],
+    },
     { id: "f-professionals", title: "Professionals", href: "/professionals", items: [] },
   ],
   footerAbout: [

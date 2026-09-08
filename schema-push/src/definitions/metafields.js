@@ -116,6 +116,13 @@ const page = [
     validations: [metaobjectRef('contact_channel')],
   },
   { key: 'inquiry_types', name: 'Inquiry Types', type: 'list.single_line_text_field' },
+  // Our Locations page.
+  {
+    key: 'locations',
+    name: 'Locations',
+    type: 'list.metaobject_reference',
+    validations: [metaobjectRef('location')],
+  },
 
   /* ------------------------------------------------------------------ *
    * Landing page. The home page picks which collection feeds each of its

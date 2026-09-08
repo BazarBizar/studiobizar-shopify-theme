@@ -2,6 +2,7 @@ import { InquiryDrawer } from "@/components/inquiry/inquiry-drawer";
 import { BackToTop } from "@/components/layout/back-to-top";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
+import { SearchOverlay } from "@/components/search/search-overlay";
 
 /** The grounds the designs actually use. See `globals.css` section H. */
 export type Surface = "light" | "dark" | "olive" | "blue" | "mocha" | "black";
@@ -31,6 +32,7 @@ export function PageShell({
       <Footer surface={footerSurface} />
       <BackToTop />
       <InquiryDrawer />
+      <SearchOverlay />
     </div>
   );
 }

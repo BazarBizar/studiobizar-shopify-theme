@@ -56,6 +56,7 @@ export const PAGE_METAFIELDS = [
   "monthly_selection",
   "story_image",
   "projects_intro",
+  "locations",
 ] as const;
 
 /** Metaobject types provisioned by schema-push. */
@@ -65,6 +66,7 @@ export const METAOBJECT_TYPES = {
   project: "project",
   contactChannel: "contact_channel",
   faqItem: "faq_item",
+  location: "location",
 } as const;
 
 /** Cache tags, so a webhook can revalidate one entity class at a time. */

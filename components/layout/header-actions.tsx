@@ -1,8 +1,9 @@
 "use client";
 
-import { ChevronDown, Search, ShoppingBag, User } from "lucide-react";
+import { Search, ShoppingBag, User } from "lucide-react";
 import Link from "next/link";
 
+import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { ROUTES } from "@/lib/routes";
 import { selectTotalQuantity, useInquiryCart } from "@/store/inquiry-cart";
 import { useUi } from "@/store/ui";
@@ -12,36 +13,28 @@ export function HeaderActions() {
   const count = useInquiryCart(selectTotalQuantity);
   const hydrated = useInquiryCart((state) => state.hydrated);
   const openDrawer = useUi((state) => state.openInquiryDrawer);
+  const openSearch = useUi((state) => state.openSearch);
 
   return (
     <div className="flex items-center gap-4">
-      <button
-        type="button"
-        className="flex items-center gap-1 text-micro tracking-[0.08em] uppercase opacity-80 transition-opacity hover:opacity-100"
-        // A second locale is not configured yet; the control is in the design.
-        aria-label="Language: English"
-      >
-        EN
-        <ChevronDown className="size-3" strokeWidth={1.5} aria-hidden />
-      </button>
+      <LanguageSwitcher />
 
-      <button
-        type="button"
+      <Link
+        href={ROUTES.account}
         className="transition-opacity hover:opacity-70"
-        // No customer-account system in this inquiry-only build; the icon is
-        // in the design. Same treatment as the language switch above.
         aria-label="Account"
       >
         <User className="size-[1.15rem]" strokeWidth={1.5} aria-hidden />
-      </button>
+      </Link>
 
-      <Link
-        href={ROUTES.search}
+      <button
+        type="button"
+        onClick={openSearch}
         aria-label="Search"
         className="transition-opacity hover:opacity-70"
       >
         <Search className="size-[1.15rem]" strokeWidth={1.5} aria-hidden />
-      </Link>
+      </button>
 
       <button
         type="button"

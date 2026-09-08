@@ -149,6 +149,40 @@ export function normalizeDesigner(entry: ShopifyMetaobject): Designer {
 }
 
 /* -------------------------------------------------------------------------- *
+ * Location — a showroom or workshop, for Our Locations
+ * -------------------------------------------------------------------------- */
+
+export type Location = {
+  handle: string;
+  name: string;
+  kind: Maybe<string>;
+  address: Maybe<string>;
+  phone: Maybe<string>;
+  email: Maybe<string>;
+  hours: Maybe<string>;
+  image: Maybe<ShopifyImage>;
+  mapUrl: Maybe<string>;
+  sortOrder: Maybe<number>;
+};
+
+export function normalizeLocation(entry: ShopifyMetaobject): Location {
+  const fields = toFieldMap(entry.fields);
+
+  return {
+    handle: entry.handle,
+    name: fieldText(fields, "name") ?? entry.handle,
+    kind: fieldText(fields, "kind"),
+    address: fieldText(fields, "address"),
+    phone: fieldText(fields, "phone"),
+    email: fieldText(fields, "email"),
+    hours: fieldText(fields, "hours"),
+    image: fieldImage(fields, "image"),
+    mapUrl: fieldText(fields, "map_url"),
+    sortOrder: fieldInt(fields, "sort_order"),
+  };
+}
+
+/* -------------------------------------------------------------------------- *
  * Gallery / story blocks — PAGE metafields reuse captioned_image
  * -------------------------------------------------------------------------- */
 

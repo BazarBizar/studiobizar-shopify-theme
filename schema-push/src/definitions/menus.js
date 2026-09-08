@@ -2,7 +2,9 @@
  * The header and footer navigation, one menu per nav in the design.
  *
  *   desk-primary        Products · Collections · Projects · Services
- *   desk-secondary      About · Info · Professionals
+ *   desk-secondary      About (Our Story · Our Artisans · Our Locations) ·
+ *                       Info (Care & Maintenance · FAQ · Careers · Contact) ·
+ *                       Professionals
  *   desk-footer-about   Our Story · Our Services · Projects · Items
  *   desk-footer-info    FAQ · Careers · Contact
  *   desk-footer-legal   Privacy Policy · Terms & Conditions ·
@@ -53,8 +55,25 @@ export const menuDefinitions = [
     handle: 'desk-secondary',
     title: 'DESK secondary',
     items: [
-      { title: 'About', page: 'our-story' },
-      { title: 'Info', page: 'faq' },
+      {
+        title: 'About',
+        page: 'our-story',
+        items: [
+          { title: 'Our Story', page: 'our-story' },
+          { title: 'Our Artisans', page: 'our-artisans' },
+          { title: 'Our Locations', page: 'our-locations' },
+        ],
+      },
+      {
+        title: 'Info',
+        page: 'faq',
+        items: [
+          { title: 'Care & Maintenance', page: 'care-maintenance' },
+          { title: 'FAQ', page: 'faq' },
+          { title: 'Careers', page: 'careers' },
+          { title: 'Contact', page: 'contact' },
+        ],
+      },
       { title: 'Professionals', page: 'professionals' },
     ],
   },
