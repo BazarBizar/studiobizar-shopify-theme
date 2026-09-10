@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Providers } from "@/components/providers";
 import "./globals.css";
 
 /**
@@ -36,11 +35,23 @@ export const metadata: Metadata = {
   description: "Designed for life, inspired by the world.",
 };
 
+/**
+ * Root layout deliberately holds nothing but the document, the global stylesheet
+ * and the default metadata. Client providers belong to a route group — see
+ * `app/(storefront)/layout.tsx` — so neither half of the app pays for the
+ * other's runtime.
+ *
+ * The `body` classes stay here because `<body>` can only be rendered once, at
+ * the root. `globals.css` already paints the body from `--sb-*` in its base
+ * layer, so `bg-background text-foreground` is belt-and-braces; `flex flex-col`
+ * is what lets the storefront footer sit at the bottom, and the admin shell
+ * opts into the same column with `flex-1`.
+ */
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" data-surface="light" className="h-full antialiased">
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        <Providers>{children}</Providers>
+        {children}
       </body>
     </html>
   );

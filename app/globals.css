@@ -486,3 +486,80 @@
     margin-bottom: var(--sb-grid-gap);
   }
 }
+
+/* =============================================================================
+   K. ADMIN PANEL THEME
+   The panel at /admin is a tool, not part of the brand surface, and it must not
+   be able to disturb the storefront.
+
+   TOKEN NAMES ARE NAMESPACED, and that is the whole point. Sections A–G above
+   already publish `--color-background`, `--color-foreground`, `--color-primary`,
+   `--color-border`, `--color-muted` and `--color-accent`, which generate
+   `bg-background`, `text-foreground` and friends. A component library dropped in
+   with its own `--background` / `--foreground` convention would generate the SAME
+   utility names and quietly repaint the storefront. Everything below is
+   `--color-admin-*`, so `bg-admin-panel` and `bg-background` can never collide,
+   and no storefront token is redefined.
+
+   There is no dark mode here on purpose: the storefront has none (it uses the
+   `data-surface` grounds in section H instead), and a `next-themes` provider that
+   flipped `.dark` on <html> would be a global switch reaching the public site.
+   ========================================================================== */
+@theme {
+  --color-admin-bg: #f6f5f3; /* app ground, a touch warm to match the brand   */
+  --color-admin-panel: #ffffff; /* cards, table rows, the sidebar               */
+  --color-admin-raised: #fbfaf9; /* table headers, toolbars                      */
+  --color-admin-border: #e2dfda;
+  --color-admin-border-strong: #cbc7c0;
+  --color-admin-fg: #26262a; /* body copy                                    */
+  --color-admin-muted: #6d6b66; /* labels, secondary copy, placeholder          */
+  --color-admin-faint: #9a978f; /* disabled, hint text                          */
+  --color-admin-accent: #302f2d; /* = brand dark-wood; primary buttons          */
+  --color-admin-accent-fg: #f6f5f3;
+  --color-admin-focus: #47515c; /* = brand charcoal-blue; focus ring            */
+  --color-admin-danger: #9d3427;
+  --color-admin-danger-bg: #fbeceb;
+  --color-admin-ok: #3f6b4a;
+  --color-admin-ok-bg: #edf3ee;
+  --color-admin-warn: #8a6318;
+  --color-admin-warn-bg: #fbf3e3;
+
+  --radius-admin: 0.375rem;
+}
+
+/**
+ * Density and metrics for the panel, scoped to the `data-admin` attribute set on
+ * the admin shell. It has to be scoped: `globals.css` sets the body font size to
+ * `--fs-body` (18px, correct for the storefront and far too large for a table of
+ * metaobject fields), and that rule is not something the panel may change
+ * globally.
+ */
+[data-admin] {
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.5;
+  color: var(--color-admin-fg);
+  background-color: var(--color-admin-bg);
+}
+
+[data-admin] :focus-visible {
+  outline: 2px solid var(--color-admin-focus);
+  outline-offset: 1px;
+}
+
+/** The storefront's `h1..h6` rule pins headings to weight 400 and
+ *  `text-wrap: balance`; a panel wants ordinary, readable headings. */
+[data-admin] :is(h1, h2, h3, h4, h5, h6) {
+  font-family: inherit;
+  font-weight: 600;
+  text-wrap: initial;
+}
+
+/** Native controls inherit nothing by default, which in a form-heavy panel shows
+ *  up as 13px Arial fields next to 14px system-font labels. */
+[data-admin] :is(input, textarea, select, button) {
+  font: inherit;
+  color: inherit;
+}
