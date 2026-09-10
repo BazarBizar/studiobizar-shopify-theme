@@ -83,6 +83,8 @@ async function main() {
     console.log(`skip  metaobject (no entries of type ${probeType})`);
   }
 
+  await run("files", { first: 3, after: null, query: null });
+
   /** A type no store can have, so the mutation is validated but creates nothing. */
   await run("metaobjectCreate", {
     metaobject: { type: "zz_check_only_does_not_exist", fields: [] },

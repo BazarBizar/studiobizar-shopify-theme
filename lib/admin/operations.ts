@@ -55,10 +55,60 @@ ${FIELD_DEFINITIONS}
 `;
 
 /**
- * `reference` is selected so an entry form can render the image or video a
- * `file_reference` currently points at without a second round trip. Unlisted
- * reference kinds fall through to null, which the form shows as an empty picker
- * rather than an error.
+ * The resolved target of a reference field, so a form can show what a
+ * `file_reference` or `metaobject_reference` currently points at without a second
+ * round trip. Unlisted kinds fall through to null, which the form renders as an
+ * empty picker rather than an error.
+ */
+const REFERENCE_SELECTION = `
+      __typename
+      ... on MediaImage {
+        id
+        alt
+        image {
+          url
+          altText
+          width
+          height
+        }
+      }
+      ... on Video {
+        id
+        alt
+        preview {
+          image {
+            url
+          }
+        }
+      }
+      ... on GenericFile {
+        id
+        url
+        mimeType
+      }
+      ... on Metaobject {
+        id
+        handle
+        type
+        displayName
+      }
+      ... on Product {
+        id
+        handle
+        title
+      }
+      ... on Collection {
+        id
+        handle
+        title
+      }
+`;
+
+/**
+ * NOTE the two separate selections: Shopify exposes a single reference as
+ * `reference` and a `list.*` reference as `references`, and a field only ever
+ * populates one of them. Selecting just `reference` — the obvious thing — leaves
+ * every list field looking empty in the form, which reads as data loss.
  */
 const ENTRY_FIELDS = `
     id
@@ -76,45 +126,11 @@ const ENTRY_FIELDS = `
       type
       value
       reference {
-        __typename
-        ... on MediaImage {
-          id
-          alt
-          image {
-            url
-            altText
-            width
-            height
-          }
-        }
-        ... on Video {
-          id
-          alt
-          sources {
-            url
-            mimeType
-          }
-        }
-        ... on GenericFile {
-          id
-          url
-          mimeType
-        }
-        ... on Metaobject {
-          id
-          handle
-          type
-          displayName
-        }
-        ... on Product {
-          id
-          handle
-          title
-        }
-        ... on Collection {
-          id
-          handle
-          title
+${REFERENCE_SELECTION}
+      }
+      references(first: 50) {
+        nodes {
+${REFERENCE_SELECTION}
         }
       }
     }
@@ -195,6 +211,55 @@ ${ENTRY_FIELDS}
       query AdminMetaobject($id: ID!) {
         metaobject(id: $id) {
 ${ENTRY_FIELDS}
+        }
+      }
+    `,
+  },
+
+  /**
+   * Shopify Files, for the media picker behind every `file_reference` field.
+   * Needs the `read_files` scope. Newest first, because the file an operator wants
+   * is almost always one they just uploaded.
+   */
+  files: {
+    kind: "read",
+    document: `
+      query AdminFiles($first: Int!, $after: String, $query: String) {
+        files(first: $first, after: $after, query: $query, sortKey: CREATED_AT, reverse: true) {
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+          nodes {
+            __typename
+            ... on MediaImage {
+              id
+              alt
+              createdAt
+              image {
+                url
+                altText
+                width
+                height
+              }
+            }
+            ... on Video {
+              id
+              alt
+              createdAt
+              preview {
+                image {
+                  url
+                }
+              }
+            }
+            ... on GenericFile {
+              id
+              url
+              createdAt
+              mimeType
+            }
+          }
         }
       }
     `,

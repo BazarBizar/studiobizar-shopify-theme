@@ -20,7 +20,8 @@
     "check:content": "tsx scripts/check-content.ts",
     "check:admin-ops": "tsx --conditions=react-server scripts/check-admin-operations.ts",
     "admin:credentials": "tsx --conditions=react-server scripts/admin-credentials.ts",
-    "measure:first-load": "node scripts/first-load-js.mjs"
+    "measure:first-load": "node scripts/first-load-js.mjs",
+    "check:rich-text": "tsx --conditions=react-server scripts/check-rich-text.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

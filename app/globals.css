@@ -563,3 +563,58 @@
   font: inherit;
   color: inherit;
 }
+
+/**
+ * Rich text inside the admin editor. Separate from `sb-prose` (section J): that
+ * one is tuned for the storefront's 18px body and brand rhythm, which is wrong
+ * inside a 14px form field. The node vocabulary matches what
+ * `lib/shopify/transforms.ts` renders — nothing else can be produced by the
+ * editor, by design.
+ */
+@utility sb-admin-prose {
+  & > * + * {
+    margin-top: 0.6em;
+  }
+
+  & h2 {
+    font-size: 1.0625rem;
+    font-weight: 600;
+  }
+  & h3 {
+    font-size: 0.9375rem;
+    font-weight: 600;
+  }
+  & h4 {
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  & ul,
+  & ol {
+    padding-left: 1.25em;
+  }
+  & ul {
+    list-style: disc;
+  }
+  & ol {
+    list-style: decimal;
+  }
+  & li + li {
+    margin-top: 0.2em;
+  }
+
+  & a {
+    color: var(--color-admin-focus);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+
+  /* Tiptap marks an empty document with this, so the field does not look broken. */
+  & p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    color: var(--color-admin-faint);
+    float: left;
+    height: 0;
+    pointer-events: none;
+  }
+}

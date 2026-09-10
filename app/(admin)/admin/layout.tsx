@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { AdminProviders } from "@/components/admin/admin-providers";
-import { AdminSidebar, type NavGroup } from "@/components/admin/admin-sidebar";
+import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { currentStaff } from "@/lib/admin/auth";
 import { STAFF_LOGIN_PATH } from "@/lib/admin/cookie";
+import { buildNavigation } from "@/lib/admin/navigation";
 
 import { staffSignOut } from "./actions";
 
@@ -34,11 +35,12 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   if (!staff) redirect(STAFF_LOGIN_PATH);
 
   /**
-   * Empty but for the dashboard until Phase 3, which derives these groups from
-   * the metaobject definitions live in the store. Shaped as groups from the start
-   * so that adding them is not a rewrite.
+   * Derived from the metaobject definitions that exist in the store right now —
+   * there is no hardcoded list of screens. A definition created in Shopify shows
+   * up on the next page load, grouped by `lib/admin/groups.ts` or, if nobody has
+   * classified it, under "Other".
    */
-  const groups: NavGroup[] = [{ label: null, items: [{ href: "/admin", label: "Dashboard" }] }];
+  const groups = await buildNavigation();
 
   return (
     <AdminProviders>
