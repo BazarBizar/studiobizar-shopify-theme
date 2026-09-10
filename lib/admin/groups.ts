@@ -16,7 +16,7 @@ import "server-only";
  * with no code change.
  */
 
-export type GroupKey = "catalogue" | "pages" | "library" | "inbox" | "other";
+export type GroupKey = "catalogue" | "pages" | "library" | "inbox" | "settings" | "other";
 
 type GroupDef = { key: GroupKey; label: string; types: string[] };
 
@@ -25,13 +25,20 @@ const GROUPS: GroupDef[] = [
   { key: "pages", label: "Pages", types: ["service", "faq_item", "location", "contact_channel"] },
   { key: "library", label: "Library", types: ["captioned_image"] },
   { key: "inbox", label: "Inbox", types: ["inquiry"] },
+  {
+    key: "settings",
+    label: "Settings",
+    // Classifying a type here is a convenience only — an unlisted one is already
+    // reachable under "Other".
+    types: ["site_settings"],
+  },
 ];
 
 /** Where an unmapped definition goes. Never empty-checked away: a type nobody
  *  has classified still has to be reachable and editable. */
 const OTHER: GroupDef = { key: "other", label: "Other", types: [] };
 
-export const GROUP_ORDER: GroupKey[] = ["catalogue", "pages", "library", "inbox", "other"];
+export const GROUP_ORDER: GroupKey[] = ["catalogue", "pages", "library", "inbox", "settings", "other"];
 
 const TYPE_TO_GROUP = new Map<string, GroupKey>(
   GROUPS.flatMap((group) => group.types.map((type) => [type, group.key] as const)),

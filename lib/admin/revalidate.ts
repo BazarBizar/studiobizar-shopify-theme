@@ -29,6 +29,9 @@ import { TAGS } from "@/lib/shopify/constants";
  * the `metaobjects` tag does not cover.
  */
 const EXTRA_TAGS: Record<string, string[]> = {
+  /** Not a metaobject type — the collection write path passes this sentinel so a
+   *  collection edit drops the catalogue's collection cache and nothing else. */
+  collection: [TAGS.collections],
   contact_channel: [TAGS.content],
   location: [TAGS.content],
   faq_item: [TAGS.content],
@@ -37,6 +40,17 @@ const EXTRA_TAGS: Record<string, string[]> = {
 };
 
 export async function revalidateForType(type: string): Promise<string[]> {
+  // A collection edit has nothing to do with metaobjects, so it gets only its own tag.
+  // Standard Shopify resources are not metaobjects, so each drops only its own tag.
+  if (type === "collection") {
+    revalidateTag(TAGS.collections, "max");
+    return [TAGS.collections];
+  }
+  if (type === "product") {
+    revalidateTag(TAGS.products, "max");
+    return [TAGS.products];
+  }
+
   const tags = [TAGS.metaobjects, ...(EXTRA_TAGS[type] ?? [])];
 
   for (const tag of tags) {

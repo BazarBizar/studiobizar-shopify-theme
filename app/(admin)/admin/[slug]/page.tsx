@@ -1,10 +1,10 @@
 import { PlusIcon } from "lucide-react";
-import { notFound } from "next/navigation";
 
 import { AppLink } from "@/components/admin/app-link";
 import { detectFacetKeys, kindForFieldType } from "@/components/admin/data-table/filters";
 import type { FieldColumn, EntryRow } from "@/components/admin/entry-table/columns";
 import { EntryTableShell } from "@/components/admin/entry-table/entry-table-shell";
+import { ScreenNotFound } from "@/components/admin/screen-not-found";
 import { PageHeader } from "@/components/admin/page-header";
 import { Button } from "@/components/admin/ui/button";
 import { choicesFrom } from "@/lib/admin/field-values";
@@ -54,7 +54,7 @@ export async function generateMetadata({ params }: PageProps<"/admin/[slug]">) {
 export default async function EntryListPage({ params }: PageProps<"/admin/[slug]">) {
   const { slug } = await params;
   const loaded = await load(slug);
-  if (!loaded) notFound();
+  if (!loaded) return <ScreenNotFound description="That content type does not exist. It may have been deleted in Shopify." />;
 
   const { definition, entries } = loaded;
   const moduleDef = moduleFor(definition.type);
@@ -178,6 +178,7 @@ export default async function EntryListPage({ params }: PageProps<"/admin/[slug]
         orderField={
           moduleDef.orderField && byKey.has(moduleDef.orderField) ? moduleDef.orderField : null
         }
+        excelExport={moduleDef.excelExport === true}
       />
     </div>
   );

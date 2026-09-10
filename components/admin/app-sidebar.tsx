@@ -1,16 +1,6 @@
 "use client";
 
-import {
-  BoxIcon,
-  ImageIcon,
-  InboxIcon,
-  LayoutDashboardIcon,
-  LayersIcon,
-  type LucideIcon,
-  FileTextIcon,
-  LogOutIcon,
-  ShapesIcon,
-} from "lucide-react";
+import { BoxIcon, LogOutIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 import { AppLink } from "@/components/admin/app-link";
@@ -28,6 +18,7 @@ import {
   SidebarMenuItem,
   SidebarMenuSkeleton,
 } from "@/components/admin/ui/sidebar";
+import { navIconName } from "@/lib/admin/nav-icons";
 import { seriesFor } from "@/lib/admin/series-colors";
 import { cn } from "@/lib/utils/cn";
 
@@ -35,24 +26,15 @@ export type SidebarItem = {
   href: string;
   label: string;
   readOnly: boolean;
-  /** Group key, used for the icon tint and the icon itself. */
+  /** Group key. Drives the icon TINT, and the icon itself only as a fallback. */
   group: string;
+  /** Metaobject type, or null for a bespoke screen. */
+  type?: string | null;
+  /** Unread/needs-attention count. Amber, like every other "needs action" marker. */
+  badge?: number;
 };
 
 export type SidebarSection = { key: string; label: string | null; items: SidebarItem[] };
-
-/**
- * One icon per group rather than per row. Rows within a group are the same kind of
- * thing, and a distinct icon for each would be decoration competing with the label
- * that actually names it.
- */
-const GROUP_ICON: Record<string, LucideIcon> = {
-  catalogue: LayersIcon,
-  pages: FileTextIcon,
-  library: ImageIcon,
-  inbox: InboxIcon,
-  other: ShapesIcon,
-};
 
 export function AppSidebar({
   sections,
@@ -110,7 +92,9 @@ export function AppSidebar({
 
               <SidebarMenu>
                 {section.items.map((item) => {
-                  const Icon = GROUP_ICON[item.group] ?? LayoutDashboardIcon;
+                  // Matched to what the row IS, falling back to the group for a
+                  // definition nobody has given an icon yet.
+                  const Icon = navIconName(item.href, item.type ?? null, item.group);
                   const tint = seriesFor(item.group).text;
 
                   return (
@@ -126,7 +110,16 @@ export function AppSidebar({
                               aqua group legitimate at its contrast ratio. */}
                           <Icon className={cn("size-4 shrink-0", tint)} />
                           <span className="truncate">{item.label}</span>
-                          {item.readOnly ? (
+                          {item.badge ? (
+                            <span
+                              // Amber and a number, and the aria-label spells it out — the
+                              // colour is never the only carrier.
+                              aria-label={`${item.badge} unread`}
+                              className="ms-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1 text-[11px] font-semibold text-white group-data-[collapsible=icon]:hidden"
+                            >
+                              {item.badge}
+                            </span>
+                          ) : item.readOnly ? (
                             <span className="text-muted-foreground ms-auto text-[11px] group-data-[collapsible=icon]:hidden">
                               read-only
                             </span>

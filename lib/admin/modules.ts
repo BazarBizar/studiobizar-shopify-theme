@@ -61,6 +61,12 @@ export type ModuleDef = {
    * looks right and is wrong.
    */
   load?: LoadStrategy;
+  /**
+   * Offers an `.xlsx` export alongside the generic CSV one. Only worth it where the rows
+   * have structure a spreadsheet can show better than a flat file — inquiries have line
+   * items and product thumbnails, which CSV cannot carry at all.
+   */
+  excelExport?: boolean;
 };
 
 /**
@@ -150,6 +156,14 @@ export const MODULES: Record<string, ModuleDef> = {
     load: "client",
   },
 
+  site_settings: {
+    label: "Site settings",
+    /** A singleton: one entry, so the list screen is a formality. */
+    columns: ["title", "featured_collections"],
+    load: "client",
+  },
+
+
   inquiry: {
     label: "Inquiries",
     /**
@@ -165,6 +179,7 @@ export const MODULES: Record<string, ModuleDef> = {
      */
     readOnly: true,
     editableFields: ["status"],
+    excelExport: true,
     columns: [
       "inquiry_id",
       "submitted_at",

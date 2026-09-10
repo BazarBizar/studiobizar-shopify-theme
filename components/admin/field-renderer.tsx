@@ -13,7 +13,7 @@ import { Textarea } from "@/components/admin/ui/textarea";
 import { isTrue, parseList } from "@/lib/admin/field-values";
 import type { FieldSpec } from "@/lib/admin/form-fields";
 
-import { MediaPicker } from "./media-picker";
+import { MediaField, MediaListField } from "./media/media-field";
 import { ReferencePicker } from "./reference-picker";
 import { RichTextEditor } from "./rich-text-editor";
 
@@ -44,36 +44,26 @@ export function FieldRenderer({ spec, value, onChange, invalid }: Props) {
 
   /* ---------------------------------------------------------------- references */
 
-  if (spec.type === "file_reference" || spec.type === "list.file_reference") {
-    if (spec.type === "list.file_reference") {
-      const ids = parseList(value);
-
-      return (
-        <div className="space-y-2">
-          <p className="text-muted-foreground text-xs">
-            This field holds several files. The panel edits them one at a time for now —
-            reordering a multi-file field is still done in Shopify.
-          </p>
-          <MediaPicker
-            label={spec.name}
-            kind={spec.fileKind}
-            value={ids[0] ?? null}
-            current={spec.currentFile}
-            disabled={disabled}
-            onChange={(id) => onChange(JSON.stringify(id ? [id, ...ids.slice(1)] : ids.slice(1)))}
-          />
-        </div>
-      );
-    }
-
+  if (spec.type === "list.file_reference") {
     return (
-      <MediaPicker
+      <MediaListField
         label={spec.name}
         kind={spec.fileKind}
-        value={value || null}
-        current={spec.currentFile}
+        value={parseList(value)}
         disabled={disabled}
-        onChange={(id) => onChange(id ?? "")}
+        onChange={(ids) => onChange(ids.length ? JSON.stringify(ids) : "")}
+      />
+    );
+  }
+
+  if (spec.type === "file_reference") {
+    return (
+      <MediaField
+        label={spec.name}
+        kind={spec.fileKind}
+        value={value}
+        disabled={disabled}
+        onChange={onChange}
       />
     );
   }

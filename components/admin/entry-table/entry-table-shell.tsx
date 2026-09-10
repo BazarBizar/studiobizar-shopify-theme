@@ -19,12 +19,14 @@ export function EntryTableShell({
   rows,
   readOnly,
   orderField,
+  excelExport = false,
 }: {
   type: string;
   fields: FieldColumn[];
   rows: EntryRow[];
   readOnly: boolean;
   orderField: string | null;
+  excelExport?: boolean;
 }) {
   async function onExport() {
     const { filename, csv, rows: count } = await exportEntriesCsv(type);
@@ -51,6 +53,7 @@ export function EntryTableShell({
       readOnly={readOnly}
       orderField={orderField}
       onExport={onExport}
+      excelHref={excelExport ? "/api/admin/inquiries/export" : null}
     />
   );
 }

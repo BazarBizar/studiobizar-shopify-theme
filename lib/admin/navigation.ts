@@ -1,6 +1,7 @@
 import "server-only";
 
 import { GROUP_ORDER, groupFor, groupLabel, type GroupKey } from "./groups";
+import { countUnreadInquiries, INQUIRY_TYPE } from "./inquiries";
 import { listDefinitions, type Definition } from "./metaobjects";
 import { moduleFor } from "./modules";
 
@@ -31,6 +32,14 @@ export type NavItem = {
   href: string;
   label: string;
   readOnly: boolean;
+  /** Metaobject type, or null for a bespoke screen. Picks the row's icon. */
+  type?: string | null;
+  /**
+   * An "needs attention" count, shown as a badge. Distinct from the entry count removed
+   * above: this is COMPUTED FROM ROWS THE PANEL ACTUALLY LOADED, so it is accurate, and it
+   * means something an operator can act on rather than just how big a table is.
+   */
+  badge?: number;
 };
 
 /** `key` is the group key from `lib/admin/groups.ts` — the sidebar uses it to pick
@@ -50,6 +59,20 @@ export function slugForType(type: string): string {
   return type;
 }
 
+/**
+ * Segments under `/admin/` that belong to a bespoke screen. Next resolves a static
+ * segment before `[slug]`, so a metaobject type with one of these names would be
+ * unreachable — its sidebar link would silently open the bespoke screen instead.
+ *
+ * No store has such a type today. This exists so that if one is ever created, the
+ * sidebar says so rather than leading somewhere else.
+ */
+const RESERVED_SLUGS = new Set(["collections", "products", "customers"]);
+
+export function reservedSlug(type: string): boolean {
+  return RESERVED_SLUGS.has(type);
+}
+
 export function typeForSlug(slug: string): string {
   return slug;
 }
@@ -59,27 +82,71 @@ export function labelForDefinition(definition: Definition): string {
 }
 
 function toItem(definition: Definition): NavItem {
+  const shadowed = reservedSlug(definition.type);
+
   return {
     href: `/admin/${slugForType(definition.type)}`,
-    label: labelForDefinition(definition),
+    type: definition.type,
+    // Named plainly rather than hidden: a type nobody can open is worth seeing.
+    label: shadowed
+      ? `${labelForDefinition(definition)} (shadowed by a built-in screen)`
+      : labelForDefinition(definition),
     readOnly: moduleFor(definition.type).readOnly === true,
   };
 }
 
+/**
+ * Screens that are not metaobjects, so auto-discovery cannot find them. Standard Shopify
+ * resources have a stable shape and a bespoke screen each; they are listed here rather
+ * than discovered because there is nothing to discover.
+ */
+const BESPOKE: { group: GroupKey; item: NavItem }[] = [
+  {
+    group: "catalogue",
+    item: { href: "/admin/products", label: "Products", readOnly: false, type: null },
+  },
+  {
+    group: "catalogue",
+    item: { href: "/admin/collections", label: "Collections", readOnly: false, type: null },
+  },
+  {
+    group: "inbox",
+    // Read-only apart from the panel's own note and tags.
+    item: { href: "/admin/customers", label: "Customers", readOnly: true, type: null },
+  },
+];
+
 export async function buildNavigation(): Promise<NavGroup[]> {
   const definitions = await listDefinitions();
+
+  /**
+   * Shares the request-memoised inquiry list with the Inquiries screen, so opening one
+   * costs no extra query and the badge drops on every page the sidebar renders on — not
+   * only on the list it came from.
+   */
+  const unread = definitions.some((definition) => definition.type === INQUIRY_TYPE)
+    ? await countUnreadInquiries()
+    : 0;
 
   const byGroup = new Map<GroupKey, NavItem[]>();
   for (const definition of definitions) {
     const key = groupFor(definition.type);
     const items = byGroup.get(key) ?? [];
-    items.push(toItem(definition));
+    const item = toItem(definition);
+    if (definition.type === INQUIRY_TYPE && unread > 0) item.badge = unread;
+    items.push(item);
     byGroup.set(key, items);
   }
 
   const groups: NavGroup[] = [
     { key: "root", label: null, items: [{ href: "/admin", label: "Dashboard", readOnly: false }] },
   ];
+
+  for (const bespoke of BESPOKE) {
+    const items = byGroup.get(bespoke.group) ?? [];
+    items.push(bespoke.item);
+    byGroup.set(bespoke.group, items);
+  }
 
   for (const key of GROUP_ORDER) {
     const items = byGroup.get(key);

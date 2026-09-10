@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
 /**
  * Client hooks for the admin read endpoints.
@@ -20,9 +20,12 @@ export type PickerFile = {
   kind: string;
   alt: string | null;
   thumbnail: string | null;
+  url: string | null;
   mimeType: string | null;
   width: number | null;
   height: number | null;
+  /** `READY` once Shopify has finished processing; anything else has no preview yet. */
+  status: string | null;
 };
 
 export type PickerEntry = {
@@ -56,6 +59,14 @@ async function post<T>(url: string, body: unknown): Promise<T> {
   return (await response.json()) as T;
 }
 
+type FilePage = { files: PickerFile[]; hasNextPage: boolean; endCursor: string | null };
+
+/**
+ * Paged file listing for the media picker.
+ *
+ * Infinite rather than a single page because this store holds over five thousand
+ * images: any fixed `first` is either too small to browse or too large to load.
+ */
 export function useFiles({
   kind,
   search,
@@ -65,15 +76,60 @@ export function useFiles({
   search: string;
   enabled: boolean;
 }) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ["admin", "files", kind, search],
     enabled,
-    queryFn: () =>
-      post<{ files: PickerFile[]; hasNextPage: boolean; endCursor: string | null }>(
-        "/api/admin/files",
-        { operation: "files", first: 60, kind, search: search || null },
-      ),
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam }) =>
+      post<FilePage>("/api/admin/files", {
+        operation: "files",
+        first: 50,
+        after: pageParam,
+        kind,
+        search: search || null,
+      }),
+    getNextPageParam: (lastPage) => (lastPage.hasNextPage ? lastPage.endCursor : undefined),
   });
+}
+
+/** Resolves stored gids to previews — one request for every field on a form. */
+export function useResolvedFiles(ids: string[], enabled = true) {
+  const key = [...ids].sort().join(",");
+
+  return useQuery({
+    queryKey: ["admin", "files", "resolve", key],
+    enabled: enabled && ids.length > 0,
+    queryFn: () => post<{ files: PickerFile[] }>("/api/admin/files/resolve", {
+      operation: "nodes",
+      ids,
+    }),
+  });
+}
+
+export type UploadedFile = { file: PickerFile; processing: boolean };
+
+/**
+ * Uploads through the panel's own API, never straight to Shopify — see the note in
+ * `lib/admin/media.ts`. `FormData` here, so no `Content-Type` is set by hand: the
+ * browser has to generate the multipart boundary itself.
+ */
+export async function uploadFileRequest(file: File, alt?: string): Promise<UploadedFile> {
+  const form = new FormData();
+  form.append("file", file);
+  if (alt) form.append("alt", alt);
+
+  const response = await fetch("/api/admin/files/upload", {
+    method: "POST",
+    credentials: "same-origin",
+    body: form,
+  });
+
+  if (!response.ok) {
+    const detail = (await response.json().catch(() => null)) as ApiError | null;
+    throw new Error(detail?.message ?? `Upload failed (${response.status})`);
+  }
+
+  return (await response.json()) as UploadedFile;
 }
 
 export function useMetaobjectOptions({

@@ -1,5 +1,5 @@
-import { notFound } from "next/navigation";
 
+import { ScreenNotFound } from "@/components/admin/screen-not-found";
 import { DetailHeader } from "@/components/admin/detail-header";
 import { EntryForm } from "@/components/admin/entry-form";
 import { buildFieldSpecs } from "@/lib/admin/form-specs";
@@ -37,7 +37,7 @@ export async function generateMetadata({ params }: PageProps<"/admin/[slug]/new"
 export default async function EntryCreatePage({ params }: PageProps<"/admin/[slug]/new">) {
   const { slug } = await params;
   const definition = await load(slug);
-  if (!definition) notFound();
+  if (!definition) return <ScreenNotFound description="That content type does not exist, or entries of it are created by customers rather than here." />;
 
   const specs = await buildFieldSpecs(definition, null);
   const label = labelForDefinition(definition);

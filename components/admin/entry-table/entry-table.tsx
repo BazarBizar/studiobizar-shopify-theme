@@ -55,6 +55,7 @@ export function EntryTable({
   readOnly,
   orderField,
   onExport,
+  excelHref = null,
 }: {
   type: string;
   fields: FieldColumn[];
@@ -63,6 +64,8 @@ export function EntryTable({
   /** Manual order field, when the definition has one. Enables drag-to-reorder. */
   orderField: string | null;
   onExport: () => Promise<number>;
+  /** When set, an .xlsx download is offered beside the CSV export. */
+  excelHref?: string | null;
 }) {
   const [search, setSearch] = React.useState("");
   const [debouncedSearch, setDebouncedSearch] = React.useState("");
@@ -241,14 +244,26 @@ export function EntryTable({
         dateRange={dateRange}
         onDateRangeChange={setDateRange}
         actions={
+          <>
+            {excelHref ? (
+              <Button asChild variant="outline" size="sm">
+                {/* A plain link, not fetch-then-Blob: the response is a file and the
+                    browser already knows how to save one from Content-Disposition. */}
+                <a href={excelHref} download>
+                  <DownloadIcon className="size-3.5" />
+                  <span className="hidden sm:inline">Excel</span>
+                </a>
+              </Button>
+            ) : null}
           <Button variant="outline" size="sm" onClick={runExport} disabled={exporting}>
             {exporting ? (
               <Loader2Icon className="size-4 animate-spin" />
             ) : (
               <DownloadIcon className="size-3.5" />
             )}
-            <span className="hidden sm:inline">Export</span>
+            <span className="hidden sm:inline">CSV</span>
           </Button>
+          </>
         }
       />
 

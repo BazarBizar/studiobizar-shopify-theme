@@ -59,6 +59,8 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
       href: item.href,
       label: item.label,
       readOnly: item.readOnly,
+      badge: item.badge,
+      type: item.type ?? null,
       group: group.key,
     })),
   }));

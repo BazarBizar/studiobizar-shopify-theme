@@ -1,6 +1,7 @@
-import { notFound } from "next/navigation";
 
+import { ScreenNotFound } from "@/components/admin/screen-not-found";
 import { DetailHeader } from "@/components/admin/detail-header";
+import { InquiryDetail } from "@/components/admin/inquiries/inquiry-detail";
 import { EntryForm } from "@/components/admin/entry-form";
 import { Badge } from "@/components/admin/ui/badge";
 import { entryIdFromParam, formatDate } from "@/lib/admin/field-values";
@@ -50,10 +51,22 @@ export async function generateMetadata({ params }: PageProps<"/admin/[slug]/[id]
 export default async function EntryEditPage({ params }: PageProps<"/admin/[slug]/[id]">) {
   const { slug, id } = await params;
   const loaded = await load(slug, id);
-  if (!loaded) notFound();
+  if (!loaded) return <ScreenNotFound description="That entry does not exist. It may have been deleted in Shopify." />;
 
   const { definition, entry } = loaded;
   const moduleDef = moduleFor(definition.type);
+
+  /**
+   * Inquiries get a purpose-built read-only view rather than the generic form: the record
+   * is a customer's own submission, and a JSON blob of line items is unreadable inside a
+   * disabled textarea where the same data as a table is obvious.
+   *
+   * Delegated from here rather than given its own `/admin/inquiry/[id]` route, because a
+   * static `inquiry/` folder would also shadow `/admin/[slug]` for the LIST screen.
+   */
+  if (definition.type === "inquiry") {
+    return <InquiryDetail param={id} />;
+  }
   const specs = await buildFieldSpecs(definition, entry);
   const label = labelForDefinition(definition);
 
