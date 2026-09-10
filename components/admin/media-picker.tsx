@@ -1,19 +1,29 @@
 "use client";
 
+import { ImageIcon, Loader2Icon, SearchIcon, XIcon } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
+import * as React from "react";
 
+import { ErrorState } from "@/components/admin/error-state";
+import { Button } from "@/components/admin/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/admin/ui/dialog";
+import { Input } from "@/components/admin/ui/input";
+import { Skeleton } from "@/components/admin/ui/skeleton";
 import { useFiles, type PickerFile } from "@/lib/admin/queries";
-
-import { PickerDialog } from "./picker-dialog";
+import { cn } from "@/lib/utils/cn";
 
 /**
  * Picks one Shopify file for a `file_reference` field.
  *
- * Reads from Shopify Files — this panel does not maintain a media library of its
- * own, because a second source of truth for images is a second thing to keep in
- * sync. Uploading new files still happens in Shopify; this chooses among what is
- * there.
+ * Reads from Shopify Files — the panel keeps no media library of its own, because a
+ * second source of truth for images is a second thing to keep in sync. Uploading still
+ * happens in Shopify; this chooses among what is there.
  */
 
 type Props = {
@@ -27,7 +37,7 @@ type Props = {
   label: string;
 };
 
-function FileTile({
+function Tile({
   file,
   selected,
   onSelect,
@@ -41,11 +51,12 @@ function FileTile({
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
-      className={`rounded-admin overflow-hidden border text-left ${
-        selected ? "border-admin-accent ring-admin-accent ring-2" : "border-admin-border"
-      }`}
+      className={cn(
+        "overflow-hidden rounded-md border text-left transition-colors",
+        selected ? "border-primary ring-primary ring-2" : "hover:border-foreground/20",
+      )}
     >
-      <span className="bg-admin-raised block aspect-square">
+      <span className="bg-muted block aspect-square">
         {file.thumbnail ? (
           <Image
             src={file.thumbnail}
@@ -56,12 +67,12 @@ function FileTile({
             className="size-full object-cover"
           />
         ) : (
-          <span className="text-admin-faint flex size-full items-center justify-center text-[0.625rem]">
+          <span className="text-muted-foreground flex size-full items-center justify-center text-[10px]">
             {file.mimeType ?? file.kind}
           </span>
         )}
       </span>
-      <span className="text-admin-muted block truncate px-1.5 py-1 text-[0.6875rem]">
+      <span className="text-muted-foreground block truncate px-1.5 py-1 text-[11px]">
         {file.alt || file.kind}
       </span>
     </button>
@@ -69,20 +80,31 @@ function FileTile({
 }
 
 export function MediaPicker({ value, current, onChange, kind, disabled, label }: Props) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const [preview, setPreview] = useState(current);
+  const [open, setOpen] = React.useState(false);
+  const [search, setSearch] = React.useState("");
+  const [debounced, setDebounced] = React.useState("");
+  const [preview, setPreview] = React.useState(current);
 
-  // Only fetched once the dialog opens: a form with six image fields would
-  // otherwise fire six file queries on mount, for pickers nobody opened.
-  const { data, isLoading, error } = useFiles({ kind, search, enabled: open });
+  React.useEffect(() => {
+    const timer = setTimeout(() => setDebounced(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Only fetched once the dialog opens: a form with six image fields would otherwise
+  // fire six file queries on mount, for pickers nobody opened.
+  const { data, isLoading, error, refetch } = useFiles({
+    kind,
+    search: debounced,
+    enabled: open,
+  });
 
   const chosen = preview ?? current;
+  const noun = kind === "video" ? "video" : "image";
 
   return (
     <div>
       <div className="flex items-center gap-3">
-        <span className="border-admin-border bg-admin-raised block size-16 shrink-0 overflow-hidden rounded border">
+        <span className="bg-muted flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-md border">
           {chosen?.thumbnail ? (
             <Image
               src={chosen.thumbnail}
@@ -93,82 +115,102 @@ export function MediaPicker({ value, current, onChange, kind, disabled, label }:
               className="size-full object-cover"
             />
           ) : (
-            <span className="text-admin-faint flex size-full items-center justify-center text-[0.625rem]">
-              none
-            </span>
+            <ImageIcon className="text-muted-foreground size-4" />
           )}
         </span>
 
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            disabled={disabled}
-            className="border-admin-border rounded-admin hover:bg-admin-raised border px-2.5 py-1.5 disabled:opacity-50"
-          >
-            {value ? "Replace" : "Choose"} {kind === "video" ? "video" : "image"}
-          </button>
+          <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => setOpen(true)}>
+            {value ? "Replace" : "Choose"} {noun}
+          </Button>
 
           {value && !disabled ? (
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
+              className="text-destructive"
               onClick={() => {
                 onChange(null);
                 setPreview(null);
               }}
-              className="text-admin-danger rounded-admin hover:bg-admin-danger-bg px-2.5 py-1.5"
             >
+              <XIcon className="size-3.5" />
               Remove
-            </button>
+            </Button>
           ) : null}
         </div>
       </div>
 
-      <PickerDialog open={open} onClose={() => setOpen(false)} title={`Choose ${label}`}>
-        <input
-          type="search"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search files"
-          aria-label="Search files"
-          className="border-admin-border bg-admin-panel rounded-admin mb-3 w-full border px-2.5 py-1.5 outline-none"
-        />
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Choose {label.toLowerCase()}</DialogTitle>
+            <DialogDescription>
+              Files come from Shopify. Upload new ones in Shopify → Content → Files.
+            </DialogDescription>
+          </DialogHeader>
 
-        {error ? (
-          <p className="bg-admin-danger-bg text-admin-danger rounded-admin px-3 py-2 text-xs">
-            {error.message}
-          </p>
-        ) : null}
-
-        {isLoading ? <p className="text-admin-muted text-xs">Loading files…</p> : null}
-
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-          {(data?.files ?? []).map((file) => (
-            <FileTile
-              key={file.id}
-              file={file}
-              selected={file.id === value}
-              onSelect={() => {
-                onChange(file.id);
-                setPreview({ thumbnail: file.thumbnail, alt: file.alt });
-                setOpen(false);
-              }}
+          <div className="relative">
+            <SearchIcon className="text-muted-foreground pointer-events-none absolute start-2.5 top-1/2 size-4 -translate-y-1/2" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search files"
+              aria-label="Search files"
+              className="h-8 ps-8"
             />
-          ))}
-        </div>
+          </div>
 
-        {data && data.files.length === 0 && !isLoading ? (
-          <p className="text-admin-muted text-xs">
-            No files match. Upload in Shopify → Content → Files, then reopen this picker.
-          </p>
-        ) : null}
+          {error ? (
+            <ErrorState error={error.message} onRetry={() => refetch()} title="Could not load files" />
+          ) : null}
 
-        {data?.hasNextPage ? (
-          <p className="text-admin-faint mt-3 text-xs">
-            Showing the 60 most recent. Use search to narrow.
-          </p>
-        ) : null}
-      </PickerDialog>
+          <div className="max-h-[60vh] overflow-y-auto">
+            {isLoading ? (
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                {Array.from({ length: 10 }).map((_, index) => (
+                  <Skeleton key={index} className="aspect-square rounded-md" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                {(data?.files ?? []).map((file) => (
+                  <Tile
+                    key={file.id}
+                    file={file}
+                    selected={file.id === value}
+                    onSelect={() => {
+                      onChange(file.id);
+                      setPreview({ thumbnail: file.thumbnail, alt: file.alt });
+                      setOpen(false);
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+
+            {data && data.files.length === 0 && !isLoading ? (
+              <p className="text-muted-foreground py-6 text-center text-sm">
+                No files match that search.
+              </p>
+            ) : null}
+          </div>
+
+          {data?.hasNextPage ? (
+            <p className="text-muted-foreground text-xs">
+              Showing the 60 most recent. Use search to narrow.
+            </p>
+          ) : null}
+
+          {isLoading ? (
+            <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
+              <Loader2Icon className="size-3.5 animate-spin" />
+              Loading files…
+            </p>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

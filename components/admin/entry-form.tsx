@@ -1,93 +1,111 @@
 "use client";
 
-import Link from "next/link";
+import { InfoIcon, Loader2Icon, SaveIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import * as React from "react";
+import { Controller, useForm } from "react-hook-form";
+import { toast } from "sonner";
 
+import { Button } from "@/components/admin/ui/button";
+import { Card, CardContent } from "@/components/admin/ui/card";
+import { Label } from "@/components/admin/ui/label";
+import { Separator } from "@/components/admin/ui/separator";
+import { paramFromEntryId } from "@/lib/admin/field-values";
+import type { FieldSpec } from "@/lib/admin/form-fields";
 import { createEntryRequest, updateEntryRequest } from "@/lib/admin/queries";
 
-import { FieldRenderer, type FieldSpec } from "./field-renderer";
+import { FieldRenderer } from "./field-renderer";
 
 /**
- * The generic entry form. It knows nothing about any particular metaobject type —
- * it renders whatever specs the server hands it, and each spec was built from the
- * live Shopify definition.
+ * The generic entry form. It knows nothing about any particular metaobject type — it
+ * renders whatever specs the server hands it, and each spec was built from the live
+ * Shopify definition.
  *
- * Client-side checks here are a courtesy to the operator. The rules live on the
- * server: `lib/admin/validation.ts` for shape, `assertWritable` for read-only, and
- * Shopify itself for per-type validity. Nothing below is load-bearing for security.
+ * Client-side checks here are a courtesy to the operator. The rules live on the server:
+ * `lib/admin/validation.ts` for shape, `assertWritable` for read-only, and Shopify
+ * itself for per-type validity. Nothing below is load-bearing for security.
  */
 
-type Props = {
+type Values = Record<string, string>;
+
+export function EntryForm({
+  mode,
+  type,
+  typeLabel,
+  entryId,
+  specs,
+}: {
   mode: "create" | "update";
   type: string;
   typeLabel: string;
   entryId: string | null;
   specs: FieldSpec[];
-  /** Shown when the whole type is read-only. */
-  readOnlyNotice: string | null;
-};
-
-type Issue = { path: string; message: string };
-
-export function EntryForm({ mode, type, typeLabel, entryId, specs, readOnlyNotice }: Props) {
+}) {
   const router = useRouter();
+  const [saving, setSaving] = React.useState(false);
 
-  const [values, setValues] = useState<Record<string, string>>(() =>
-    Object.fromEntries(specs.map((spec) => [spec.key, spec.initialValue])),
+  const defaults = React.useMemo<Values>(
+    () => Object.fromEntries(specs.map((spec) => [spec.key, spec.initialValue])),
+    [specs],
   );
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [issues, setIssues] = useState<Issue[]>([]);
-  const [dirty, setDirty] = useState(false);
 
-  const setValue = (key: string, value: string) => {
-    setValues((current) => ({ ...current, [key]: value }));
-    setDirty(true);
-  };
+  const {
+    control,
+    handleSubmit,
+    reset,
+    setError,
+    formState: { dirtyFields, isDirty, errors },
+  } = useForm<Values>({ defaultValues: defaults, mode: "onSubmit" });
 
-  const localCheck = (): Issue[] => {
-    const found: Issue[] = [];
+  const editableSpecs = specs.filter((spec) => spec.editable);
+  const nothingEditable = editableSpecs.length === 0;
 
-    for (const spec of specs) {
-      if (!spec.editable) continue;
+  async function onSubmit(values: Values) {
+    setSaving(true);
+
+    /**
+     * ONLY DIRTY FIELDS are sent. On a read-only type that is what keeps an update to
+     * `status` from also re-submitting the customer's own words — and the server refuses
+     * the rest regardless, in `assertWritable`.
+     *
+     * On create everything editable goes, because nothing exists to diff against.
+     */
+    const keys =
+      mode === "create"
+        ? editableSpecs.map((spec) => spec.key)
+        : editableSpecs.map((spec) => spec.key).filter((key) => dirtyFields[key]);
+
+    if (keys.length === 0) {
+      setSaving(false);
+      toast.info("Nothing to save", { description: "No fields have changed." });
+      return;
+    }
+
+    // Caught here because Shopify's own error for malformed JSON is opaque, and the
+    // operator can fix it immediately if told plainly.
+    let invalid = false;
+    for (const spec of editableSpecs) {
       const value = values[spec.key] ?? "";
 
       if (spec.required && value.trim() === "") {
-        found.push({ path: spec.key, message: `${spec.name} is required.` });
-      }
-
-      // Caught here because Shopify's own error for malformed JSON is opaque, and
-      // the operator can fix it immediately if told plainly.
-      if (spec.type === "json" && value.trim() !== "") {
+        setError(spec.key, { message: `${spec.name} is required.` });
+        invalid = true;
+      } else if (spec.type === "json" && value.trim() !== "") {
         try {
           JSON.parse(value);
         } catch {
-          found.push({ path: spec.key, message: `${spec.name} is not valid JSON.` });
+          setError(spec.key, { message: `${spec.name} is not valid JSON.` });
+          invalid = true;
         }
       }
     }
 
-    return found;
-  };
+    if (invalid) {
+      setSaving(false);
+      return;
+    }
 
-  async function save() {
-    setError(null);
-
-    const local = localCheck();
-    setIssues(local);
-    if (local.length) return;
-
-    setSaving(true);
-
-    /**
-     * Only editable fields are sent. On a read-only type this is what keeps an
-     * update to `status` from also re-submitting the customer's own words — and the
-     * server refuses the rest regardless, in `assertWritable`.
-     */
-    const fields = specs
-      .filter((spec) => spec.editable)
-      .map((spec) => ({ key: spec.key, value: values[spec.key] ?? "" }));
+    const fields = keys.map((key) => ({ key, value: values[key] ?? "" }));
 
     try {
       const result =
@@ -95,113 +113,133 @@ export function EntryForm({ mode, type, typeLabel, entryId, specs, readOnlyNotic
           ? await createEntryRequest({ type, fields })
           : await updateEntryRequest({ id: entryId!, fields });
 
-      setDirty(false);
+      /**
+       * Reset from the values that were actually SENT, not from a fresh object: this
+       * clears the dirty state so the save bar goes quiet, and the subsequent
+       * `router.refresh()` re-renders the server component with whatever Shopify
+       * normalised, so any change it made becomes visible rather than being hidden
+       * behind a form that thinks it is already in sync.
+       */
+      reset(values);
 
-      // Straight to the saved entry on create, so the operator can see it landed.
-      router.push(`/admin/${type}/${result.id.split("/").pop()}`);
+      toast.success("Saved", {
+        description:
+          mode === "create" ? `${typeLabel} created.` : `${keys.length} field(s) updated.`,
+      });
+
+      if (mode === "create") {
+        router.push(`/admin/${type}/${paramFromEntryId(result.id)}`);
+      }
       router.refresh();
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "That change could not be saved.");
+    } catch (error) {
+      toast.error("Could not save", {
+        description: error instanceof Error ? error.message : "That change was not applied.",
+      });
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        void save();
-      }}
-      className="max-w-3xl"
-    >
-      {readOnlyNotice ? (
-        <p className="bg-admin-warn-bg text-admin-warn rounded-admin mb-4 px-3 py-2 text-xs">
-          {readOnlyNotice}
-        </p>
-      ) : null}
+    <form onSubmit={handleSubmit(onSubmit)}>
+      {/* One fieldset rather than `disabled` on every input: a single place to lock the
+          form, and it cannot drift out of sync per field. */}
+      <fieldset disabled={saving}>
+        <Card className="gap-0 py-0">
+          <CardContent className="space-y-6 px-0 py-6">
+            {specs.map((spec, index) => (
+              <React.Fragment key={spec.key}>
+                {index > 0 ? <Separator /> : null}
 
-      {error ? (
-        <p
-          role="alert"
-          className="bg-admin-danger-bg text-admin-danger rounded-admin mb-4 px-3 py-2 text-xs"
-        >
-          {error}
-        </p>
-      ) : null}
+                <div className="grid gap-2 px-6 sm:grid-cols-[13rem_1fr] sm:gap-4">
+                  <div className="min-w-0 space-y-1">
+                    <Label htmlFor={spec.key} className="break-words">
+                      {spec.name}
+                      {spec.required ? (
+                        <span className="text-destructive" aria-hidden>
+                          {" "}
+                          *
+                        </span>
+                      ) : null}
+                    </Label>
 
-      <div className="border-admin-border bg-admin-panel rounded-admin divide-admin-border divide-y border">
-        {specs.map((spec) => {
-          const issue = issues.find((candidate) => candidate.path.includes(spec.key));
+                    <p className="text-muted-foreground font-mono text-[11px] break-all">
+                      {spec.key}
+                    </p>
 
-          return (
-            <div key={spec.key} className="grid gap-2 p-4 sm:grid-cols-[13rem_1fr] sm:gap-4">
-              <div className="min-w-0">
-                <label
-                  htmlFor={spec.key}
-                  className="text-admin-fg block text-xs font-medium break-words"
-                >
-                  {spec.name}
-                  {spec.required ? (
-                    <span className="text-admin-danger" aria-hidden="true">
-                      {" "}
-                      *
-                    </span>
-                  ) : null}
-                </label>
+                    {spec.description ? (
+                      <p
+                        id={`${spec.key}-description`}
+                        className="text-muted-foreground flex items-start gap-1 text-xs"
+                      >
+                        <InfoIcon className="mt-0.5 size-3.5 shrink-0" />
+                        {spec.description}
+                      </p>
+                    ) : null}
 
-                <p className="text-admin-faint mt-0.5 font-mono text-[0.6875rem] break-all">
-                  {spec.key}
-                </p>
+                    {!spec.editable ? (
+                      <p className="text-muted-foreground text-xs">Not editable here</p>
+                    ) : null}
+                  </div>
 
-                {spec.description ? (
-                  <p id={`${spec.key}-description`} className="text-admin-muted mt-1 text-xs">
-                    {spec.description}
-                  </p>
-                ) : null}
+                  <div className="min-w-0 space-y-1">
+                    <Controller
+                      name={spec.key}
+                      control={control}
+                      render={({ field }) => (
+                        <FieldRenderer
+                          spec={spec}
+                          value={field.value ?? ""}
+                          onChange={field.onChange}
+                          invalid={Boolean(errors[spec.key])}
+                        />
+                      )}
+                    />
 
-                {!spec.editable ? (
-                  <p className="text-admin-faint mt-1 text-xs">Not editable here</p>
-                ) : null}
-              </div>
+                    {errors[spec.key] ? (
+                      <p className="text-destructive text-xs" role="alert">
+                        {String(errors[spec.key]?.message)}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              </React.Fragment>
+            ))}
+          </CardContent>
+        </Card>
 
-              <div className="min-w-0">
-                <FieldRenderer
-                  spec={spec}
-                  value={values[spec.key] ?? ""}
-                  onChange={(value) => setValue(spec.key, value)}
-                  invalid={Boolean(issue)}
-                />
+        {/* Sticky at the BOTTOM. `top-14` is for things sticking to the header; this one
+            sits against the viewport floor so the save action is reachable on a long
+            form without scrolling back. */}
+        <div className="bg-background/95 supports-[backdrop-filter]:bg-background/70 sticky bottom-0 flex items-center justify-between gap-3 border-t py-4 backdrop-blur">
+          <p className="text-muted-foreground text-xs">
+            {nothingEditable
+              ? "Nothing on this record can be changed here"
+              : isDirty
+                ? "Unsaved changes"
+                : "All changes saved"}
+          </p>
 
-                {issue ? (
-                  <p role="alert" className="text-admin-danger mt-1 text-xs">
-                    {issue.message}
-                  </p>
-                ) : null}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="mt-4 flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={saving || specs.every((spec) => !spec.editable)}
-          className="bg-admin-accent text-admin-accent-fg rounded-admin px-3 py-2 disabled:opacity-60"
-        >
-          {saving ? "Saving…" : mode === "create" ? `Create ${typeLabel}` : "Save changes"}
-        </button>
-
-        <Link
-          href={`/admin/${type}`}
-          className="border-admin-border rounded-admin hover:bg-admin-raised border px-3 py-2"
-        >
-          {dirty ? "Discard and go back" : "Back"}
-        </Link>
-
-        {dirty ? <span className="text-admin-muted text-xs">Unsaved changes</span> : null}
-      </div>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!isDirty || saving}
+              onClick={() => reset(defaults)}
+            >
+              Discard
+            </Button>
+            <Button type="submit" disabled={(!isDirty && mode === "update") || saving || nothingEditable}>
+              {saving ? (
+                <Loader2Icon className="size-4 animate-spin" />
+              ) : (
+                <SaveIcon className="size-4" />
+              )}
+              {saving ? "Saving…" : mode === "create" ? `Create ${typeLabel}` : "Save"}
+            </Button>
+          </div>
+        </div>
+      </fieldset>
     </form>
   );
 }

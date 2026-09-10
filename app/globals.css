@@ -1,4 +1,11 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* next-themes writes `.dark` on <html>; the panel's tokens live under it. The
+   storefront defines no dark rules at all, so the class is inert on public pages
+   and toggling the panel's theme cannot darken the shop. */
+@custom-variant dark (&:is(.dark *));
 
 /* =============================================================================
    STUDIO BIZAR — GLOBAL THEME
@@ -487,90 +494,6 @@
   }
 }
 
-/* =============================================================================
-   K. ADMIN PANEL THEME
-   The panel at /admin is a tool, not part of the brand surface, and it must not
-   be able to disturb the storefront.
-
-   TOKEN NAMES ARE NAMESPACED, and that is the whole point. Sections A–G above
-   already publish `--color-background`, `--color-foreground`, `--color-primary`,
-   `--color-border`, `--color-muted` and `--color-accent`, which generate
-   `bg-background`, `text-foreground` and friends. A component library dropped in
-   with its own `--background` / `--foreground` convention would generate the SAME
-   utility names and quietly repaint the storefront. Everything below is
-   `--color-admin-*`, so `bg-admin-panel` and `bg-background` can never collide,
-   and no storefront token is redefined.
-
-   There is no dark mode here on purpose: the storefront has none (it uses the
-   `data-surface` grounds in section H instead), and a `next-themes` provider that
-   flipped `.dark` on <html> would be a global switch reaching the public site.
-   ========================================================================== */
-@theme {
-  --color-admin-bg: #f6f5f3; /* app ground, a touch warm to match the brand   */
-  --color-admin-panel: #ffffff; /* cards, table rows, the sidebar               */
-  --color-admin-raised: #fbfaf9; /* table headers, toolbars                      */
-  --color-admin-border: #e2dfda;
-  --color-admin-border-strong: #cbc7c0;
-  --color-admin-fg: #26262a; /* body copy                                    */
-  --color-admin-muted: #6d6b66; /* labels, secondary copy, placeholder          */
-  --color-admin-faint: #9a978f; /* disabled, hint text                          */
-  --color-admin-accent: #302f2d; /* = brand dark-wood; primary buttons          */
-  --color-admin-accent-fg: #f6f5f3;
-  --color-admin-focus: #47515c; /* = brand charcoal-blue; focus ring            */
-  --color-admin-danger: #9d3427;
-  --color-admin-danger-bg: #fbeceb;
-  --color-admin-ok: #3f6b4a;
-  --color-admin-ok-bg: #edf3ee;
-  --color-admin-warn: #8a6318;
-  --color-admin-warn-bg: #fbf3e3;
-
-  --radius-admin: 0.375rem;
-}
-
-/**
- * Density and metrics for the panel, scoped to the `data-admin` attribute set on
- * the admin shell. It has to be scoped: `globals.css` sets the body font size to
- * `--fs-body` (18px, correct for the storefront and far too large for a table of
- * metaobject fields), and that rule is not something the panel may change
- * globally.
- */
-[data-admin] {
-  font-family:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
-    sans-serif;
-  font-size: 0.875rem; /* 14px */
-  line-height: 1.5;
-  color: var(--color-admin-fg);
-  background-color: var(--color-admin-bg);
-}
-
-[data-admin] :focus-visible {
-  outline: 2px solid var(--color-admin-focus);
-  outline-offset: 1px;
-}
-
-/** The storefront's `h1..h6` rule pins headings to weight 400 and
- *  `text-wrap: balance`; a panel wants ordinary, readable headings. */
-[data-admin] :is(h1, h2, h3, h4, h5, h6) {
-  font-family: inherit;
-  font-weight: 600;
-  text-wrap: initial;
-}
-
-/** Native controls inherit nothing by default, which in a form-heavy panel shows
- *  up as 13px Arial fields next to 14px system-font labels. */
-[data-admin] :is(input, textarea, select, button) {
-  font: inherit;
-  color: inherit;
-}
-
-/**
- * Rich text inside the admin editor. Separate from `sb-prose` (section J): that
- * one is tuned for the storefront's 18px body and brand rhythm, which is wrong
- * inside a 14px form field. The node vocabulary matches what
- * `lib/shopify/transforms.ts` renders — nothing else can be produced by the
- * editor, by design.
- */
 @utility sb-admin-prose {
   & > * + * {
     margin-top: 0.6em;
@@ -604,7 +527,7 @@
   }
 
   & a {
-    color: var(--color-admin-focus);
+    color: var(--primary);
     text-decoration: underline;
     text-underline-offset: 0.2em;
   }
@@ -612,9 +535,203 @@
   /* Tiptap marks an empty document with this, so the field does not look broken. */
   & p.is-editor-empty:first-child::before {
     content: attr(data-placeholder);
-    color: var(--color-admin-faint);
+    color: var(--muted-foreground);
     float: left;
     height: 0;
     pointer-events: none;
+  }
+}
+
+/* =============================================================================
+   K. ADMIN PANEL — shadcn (radix-nova / neutral) THEME
+   The panel at /admin uses the shared admin design system. The token VALUES are
+   the system's, unchanged. What is adapted is only WHERE they take effect,
+   because this repo serves a storefront out of the same stylesheet.
+
+   HOW THE TWO SYSTEMS COEXIST
+   The raw variable names below (--background, --card, --radius, ...) do not
+   exist in the storefront at all — it uses --sb-* — so they are declared on
+   :root exactly as the design system specifies. Declaring them globally is what
+   lets Radix portals (dialog, popover, dropdown, toast), which mount at <body>
+   outside the panel, resolve them.
+
+   The collision is not in the variable names but in the UTILITY names. Sections
+   A–G above already publish --color-background, --color-foreground,
+   --color-muted, --color-border, --color-primary, --color-primary-foreground
+   and --color-accent, which generate bg-background, text-muted (79 uses on the
+   storefront), border-border (20 uses) and friends. A second @theme claiming
+   those names would repaint the shop.
+
+   So those seven keep pointing at --sb-*, and [data-admin] re-points the --sb-*
+   variables themselves at the panel's tokens. Same utility name, right value on
+   each side of the app, and not one storefront rule is edited.
+   ========================================================================== */
+@theme inline {
+  /* Names the storefront does not use — safe to publish globally. */
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /**
+   * The radius scale, taken as specified. --radius-sm is the one name the
+   * storefront also declares (2px, from its flat design); it has zero uses
+   * there and rounded-sm is used throughout the shadcn components, so the
+   * panel's value wins. --radius-none and --radius-pill are left alone.
+   *
+   * --font-heading is deliberately NOT redefined: the storefront owns it, no
+   * shadcn component uses it, and the panel gets Geist from font-sans.
+   */
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/**
+ * Every base colour here has chroma 0 — pure neutral, no cast. That is load
+ * bearing, not an oversight: colour in this panel appears only where it carries
+ * meaning (category series and "needs attention"), and a tinted primary would
+ * destroy that whole signal. --chart-* is grey for the same reason; the
+ * dashboard's categorical colours come from the validated palette in
+ * lib/admin/series-colors.ts, not from here.
+ */
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+/**
+ * THE BRIDGE. Re-points the seven --sb-* variables whose utility names both
+ * design systems want, so bg-background / text-muted / border-border mean the
+ * panel's colours inside the panel and the shop's colours everywhere else.
+ *
+ * [data-admin] is set on the admin shell and on each Radix portal root (see the
+ * data-admin attributes in components/admin/ui/*), because a portal mounts at
+ * <body>, outside this element.
+ */
+[data-admin] {
+  --sb-background: var(--background);
+  --sb-foreground: var(--foreground);
+  --sb-muted: var(--muted);
+  --sb-border: var(--border);
+  --sb-primary: var(--primary);
+  --sb-primary-foreground: var(--primary-foreground);
+  --sb-accent: var(--accent);
+  /* Storefront-only name; mapped so bg-surface cannot fall through to earth. */
+  --sb-surface: var(--card);
+}
+
+@layer base {
+  /**
+   * Scoped to the panel. The design system applies these to * and html, which
+   * here would reach the storefront: a global border-border would repaint every
+   * default border on the public site, and font-sans would swap its typeface.
+   */
+  [data-admin],
+  [data-admin] * {
+    @apply border-border outline-ring/50;
+  }
+
+  [data-admin] {
+    @apply bg-background text-foreground font-sans;
+  }
+
+  /* Tailwind v4 dropped this default, so it has to be stated. */
+  [data-admin] button:not(:disabled),
+  [data-admin] [role="button"]:not(:disabled) {
+    cursor: pointer;
   }
 }

@@ -1,5 +1,7 @@
 import "server-only";
 
+import { unstable_rethrow } from "next/navigation";
+
 import { adminEnv } from "./env";
 import { logInternalError } from "./audit";
 
@@ -104,9 +106,25 @@ export async function adminGraphQL<T>(
         signal: AbortSignal.timeout(TIMEOUT_MS),
       });
     } catch (error) {
-      // A timeout and a dead socket are both worth retrying, and neither should
-      // hand the caller anything about our network.
-      lastCode = error instanceof Error && error.name === "TimeoutError" ? "SHOPIFY_TIMEOUT" : "SHOPIFY_UNAVAILABLE";
+      /**
+       * Next signals control flow by THROWING: `notFound()`, `redirect()`, and — the one
+       * that bit here — the dynamic-usage error raised when a `no-store` fetch is
+       * attempted during static prerendering. Those are not failures and must reach
+       * Next, so `unstable_rethrow` lets them past before anything else is considered.
+       *
+       * Without it the retry loop treated the prerender signal as a network fault and
+       * retried four times with backoff, which turned every build into four seconds of
+       * alarming stack traces per admin route — and would have swallowed a genuine
+       * `redirect()` thrown from inside a fetch wrapper.
+       */
+      unstable_rethrow(error);
+
+      // A timeout and a dead socket are both worth retrying, and neither should hand
+      // the caller anything about our network.
+      lastCode =
+        error instanceof Error && error.name === "TimeoutError"
+          ? "SHOPIFY_TIMEOUT"
+          : "SHOPIFY_UNAVAILABLE";
       logInternalError(`shopify.${scope}.transport`, error);
       continue;
     }

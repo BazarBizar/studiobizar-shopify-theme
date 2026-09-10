@@ -1,30 +1,26 @@
 import type { Metadata } from "next";
+import { GeistMono } from "geist/font/mono";
+import { GeistSans } from "geist/font/sans";
+
 import "./globals.css";
 
 /**
- * TYPEFACE — Helvetica Neue.
+ * TYPEFACES
  *
- * It is a licensed Linotype/Monotype face, so there is nothing to fetch from a
- * font CDN and `next/font/google` does not apply. The family is declared as a
- * stack in `globals.css` (`--font-sb-heading` / `--font-sb-body`), which renders
- * natively on macOS and iOS and falls back to Helvetica → Arial elsewhere.
+ * The storefront is Helvetica Neue — a licensed Linotype face, so there is
+ * nothing to fetch and `next/font/google` does not apply. The family is declared
+ * as a stack in `globals.css` (`--font-sb-heading` / `--font-sb-body`), which
+ * renders natively on macOS and iOS and falls back to Helvetica → Arial
+ * elsewhere. To render it identically on Windows and Android, license the webfont,
+ * drop the .woff2 files into `app/fonts/`, wire `next/font/local` here, and add
+ * the resulting variable to the <html> className. The fallback chain stays as it
+ * is, so nothing else changes.
  *
- * To render it identically on Windows and Android, license the webfont and drop
- * the .woff2 files into `app/fonts/`, then:
- *
- *   import localFont from "next/font/local";
- *
- *   const helvetica = localFont({
- *     src: [
- *       { path: "./fonts/HelveticaNeue-Roman.woff2", weight: "400", style: "normal" },
- *       { path: "./fonts/HelveticaNeue-Medium.woff2", weight: "500", style: "normal" },
- *     ],
- *     variable: "--font-sb-body",
- *     display: "swap",
- *   });
- *
- * and add `helvetica.variable` to the <html> className. The fallback chain in
- * globals.css stays as it is, so nothing else changes.
+ * The admin panel is Geist, from the `geist` PACKAGE rather than
+ * `next/font/google`. The Google loader fetches over the network at BUILD time,
+ * so a bad connection fails the build; the package ships bundled woff2 and loads
+ * them through `next/font/local`, which keeps builds offline-capable and
+ * reproducible. Only `/admin` uses it — `font-sans` is scoped to `[data-admin]`.
  */
 
 export const metadata: Metadata = {
@@ -36,23 +32,30 @@ export const metadata: Metadata = {
 };
 
 /**
- * Root layout deliberately holds nothing but the document, the global stylesheet
- * and the default metadata. Client providers belong to a route group — see
- * `app/(storefront)/layout.tsx` — so neither half of the app pays for the
- * other's runtime.
+ * Root layout deliberately holds nothing but the document, the font variables and
+ * the global stylesheet. Client providers belong to a route group — see
+ * `app/(storefront)/layout.tsx` and `app/(admin)/admin/layout.tsx` — so neither
+ * half of the app pays for the other's runtime.
  *
- * The `body` classes stay here because `<body>` can only be rendered once, at
- * the root. `globals.css` already paints the body from `--sb-*` in its base
- * layer, so `bg-background text-foreground` is belt-and-braces; `flex flex-col`
- * is what lets the storefront footer sit at the bottom, and the admin shell
- * opts into the same column with `flex-1`.
+ * `suppressHydrationWarning` is required because `next-themes` writes the theme
+ * class onto <html> before React hydrates, which React would otherwise report as
+ * a mismatch.
+ *
+ * The `body` classes stay here because <body> can only be rendered once, at the
+ * root. `globals.css` already paints the body from `--sb-*` in its base layer, so
+ * `bg-background text-foreground` is belt-and-braces; `flex flex-col` is what lets
+ * the storefront footer sit at the bottom, and the admin shell opts into the same
+ * column with `flex-1`.
  */
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" data-surface="light" className="h-full antialiased">
-      <body className="min-h-full flex flex-col bg-background text-foreground">
-        {children}
-      </body>
+    <html
+      lang="en"
+      data-surface="light"
+      className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
+    >
+      <body className="min-h-full flex flex-col bg-background text-foreground">{children}</body>
     </html>
   );
 }

@@ -33,7 +33,9 @@ export type NavItem = {
   readOnly: boolean;
 };
 
-export type NavGroup = { label: string | null; items: NavItem[] };
+/** `key` is the group key from `lib/admin/groups.ts` — the sidebar uses it to pick
+ *  the icon and the series tint, so presentation stays out of `groups.ts`. */
+export type NavGroup = { key: string; label: string | null; items: NavItem[] };
 
 /**
  * The URL segment for a type.
@@ -76,7 +78,7 @@ export async function buildNavigation(): Promise<NavGroup[]> {
   }
 
   const groups: NavGroup[] = [
-    { label: null, items: [{ href: "/admin", label: "Dashboard", readOnly: false }] },
+    { key: "root", label: null, items: [{ href: "/admin", label: "Dashboard", readOnly: false }] },
   ];
 
   for (const key of GROUP_ORDER) {
@@ -85,7 +87,11 @@ export async function buildNavigation(): Promise<NavGroup[]> {
 
     // Within a group, the module table's order wins where it has an opinion;
     // everything else falls back to alphabetical so the list is stable.
-    groups.push({ label: groupLabel(key), items: items.sort((a, b) => a.label.localeCompare(b.label)) });
+    groups.push({
+      key,
+      label: groupLabel(key),
+      items: items.sort((a, b) => a.label.localeCompare(b.label)),
+    });
   }
 
   return groups;

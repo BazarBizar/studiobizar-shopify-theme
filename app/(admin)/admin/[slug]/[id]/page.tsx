@@ -1,22 +1,18 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { DetailHeader } from "@/components/admin/detail-header";
 import { EntryForm } from "@/components/admin/entry-form";
+import { Badge } from "@/components/admin/ui/badge";
 import { entryIdFromParam, formatDate } from "@/lib/admin/field-values";
 import { buildFieldSpecs } from "@/lib/admin/form-specs";
-import {
-  getEntry,
-  listDefinitions,
-  NotAllowedError,
-  NotFoundError,
-} from "@/lib/admin/metaobjects";
+import { getEntry, listDefinitions, NotAllowedError, NotFoundError } from "@/lib/admin/metaobjects";
 import { moduleFor } from "@/lib/admin/modules";
 import { labelForDefinition, typeForSlug } from "@/lib/admin/navigation";
 
 /**
- * Edit one entry. Generic: the fields, their inputs and their validation all come
- * from the Shopify definition, so this file never needs touching when the content
- * model changes.
+ * Edit one entry. Generic: the fields, their inputs and their validation all come from
+ * the Shopify definition, so this file never needs touching when the content model
+ * changes.
  */
 
 async function load(slug: string, idParam: string) {
@@ -33,8 +29,8 @@ async function load(slug: string, idParam: string) {
   try {
     const entry = await getEntry(id);
 
-    // An id of the right shape but belonging to another type would otherwise render
-    // one definition's form over another definition's data.
+    // An id of the right shape but belonging to another type would otherwise render one
+    // definition's form over another definition's data.
     if (entry.type !== type) return null;
 
     return { definition, entry };
@@ -48,9 +44,7 @@ export async function generateMetadata({ params }: PageProps<"/admin/[slug]/[id]
   const { slug, id } = await params;
   const loaded = await load(slug, id);
 
-  return {
-    title: loaded ? (loaded.entry.displayName || loaded.entry.handle) : "Not found",
-  };
+  return { title: loaded ? loaded.entry.displayName || loaded.entry.handle : "Not found" };
 }
 
 export default async function EntryEditPage({ params }: PageProps<"/admin/[slug]/[id]">) {
@@ -61,40 +55,43 @@ export default async function EntryEditPage({ params }: PageProps<"/admin/[slug]
   const { definition, entry } = loaded;
   const moduleDef = moduleFor(definition.type);
   const specs = await buildFieldSpecs(definition, entry);
-
-  const readOnlyNotice = moduleDef.readOnly
-    ? moduleDef.editableFields?.length
-      ? `Submitted by a customer. Only ${moduleDef.editableFields.join(", ")} can be changed — the rest is kept as it was sent.`
-      : "Submitted by a customer and not editable here."
-    : null;
+  const label = labelForDefinition(definition);
 
   return (
-    <div>
-      <div className="mb-5">
-        <Link
-          href={`/admin/${definition.type}`}
-          className="text-admin-muted hover:text-admin-fg text-xs"
-        >
-          ← {labelForDefinition(definition)}
-        </Link>
+    /* No `max-w-3xl` on a read-only record: those are for reading, and a form that has
+       nothing to submit does not need to be held to a comfortable typing width. */
+    <div className={moduleDef.readOnly ? "w-full space-y-6" : "w-full max-w-3xl space-y-6"}>
+      <DetailHeader
+        backHref={`/admin/${definition.type}`}
+        backLabel={label}
+        title={entry.displayName || entry.handle}
+        meta={entry.handle}
+        readOnly={moduleDef.readOnly === true}
+      />
 
-        <h1 className="text-admin-fg mt-1 text-lg font-semibold">
-          {entry.displayName || entry.handle}
-        </h1>
-
-        <p className="text-admin-muted mt-0.5 text-xs">
-          <code>{entry.handle}</code> · updated {formatDate(entry.updatedAt, true)}
-          {entry.status ? ` · ${entry.status.toLowerCase()}` : ""}
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-muted-foreground text-xs">
+          Updated {formatDate(entry.updatedAt, true)}
         </p>
+        {entry.status ? (
+          <Badge variant="outline" className="text-[11px] font-normal">
+            {entry.status.toLowerCase()}
+          </Badge>
+        ) : null}
+        {moduleDef.readOnly && moduleDef.editableFields?.length ? (
+          <p className="text-muted-foreground text-xs">
+            Only {moduleDef.editableFields.join(", ")} can be changed — the rest is kept as
+            the customer sent it.
+          </p>
+        ) : null}
       </div>
 
       <EntryForm
         mode="update"
         type={definition.type}
-        typeLabel={labelForDefinition(definition)}
+        typeLabel={label}
         entryId={entry.id}
         specs={specs}
-        readOnlyNotice={readOnlyNotice}
       />
     </div>
   );

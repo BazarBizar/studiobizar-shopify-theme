@@ -1,9 +1,12 @@
 "use client";
 
 import { EditorContent, useEditor } from "@tiptap/react";
+import { LinkIcon, ListIcon, ListOrderedIcon } from "lucide-react";
 import StarterKit from "@tiptap/starter-kit";
 import { useCallback } from "react";
 
+import { Button } from "@/components/admin/ui/button";
+import { Separator } from "@/components/admin/ui/separator";
 import { proseMirrorToShopify, shopifyToProseMirror } from "@/lib/admin/rich-text";
 
 /**
@@ -26,8 +29,6 @@ type Props = {
   disabled?: boolean;
   ariaLabel?: string;
 };
-
-const BUTTON = "rounded px-2 py-1 text-xs";
 
 export function RichTextEditor({ value, onChange, disabled, ariaLabel }: Props) {
   const editor = useEditor({
@@ -90,47 +91,49 @@ export function RichTextEditor({ value, onChange, disabled, ariaLabel }: Props) 
   if (!editor) {
     // One render pass before the editor mounts. A box of the right height keeps the
     // form from jumping.
-    return (
-      <div className="border-admin-border bg-admin-panel rounded-admin min-h-32 border" aria-busy="true" />
-    );
+    return <div className="min-h-32 rounded-md border" aria-busy="true" />;
   }
 
-  const active = (name: string, attrs?: Record<string, unknown>) =>
-    editor.isActive(name, attrs)
-      ? `${BUTTON} bg-admin-accent text-admin-accent-fg`
-      : `${BUTTON} text-admin-fg hover:bg-admin-raised`;
+  const variant = (name: string, attrs?: Record<string, unknown>) =>
+    editor.isActive(name, attrs) ? ("secondary" as const) : ("ghost" as const);
 
   return (
-    <div className="border-admin-border bg-admin-panel rounded-admin border">
+    <div className="bg-background rounded-md border">
       {!disabled ? (
         <div
           role="toolbar"
           aria-label="Formatting"
-          className="border-admin-border flex flex-wrap items-center gap-0.5 border-b px-1.5 py-1"
+          className="flex flex-wrap items-center gap-0.5 border-b px-1.5 py-1"
         >
-          <button
+          <Button
             type="button"
+            size="sm"
+            variant={variant("bold")}
             onClick={() => editor.chain().focus().toggleBold().run()}
-            className={active("bold")}
             aria-pressed={editor.isActive("bold")}
+            aria-label="Bold"
           >
             <strong>B</strong>
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            size="sm"
+            variant={variant("italic")}
             onClick={() => editor.chain().focus().toggleItalic().run()}
-            className={active("italic")}
             aria-pressed={editor.isActive("italic")}
+            aria-label="Italic"
           >
             <em>I</em>
-          </button>
+          </Button>
 
-          <span className="bg-admin-border mx-1 h-4 w-px" />
+          <Separator orientation="vertical" className="mx-1 h-4" />
 
           {[2, 3, 4].map((level) => (
-            <button
+            <Button
               key={level}
               type="button"
+              size="sm"
+              variant={variant("heading", { level })}
               onClick={() =>
                 editor
                   .chain()
@@ -138,37 +141,46 @@ export function RichTextEditor({ value, onChange, disabled, ariaLabel }: Props) 
                   .toggleHeading({ level: level as 2 | 3 | 4 })
                   .run()
               }
-              className={active("heading", { level })}
               aria-pressed={editor.isActive("heading", { level })}
             >
               H{level}
-            </button>
+            </Button>
           ))}
 
-          <span className="bg-admin-border mx-1 h-4 w-px" />
+          <Separator orientation="vertical" className="mx-1 h-4" />
 
-          <button
+          <Button
             type="button"
+            size="sm"
+            variant={variant("bulletList")}
             onClick={() => editor.chain().focus().toggleBulletList().run()}
-            className={active("bulletList")}
             aria-pressed={editor.isActive("bulletList")}
+            aria-label="Bulleted list"
           >
-            List
-          </button>
-          <button
+            <ListIcon className="size-3.5" />
+          </Button>
+          <Button
             type="button"
+            size="sm"
+            variant={variant("orderedList")}
             onClick={() => editor.chain().focus().toggleOrderedList().run()}
-            className={active("orderedList")}
             aria-pressed={editor.isActive("orderedList")}
+            aria-label="Numbered list"
           >
-            1. List
-          </button>
+            <ListOrderedIcon className="size-3.5" />
+          </Button>
 
-          <span className="bg-admin-border mx-1 h-4 w-px" />
+          <Separator orientation="vertical" className="mx-1 h-4" />
 
-          <button type="button" onClick={setLink} className={active("link")}>
-            Link
-          </button>
+          <Button
+            type="button"
+            size="sm"
+            variant={variant("link")}
+            onClick={setLink}
+            aria-label="Link"
+          >
+            <LinkIcon className="size-3.5" />
+          </Button>
         </div>
       ) : null}
 
