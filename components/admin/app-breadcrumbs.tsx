@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { Fragment } from "react";
 
 import { AppLink } from "@/components/admin/app-link";
 import {
@@ -52,19 +53,23 @@ export function AppBreadcrumbs({ labels }: { labels: Record<string, string> }) {
           )}
         </BreadcrumbItem>
 
+        {/* The separator is a SIBLING of the item, not a child: both render an <li>, and
+            nesting them produces invalid HTML that React reports as a hydration error. */}
         {crumbs.map((crumb) => (
-          <BreadcrumbItem key={crumb.href}>
+          <Fragment key={crumb.href}>
             <BreadcrumbSeparator />
-            {crumb.last ? (
-              <BreadcrumbPage className="max-w-48 truncate">{crumb.label}</BreadcrumbPage>
-            ) : (
-              <BreadcrumbLink asChild>
-                <AppLink href={crumb.href} showPending={false}>
-                  {crumb.label}
-                </AppLink>
-              </BreadcrumbLink>
-            )}
-          </BreadcrumbItem>
+            <BreadcrumbItem>
+              {crumb.last ? (
+                <BreadcrumbPage className="max-w-48 truncate">{crumb.label}</BreadcrumbPage>
+              ) : (
+                <BreadcrumbLink asChild>
+                  <AppLink href={crumb.href} showPending={false}>
+                    {crumb.label}
+                  </AppLink>
+                </BreadcrumbLink>
+              )}
+            </BreadcrumbItem>
+          </Fragment>
         ))}
       </BreadcrumbList>
     </Breadcrumb>

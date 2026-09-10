@@ -59,6 +59,9 @@ export function PartToWhole({
                   key={segment.label}
                   title={`${segment.label}: ${segment.value} (${percent(segment.value)}%)`}
                   className={`rounded-lg ${SERIES[segment.series].bg}`}
+                  /* The one legitimate inline style: this width IS the data. No class
+                     can express it, since Tailwind only emits what it can see in the
+                     source. The panel's no-inline-style rule is about design tokens. */
                   style={{ width: `${(segment.value / total) * 100}%` }}
                 />
               ))}

@@ -18,20 +18,29 @@ const OPTIONS = [
   { value: "system", label: "System", Icon: MonitorIcon },
 ] as const;
 
+/** A store that never changes: false on the server, true once hydrated. */
+const noopSubscribe = () => () => {};
+const onClient = () => true;
+const onServer = () => false;
+
 /**
- * Light / dark / system for the panel only. The storefront defines no `.dark`
- * rules — it uses the `data-surface` grounds — so this cannot darken the shop.
+ * Light / dark / system for the panel only. The storefront defines no `.dark` rules — it
+ * uses the `data-surface` grounds — so this cannot darken the shop.
  */
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
 
   /**
-   * `next-themes` reads `localStorage` synchronously on the client and the server
-   * has no way to know the answer, so rendering the active icon before mount is a
-   * guaranteed hydration mismatch. Until mounted, show the neutral monitor icon.
+   * `next-themes` reads `localStorage` synchronously on the client and the server has no
+   * way to know the answer, so rendering the active icon before hydration is a guaranteed
+   * mismatch. Until then, show the neutral monitor icon.
+   *
+   * Done with `useSyncExternalStore` rather than `useState` + `useEffect`: the effect
+   * version sets state on mount, which cascades an extra render and trips
+   * `react-hooks/set-state-in-effect`. This has an explicit server snapshot, so React
+   * knows the two passes are meant to differ and corrects it during hydration instead.
    */
-  const [mounted, setMounted] = React.useState(false);
-  React.useEffect(() => setMounted(true), []);
+  const mounted = React.useSyncExternalStore(noopSubscribe, onClient, onServer);
 
   const active = OPTIONS.find((option) => option.value === theme) ?? OPTIONS[2];
   const Icon = mounted ? active.Icon : MonitorIcon;

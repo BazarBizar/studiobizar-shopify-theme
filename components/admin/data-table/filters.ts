@@ -43,7 +43,13 @@ export type DataTableColumnMeta = {
 };
 
 declare module "@tanstack/react-table" {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  /**
+   * Both disables are structural, not laziness. Module augmentation can only be done
+   * with `interface`, and this interface's entire purpose is to widen TanStack's
+   * `ColumnMeta` to `DataTableColumnMeta` — so it declares no members of its own, and
+   * its two generics must match the original signature even though neither is used.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-object-type
   interface ColumnMeta<TData extends RowData, TValue> extends DataTableColumnMeta {}
 
   interface FilterFns {

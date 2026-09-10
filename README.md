@@ -118,6 +118,71 @@ unrelated line.
   route, `next build` type-checks a stale validator from the last `next dev` run
   and fails on modules that no longer exist. `rm -rf .next/dev` and build again.
 
+## Admin design system
+
+The panel follows the shared admin design system (shadcn `radix-nova` + `neutral`, Geist,
+lucide icons only, sonner for toasts). `components.json` holds the canonical config; the
+components live in **`components/admin/ui/`**, not `components/ui/`, because the storefront
+already owns that folder.
+
+**How two design systems share one stylesheet.** The storefront publishes
+`--color-background`, `--color-foreground`, `--color-muted`, `--color-border`,
+`--color-primary`, `--color-primary-foreground` and `--color-accent` from its own
+`--sb-*` variables — and shadcn wants the same seven utility names. Rather than merge or
+fork them, section K of `globals.css` keeps those mappings pointing at `--sb-*` and lets
+`[data-admin]` re-point the `--sb-*` variables at the panel's tokens. `bg-background` then
+means white inside the panel and earth on the shop, and no storefront rule is edited.
+
+Two consequences worth knowing before you touch the CSS:
+
+- **`data-admin` must be on every Radix portal root.** A dialog, popover, dropdown, select,
+  sheet or tooltip mounts at `<body>`, outside the panel, so without it the surface picks up
+  storefront colours. The attribute is already patched into those six components; re-running
+  `shadcn add` on them will drop it.
+- **`hooks/use-mobile.ts` is a rewrite of what the CLI generates.** The generated version
+  calls `setState` inside an effect, which this repo's lint config rejects — and which mounts
+  the sidebar in the wrong mode for a frame. Re-running `shadcn add sidebar` will overwrite it.
+
+Colour appears in exactly two places: category series (`lib/admin/series-colors.ts`) and an
+amber "needs attention" marker that always carries a sentence. The series palette is
+validated for colour-vision deficiency — **never substitute green/red for two series that
+must be told apart**; that pairing measures ΔE 3.0 under protanopia, i.e. indistinguishable.
+
+### Data tables
+
+Every list screen is built from `components/admin/data-table/*`, which is one system rather
+than a component copied per resource. The toolbar is assembled from `column.meta` and
+contains no resource names — **adding a filter means changing a column definition, not the
+toolbar**. `data-table.tsx` is purely presentational, which is what lets the same shell serve
+both the client-loaded and server-paged strategies.
+
+Metaobject lists all use the client strategy (largest collection here is 18 rows), so
+per-column sorting and faceted filters are correct over the complete set. A collection that
+can exceed ~1,000 rows moves to the server strategy — and at that point every column must set
+`enableSorting: false` and the column filters must go, because both would then describe one
+page rather than the collection.
+
+### Checking rendered markup
+
+```bash
+yarn build && yarn start                 # one terminal
+yarn check:nesting admin admin/project   # another
+```
+
+React reports invalid element nesting as a **hydration error in the browser console** — not
+at build time, not in the server log, and not in a status code. A page can return 200,
+contain every class you grepped for, and still be broken. That is how a `<li>` nested inside
+a `<li>` shipped from the breadcrumb component.
+
+`scripts/check-html-nesting.mjs` scans server-rendered HTML for nesting HTML forbids
+(`li`/`p`/`a`/`button`/`form` inside themselves). Two things about it are deliberate: it
+models no auto-closing, because React validates the tree as authored and a browser's repairs
+would hide the bug; and it stops the ancestor search at `ul`/`ol`, because `<li><ul><li>` is
+a valid submenu and flagging the storefront's dropdown nav would make the check noise.
+
+Pass a bare path (`admin`, not `/admin`) — Git Bash on Windows rewrites a leading slash into
+a filesystem path. For authenticated pages set `ADMIN_COOKIE` to the staff session cookie.
+
 ## Security checklist before deploying
 
 - [ ] `yarn build` is clean, and `yarn lint` reports no errors.
