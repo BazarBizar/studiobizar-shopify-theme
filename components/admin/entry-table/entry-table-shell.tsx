@@ -18,6 +18,7 @@ export function EntryTableShell({
   fields,
   rows,
   readOnly,
+  linkKey,
   orderField,
   excelExport = false,
 }: {
@@ -25,6 +26,7 @@ export function EntryTableShell({
   fields: FieldColumn[];
   rows: EntryRow[];
   readOnly: boolean;
+  linkKey: string | null;
   orderField: string | null;
   excelExport?: boolean;
 }) {
@@ -51,6 +53,7 @@ export function EntryTableShell({
       fields={fields}
       rows={rows}
       readOnly={readOnly}
+      linkKey={linkKey}
       orderField={orderField}
       onExport={onExport}
       excelHref={excelExport ? "/api/admin/inquiries/export" : null}

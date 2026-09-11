@@ -100,6 +100,27 @@ export default async function EntryListPage({ params }: PageProps<"/admin/[slug]
   }));
 
   /**
+   * Which column doubles as the link into the record.
+   *
+   * Taken from Shopify's `displayNameKey` — the definition's own answer to "what
+   * identifies one of these" — so this is right for every type at once rather than a
+   * per-type list that goes stale the moment a definition is added. It is `name` on
+   * designer, `title` on project and service, `caption` on captioned_image,
+   * `question` on faq_item, `inquiry_id` on inquiry.
+   *
+   * Restricted to text kinds: a definition whose display name is a reference or a file
+   * renders as a badge or a thumbnail, and wrapping either in a link would fight the
+   * cell renderer. When nothing qualifies, the first visible text column takes the job,
+   * and failing that the actions column is still there.
+   */
+  const linkable = (field: FieldColumn) => field.kind === "text" || field.kind === "longtext";
+
+  const linkKey =
+    fields.find((field) => field.key === definition.displayNameKey && linkable(field))?.key ??
+    fields.find((field) => field.visible && linkable(field))?.key ??
+    null;
+
+  /**
    * Flattened here rather than in the client component, so the table receives only what
    * it renders — no reference payloads, no rich text ASTs it would drop.
    */
@@ -175,6 +196,7 @@ export default async function EntryListPage({ params }: PageProps<"/admin/[slug]
         fields={fields}
         rows={rows}
         readOnly={readOnly}
+        linkKey={linkKey}
         orderField={
           moduleDef.orderField && byKey.has(moduleDef.orderField) ? moduleDef.orderField : null
         }

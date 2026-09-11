@@ -66,11 +66,6 @@ export function Carousel({
   // With a single slide the arrows would never do anything.
   const scrollable = many;
 
-  /**
-   * Flanking the track rather than sitting under it. They overlay the slides,
-   * so they carry a solid ground of their own — a bordered outline alone is
-   * unreadable against a photograph.
-   */
   const arrow =
     "absolute top-1/2 z-10 -translate-y-1/2 border opacity-60 border-foreground bg-background p-3 " +
     "text-foreground transition-opacity hover:opacity-40 " +

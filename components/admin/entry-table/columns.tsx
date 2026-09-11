@@ -34,16 +34,39 @@ export type FieldColumn = {
   width?: string;
 };
 
+/**
+ * Text for the linked name cell. Falls through the entry's own display name to its
+ * handle, so a row whose name field happens to be empty is still a link with something
+ * to click rather than a clickable dash.
+ */
+function entryLabel(row: EntryRow, field: FieldColumn) {
+  const value = row.cells[field.key]?.value ?? null;
+
+  const text =
+    field.kind === "longtext" || field.kind === "json"
+      ? toPlainText(field.kind === "json" ? "json" : "rich_text_field", value)
+      : (value ?? "");
+
+  return text.trim() || row.displayName || row.handle || "Untitled";
+}
+
 export function buildColumns({
   fields,
   type,
   readOnly,
+  linkKey,
   sortable,
   reorderable,
 }: {
   fields: FieldColumn[];
   type: string;
   readOnly: boolean;
+  /**
+   * The column that doubles as the row's link into the record — Shopify's
+   * `displayNameKey` for this definition. Null leaves every cell plain, and the
+   * actions column remains the only way in.
+   */
+  linkKey: string | null;
   /** False in server mode, where sorting the loaded page would mislead. */
   sortable: boolean;
   /** Adds the grip column. Its CELL is rendered by SortableRow, which owns the
@@ -81,7 +104,21 @@ export function buildColumns({
     header: ({ column }) => (
       <ColumnHeader column={column} title={field.label} numeric={field.kind === "number"} />
     ),
-    cell: ({ row }) => <CellValue cell={row.original.cells[field.key]} />,
+    cell: ({ row }) =>
+      /* The name is the obvious thing to click, so it opens the record — the same
+         destination the actions column points at, which stays for the rows whose name
+         cell is hidden through the column menu. */
+      field.key === linkKey ? (
+        <AppLink
+          href={`/admin/${type}/${row.original.param}`}
+          className="block max-w-72 truncate text-sm font-medium underline-offset-2 hover:underline"
+          title={entryLabel(row.original, field)}
+        >
+          {entryLabel(row.original, field)}
+        </AppLink>
+      ) : (
+        <CellValue cell={row.original.cells[field.key]} />
+      ),
   }));
 
   const gripColumn: ColumnDef<EntryRow>[] = reorderable
