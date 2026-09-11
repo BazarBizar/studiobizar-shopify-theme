@@ -6,7 +6,7 @@ import {
   type ColumnDef,
   type VisibilityState,
 } from "@tanstack/react-table";
-import { EyeIcon, ImageIcon, SearchIcon, XIcon } from "lucide-react";
+import { ImageIcon, SearchIcon, XIcon } from "lucide-react";
 import Image from "next/image";
 import * as React from "react";
 import type { DateRange } from "react-day-picker";
@@ -17,6 +17,7 @@ import { DateRangeFilter } from "@/components/admin/data-table/date-range-filter
 import { filterFns } from "@/components/admin/data-table/filters";
 import { LoadMore } from "@/components/admin/data-table/pagination";
 import { OptionFilter } from "@/components/admin/data-table/option-filter";
+import { RowActions } from "@/components/admin/data-table/row-actions";
 import { ViewOptions } from "@/components/admin/data-table/view-options";
 import { ErrorState } from "@/components/admin/error-state";
 import { Badge } from "@/components/admin/ui/badge";
@@ -343,21 +344,19 @@ export function ProductsTable({
         ),
       },
       {
+        /* No delete here. Products, collections and customers are created and removed in
+           Shopify; the only destructive mutation this panel carries is for the content
+           types it authors itself. See the note in lib/admin/operations.ts. */
         id: "actions",
         enableSorting: false,
         enableHiding: false,
         meta: { kind: "text", label: "Actions", width: "4rem" },
         header: () => <span className="sr-only">Actions</span>,
         cell: ({ row }) => (
-          <Button asChild variant="ghost" size="icon" className="size-7">
-            <AppLink
-              href={`/admin/products/${row.original.param}`}
-              showPending={false}
-              aria-label={`View ${row.original.title}`}
-            >
-              <EyeIcon className="size-3.5" />
-            </AppLink>
-          </Button>
+          <RowActions
+            href={`/admin/products/${row.original.param}`}
+            label={row.original.title}
+          />
         ),
       },
     ],

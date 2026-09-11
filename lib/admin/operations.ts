@@ -1043,6 +1043,36 @@ ${ENTRY_FIELDS}
     `,
   },
 
+  /**
+   * THE ONLY DESTRUCTIVE MUTATION IN THIS FILE, added deliberately and narrowly.
+   *
+   * It reaches the content types this panel already authors: designers, projects, FAQ
+   * items, contact channels, services, locations, images. It does NOT reach inquiries,
+   * which are a customer's own submission, nor site_settings, which is a singleton the
+   * storefront reads -- deleting that would not remove a row, it would remove a feature.
+   * Both refusals live in assertDeletable in lib/admin/metaobjects.ts, in the data
+   * layer, where curl meets the same answer the UI does.
+   *
+   * There is still no productDelete, collectionDelete or customerDelete here, and none
+   * should be added without asking first. Shopify has no undo for a deleted product,
+   * and this catalogue has 1595 live ones.
+   */
+  metaobjectDelete: {
+    kind: "write",
+    document: `
+      mutation AdminMetaobjectDelete($id: ID!) {
+        metaobjectDelete(id: $id) {
+          deletedId
+          userErrors {
+            field
+            message
+            code
+          }
+        }
+      }
+    `,
+  },
+
   metaobjectUpdate: {
     kind: "write",
     document: `

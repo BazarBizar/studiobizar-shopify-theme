@@ -2,7 +2,7 @@ import "server-only";
 
 import { cache } from "react";
 
-import { isHeavyType, moduleFor } from "./modules";
+import { isDeletable, isHeavyType, moduleFor } from "./modules";
 import { OPERATIONS } from "./operations";
 import { adminGraphQL, assertNoUserErrors } from "./shopify";
 
@@ -346,6 +346,47 @@ export async function createEntry(type: string, fields: FieldInput[]) {
   if (!data.metaobjectCreate.metaobject) throw new NotFoundError("Shopify created nothing.");
 
   return data.metaobjectCreate.metaobject;
+}
+
+/**
+ * Refuses a delete for any type this panel does not author.
+ *
+ * Separate from `assertWritable` on purpose. That one negotiates per FIELD, because an
+ * operator may annotate somebody else's record; this one cannot, because a record either
+ * survives or it does not. An inquiry whose `status` is editable is still a customer's
+ * submission, and must not be removable.
+ */
+export function assertDeletable(type: string) {
+  if (isDeletable(type)) return;
+
+  throw new NotAllowedError(
+    moduleFor(type).readOnly
+      ? "Entries of this type are sent by customers and cannot be deleted here."
+      : "Entries of this type cannot be deleted here.",
+  );
+}
+
+/**
+ * IRREVERSIBLE — Shopify keeps no copy — so everything that can refuse happens before
+ * the mutation is sent.
+ */
+export async function deleteEntry(id: string) {
+  // The type is read from the STORE, never taken from the request, for the same reason
+  // `updateEntry` does it: a caller who could name the type could name a deletable one
+  // and use it to reach an entry of a protected one.
+  const existing = await getEntry(id);
+  assertDeletable(existing.type);
+
+  const data = await adminGraphQL<{
+    metaobjectDelete: { deletedId: string | null; userErrors: MutationResult["userErrors"] };
+  }>("metaobjectDelete", OPERATIONS.metaobjectDelete.document, { id });
+
+  assertNoUserErrors(data.metaobjectDelete.userErrors);
+  if (!data.metaobjectDelete.deletedId) throw new NotFoundError();
+
+  // Handle and type come from the entry as it WAS: after this call there is nothing left
+  // to ask, and the caller needs the type to know which cache tags to drop.
+  return { id: data.metaobjectDelete.deletedId, handle: existing.handle, type: existing.type };
 }
 
 export async function updateEntry(id: string, fields: FieldInput[]) {

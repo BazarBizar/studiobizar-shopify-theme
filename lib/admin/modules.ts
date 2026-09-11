@@ -39,6 +39,16 @@ export type ModuleDef = {
    */
   orderField?: string;
   /**
+   * Whether an entry of this type may be DELETED from the panel. Defaults to true for a
+   * writable type, so a content type added in Shopify tomorrow behaves like the rest.
+   *
+   * Set it false where something depends on the record EXISTING rather than on what it
+   * contains — a singleton the storefront reads has no meaningful "deleted" state, it
+   * just breaks. A read-only type is never deletable whatever this says; see
+   * `isDeletable`.
+   */
+  deletable?: boolean;
+  /**
    * Records this panel must not author. See `assertWritable` in
    * `lib/admin/metaobjects.ts` — enforced there, in the data layer, NOT by
    * hiding a button.
@@ -160,6 +170,13 @@ export const MODULES: Record<string, ModuleDef> = {
     label: "Site settings",
     /** A singleton: one entry, so the list screen is a formality. */
     columns: ["title", "featured_collections"],
+    /**
+     * NOT DELETABLE, though it is perfectly writable. Every screen that reads a site
+     * setting reads THIS entry, so removing it does not delete a record nobody wants
+     * any more — it removes the only place those settings can live. Putting it back
+     * means running `scripts/add-site-settings.mjs` again.
+     */
+    deletable: false,
     load: "client",
   },
 
@@ -219,4 +236,21 @@ export function moduleFor(type: string): ModuleDef {
 /** True when this panel may author entries of the type at all. */
 export function isReadOnly(type: string): boolean {
   return moduleFor(type).readOnly === true;
+}
+
+/**
+ * True when an entry of this type may be deleted here.
+ *
+ * A read-only type is never deletable, and that is NOT the same rule as
+ * `editableFields`. An inquiry allows its `status` to be changed precisely because the
+ * annotation is the operator's rather than the customer's — but there is no partial
+ * delete, so the exception that makes an annotation safe does nothing for removal.
+ *
+ * The trash icon consults this. So does `assertDeletable`, which is the one that counts.
+ */
+export function isDeletable(type: string): boolean {
+  const moduleDef = moduleFor(type);
+  if (moduleDef.readOnly) return false;
+
+  return moduleDef.deletable !== false;
 }

@@ -20,6 +20,7 @@ import { ColumnHeader } from "@/components/admin/data-table/column-header";
 import { DataTable } from "@/components/admin/data-table/data-table";
 import { filterFns } from "@/components/admin/data-table/filters";
 import { DataTablePagination, DEFAULT_PAGE_SIZE } from "@/components/admin/data-table/pagination";
+import { RowActions } from "@/components/admin/data-table/row-actions";
 import { DataTableToolbar } from "@/components/admin/data-table/toolbar";
 import { Badge } from "@/components/admin/ui/badge";
 import { useStoredJson } from "@/hooks/use-stored-preference";
@@ -139,6 +140,22 @@ export function CustomersTable({ rows }: { rows: CustomerRowData[] }) {
         header: ({ column }) => <ColumnHeader column={column} title="Created" />,
         cell: ({ row }) => (
           <span className="tabular-nums">{formatDate(row.original.createdAt, false)}</span>
+        ),
+      },
+      {
+        /* No delete here. Products, collections and customers are created and removed in
+           Shopify; the only destructive mutation this panel carries is for the content
+           types it authors itself. See the note in lib/admin/operations.ts. */
+        id: "actions",
+        enableSorting: false,
+        enableHiding: false,
+        meta: { kind: "text", label: "Actions", width: "4rem" },
+        header: () => <span className="sr-only">Actions</span>,
+        cell: ({ row }) => (
+          <RowActions
+            href={`/admin/customers/${row.original.param}`}
+            label={row.original.name}
+          />
         ),
       },
     ],

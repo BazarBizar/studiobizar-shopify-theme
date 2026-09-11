@@ -4,10 +4,12 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 import { ColumnHeader } from "@/components/admin/data-table/column-header";
 import type { ValueKind } from "@/components/admin/data-table/filters";
+import { RowActions } from "@/components/admin/data-table/row-actions";
 import { AppLink } from "@/components/admin/app-link";
 import { toPlainText } from "@/lib/admin/field-values";
 
 import { CellValue, type CellData } from "./cell-value";
+import { DeleteEntryAction } from "./delete-entry-action";
 
 /**
  * Column definitions for a metaobject list, built from the resolved definition rather
@@ -55,6 +57,8 @@ export function buildColumns({
   type,
   readOnly,
   linkKey,
+  typeLabel,
+  deletable,
   sortable,
   reorderable,
 }: {
@@ -67,6 +71,13 @@ export function buildColumns({
    * actions column remains the only way in.
    */
   linkKey: string | null;
+  /** Singular noun for this type, for the delete confirmation: "designer", "FAQ item". */
+  typeLabel: string;
+  /**
+   * Whether to offer the trash icon. A courtesy only — `assertDeletable` in the data
+   * layer refuses the same types whether or not this is true.
+   */
+  deletable: boolean;
   /** False in server mode, where sorting the loaded page would mislead. */
   sortable: boolean;
   /** Adds the grip column. Its CELL is rendered by SortableRow, which owns the
@@ -74,6 +85,16 @@ export function buildColumns({
    *  body instead of the grip shifting every column one place left. */
   reorderable: boolean;
 }): ColumnDef<EntryRow>[] {
+  /**
+   * One name per row, computed once and used by BOTH the link cell and the delete
+   * confirmation. Sharing it is the point: the dialog must ask about the record using
+   * the words the operator just clicked, not a different field's value.
+   */
+  const linkField = fields.find((field) => field.key === linkKey) ?? null;
+
+  const nameOf = (row: EntryRow) =>
+    linkField ? entryLabel(row, linkField) : row.displayName || row.handle || "Untitled";
+
   const fieldColumns: ColumnDef<EntryRow>[] = fields.map((field) => ({
     id: field.key,
     /**
@@ -112,9 +133,9 @@ export function buildColumns({
         <AppLink
           href={`/admin/${type}/${row.original.param}`}
           className="block max-w-72 truncate text-sm font-medium underline-offset-2 hover:underline"
-          title={entryLabel(row.original, field)}
+          title={nameOf(row.original)}
         >
-          {entryLabel(row.original, field)}
+          {nameOf(row.original)}
         </AppLink>
       ) : (
         <CellValue cell={row.original.cells[field.key]} />
@@ -156,15 +177,22 @@ export function buildColumns({
       // Kept out of the column menu: hiding the only way into a record is not a view
       // preference, it is a broken screen.
       enableHiding: false,
-      meta: { kind: "text", label: "Actions", width: "5rem" },
+      meta: { kind: "text", label: "Actions", width: deletable ? "5.5rem" : "4rem" },
       header: () => <span className="sr-only">Actions</span>,
       cell: ({ row }) => (
-        <AppLink
+        <RowActions
           href={`/admin/${type}/${row.original.param}`}
-          className="text-sm underline underline-offset-2"
+          label={nameOf(row.original)}
+          readOnly={readOnly}
         >
-          {readOnly ? "View" : "Edit"}
-        </AppLink>
+          {deletable ? (
+            <DeleteEntryAction
+              entryId={row.original.id}
+              name={nameOf(row.original)}
+              typeLabel={typeLabel}
+            />
+          ) : null}
+        </RowActions>
       ),
     },
   ];

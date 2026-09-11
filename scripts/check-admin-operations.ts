@@ -12,9 +12,14 @@
  * dropped, or a quote inside a `#` comment are all invisible until Shopify
  * itself parses the document. This is the only check that catches them.
  *
- * The two mutations are exercised with deliberately unresolvable arguments — a
- * metaobject type that cannot exist, and entry id 0 — so the document is parsed
- * and validated by Shopify while nothing in the store is created or changed.
+ * The mutations are exercised with deliberately unresolvable arguments — a metaobject
+ * type that cannot exist, and entry id 0 — so each document is parsed and validated by
+ * Shopify while nothing in the store is created, changed or destroyed.
+ *
+ * That last word is why `metaobjectDelete` is safe to include here. Shopify never issues
+ * id 0, so the mutation resolves nothing; it is the same assumption `metaobjectUpdate`
+ * below has always relied on. Any new destructive operation must be given an argument
+ * that cannot resolve BEFORE it is added to this run.
  */
 
 import { readFileSync } from "node:fs";
@@ -162,6 +167,9 @@ async function main() {
     id: "gid://shopify/Metaobject/0",
     metaobject: { fields: [] },
   });
+
+  /** Entry id 0, which Shopify never issues, so this parses the document and deletes nothing. */
+  await run("metaobjectDelete", { id: "gid://shopify/Metaobject/0" });
 
   /**
    * The count is of what this run actually SENT, not of what the allowlist contains —

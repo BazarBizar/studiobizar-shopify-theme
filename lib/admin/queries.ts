@@ -171,3 +171,17 @@ export async function updateEntryRequest(input: {
     ...input,
   });
 }
+
+/**
+ * IRREVERSIBLE. Every caller must confirm with the operator first — see
+ * `EntryRowActions`, which is the only one today.
+ *
+ * Only an id crosses the wire. Whether this type may be deleted at all is decided by
+ * `assertDeletable` on the server, from the type it reads out of the store.
+ */
+export async function deleteEntryRequest(input: { id: string }): Promise<WriteResult> {
+  return post<WriteResult>("/api/admin/metaobjects/delete", {
+    operation: "metaobjectDelete",
+    ...input,
+  });
+}

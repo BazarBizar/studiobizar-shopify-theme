@@ -66,8 +66,19 @@ export const updateEntrySchema = z.strictObject({
   fields,
 });
 
+/**
+ * An id and nothing else. There is deliberately no `type` key: the type is looked up
+ * from the store in `deleteEntry`, so naming a deletable one here would buy a caller
+ * nothing even if the schema accepted it.
+ */
+export const deleteEntrySchema = z.strictObject({
+  operation: z.literal("metaobjectDelete"),
+  id: z.string().regex(/^gid:\/\/shopify\/Metaobject\/\d+$/, "not a metaobject id"),
+});
+
 export type CreateEntryInput = z.infer<typeof createEntrySchema>;
 export type UpdateEntryInput = z.infer<typeof updateEntrySchema>;
+export type DeleteEntryInput = z.infer<typeof deleteEntrySchema>;
 
 /* -------------------------------------------------------------------------- *
  * Collections

@@ -4,9 +4,9 @@ import { NextResponse } from "next/server";
 
 import { failure, fail, guard, readJson, validate } from "./api";
 import { audit } from "./audit";
-import { createEntry, updateEntry, NotAllowedError, NotFoundError } from "./metaobjects";
+import { createEntry, deleteEntry, updateEntry, NotAllowedError, NotFoundError } from "./metaobjects";
 import { revalidateForType } from "./revalidate";
-import { createEntrySchema, updateEntrySchema } from "./validation";
+import { createEntrySchema, deleteEntrySchema, updateEntrySchema } from "./validation";
 
 /**
  * THE single write pipeline. Both write routes are three lines that call in here,
@@ -18,21 +18,32 @@ import { createEntrySchema, updateEntrySchema } from "./validation";
  * Cheap and local first, Shopify last. An unauthenticated flood costs a cookie
  * lookup, not an Admin API call.
  *
- * WHY THE ROUTE PINS THE OPERATION. Create and update share this function but each
- * passes the one operation name it will accept, and a payload naming the other is
+ * WHY THE ROUTE PINS THE OPERATION. Create, update and delete share this function but
+ * each passes the one operation name it will accept, and a payload naming another is
  * refused. Without that, a create payload could be smuggled through the update
- * endpoint — which matters because the two have different rules: `assertWritable`
- * refuses create outright on a read-only type but allows an update that touches
- * only `editableFields`.
+ * endpoint — which matters because the three have different rules: `assertWritable`
+ * refuses create outright on a read-only type but allows an update that touches only
+ * `editableFields`, and `assertDeletable` refuses a delete on that same type even
+ * though `status` is editable there.
+ *
+ * Delete is the one irreversible path in this file. It arrives here with nothing but an
+ * id: the type is read from the store inside `deleteEntry`, so the decision about
+ * whether it may happen is never made from the request body.
  */
 
 /** Enough for rich text with inline content; small enough to be no threat. */
 const MAX_BODY_BYTES = 512 * 1024;
 
-type Allowed = "metaobjectCreate" | "metaobjectUpdate";
+type Allowed = "metaobjectCreate" | "metaobjectUpdate" | "metaobjectDelete";
+
+const ACTIONS: Record<Allowed, string> = {
+  metaobjectCreate: "metaobject.create",
+  metaobjectUpdate: "metaobject.update",
+  metaobjectDelete: "metaobject.delete",
+};
 
 export async function handleWrite(request: Request, allowed: Allowed): Promise<NextResponse> {
-  const action = allowed === "metaobjectCreate" ? "metaobject.create" : "metaobject.update";
+  const action = ACTIONS[allowed];
 
   const guarded = await guard(request, { action, limit: "write" });
   if (!guarded.ok) return guarded.response;
@@ -83,6 +94,31 @@ export async function handleWrite(request: Request, allowed: Allowed): Promise<N
       await revalidateForType(type);
 
       return NextResponse.json({ id: created.id, handle: created.handle, type: created.type });
+    }
+
+    if (allowed === "metaobjectDelete") {
+      const parsed = validate(deleteEntrySchema, body.value, action);
+      if (!parsed.ok) {
+        audit({ action, actor: staff.email, outcome: "invalid", reason: "SCHEMA", ip });
+        return parsed.response;
+      }
+
+      const deleted = await deleteEntry(parsed.data.id);
+
+      audit({
+        action,
+        actor: staff.email,
+        outcome: "ok",
+        type: deleted.type,
+        entryId: deleted.id,
+        // No `fields` key. A delete takes every field, so listing them would read as a
+        // partial change; the absence is what says "all of it".
+        ip,
+      });
+
+      await revalidateForType(deleted.type);
+
+      return NextResponse.json({ id: deleted.id, handle: deleted.handle, type: deleted.type });
     }
 
     const parsed = validate(updateEntrySchema, body.value, action);

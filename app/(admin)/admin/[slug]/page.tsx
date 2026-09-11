@@ -17,7 +17,7 @@ import {
   type Definition,
   type Entry,
 } from "@/lib/admin/metaobjects";
-import { moduleFor } from "@/lib/admin/modules";
+import { isDeletable, moduleFor } from "@/lib/admin/modules";
 import { labelForDefinition, typeForSlug } from "@/lib/admin/navigation";
 
 /**
@@ -197,6 +197,10 @@ export default async function EntryListPage({ params }: PageProps<"/admin/[slug]
         rows={rows}
         readOnly={readOnly}
         linkKey={linkKey}
+        typeLabel={singular}
+        /* A courtesy, so an operator is not offered a button that will refuse. The
+           refusal itself lives in `assertDeletable`, which answers curl the same way. */
+        deletable={isDeletable(definition.type)}
         orderField={
           moduleDef.orderField && byKey.has(moduleDef.orderField) ? moduleDef.orderField : null
         }

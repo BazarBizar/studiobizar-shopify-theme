@@ -54,6 +54,8 @@ export function EntryTable({
   rows,
   readOnly,
   linkKey,
+  typeLabel,
+  deletable,
   orderField,
   onExport,
   excelHref = null,
@@ -64,6 +66,8 @@ export function EntryTable({
   readOnly: boolean;
   /** Column that links into the record. See `buildColumns`. */
   linkKey: string | null;
+  typeLabel: string;
+  deletable: boolean;
   /** Manual order field, when the definition has one. Enables drag-to-reorder. */
   orderField: string | null;
   onExport: () => Promise<number>;
@@ -111,10 +115,12 @@ export function EntryTable({
         type,
         readOnly,
         linkKey,
+        typeLabel,
+        deletable,
         sortable: true,
         reorderable: Boolean(orderField),
       }),
-    [fields, type, readOnly, linkKey, orderField],
+    [fields, type, readOnly, linkKey, typeLabel, deletable, orderField],
   );
 
   const table = useReactTable({
