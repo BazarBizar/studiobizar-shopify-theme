@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { AdminProviders } from "@/components/admin/admin-providers";
@@ -45,6 +46,16 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   if (!staff) redirect(STAFF_LOGIN_PATH);
 
   /**
+   * The per-request nonce `proxy.ts` minted, on its way to next-themes.
+   *
+   * Next finds this by itself for its OWN bootstrap scripts — it parses the
+   * `Content-Security-Policy` request header the proxy sets — but that does nothing for
+   * an inline `<script>` a library renders into the tree. Until this was threaded
+   * through, `x-nonce` was written by the proxy and read by nobody.
+   */
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
+  /**
    * Derived from the metaobject definitions that exist in the store right now —
    * there is no hardcoded list of screens. A definition created in Shopify appears
    * on the next page load, grouped by `lib/admin/groups.ts` or, if nobody has
@@ -75,7 +86,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   );
 
   return (
-    <AdminProviders>
+    <AdminProviders nonce={nonce}>
       {/* `data-admin` is what re-points the shared utility names at the panel's
           tokens — see the bridge block in globals.css. */}
       <div data-admin className="flex min-h-svh flex-1">

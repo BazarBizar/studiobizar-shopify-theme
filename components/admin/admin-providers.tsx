@@ -19,7 +19,14 @@ import { TooltipProvider } from "@/components/admin/ui/tooltip";
  * is inert on public pages. Mounting the provider at the root would instead put a
  * theme listener on every storefront visit for a feature only the panel has.
  */
-export function AdminProviders({ children }: { children: React.ReactNode }) {
+export function AdminProviders({
+  /** Per-request CSP nonce from `proxy.ts`. See the note on ThemeProvider below. */
+  nonce,
+  children,
+}: {
+  nonce?: string;
+  children: React.ReactNode;
+}) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -45,7 +52,26 @@ export function AdminProviders({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      disableTransitionOnChange
+      /**
+       * WITHOUT THIS THE THEME SCRIPT IS BLOCKED, silently.
+       *
+       * next-themes renders an inline `<script>` that sets the theme class before first
+       * paint. The panel's policy is `script-src 'self' 'nonce-…' 'strict-dynamic'` with
+       * no `unsafe-inline`, so an un-nonced inline script never runs — and `strict-dynamic`
+       * does not help, since it only lets an ALREADY-trusted script load more. The symptom
+       * is not an error, it is the panel painting the wrong theme until hydration catches
+       * up.
+       *
+       * next-themes applies the nonce on the server render only, which is the one render
+       * where the script does anything.
+       */
+      nonce={nonce}
+    >
       <QueryClientProvider client={queryClient}>
         <TooltipProvider delayDuration={300}>
           {children}
