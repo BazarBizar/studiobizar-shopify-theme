@@ -2,9 +2,15 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-/* next-themes writes `.dark` on <html>; the panel's tokens live under it. The
-   storefront defines no dark rules at all, so the class is inert on public pages
-   and toggling the panel's theme cannot darken the shop. */
+/* next-themes writes `.dark` on <html>, which is a GLOBAL class: it stays there
+   when the operator leaves /admin, so anything the storefront renders that reads a
+   variable `.dark` redefines changes with the panel's theme.
+
+   No storefront component uses a `dark:` utility (checked: zero), so this variant
+   is inert on public pages. What is NOT automatically inert is section K's
+   `@theme inline` — every --color-* it publishes globally is a name the shop can
+   accidentally use. See the note on --color-admin-secondary there, which is
+   exactly how a theme toggle inside /admin once reached /shop. */
 @custom-variant dark (&:is(.dark *));
 
 /* =============================================================================
@@ -567,12 +573,35 @@
    each side of the app, and not one storefront rule is edited.
    ========================================================================== */
 @theme inline {
-  /* Names the storefront does not use — safe to publish globally. */
+  /* Names the storefront does not use — safe to publish globally. "Does not use"
+     has to be checked against BOTH the shop's --color-* names AND its type scale
+     in section B, because `text-<name>` is claimed by --color-* and --text-*
+     alike. See --color-admin-secondary below for what that costs when missed. */
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
-  --color-secondary: var(--secondary);
+  /**
+   * RENAMED, and it has to stay renamed.
+   *
+   * As `--color-secondary` this generated `text-secondary` as a COLOUR, which took
+   * the name away from the storefront's `text-secondary` FONT SIZE (--fs-secondary,
+   * 16px desktop / 13px mobile, 60 uses). Tailwind resolves `text-*` against
+   * --color-* before --text-* whatever the declaration order — verified against
+   * 4.3.3, both orders — so the type scale lost outright: those 60 elements got no
+   * font size at all and were painted oklch(0.97 0 0), near-white text on a white
+   * page. Switching the panel to dark flipped the same variable to near-black,
+   * which is how a theme change inside /admin showed up on the shop.
+   *
+   * The collision this section's header describes is between two --color-* sets.
+   * This was a different one — --color-* against --text-* — and `text-<name>` is
+   * the single utility both namespaces claim.
+   *
+   * Only the background half needed a new name: `secondary-foreground` has no
+   * counterpart in the type scale, so it stays as the design system writes it.
+   * `bg-admin-secondary` is used by admin/ui/badge.tsx and admin/ui/button.tsx.
+   */
+  --color-admin-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent-foreground: var(--accent-foreground);

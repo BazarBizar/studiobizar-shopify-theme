@@ -22,7 +22,8 @@
     "admin:credentials": "tsx --conditions=react-server scripts/admin-credentials.ts",
     "measure:first-load": "node scripts/first-load-js.mjs",
     "check:rich-text": "tsx --conditions=react-server scripts/check-rich-text.ts",
-    "check:nesting": "node scripts/check-html-nesting.mjs"
+    "check:nesting": "node scripts/check-html-nesting.mjs",
+    "check:tokens": "node scripts/check-token-collisions.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
