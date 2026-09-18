@@ -4,7 +4,7 @@ import { PageShell } from "@/components/layout/page-shell";
 import { ProductGrid } from "@/components/shop/product-grid";
 import { ShopControls } from "@/components/shop/shop-controls";
 import { Container } from "@/components/ui/container";
-import { PRODUCTS_PER_PAGE, getPage, getProducts } from "@/lib/shopify";
+import { DEFAULT_SORT, PRODUCTS_PER_PAGE, getPage, getProducts } from "@/lib/shopify";
 import { categoryQuery, findCategory } from "@/lib/shopify/categories";
 
 export const metadata: Metadata = {
@@ -46,7 +46,7 @@ export default async function ShopPage({ searchParams }: PageProps<"/shop">) {
 
         <div className="mt-10">
           <ProductGrid
-            key={`${categorySlug ?? "all"}-${sort ?? "relevance"}`}
+            key={`${categorySlug ?? "all"}-${sort ?? DEFAULT_SORT}`}
             initial={firstPage}
             category={categorySlug}
             sort={sort}

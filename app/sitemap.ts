@@ -45,13 +45,12 @@ const STATIC_PATHS = [
 /**
  * Every product, in pages of 250 — the Storefront API's maximum.
  *
- * `sort: "a-z"` IS LOAD-BEARING, and the default is not safe here.
- * `resolveSort(undefined)` returns the first option, which is `RELEVANCE` — a
- * sort key Shopify only defines in a search context. Paginating through the
- * whole catalogue with it gives an unstable order, and records fall between the
- * cursors: measured against this store it returned 1,457 of 1,595 products, a
- * silent 9% loss with no error anywhere. `TITLE` is a total order, so every
- * record appears exactly once.
+ * `sort: "a-z"` is passed explicitly rather than left to the default. It was
+ * once load-bearing — the default was `relevance`, which paginates unstably and
+ * silently dropped products from this file — and that is now fixed at the
+ * source, in `SORT_OPTIONS`. It stays explicit anyway: a sitemap should have a
+ * reproducible order of its own, not one that moves whenever the shop's
+ * merchandising default is retuned.
  *
  * The page cap exists so a pagination bug cannot turn this into an unbounded
  * loop against Shopify. 20 pages is 5,000 products against a catalogue of 1,595,

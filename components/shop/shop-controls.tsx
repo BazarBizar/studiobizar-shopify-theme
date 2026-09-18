@@ -3,7 +3,7 @@
 import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 
 import { CATEGORIES } from "@/lib/shopify/categories";
-import { SORT_OPTIONS } from "@/lib/shopify/constants";
+import { DEFAULT_SORT, SORT_OPTIONS } from "@/lib/shopify/constants";
 import { cn } from "@/lib/utils/cn";
 
 const VIEWS = ["type", "collection"] as const;
@@ -19,7 +19,7 @@ export function ShopControls({ total }: { total?: number }) {
   );
   const [sort, setSort] = useQueryState(
     "sort",
-    parseAsString.withOptions({ shallow: false, history: "push" }).withDefault("relevance"),
+    parseAsString.withOptions({ shallow: false, history: "push" }).withDefault(DEFAULT_SORT),
   );
   const [view, setView] = useQueryState(
     "view",

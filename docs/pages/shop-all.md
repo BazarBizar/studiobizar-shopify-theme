@@ -49,7 +49,7 @@ else.
 | Param | Values | Notes |
 |---|---|---|
 | `category` | a slug from `CATEGORIES` | absent = all |
-| `sort` | `relevance` · `newest` · `a-z` · `z-a` | no price sort, by design |
+| `sort` | `newest` (default) · `a-z` · `z-a` | no price sort, by design |
 | `view` | `type` · `collection` | in the design; grouping lands with collections (Step 7) |
 
 `shallow: false`, so changing a filter re-runs the Server Component and the first page of results
@@ -81,6 +81,13 @@ Against the running dev server:
 | `?category=lighting` | returns lamps and On Stand only |
 | `?category=dining-tables-chairs` | returns dining chairs and tables only |
 | `sort=a-z` / `z-a` / `newest` | "Basket 015" / "The Zuri Pendant" / "The Beaded Basket" |
+
+**`relevance` was removed after this table was written.** It was the default, and it
+never paginated: `RELEVANCE` is only defined inside a search context, so walking the
+catalogue 24 at a time returned 192 of 1,595 products with 144 duplicates, stopping at
+page 15 of 67. The row above is why it went unnoticed — the three keys that were verified
+are the three that work. `newest`, `a-z` and `z-a` each return all 1,595 in 67 pages.
+`search()` still sorts by RELEVANCE, correctly, and does not go through `resolveSort`.
 | Cursor pagination | page 2 has **0 overlap** with page 1, continues alphabetically |
 | Price/stock in HTML | none |
 | `yarn build`, `eslint`, `yarn check:price` | pass |

@@ -99,16 +99,36 @@ export const REVALIDATE = {
 /**
  * Sort options offered in the UI. Price and availability are deliberately
  * absent — see the inquiry-only business model.
+ *
+ * `relevance` USED TO BE HERE AND WAS THE DEFAULT. It is gone because
+ * `RELEVANCE` is a sort key Shopify only defines inside a search context; on a
+ * plain `products()` query it produces no stable order, and cursor pagination
+ * over an unstable order loses and repeats records.
+ *
+ * That was not a small effect. Walking the whole catalogue 24 at a time — which
+ * is exactly what /shop's infinite scroll does — returned **192 of 1,595
+ * products, with 144 duplicates**, and stopped after 15 pages instead of 67. A
+ * visitor on the default setting was seeing about an eighth of the catalogue,
+ * with no error anywhere to say so.
+ *
+ * All three keys below were measured over the same walk and each returned 1,595
+ * distinct products in 67 pages. `search()` still sorts by RELEVANCE, and that
+ * is correct — there it has a query to be relevant to, and it does not go
+ * through `resolveSort`.
  */
 export const SORT_OPTIONS = [
-  { value: "relevance", label: "relevance", sortKey: "RELEVANCE", reverse: false },
   { value: "newest", label: "newest", sortKey: "CREATED_AT", reverse: true },
   { value: "a-z", label: "a–z", sortKey: "TITLE", reverse: false },
   { value: "z-a", label: "z–a", sortKey: "TITLE", reverse: true },
 ] as const;
 
 export type SortValue = (typeof SORT_OPTIONS)[number]["value"];
-export const DEFAULT_SORT: SortValue = "relevance";
+
+/**
+ * Also what `resolveSort` falls back to, so an unrecognised `?sort=` in the URL
+ * — or none at all — lands on a key that pages completely.
+ */
+export const DEFAULT_SORT: SortValue = "newest";
 
 export function resolveSort(value?: string | null) {
   return SORT_OPTIONS.find((o) => o.value === value) ?? SORT_OPTIONS[0];

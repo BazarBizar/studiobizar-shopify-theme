@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 
 import { ProductCard } from "@/components/product/product-card";
 import { ProductCardSkeleton } from "@/components/ui/skeleton";
+import { DEFAULT_SORT } from "@/lib/shopify/constants";
 import type { Paginated, ProductCard as ProductCardType } from "@/lib/shopify/types";
 
 async function fetchPage({
@@ -51,7 +52,7 @@ export function ProductGrid({
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isError, refetch } =
     useInfiniteQuery({
       // The key carries the filters, so switching category starts a fresh list.
-      queryKey: ["products", collection ?? category ?? "all", sort ?? "relevance"],
+      queryKey: ["products", collection ?? category ?? "all", sort ?? DEFAULT_SORT],
       queryFn: ({ pageParam }) => fetchPage({ pageParam, category, sort, collection }),
       initialPageParam: undefined as string | undefined,
       getNextPageParam: (last) => (last.pageInfo.hasNextPage ? last.pageInfo.endCursor ?? undefined : undefined),
