@@ -1,0 +1,41 @@
+{% comment %}
+  components/product/product-rail.tsx — a heading with `view all`, then a row of
+  product cards.
+
+  Renders nothing when the list is empty, which is what lets the product page
+  drop "The Collection" on a product that belongs to none without a guard at the
+  call site.
+
+  Accepts:
+    heading   — the row title
+    products  — an array of products
+    view_all  — url for the `view all` button
+    limit     — how many to show, default 4
+{% endcomment %}
+
+{%- liquid
+  assign limit = limit | default: 4
+  assign shown = products | slice: 0, limit
+  comment
+    Liquid does not allow a filter on a `render` argument, so every translated
+    label in this theme is resolved into a variable first.
+  endcomment
+  assign view_all_label = 'product.view_all' | t
+-%}
+
+{%- if shown.size > 0 -%}
+  <div class="sb-container py-section">
+    <div class="mb-8 flex items-end justify-between gap-6">
+      <h2 class="text-h2">{{ heading }}</h2>
+      {%- if view_all != blank -%}
+        {%- render 'sb-button', label: view_all_label, href: view_all, class: 'shrink-0' -%}
+      {%- endif -%}
+    </div>
+
+    <ul class="sb-grid-4">
+      {%- for item in shown -%}
+        <li>{%- render 'sb-product-card', product: item -%}</li>
+      {%- endfor -%}
+    </ul>
+  </div>
+{%- endif -%}

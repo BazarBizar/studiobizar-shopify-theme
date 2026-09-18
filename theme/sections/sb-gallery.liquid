@@ -1,0 +1,145 @@
+{% comment %}
+  components/gallery/gallery-grid.tsx — the masonry gallery.
+
+  Masonry so images keep their own proportions instead of being cropped to a
+  common ratio; the gallery is the one place the photography is the subject.
+
+  CSS `columns`, not `react-masonry-css`. The library needed a flex parent and
+  padded columns to fake what `columns` does natively — same visual result, no
+  JavaScript, and the layout survives with JS off. `sb-masonry` in the stylesheet
+  carries the whole implementation.
+
+  Images come from a PAGE metafield holding `captioned_image` entries, which is
+  where `/gallery` reads them in the Next build too. Every tile opens the shared
+  viewer at its own index.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+
+  capture rhythm_class
+    render 'sb-section-classes', rhythm: s.rhythm, pad: 'none'
+  endcapture
+
+  assign entries = page.metafields.custom[s.metafield].value
+-%}
+
+<section
+  data-surface="{{ s.surface }}"
+  class="bg-background text-foreground"
+  {{ section.shopify_attributes }}
+>
+  <div class="sb-container pt-12 pb-section {{ rhythm_class }}">
+    {%- if s.heading != blank -%}
+      <h1 class="text-h1 mb-12">{{ s.heading }}</h1>
+    {%- endif -%}
+
+    {%- if entries == blank or entries.size == 0 -%}
+      <p class="text-body py-16 text-muted">{{ 'gallery.none' | t }}</p>
+    {%- else -%}
+      <div class="sb-masonry" data-sb-lightbox-group>
+        {%- for entry in entries -%}
+          {%- if entry.image -%}
+            {%- liquid
+              assign alt = entry.alt_text | default: entry.caption | default: ''
+              assign full = entry.image | image_url: width: 2000
+              assign open_label = 'gallery.open' | t: index: forloop.index, total: entries.size
+            -%}
+            <figure>
+              <button
+                type="button"
+                data-sb-lightbox-item
+                data-src="{{ full }}"
+                data-alt="{{ alt | escape }}"
+                data-caption="{{ entry.caption | escape }}"
+                data-credit="{{ entry.credit | escape }}"
+                {% if entry.video %}data-video-src="{{ entry.video.sources[1].url }}" data-video-type="{{ entry.video.sources[1].mime_type }}"{% endif %}
+                aria-label="{{ open_label }}"
+                class="group block w-full overflow-hidden bg-foreground/10"
+              >
+                {%- render 'sb-image',
+                  image: entry.image,
+                  alt: alt,
+                  sizes: '(max-width: 749px) 100vw, (max-width: 1023px) 50vw, 33vw',
+                  widths: '620, 830, 1240',
+                  class: 'h-auto w-full transition-transform duration-500 ease-out-soft group-hover:scale-[1.02]'
+                -%}
+              </button>
+
+              {%- if entry.caption != blank -%}
+                <figcaption class="text-tertiary mt-2 text-muted">{{ entry.caption }}</figcaption>
+              {%- endif -%}
+            </figure>
+          {%- endif -%}
+        {%- endfor -%}
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+{%- render 'sb-lightbox' -%}
+
+{% schema %}
+{
+  "name": "Gallery",
+  "tag": "section",
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Reads a list of captioned_image entries from a metafield on this page. Entries are managed in the admin panel."
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Gallery"
+    },
+    {
+      "type": "select",
+      "id": "metafield",
+      "label": "Source metafield",
+      "info": "Which PAGE metafield holds the images.",
+      "options": [
+        { "value": "gallery", "label": "gallery" },
+        { "value": "feature_images", "label": "feature_images" },
+        { "value": "hero_slides", "label": "hero_slides" }
+      ],
+      "default": "gallery"
+    },
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Ground",
+      "info": "Off black in the design.",
+      "options": [
+        { "value": "light", "label": "Earth" },
+        { "value": "dark", "label": "Dark wood" },
+        { "value": "olive", "label": "Black olive" },
+        { "value": "blue", "label": "Charcoal blue" },
+        { "value": "mocha", "label": "Deep mocha" },
+        { "value": "black", "label": "Off black" }
+      ],
+      "default": "black"
+    },
+    {
+      "type": "select",
+      "id": "rhythm",
+      "label": "Vertical space",
+      "options": [
+        { "value": "theme", "label": "Theme default" },
+        { "value": "xs", "label": "Extra tight" },
+        { "value": "sm", "label": "Tight" },
+        { "value": "md", "label": "Medium" },
+        { "value": "lg", "label": "Loose" },
+        { "value": "xl", "label": "Extra loose" }
+      ],
+      "default": "theme"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Gallery"
+    }
+  ]
+}
+{% endschema %}

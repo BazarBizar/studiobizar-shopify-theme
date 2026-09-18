@@ -1,10 +1,11 @@
 {
   "sections": {
     "main": {
-      "type": "sb-main-list-collections",
+      "type": "sb-gallery",
       "settings": {
-        "heading": "Collections",
-        "surface": "inherit",
+        "heading": "Gallery",
+        "metafield": "gallery",
+        "surface": "black",
         "rhythm": "theme"
       }
     }

@@ -1,0 +1,153 @@
+{% comment %}
+  The Idea and The Designer on a collection page — the same two bands the product
+  page carries, from app/(storefront)/collections/[handle]/page.tsx.
+
+  Both read the COLLECTION's own metafields, so one section covers both and the
+  editor can place it above or below the product grid. Each band hides itself
+  when its field is empty, which is how a collection with no story renders
+  straight from the hero into the products.
+
+  The markup is `sb-media-text-block`, shared with the product page and the
+  Media-and-text section — three callers, one band.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+  assign m = collection.metafields.custom
+
+  assign idea_heading = m.idea_title.value
+  if idea_heading == blank
+    assign idea_heading = 'collection.the_idea' | t
+  endif
+
+  assign designer = m.designer.value
+  assign designer_bio = designer.bio_full.value | default: designer.bio_short.value
+
+  assign t_designer = 'collection.the_designer' | t
+  assign t_learn_more = 'product.learn_more' | t
+-%}
+
+<div {{ section.shopify_attributes }}>
+  {%- if m.idea_body.value != blank -%}
+    {%- render 'sb-media-text-block',
+      heading: idea_heading,
+      body: m.idea_body.value,
+      image: m.idea_image.value,
+      align: s.idea_align,
+      surface: s.idea_surface,
+      padding: 'wide',
+      rhythm: s.rhythm
+    -%}
+  {%- endif -%}
+
+  {%- if designer_bio != blank -%}
+    {%- render 'sb-media-text-block',
+      heading: t_designer,
+      body: designer_bio,
+      image: designer.portrait.value,
+      align: s.designer_align,
+      surface: s.designer_surface,
+      padding: 'wide',
+      rhythm: s.rhythm,
+      link_label: t_learn_more,
+      link_url: designer.system.url
+    -%}
+  {%- endif -%}
+</div>
+
+{% schema %}
+{
+  "name": "Collection story",
+  "tag": "section",
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "The Idea and The Designer, read from the collection's own metafields. Each band disappears when its field is empty."
+    },
+    {
+      "type": "header",
+      "content": "The Idea"
+    },
+    {
+      "type": "select",
+      "id": "idea_align",
+      "label": "Image side",
+      "options": [
+        { "value": "left", "label": "Left" },
+        { "value": "right", "label": "Right" }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "select",
+      "id": "idea_surface",
+      "label": "Ground",
+      "options": [
+        { "value": "inherit", "label": "Inherit" },
+        { "value": "light", "label": "Earth" },
+        { "value": "dark", "label": "Dark wood" },
+        { "value": "olive", "label": "Black olive" },
+        { "value": "blue", "label": "Charcoal blue" },
+        { "value": "mocha", "label": "Deep mocha" },
+        { "value": "black", "label": "Off black" }
+      ],
+      "default": "blue"
+    },
+    {
+      "type": "header",
+      "content": "The Designer"
+    },
+    {
+      "type": "select",
+      "id": "designer_align",
+      "label": "Image side",
+      "options": [
+        { "value": "left", "label": "Left" },
+        { "value": "right", "label": "Right" }
+      ],
+      "default": "right"
+    },
+    {
+      "type": "select",
+      "id": "designer_surface",
+      "label": "Ground",
+      "options": [
+        { "value": "inherit", "label": "Inherit" },
+        { "value": "light", "label": "Earth" },
+        { "value": "dark", "label": "Dark wood" },
+        { "value": "olive", "label": "Black olive" },
+        { "value": "blue", "label": "Charcoal blue" },
+        { "value": "mocha", "label": "Deep mocha" },
+        { "value": "black", "label": "Off black" }
+      ],
+      "default": "inherit"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "rhythm",
+      "label": "Vertical space",
+      "options": [
+        { "value": "theme", "label": "Theme default" },
+        { "value": "xs", "label": "Extra tight" },
+        { "value": "sm", "label": "Tight" },
+        { "value": "md", "label": "Medium" },
+        { "value": "lg", "label": "Loose" },
+        { "value": "xl", "label": "Extra loose" }
+      ],
+      "default": "theme"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Collection story"
+    }
+  ],
+  "enabled_on": {
+    "templates": ["collection"]
+  }
+}
+{% endschema %}

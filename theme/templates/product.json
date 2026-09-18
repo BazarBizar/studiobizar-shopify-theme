@@ -1,12 +1,11 @@
 {
   "sections": {
     "main": {
-      "type": "sb-main-placeholder",
+      "type": "sb-main-product",
       "settings": {
-        "title": "Shop detail",
-        "note": "Phase 4 — gallery, specs, accordions, The Idea, The Designer, two rails.",
-        "source": "app/(storefront)/shop/[handle]/page.tsx",
-        "surface": "light"
+        "surface": "light",
+        "idea_surface": "olive",
+        "rhythm": "theme"
       }
     }
   },

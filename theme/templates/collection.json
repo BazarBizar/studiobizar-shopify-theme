@@ -1,16 +1,38 @@
 {
   "sections": {
-    "main": {
-      "type": "sb-main-placeholder",
+    "hero": {
+      "type": "sb-collection-hero",
       "settings": {
-        "title": "Collection detail",
-        "note": "Phase 6 — 128px wordmark hero, The Idea, The Designer, product grid, In Context.",
-        "source": "app/(storefront)/collections/[handle]/page.tsx",
-        "surface": "blue"
+        "show_wordmark": true,
+        "ratio": "2 / 1",
+        "surface": "dark"
+      }
+    },
+    "story": {
+      "type": "sb-collection-story",
+      "settings": {
+        "idea_align": "left",
+        "idea_surface": "blue",
+        "designer_align": "right",
+        "designer_surface": "inherit",
+        "rhythm": "theme"
+      }
+    },
+    "main": {
+      "type": "sb-main-collection",
+      "settings": {
+        "show_title": false,
+        "show_filters": true,
+        "show_sort": true,
+        "products_per_page": 24,
+        "surface": "inherit",
+        "rhythm": "theme"
       }
     }
   },
   "order": [
+    "hero",
+    "story",
     "main"
   ]
 }

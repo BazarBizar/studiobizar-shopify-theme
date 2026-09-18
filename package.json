@@ -29,10 +29,11 @@
     "theme:check": "node theme-build/build.mjs --check",
     "check:theme-price": "node scripts/check-theme-price.mjs",
     "theme:dev": "shopify theme dev --path theme",
-    "theme:push": "shopify theme push --path theme",
+    "theme:push": "shopify theme push --path theme --theme \"Studio Bizar (migration WIP)\"",
     "check:theme-refs": "node scripts/check-theme-refs.mjs",
     "seed:in-context": "tsx scripts/seed-in-context.ts",
-    "seed:nav-pages": "tsx scripts/seed-nav-pages.ts"
+    "seed:nav-pages": "tsx scripts/seed-nav-pages.ts",
+    "theme:lint": "shopify theme check --path theme"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -80,6 +81,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@shopify/cli": "^4.8.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

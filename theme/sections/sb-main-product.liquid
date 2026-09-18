@@ -1,0 +1,329 @@
+{% comment %}
+  app/(storefront)/shop/[handle]/page.tsx.
+
+  Gallery beside the detail column, then The Idea, The Designer and two product
+  rails. Seventeen PRODUCT metafields feed it, and EVERY BLOCK HIDES ITSELF WHEN
+  ITS FIELD IS EMPTY — that is the graceful degradation the Next build relies on,
+  and it matters: only 144 of the ~1,595 products carry the full set, so the rest
+  render the upper half and stop.
+
+  NO PRICE, NO STOCK. "Price on request" is the line the design puts where a
+  price would be, and `enquire` adds to the inquiry list rather than a cart.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+  assign m = product.metafields.custom
+
+  capture rhythm_class
+    render 'sb-section-classes', rhythm: s.rhythm, pad: 'none'
+  endcapture
+
+  assign paints_ground = true
+  if s.surface == 'inherit'
+    assign paints_ground = false
+  endif
+
+  comment
+    Availability and lead time render as ONE row — "Made to order | Lead time of
+    12–16 weeks" — rather than two lines, as the design has it.
+  endcomment
+  assign availability = m.availability.value
+  assign lead_time = m.lead_time_weeks.value
+  if availability != blank and lead_time != blank
+    assign availability = availability | append: ' | ' | append: lead_time
+  endif
+
+  assign designer = m.designer.value
+
+  comment
+    Liquid does not allow a filter on a `render` argument, so every label passed
+    to a snippet below is resolved here first. `scripts/check-theme-refs.mjs`
+    fails the build on the inline form.
+  endcomment
+  assign t_idea = 'product.the_idea' | t
+  assign t_designer = 'product.the_designer' | t
+  assign t_learn_more = 'product.learn_more' | t
+  assign t_collection = 'product.the_collection' | t
+  assign t_discover = 'product.discover_more' | t
+  assign t_downloads = 'product.downloads' | t
+  assign t_panel_tech = 'product.panel.technical_specifications' | t
+  assign t_panel_dimensions = 'product.panel.dimensions' | t
+  assign t_panel_care = 'product.panel.care_maintenance' | t
+  assign t_panel_shipping = 'product.panel.shipping_delivery' | t
+-%}
+
+<section
+  {% if paints_ground %}data-surface="{{ s.surface }}" class="bg-background text-foreground"{% endif %}
+  data-sb-product
+  {{ section.shopify_attributes }}
+>
+  <div class="sb-container pt-8 pb-section {{ rhythm_class }}">
+    <div class="grid gap-12 lg:grid-cols-2 lg:gap-16">
+      {%- render 'sb-product-gallery', product: product -%}
+
+      <div class="max-w-[35rem]">
+        <nav
+          aria-label="Breadcrumb"
+          class="text-tertiary font-medium tracking-[0.02em] text-muted uppercase"
+        >
+          <a href="{{ routes.all_products_collection_url }}" class="sb-underline">
+            {{ 'product.breadcrumb_root' | t }}
+          </a>
+          {%- if product.type != blank -%}
+            <span aria-hidden="true"> &gt; </span>
+            <span>{{ product.type }}</span>
+          {%- endif -%}
+        </nav>
+
+        <h1 class="text-h1 mt-4">{{ product.title }}</h1>
+
+        {%- if designer.name != blank -%}
+          <p class="text-h2 mt-3 text-muted">
+            {{- 'product.by_designer' | t: name: designer.name -}}
+            {%- if designer.studio != blank %}, {{ designer.studio }}{% endif -%}
+          </p>
+        {%- endif -%}
+
+        {%- if product.description != blank -%}
+          <div class="sb-prose mt-8">{{ product.description }}</div>
+        {%- endif -%}
+
+        {%- if m.in_context_images.value != blank -%}
+          <div class="mt-8 border-t border-border pt-8">
+            <ul class="grid grid-cols-3 gap-grid-gap">
+              {%- for entry in m.in_context_images.value -%}
+                {%- if entry.image -%}
+                  {%- assign entry_alt = entry.alt_text | default: product.title -%}
+                  <li>
+                    <figure>
+                      {%- render 'sb-image',
+                        image: entry.image,
+                        alt: entry_alt,
+                        ratio: '1 / 1',
+                        crop: 'center',
+                        sizes: '(max-width: 1023px) 33vw, 15vw'
+                      -%}
+                      {%- if entry.caption != blank -%}
+                        <figcaption class="text-tertiary mt-2 text-muted">{{ entry.caption }}</figcaption>
+                      {%- endif -%}
+                    </figure>
+                  </li>
+                {%- endif -%}
+              {%- endfor -%}
+            </ul>
+          </div>
+        {%- endif -%}
+
+        {% comment %} ── specs ─────────────────────────────────────────────── {% endcomment %}
+        {%- capture specs -%}
+          {%- if m.material_finish.value != blank -%}
+            <div class="grid grid-cols-[10rem_1fr] gap-4">
+              <dt class="text-h4">{{ 'product.spec.material_finish' | t }}</dt>
+              <dd class="text-tertiary">{{ m.material_finish.value }}</dd>
+            </div>
+          {%- endif -%}
+          {%- if m.colour.value != blank -%}
+            <div class="grid grid-cols-[10rem_1fr] gap-4">
+              <dt class="text-h4">{{ 'product.spec.colour' | t }}</dt>
+              <dd class="text-tertiary">{{ m.colour.value }}</dd>
+            </div>
+          {%- endif -%}
+          {%- if m.upholstery.value != blank -%}
+            <div class="grid grid-cols-[10rem_1fr] gap-4">
+              <dt class="text-h4">{{ 'product.spec.upholstery' | t }}</dt>
+              <dd class="text-tertiary">{{ m.upholstery.value }}</dd>
+            </div>
+          {%- endif -%}
+          {%- if availability != blank -%}
+            <div class="grid grid-cols-[10rem_1fr] gap-4">
+              <dt class="text-h4">{{ 'product.spec.availability' | t }}</dt>
+              <dd class="text-tertiary">{{ availability }}</dd>
+            </div>
+          {%- endif -%}
+        {%- endcapture -%}
+
+        {%- if specs contains '<dt' -%}
+          <dl class="mt-12 flex flex-col gap-3">{{ specs }}</dl>
+        {%- endif -%}
+
+        <p class="text-h4 mt-10 border-t border-border pt-10 italic">
+          {{ 'product.price_on_request' | t }}
+        </p>
+
+        <div class="mt-5">
+          {%- render 'sb-add-to-inquiry', product: product -%}
+        </div>
+
+        {% comment %} ── disclosure panels, in design order ────────────────── {% endcomment %}
+        <div class="mt-12">
+          {%- if m.technical_specifications.value != blank -%}
+            {%- render 'sb-accordion',
+              title: t_panel_tech,
+              content: m.technical_specifications.value
+            -%}
+          {%- endif -%}
+          {%- if m.dimensions.value != blank -%}
+            {%- render 'sb-accordion', title: t_panel_dimensions, content: m.dimensions.value -%}
+          {%- endif -%}
+          {%- if m.care_maintenance.value != blank -%}
+            {%- render 'sb-accordion', title: t_panel_care, content: m.care_maintenance.value -%}
+          {%- endif -%}
+          {%- if m.shipping_delivery.value != blank -%}
+            {%- render 'sb-accordion', title: t_panel_shipping, content: m.shipping_delivery.value -%}
+          {%- endif -%}
+
+          {%- if m.downloads.value != blank -%}
+            {%- capture downloads -%}
+              <ul class="flex flex-col gap-2">
+                {%- for file in m.downloads.value -%}
+                  {%- liquid
+                    comment
+                      The filename, taken off the CDN url: last path segment, query
+                      string dropped. Computed in its own assign rather than chained
+                      into the output, because `| default: 'key' | t` would run the
+                      translation filter over a REAL filename too and print
+                      "translation missing" for every file that has a name.
+                    endcomment
+                    assign filename = file.url | split: '/' | last | split: '?' | first
+                    if filename == blank
+                      assign filename = 'product.download_fallback' | t
+                    endif
+                  -%}
+                  <li>
+                    <a href="{{ file.url }}" target="_blank" rel="noopener noreferrer" class="text-secondary sb-underline">
+                      {{ filename }}
+                    </a>
+                  </li>
+                {%- endfor -%}
+              </ul>
+            {%- endcapture -%}
+            {%- render 'sb-accordion', title: t_downloads, content: downloads -%}
+          {%- endif -%}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{%- if m.idea_body.value != blank -%}
+  {%- render 'sb-media-text-block',
+    heading: t_idea,
+    body: m.idea_body.value,
+    image: m.idea_image.value,
+    align: 'left',
+    surface: s.idea_surface,
+    padding: 'wide'
+  -%}
+{%- endif -%}
+
+{%- if designer != blank -%}
+  {%- liquid
+    assign bio = designer.bio_full.value | default: designer.bio_short.value
+  -%}
+  {%- if bio != blank -%}
+    {%- render 'sb-media-text-block',
+      heading: t_designer,
+      body: bio,
+      image: designer.portrait.value,
+      align: 'right',
+      padding: 'wide',
+      link_label: t_learn_more,
+      link_url: designer.system.url
+    -%}
+  {%- endif -%}
+{%- endif -%}
+
+{%- liquid
+  comment
+    "The Collection" is the signature collection this product belongs to, named
+    by its own metafield rather than guessed from `product.collections` — a
+    product sits in several, and only one of them is its collection.
+  endcomment
+  assign signature = m.signature_collection.value
+-%}
+{%- if signature != blank -%}
+  {%- render 'sb-product-rail',
+    heading: t_collection,
+    products: signature.products,
+    view_all: signature.url,
+    limit: 4
+  -%}
+{%- endif -%}
+
+{% comment %}
+  Shopify derives recommendations from order history, which this store has none
+  of. `recommendations.performed` is false until the Recommendations API answers,
+  so the block renders nothing rather than an empty row — and the section
+  rendering request that fills it is made by sb-product.js.
+{% endcomment %}
+<div
+  data-sb-recommendations
+  data-url="{{ routes.product_recommendations_url }}?section_id={{ section.id }}&product_id={{ product.id }}&limit=4"
+>
+  {%- if recommendations.performed and recommendations.products_count > 0 -%}
+    {%- render 'sb-product-rail',
+      heading: t_discover,
+      products: recommendations.products,
+      view_all: routes.all_products_collection_url,
+      limit: 4
+    -%}
+  {%- endif -%}
+</div>
+
+{% schema %}
+{
+  "name": "Product",
+  "tag": "section",
+  "settings": [
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Ground",
+      "options": [
+        { "value": "inherit", "label": "Inherit" },
+        { "value": "light", "label": "Earth" },
+        { "value": "dark", "label": "Dark wood" },
+        { "value": "olive", "label": "Black olive" },
+        { "value": "blue", "label": "Charcoal blue" },
+        { "value": "mocha", "label": "Deep mocha" },
+        { "value": "black", "label": "Off black" }
+      ],
+      "default": "light"
+    },
+    {
+      "type": "select",
+      "id": "idea_surface",
+      "label": "The Idea ground",
+      "info": "Olive in the design, so the band reads as its own chapter.",
+      "options": [
+        { "value": "inherit", "label": "Inherit" },
+        { "value": "light", "label": "Earth" },
+        { "value": "dark", "label": "Dark wood" },
+        { "value": "olive", "label": "Black olive" },
+        { "value": "blue", "label": "Charcoal blue" },
+        { "value": "mocha", "label": "Deep mocha" },
+        { "value": "black", "label": "Off black" }
+      ],
+      "default": "olive"
+    },
+    {
+      "type": "select",
+      "id": "rhythm",
+      "label": "Vertical space",
+      "options": [
+        { "value": "theme", "label": "Theme default" },
+        { "value": "xs", "label": "Extra tight" },
+        { "value": "sm", "label": "Tight" },
+        { "value": "md", "label": "Medium" },
+        { "value": "lg", "label": "Loose" },
+        { "value": "xl", "label": "Extra loose" }
+      ],
+      "default": "theme"
+    }
+  ],
+  "enabled_on": {
+    "templates": ["product"]
+  }
+}
+{% endschema %}

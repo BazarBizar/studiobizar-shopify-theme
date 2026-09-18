@@ -100,6 +100,26 @@ the header takes the body ground and the footer has its own setting.
 | `sections/sb-page-content.liquid` | the title and body typed in Shopify admin |
 | `sections/sb-rich-text.liquid` | a band of copy with a button — replaces IntroBlock and ContactCta |
 | `sections/sb-media-text.liquid` | media-text.tsx, image either side |
+| `sections/sb-main-collection.liquid` | the catalogue grid — filters, sort, paging |
+| `snippets/sb-product-card.liquid` | product-card.tsx, hover crossfade and quick-add |
+| `snippets/sb-collection-sort.liquid` | sort options with the price ones stripped |
+| `assets/sb-inquiry-cart.js` | the inquiry list in localStorage |
+| `assets/sb-collection.js` | infinite scroll via the Section Rendering API |
+| `sections/sb-main-product.liquid` | shop detail — 17 metafields, each block self-hiding |
+| `sections/sb-main-list-collections.liquid` | the 4-up collection grid |
+| `sections/sb-collection-hero.liquid` | 128px wordmark over the hero image |
+| `sections/sb-collection-story.liquid` | The Idea and The Designer, from collection metafields |
+| `sections/sb-designer-list.liquid` | the designer grid, from `shop.metaobjects` |
+| `sections/sb-main-designer.liquid` | designer detail, on a metaobject template |
+| `sections/sb-project-list.liquid` | projects with category chips and the L/M toggle |
+| `sections/sb-main-project.liquid` | project detail, on a metaobject template |
+| `sections/sb-gallery.liquid` | masonry gallery, CSS columns not react-masonry-css |
+| `snippets/sb-lightbox.liquid` + `assets/sb-lightbox.js` | the viewer, on a native `<dialog>` |
+| `templates/metaobject/{designer,project}.json` | **confirmed against the store** — this is the path Shopify accepts |
+| `sections/sb-hero-slider.liquid` | the hero, on a scroll-snap track |
+| `sections/sb-captioned-row.liquid` | the three-up captioned row |
+| `sections/sb-product-row.liquid` | New In / Monthly Selection |
+| `assets/sb-carousel.js` | arrows and dots — no embla |
 | `snippets/` | button, image, icon, logo, social links, mobile nav, language switcher, section classes, meta tags, back to top, css variables |
 | `assets/sb-theme.js` | back to top, dropdown dismissal |
 | `assets/sb-nav.js` | mobile drawer — transitions, scroll lock, focus trap |
@@ -142,9 +162,67 @@ settings, and every part optional. See [page-building.md](page-building.md),
 including the one trap worth knowing before anyone is trained: layout lives on
 the template, not the page, so a page with its own layout needs its own template.
 
+## The catalogue, and what Shopify does natively
+
+Three things the Next build wrote by hand are Shopify's own job in a theme, and
+the port is smaller for it:
+
+- **Filtering.** `lib/shopify/categories.ts` mapped 11 chips onto 63 `productType`
+  values because the Storefront API cannot filter a collection by type. Shopify's
+  filters can, and arrive as `collection.filters`. With none configured the row
+  does not render, so this ships without waiting on the Search & Discovery
+  decision — which is also why that decision is no longer blocking phase 4.
+- **Sorting.** From `collection.sort_options`, with every price option stripped.
+  `scripts/check-theme-price.mjs` now fails on a `price-ascending` value reaching
+  the markup, because that string is the only trace a price sort leaves.
+- **Paging.** `paginate` replaces the cursor bookkeeping in `/api/products`.
+
+The inquiry list moved into this phase rather than waiting for phase 5, exactly
+as it did in the Next build: the product card's `+` is the primary call to action
+on the busiest page, and shipping the grid without it would ship a dead button.
+`assets/sb-inquiry-cart.js` keeps the Next build's storage key and its
+`{ state: { items }, version }` envelope, so the submission backend needs no
+change when it is wired up.
+
+## Three layers of checking, three classes of bug
+
+Worth knowing which tool finds what, because they do not overlap:
+
+- **`node scripts/check-theme-refs.mjs`** — missing snippets, sections, assets and
+  translation keys; filters on `render` arguments; range settings Shopify will
+  reject. The last two were added after each class escaped the other tools.
+- **`yarn theme:lint`** (`shopify theme check`) — Liquid syntax, undefined
+  objects, schema validity. It caught a nested `{{ }}` inside an output and a
+  `step: 0.05` that Shopify requires to be a multiple of 0.1.
+- **`yarn theme:push`** — the only authority on whether Shopify ACCEPTS the theme.
+  It prints an `errors` object per file; **empty output is the pass condition.**
+  It found a range with 998 steps and a text setting with a blank default, and an
+  invalid section schema cascades into "section type does not exist" on every
+  template that uses it.
+
+Push is also how the metaobject template path was settled: `templates/metaobject/
+<type>.json` is accepted, and the uploaded file was read back from the store to
+confirm it rather than assumed.
+
+## Two libraries the browser replaced
+
+- **`yet-another-react-lightbox` → a native `<dialog>`.** `showModal()` supplies
+  the focus trap, the Escape handler, the backdrop and the inert-page semantics —
+  most of what the library was carrying. What `assets/sb-lightbox.js` is left
+  with is the slides, and nothing is downloaded until the viewer opens: the stage
+  is empty in the markup, so a gallery of forty photographs costs one thumbnail
+  each and no full-size images at all.
+- **`react-masonry-css` → CSS `columns`.** The library needed a flex parent and
+  padded columns to fake what `columns` does natively. Same result, no
+  JavaScript, and the layout survives with JS off.
+
+The project list's chips and density toggle were nuqs state; they are now plain
+`?category=` and `?view=` links read back from `request.query_string`. Shareable
+URLs and a working back button — which is what nuqs was for — with no JavaScript.
+
 ## Next
 
-Phases 3 (remaining primitives), 4 (catalogue), 5 (inquiry cart + App Proxy),
+Phases 3 (remaining primitives), 5 (inquiry drawer + App Proxy),
 6 (content entities), 7 (landing + content pages), 9 (parity QA). The plan, with
 exit criteria for each, is the migration artifact.
 
@@ -153,7 +231,19 @@ give every section its settings. Once editors have to build pages from scratch,
 a section without a full schema is not finished, so the schema is written with
 the section — and a late pass would be rewriting work rather than completing it.
 
-Before phase 4, two things need doing in Shopify itself: turn on online-store
-access for the 8 metaobject definitions, and confirm whether the 11 category
-chips in `lib/shopify/categories.ts` become Search & Discovery filters or stay a
-metafield.
+**If you are the person with Shopify admin access, start at
+[your-turn.md](your-turn.md)** — it is the short list of things only you can do,
+in the order that unblocks the most.
+
+What Shopify itself needs configured is in [shopify-setup.md](shopify-setup.md),
+checked against the live store rather than assumed. The short version: scopes,
+metaobject storefront access and the online-store capability are all **already
+correct** — the plan's phase 0 task to enable them was stale. What is genuinely
+outstanding is Search & Discovery filters (none configured, so the category chips
+render as nothing), an App Proxy for the inquiry submission, the licensed webfont
+files, and the DNS cutover.
+
+That last one is the fact to hold on to: **`studiobizar.be` is served by Vercel,
+not Shopify.** The theme can be built and previewed against live data today, but
+URL redirects created in Shopify are inert until DNS moves, and the same switch
+that turns the theme on turns the Next storefront off.

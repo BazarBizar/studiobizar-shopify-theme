@@ -108,7 +108,7 @@
         "info": "Multiplies the whole ladder at once, keeping its proportions. 1.0 is the measured size.",
         "min": 0.8,
         "max": 1.3,
-        "step": 0.05,
+        "step": 0.1,
         "default": 1
       },
       {
@@ -117,7 +117,7 @@
         "label": "Type scale — 749px and below",
         "min": 0.8,
         "max": 1.3,
-        "step": 0.05,
+        "step": 0.1,
         "default": 1
       }
     ]
@@ -254,13 +254,8 @@
         "default": "/apps/inquiry"
       },
       {
-        "type": "range",
-        "id": "inquiry_max_qty",
-        "label": "Maximum quantity per item",
-        "min": 1,
-        "max": 999,
-        "step": 1,
-        "default": 999
+        "type": "paragraph",
+        "content": "The per-item maximum is 999, matching MAX_QTY in the Next build. It is not a setting: assets/sb-inquiry-cart.js and lib/inquiry/schema.ts have to agree on it, and a theme control could only make them disagree."
       }
     ]
   }

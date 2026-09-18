@@ -1,0 +1,171 @@
+{% comment %}
+  app/(storefront)/designers/[handle]/page.tsx — the designer detail page.
+
+  Rendered by a METAOBJECT TEMPLATE. The `designer` definition already has the
+  online-store capability enabled with url handle `designers`, so Shopify serves
+  each entry at /pages/designers/<handle> and hands the entry to this section as
+  `metaobject`.
+
+  HOW A DESIGNER'S WORK IS FOUND. Through the collections that credit them, not
+  through their products — the Next build reached the same conclusion for a
+  different reason. There, the Storefront product query had no metafield filter
+  (all three syntaxes were tested and documented). Here, Liquid has no product
+  search at all. Both roads end at: walk the collections, keep the ones whose
+  `custom.designer` points at this entry.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+  assign designer = metaobject
+
+  capture rhythm_class
+    render 'sb-section-classes', rhythm: s.rhythm, pad: 'none'
+  endcapture
+
+  assign portrait = designer.portrait.value
+  assign portrait_alt = portrait.alt | default: designer.name
+  assign bio = designer.bio_full.value | default: designer.bio_short.value
+-%}
+
+<section
+  data-surface="{{ s.surface }}"
+  class="bg-background text-foreground"
+  {{ section.shopify_attributes }}
+>
+  <div class="sb-container pt-12 pb-section {{ rhythm_class }}">
+    <div class="grid items-start gap-12 lg:grid-cols-2 lg:gap-20">
+      {%- if portrait -%}
+        <figure class="relative aspect-[619/728] w-full overflow-hidden bg-foreground/10">
+          {%- render 'sb-image',
+            image: portrait,
+            alt: portrait_alt,
+            sizes: '(max-width: 1023px) 100vw, 45vw',
+            widths: '620, 830, 1240',
+            priority: true,
+            crop: 'center',
+            class: 'absolute inset-0 h-full w-full object-cover'
+          -%}
+        </figure>
+      {%- endif -%}
+
+      <div class="max-w-[34rem]">
+        <h1 class="text-h2">{{ designer.name }}</h1>
+
+        {%- if designer.studio != blank and designer.studio != designer.name -%}
+          <p class="text-secondary mt-1 text-muted">{{ designer.studio }}</p>
+        {%- endif -%}
+
+        {%- if designer.byline != blank -%}
+          <p class="text-h3 mt-6">{{ designer.byline }}</p>
+        {%- endif -%}
+
+        {%- if bio != blank -%}
+          <div class="sb-prose mt-6">{{ bio }}</div>
+        {%- endif -%}
+
+        {%- liquid
+          comment
+            Collections crediting this designer. `collection.metafields...value`
+            resolves to the metaobject itself, so comparing system.id is an
+            identity check rather than a name match — two designers sharing a
+            first name stay separate.
+          endcomment
+          assign credited = ''
+          for item in collections
+            assign credit = item.metafields.custom.designer.value
+            if credit != blank and credit.system.id == designer.system.id
+              assign credited = credited | append: item.handle | append: ','
+            endif
+          endfor
+          assign credited_handles = credited | split: ','
+        -%}
+
+        {%- if credited_handles.size > 0 -%}
+          <p class="text-secondary mt-8 text-muted">
+            {{ 'designer.collections' | t }}:
+            {%- for handle in credited_handles -%}
+              {%- assign item = collections[handle] -%}
+              {% if forloop.index0 > 0 %}, {% endif %}
+              <a href="{{ item.url }}" class="sb-underline">{{ item.title }}</a>
+            {%- endfor -%}
+          </p>
+        {%- endif -%}
+      </div>
+    </div>
+  </div>
+
+  {%- if s.show_products and credited_handles.size > 0 -%}
+    {%- liquid
+      assign designed_by = 'designer.designed_by' | t: name: designer.name
+      assign shown = 0
+    -%}
+    <div class="sb-container pb-section">
+      <h2 class="text-h2 mb-8">{{ designed_by }}</h2>
+      <ul class="sb-grid-4">
+        {%- for handle in credited_handles -%}
+          {%- assign item = collections[handle] -%}
+          {%- for product in item.products -%}
+            {%- if shown < s.product_limit -%}
+              <li>{%- render 'sb-product-card', product: product -%}</li>
+              {%- assign shown = shown | plus: 1 -%}
+            {%- endif -%}
+          {%- endfor -%}
+        {%- endfor -%}
+      </ul>
+    </div>
+  {%- endif -%}
+</section>
+
+{% schema %}
+{
+  "name": "Designer",
+  "tag": "section",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "show_products",
+      "label": "Show a \"Designed by\" product grid",
+      "info": "Products come from the collections that credit this designer.",
+      "default": true
+    },
+    {
+      "type": "range",
+      "id": "product_limit",
+      "label": "Products shown",
+      "min": 4,
+      "max": 24,
+      "step": 4,
+      "default": 8
+    },
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Ground",
+      "info": "Deep mocha in the design.",
+      "options": [
+        { "value": "light", "label": "Earth" },
+        { "value": "dark", "label": "Dark wood" },
+        { "value": "olive", "label": "Black olive" },
+        { "value": "blue", "label": "Charcoal blue" },
+        { "value": "mocha", "label": "Deep mocha" },
+        { "value": "black", "label": "Off black" }
+      ],
+      "default": "mocha"
+    },
+    {
+      "type": "select",
+      "id": "rhythm",
+      "label": "Vertical space",
+      "options": [
+        { "value": "theme", "label": "Theme default" },
+        { "value": "xs", "label": "Extra tight" },
+        { "value": "sm", "label": "Tight" },
+        { "value": "md", "label": "Medium" },
+        { "value": "lg", "label": "Loose" },
+        { "value": "xl", "label": "Extra loose" }
+      ],
+      "default": "theme"
+    }
+  ]
+}
+{% endschema %}

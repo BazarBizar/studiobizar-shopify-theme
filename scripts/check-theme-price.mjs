@@ -42,6 +42,13 @@ const FORBIDDEN = [
   { pattern: /\bcompare_at_price\b/, label: "compare_at_price" },
   { pattern: /\bprice_min\b|\bprice_max\b|\bprice_varies\b/, label: "price range" },
   { pattern: /\bunit_price\b/, label: "unit_price" },
+  /**
+   * Shopify offers these on every collection's `sort_options`.
+   * `snippets/sb-collection-sort.liquid` filters them out, and this is what
+   * notices if that filter is ever dropped — the value reaching the markup is
+   * the only trace a price sort leaves behind.
+   */
+  { pattern: /price-(ascending|descending)/, label: "price sort option" },
 
   // inventory
   { pattern: /\b(available|inventory_quantity|inventory_policy|inventory_management)\b/, label: "inventory" },

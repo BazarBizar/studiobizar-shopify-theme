@@ -11,7 +11,7 @@
 
   Accepts:
     icon   — search | user | bag | menu | close | chevron-down | arrow-up
-             arrow-left | arrow-right | check
+             arrow-left | arrow-right | check | plus | minus | share
     class  — utility classes for the <svg>
     size   — stroke width override, default 1.5
 {% endcomment %}
@@ -72,5 +72,19 @@
 
     {%- when 'check' -%}
       <path d="M20 6 9 17l-5-5"></path>
+
+    {%- when 'plus' -%}
+      <path d="M5 12h14"></path>
+      <path d="M12 5v14"></path>
+
+    {%- when 'minus' -%}
+      <path d="M5 12h14"></path>
+
+    {%- when 'share' -%}
+      <circle cx="18" cy="5" r="3"></circle>
+      <circle cx="6" cy="12" r="3"></circle>
+      <circle cx="18" cy="19" r="3"></circle>
+      <path d="m8.59 13.51 6.83 3.98"></path>
+      <path d="m15.41 6.51-6.82 3.98"></path>
   {%- endcase -%}
 </svg>

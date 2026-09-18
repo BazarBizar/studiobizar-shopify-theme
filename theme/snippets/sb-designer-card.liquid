@@ -1,0 +1,38 @@
+{% comment %}
+  components/designer/designer-card.tsx.
+
+  Portrait with the name beneath, on the same 4-up grid as products — the row
+  pitch on `DESK - Our Designers.pdf` is 496, identical to Shop All, which is why
+  this reuses `sb-grid-4` and `aspect-card` rather than a second set of numbers.
+
+  `designer` is a `designer` metaobject. `designer.system.url` is the public URL
+  Shopify gives it through the online-store capability, which is already enabled
+  on this definition — so there is nothing to construct by hand.
+{% endcomment %}
+
+{%- liquid
+  assign portrait = designer.portrait.value
+  assign portrait_alt = portrait.alt | default: designer.name
+-%}
+
+<article>
+  <a href="{{ designer.system.url }}" class="group block">
+    <div class="relative aspect-card overflow-hidden bg-foreground/10">
+      {%- if portrait -%}
+        {%- render 'sb-image',
+          image: portrait,
+          alt: portrait_alt,
+          sizes: '(max-width: 749px) 50vw, 25vw',
+          priority: priority,
+          crop: 'center',
+          class: 'absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out-soft group-hover:scale-[1.03]'
+        -%}
+      {%- endif -%}
+    </div>
+
+    <h2 class="text-secondary mt-3">{{ designer.name }}</h2>
+    {%- if designer.studio != blank and designer.studio != designer.name -%}
+      <p class="text-tertiary mt-1 text-muted">{{ designer.studio }}</p>
+    {%- endif -%}
+  </a>
+</article>

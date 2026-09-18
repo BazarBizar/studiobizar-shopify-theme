@@ -1,0 +1,199 @@
+{% comment %}
+  components/sections/hero-slider.tsx — the full-bleed hero.
+
+  THE NUMBER OF SLIDES IS WHATEVER THE SOURCE HOLDS. One renders as a still image
+  with no controls, several render as a track with arrows and dots. Nothing is
+  hard-coded to three, which was true of the React version and stays true here.
+
+  Portrait on mobile: the 393px frames put the hero at 393×590 edge to edge,
+  which is 2:3 — not the 16:10 the desktop frame crops to, and not the 16:7 of
+  the widest one. All three aspects are written out as literal classes so
+  Tailwind can see them.
+
+  Slides come from a PAGE metafield of `captioned_image` entries, or from blocks
+  added in the theme editor. The metafield wins when it has anything in it, so
+  the landing page keeps working exactly as it does today and a merchant can
+  still build a hero on any other page without touching metafields.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+  assign entries = page.metafields.custom[s.metafield].value
+
+  assign use_metafield = false
+  if entries != blank and entries.size > 0
+    assign use_metafield = true
+    assign count = entries.size
+  else
+    assign count = section.blocks.size
+  endif
+
+  assign multiple = false
+  if count > 1
+    assign multiple = true
+  endif
+-%}
+
+{%- if count > 0 -%}
+  <section
+    data-surface="{{ s.surface }}"
+    class="relative isolate"
+    aria-label="{{ s.label | default: section.settings.label }}"
+    {% if multiple %}aria-roledescription="carousel"{% endif %}
+    data-sb-carousel
+    {{ section.shopify_attributes }}
+  >
+    <div class="sb-track" data-sb-carousel-track>
+      {%- if use_metafield -%}
+        {%- for entry in entries -%}
+          {%- if entry.image -%}
+            {%- liquid
+              assign alt = entry.alt_text | default: entry.caption | default: ''
+              assign eager = false
+              if forloop.first
+                assign eager = true
+              endif
+            -%}
+            <div class="relative aspect-[2/3] w-full sm:aspect-[16/10] lg:aspect-[16/7]">
+              {%- render 'sb-image',
+                image: entry.image,
+                alt: alt,
+                sizes: '100vw',
+                widths: '830, 1240, 1660, 2400',
+                priority: eager,
+                crop: 'center',
+                class: 'absolute inset-0 h-full w-full object-cover'
+              -%}
+            </div>
+          {%- endif -%}
+        {%- endfor -%}
+      {%- else -%}
+        {%- for block in section.blocks -%}
+          {%- if block.settings.image -%}
+            {%- liquid
+              assign eager = false
+              if forloop.first
+                assign eager = true
+              endif
+            -%}
+            <div class="relative aspect-[2/3] w-full sm:aspect-[16/10] lg:aspect-[16/7]" {{ block.shopify_attributes }}>
+              {%- render 'sb-image',
+                image: block.settings.image,
+                alt: block.settings.alt,
+                sizes: '100vw',
+                widths: '830, 1240, 1660, 2400',
+                priority: eager,
+                crop: 'center',
+                class: 'absolute inset-0 h-full w-full object-cover'
+              -%}
+            </div>
+          {%- endif -%}
+        {%- endfor -%}
+      {%- endif -%}
+    </div>
+
+    {% comment %}
+      Hidden until the script reveals them. Without JavaScript the track is still
+      swipeable and every slide is reachable, so a visible arrow that did nothing
+      would be the only broken thing on the page.
+    {% endcomment %}
+    {%- if multiple -%}
+      <div data-sb-carousel-controls hidden>
+        <button
+          type="button"
+          data-sb-carousel-prev
+          aria-label="{{ 'gallery.previous' | t }}"
+          class="absolute top-1/2 left-2.5 z-10 -translate-y-1/2 rounded-full border border-foreground bg-background/85 p-1 text-foreground opacity-70 transition-opacity hover:opacity-80 sm:left-5 sm:p-3"
+        >
+          {%- render 'sb-icon', icon: 'arrow-left', class: 'size-4' -%}
+        </button>
+        <button
+          type="button"
+          data-sb-carousel-next
+          aria-label="{{ 'gallery.next' | t }}"
+          class="absolute top-1/2 right-2.5 z-10 -translate-y-1/2 rounded-full border border-foreground bg-background/85 p-1 text-foreground opacity-70 transition-opacity hover:opacity-80 sm:right-5 sm:p-3"
+        >
+          {%- render 'sb-icon', icon: 'arrow-right', class: 'size-4' -%}
+        </button>
+      </div>
+
+      <div data-sb-carousel-controls hidden class="absolute inset-x-0 bottom-6 flex justify-center gap-3">
+        {%- for i in (1..count) -%}
+          {%- liquid
+            assign index = forloop.index0
+            assign dot_label = 'gallery.go_to' | t: index: forloop.index, total: count
+          -%}
+          <button
+            type="button"
+            data-sb-carousel-dot="{{ index }}"
+            aria-label="{{ dot_label }}"
+            class="h-1.5 w-8 bg-foreground opacity-40 transition-opacity hover:opacity-70"
+          ></button>
+        {%- endfor -%}
+      </div>
+    {%- endif -%}
+  </section>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Hero slider",
+  "tag": "section",
+  "max_blocks": 8,
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Takes its slides from a page metafield when one is set, and from the blocks below otherwise. One slide renders as a still image with no controls."
+    },
+    {
+      "type": "select",
+      "id": "metafield",
+      "label": "Source metafield",
+      "options": [
+        { "value": "hero_slides", "label": "hero_slides" },
+        { "value": "feature_images", "label": "feature_images" },
+        { "value": "gallery", "label": "gallery" },
+        { "value": "none", "label": "None — use the blocks below" }
+      ],
+      "default": "hero_slides"
+    },
+    {
+      "type": "text",
+      "id": "label",
+      "label": "Accessible label",
+      "info": "Describes the carousel to a screen reader.",
+      "default": "Featured interiors"
+    },
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Ground",
+      "info": "Off black in the design — it shows through while an image loads.",
+      "options": [
+        { "value": "light", "label": "Earth" },
+        { "value": "dark", "label": "Dark wood" },
+        { "value": "olive", "label": "Black olive" },
+        { "value": "blue", "label": "Charcoal blue" },
+        { "value": "mocha", "label": "Deep mocha" },
+        { "value": "black", "label": "Off black" }
+      ],
+      "default": "black"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "slide",
+      "name": "Slide",
+      "settings": [
+        { "type": "image_picker", "id": "image", "label": "Image" },
+        { "type": "text", "id": "alt", "label": "Alt text", "info": "Describes the photograph." }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Hero slider"
+    }
+  ]
+}
+{% endschema %}

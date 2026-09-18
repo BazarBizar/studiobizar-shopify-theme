@@ -1,0 +1,124 @@
+{% comment %}
+  The collection hero — the 128px wordmark over a full-bleed image, from
+  `DESK - Collections Detail.pdf` and app/(storefront)/collections/[handle]/page.tsx.
+
+  Its own section rather than part of the grid, so the theme editor can reorder
+  it, drop it on a collection that has no hero image, or put a second band
+  between it and the products.
+
+  `text-display-lg` is the 128px step measured in that frame — the largest in the
+  ladder, and the only place it is used.
+
+  Renders nothing without a hero image OR a wordmark, which is what lets the
+  automatic `all` collection use the same template without showing an empty band.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+  assign m = collection.metafields.custom
+
+  assign image = m.hero_image.value | default: collection.image
+  assign logo = m.hero_logo.value
+
+  comment
+    "The Arc Teak Collection" reads as "ARC TEAK". Liquid has no regex, so the
+    two affixes come off with remove_first / remove.
+  endcomment
+  assign wordmark = collection.title | remove_first: 'The ' | remove: ' Collection'
+
+  assign hero_alt = image.alt | default: collection.title
+-%}
+
+{%- if image or s.show_wordmark -%}
+  <section
+    data-surface="{{ s.surface }}"
+    class="relative bg-background text-foreground"
+    {{ section.shopify_attributes }}
+  >
+    <div class="relative overflow-hidden" style="aspect-ratio: {{ s.ratio }};">
+      {%- if image -%}
+        {%- render 'sb-image',
+          image: image,
+          alt: hero_alt,
+          sizes: '100vw',
+          widths: '830, 1240, 1660, 2400',
+          priority: true,
+          crop: 'center',
+          class: 'absolute inset-0 h-full w-full object-cover'
+        -%}
+      {%- endif -%}
+
+      {%- if s.show_wordmark -%}
+        <div class="absolute inset-0 flex items-center justify-center px-gutter">
+          {%- if logo -%}
+            {%- render 'sb-image',
+              image: logo,
+              alt: '',
+              widths: '600, 1200',
+              sizes: '60vw',
+              class: 'h-auto w-3/5 max-w-[48rem] object-contain'
+            -%}
+          {%- else -%}
+            <h1 class="text-display-lg text-center leading-none tracking-[0.02em] uppercase">
+              {{ wordmark }}
+            </h1>
+          {%- endif -%}
+        </div>
+      {%- endif -%}
+    </div>
+  </section>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Collection hero",
+  "tag": "section",
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Uses the collection's own hero image and hero logo metafields. Where no logo is set the title is typeset instead, with \"The\" and \"Collection\" stripped — \"The Arc Teak Collection\" reads as \"ARC TEAK\"."
+    },
+    {
+      "type": "checkbox",
+      "id": "show_wordmark",
+      "label": "Show the wordmark over the image",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "ratio",
+      "label": "Height",
+      "options": [
+        { "value": "16 / 9", "label": "16:9" },
+        { "value": "2 / 1", "label": "2:1 — as measured" },
+        { "value": "3 / 1", "label": "3:1 — shallow" },
+        { "value": "4 / 5", "label": "4:5 — tall" }
+      ],
+      "default": "2 / 1"
+    },
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Ground",
+      "info": "Dark puts earth ink on the wordmark, which is what the design does over a photograph.",
+      "options": [
+        { "value": "light", "label": "Earth" },
+        { "value": "dark", "label": "Dark wood" },
+        { "value": "olive", "label": "Black olive" },
+        { "value": "blue", "label": "Charcoal blue" },
+        { "value": "mocha", "label": "Deep mocha" },
+        { "value": "black", "label": "Off black" }
+      ],
+      "default": "dark"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Collection hero"
+    }
+  ],
+  "enabled_on": {
+    "templates": ["collection"]
+  }
+}
+{% endschema %}

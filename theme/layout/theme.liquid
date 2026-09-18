@@ -65,6 +65,31 @@
     {% endcomment %}
     <script src="{{ 'sb-theme.js' | asset_url }}" defer></script>
     <script src="{{ 'sb-nav.js' | asset_url }}" defer></script>
+    <script src="{{ 'sb-inquiry-cart.js' | asset_url }}" defer></script>
+    {%- comment -%}
+      Only where there is a grid to drive. The other three are shell-wide: the
+      nav and the inquiry badge are in the header on every page.
+    {%- endcomment -%}
+    {%- if template.name == 'collection' or template.name == 'search' -%}
+      <script src="{{ 'sb-collection.js' | asset_url }}" defer></script>
+    {%- endif -%}
+    {%- if template.name == 'product' -%}
+      <script src="{{ 'sb-product.js' | asset_url }}" defer></script>
+    {%- endif -%}
+    {%- comment -%}
+      The viewer is opened from the Gallery page and from a project, so it loads
+      on pages and metaobjects — not on the catalogue, which has no lightbox.
+    {%- endcomment -%}
+    {%- if template.name == 'page' or template.name == 'metaobject' -%}
+      <script src="{{ 'sb-lightbox.js' | asset_url }}" defer></script>
+    {%- endif -%}
+    {%- comment -%}
+      The carousel is on the landing page and can be added to any page, so it
+      loads on both. It does nothing when there is no track on the page.
+    {%- endcomment -%}
+    {%- if template.name == 'index' or template.name == 'page' -%}
+      <script src="{{ 'sb-carousel.js' | asset_url }}" defer></script>
+    {%- endif -%}
 
     {{ content_for_header }}
   </head>

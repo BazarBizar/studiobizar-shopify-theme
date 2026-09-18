@@ -1,0 +1,71 @@
+{% comment %}
+  components/product/product-gallery.tsx.
+
+  Thumbnail rail on the far left, main image beside it — the arrangement measured
+  off the PDF. Collapses to a horizontal rail below 1024px.
+
+  NOTHING CROPS TO A FIXED RATIO. Product photography varies shot to shot and a
+  crop would cut pieces off some of it, so the thumbnails share one width and let
+  height follow each photo's own proportions, and the main image is unconstrained
+  in both dimensions. That is why there is no `ratio` passed to `sb-image` here
+  and no `aspect-` class anywhere below.
+
+  Switching is progressive: every image ships in the markup, the first visible and
+  the rest hidden, so with JS off the visitor still sees the primary photo and the
+  rail. `assets/sb-product.js` toggles which one is shown.
+{% endcomment %}
+
+{%- liquid
+  assign images = product.images
+  comment
+    Filters are not allowed on `render` arguments, so the fallback alt is
+    resolved here rather than inline.
+  endcomment
+  assign main_alt = product.title
+-%}
+
+{%- if images.size == 0 -%}
+  <div class="aspect-card w-full bg-foreground/5"></div>
+{%- else -%}
+  <div class="flex flex-col-reverse gap-4 lg:flex-row lg:gap-6" data-sb-gallery>
+    {%- if images.size > 1 -%}
+      <ul class="flex shrink-0 gap-3 overflow-x-auto lg:w-[3.8rem] lg:flex-col lg:overflow-visible">
+        {%- for image in images -%}
+          <li>
+            <button
+              type="button"
+              data-sb-gallery-thumb="{{ forloop.index0 }}"
+              aria-label="{{ 'product.view_image' | t: index: forloop.index, total: images.size }}"
+              {% if forloop.first %}aria-current="true"{% endif %}
+              class="block w-[3.8rem] shrink-0 overflow-hidden bg-foreground/5 opacity-55 transition-opacity hover:opacity-85 aria-[current=true]:opacity-100"
+            >
+              {%- render 'sb-image', image: image, alt: '', widths: '120, 240', sizes: '61px', class: 'h-auto w-full' -%}
+            </button>
+          </li>
+        {%- endfor -%}
+      </ul>
+    {%- endif -%}
+
+    <div class="min-w-0 flex-1">
+      {%- for image in images -%}
+        {%- liquid
+          comment
+            Per image, because a filter cannot ride on a render argument and each
+            photo has its own alt to fall back from.
+          endcomment
+          assign pane_alt = image.alt | default: main_alt
+        -%}
+        <div data-sb-gallery-pane="{{ forloop.index0 }}" {% unless forloop.first %}hidden{% endunless %}>
+          {%- render 'sb-image',
+            image: image,
+            alt: pane_alt,
+            sizes: '(max-width: 1023px) 100vw, 45vw',
+            widths: '620, 830, 1240, 1660',
+            priority: forloop.first,
+            class: 'h-auto w-full'
+          -%}
+        </div>
+      {%- endfor -%}
+    </div>
+  </div>
+{%- endif -%}

@@ -1,0 +1,60 @@
+{% comment %}
+  components/ui/lightbox.tsx — the viewer from `DESK - Gallery.pdf`.
+
+  That PDF turned out to be a COMPONENT SPEC, not a page: its four frames are the
+  same 1404×944 panel repeated, and its counter is drawn in Figma's annotation
+  purple rather than a real colour. One image centred on an off-black ground, a
+  `01 / 04` counter bottom-left, the caption beneath.
+
+  A NATIVE `<dialog>`, which is what replaces `yet-another-react-lightbox`. The
+  browser supplies the modal behaviour the library was carrying: focus is trapped
+  inside it, Escape closes it, and the rest of the page is inert to assistive
+  technology. What is left for `assets/sb-lightbox.js` is the slides.
+
+  One instance per page. Any grid that wants it wraps its triggers in
+  `[data-sb-lightbox-group]` and marks each one `[data-sb-lightbox-item]` with
+  the image on data attributes — see `sb-gallery` and the project gallery.
+{% endcomment %}
+
+<dialog
+  data-sb-lightbox
+  aria-label="{{ 'gallery.viewer' | t }}"
+  class="sb-lightbox m-0 h-full max-h-none w-full max-w-none bg-transparent p-0"
+>
+  <div data-surface="black" class="relative flex h-full w-full flex-col bg-background text-foreground">
+    <button
+      type="button"
+      data-sb-lightbox-close
+      aria-label="{{ 'gallery.close' | t }}"
+      class="absolute top-5 right-5 z-10 p-2 transition-opacity hover:opacity-70"
+    >
+      {%- render 'sb-icon', icon: 'close', class: 'size-5' -%}
+    </button>
+
+    <button
+      type="button"
+      data-sb-lightbox-prev
+      aria-label="{{ 'gallery.previous' | t }}"
+      class="absolute top-1/2 left-5 z-10 -translate-y-1/2 p-2 transition-opacity hover:opacity-70"
+    >
+      {%- render 'sb-icon', icon: 'arrow-left', class: 'size-5' -%}
+    </button>
+
+    <button
+      type="button"
+      data-sb-lightbox-next
+      aria-label="{{ 'gallery.next' | t }}"
+      class="absolute top-1/2 right-5 z-10 -translate-y-1/2 p-2 transition-opacity hover:opacity-70"
+    >
+      {%- render 'sb-icon', icon: 'arrow-right', class: 'size-5' -%}
+    </button>
+
+    {% comment %} The stage. Media is injected here so nothing is downloaded until opened. {% endcomment %}
+    <div data-sb-lightbox-stage class="flex min-h-0 flex-1 items-center justify-center p-12"></div>
+
+    <div class="flex items-end justify-between gap-6 px-12 pb-8">
+      <span data-sb-lightbox-counter class="text-tertiary tabular-nums"></span>
+      <p data-sb-lightbox-caption class="text-tertiary max-w-[44rem] text-right"></p>
+    </div>
+  </div>
+</dialog>

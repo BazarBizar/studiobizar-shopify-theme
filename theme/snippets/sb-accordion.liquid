@@ -1,0 +1,27 @@
+{% comment %}
+  components/ui/accordion.tsx.
+
+  Native `<details>`, so the panels open without JavaScript and are keyboard- and
+  screen-reader-correct for free — the same reason the React version used it.
+
+  The glyph is drawn from two pseudo-elements rather than an icon: a horizontal
+  bar that stays and a vertical one that fades out when open, which is a `+`
+  turning into a `−` with no swap and no second asset.
+
+  Accepts:
+    title        — the summary text (required)
+    content      — HTML for the panel
+    open         — true to start expanded
+    id           — needed when several accordions share a page
+{% endcomment %}
+
+<details {% if open %}open{% endif %} class="group border-b border-border">
+  <summary class="sb-summary text-h4 flex items-center justify-between py-4">
+    {{ title }}
+    <span
+      aria-hidden="true"
+      class="relative ml-4 block size-3 shrink-0 before:absolute before:top-1/2 before:left-0 before:h-px before:w-3 before:-translate-y-1/2 before:bg-current after:absolute after:top-0 after:left-1/2 after:h-3 after:w-px after:-translate-x-1/2 after:bg-current after:transition-opacity group-open:after:opacity-0"
+    ></span>
+  </summary>
+  <div class="sb-prose pb-6">{{ content }}</div>
+</details>

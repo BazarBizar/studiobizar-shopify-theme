@@ -1,0 +1,212 @@
+{% comment %}
+  The product grid — app/(storefront)/shop/page.tsx plus
+  components/shop/product-grid.tsx and shop-controls.tsx.
+
+  One section serves both `/collections/all` (what `/shop` becomes) and every
+  collection page, because in Liquid they are the same object.
+
+  THREE THINGS THE NEXT BUILD DID BY HAND AND SHOPIFY DOES NATIVELY:
+
+  · Filtering. `lib/shopify/categories.ts` mapped 11 chips onto 63 productType
+    values because the Storefront API cannot filter a collection by type.
+    Shopify's own filters can, and they arrive as `collection.filters`. If the
+    store has none configured yet — Search & Discovery has not been set up — the
+    row simply does not render, which is why this needs no decision to ship.
+
+  · Sorting. `collection.sort_options` comes from the collection itself.
+    PRICE OPTIONS ARE STRIPPED: this storefront has no price, and a sort control
+    offering "price, low to high" would contradict every page it sorts.
+
+  · Paging. `paginate` replaces the cursor bookkeeping in `/api/products`.
+    `assets/sb-collection.js` turns it into infinite scroll through the Section
+    Rendering API; without JS the same markup is a working "load more" link.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+  assign per_page = s.products_per_page | default: 24
+
+  capture rhythm_class
+    render 'sb-section-classes', rhythm: s.rhythm, pad: 'none'
+  endcapture
+
+  assign paints_ground = true
+  if s.surface == 'inherit'
+    assign paints_ground = false
+  endif
+
+  assign load_more_label = 'collection.load_more' | t
+-%}
+
+<section
+  {% if paints_ground %}data-surface="{{ s.surface }}" class="bg-background text-foreground"{% endif %}
+  data-sb-collection
+  data-section-id="{{ section.id }}"
+  {{ section.shopify_attributes }}
+>
+  <div class="sb-container py-section {{ rhythm_class }}">
+    {%- if s.show_title and collection.title != blank -%}
+      <h1 class="text-h1">{{ collection.title }}</h1>
+    {%- endif -%}
+
+    {%- paginate collection.products by per_page -%}
+      <div class="mt-8 flex flex-col gap-6">
+        {%- if s.show_filters and collection.filters.size > 0 -%}
+          {% comment %}
+            A plain GET form, so filtering works with no JavaScript at all and
+            every filtered view has its own shareable URL — the property the
+            React version got from holding this state in the URL with nuqs.
+          {% endcomment %}
+          <form method="get" data-sb-collection-filters>
+            {%- for filter in collection.filters -%}
+              {%- if filter.type == 'list' -%}
+                <ul class="flex flex-wrap items-center gap-x-8 gap-y-3">
+                  <li>
+                    <a
+                      href="{{ collection.url }}"
+                      class="text-secondary sb-underline{% unless current_tags or filter.active_values.size > 0 %} font-medium{% endunless %}"
+                    >
+                      {{ 'collection.all' | t }}
+                    </a>
+                  </li>
+                  {%- for value in filter.values -%}
+                    {%- if value.count > 0 -%}
+                      <li>
+                        <a
+                          href="{{ value.url_to_add }}"
+                          {% if value.active %}aria-current="true"{% endif %}
+                          class="text-secondary sb-underline{% if value.active %} font-medium{% endif %}"
+                        >
+                          {{ value.label | downcase }}
+                        </a>
+                      </li>
+                    {%- endif -%}
+                  {%- endfor -%}
+                </ul>
+              {%- endif -%}
+            {%- endfor -%}
+          </form>
+        {%- endif -%}
+
+        <div class="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-4">
+          <div class="flex items-center gap-3">
+            {%- if s.show_sort -%}
+              {%- render 'sb-collection-sort' -%}
+            {%- endif -%}
+
+            <span class="text-tertiary text-muted">
+              {{ 'collection.item_count' | t: count: collection.products_count }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {%- if collection.products.size == 0 -%}
+        <p class="text-body mt-12 text-muted">{{ 'collection.empty' | t }}</p>
+      {%- else -%}
+        <ul class="sb-grid-4 mt-8" data-sb-collection-grid>
+          {%- for product in collection.products -%}
+            <li>
+              {%- render 'sb-product-card',
+                product: product,
+                priority: forloop.first
+              -%}
+            </li>
+          {%- endfor -%}
+        </ul>
+
+        {%- if paginate.next -%}
+          {% comment %}
+            An anchor, not a button. Without JS it is a working link to page 2;
+            with JS the script intercepts it, fetches that URL through the
+            Section Rendering API and appends the rows.
+          {% endcomment %}
+          <div class="mt-12 flex justify-center" data-sb-collection-more>
+            {%- render 'sb-button',
+              label: load_more_label,
+              href: paginate.next.url,
+              variant: 'outline'
+            -%}
+          </div>
+        {%- endif -%}
+      {%- endif -%}
+    {%- endpaginate -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Product grid",
+  "tag": "section",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "show_title",
+      "label": "Show the collection title",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_filters",
+      "label": "Show filters",
+      "info": "Filters come from Shopify's Search & Discovery settings. Nothing renders until at least one is configured there.",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_sort",
+      "label": "Show the sort control",
+      "info": "Price options are never offered — this storefront has no price.",
+      "default": true
+    },
+    {
+      "type": "range",
+      "id": "products_per_page",
+      "label": "Products per page",
+      "info": "24 matches the Next build's PRODUCTS_PER_PAGE.",
+      "min": 8,
+      "max": 48,
+      "step": 4,
+      "default": 24
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Ground",
+      "options": [
+        { "value": "inherit", "label": "Inherit" },
+        { "value": "light", "label": "Earth" },
+        { "value": "dark", "label": "Dark wood" },
+        { "value": "olive", "label": "Black olive" },
+        { "value": "blue", "label": "Charcoal blue" },
+        { "value": "mocha", "label": "Deep mocha" },
+        { "value": "black", "label": "Off black" }
+      ],
+      "default": "inherit"
+    },
+    {
+      "type": "select",
+      "id": "rhythm",
+      "label": "Vertical space",
+      "options": [
+        { "value": "theme", "label": "Theme default" },
+        { "value": "xs", "label": "Extra tight" },
+        { "value": "sm", "label": "Tight" },
+        { "value": "md", "label": "Medium" },
+        { "value": "lg", "label": "Loose" },
+        { "value": "xl", "label": "Extra loose" }
+      ],
+      "default": "theme"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Product grid"
+    }
+  ]
+}
+{% endschema %}

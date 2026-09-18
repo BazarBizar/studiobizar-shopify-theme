@@ -1,0 +1,195 @@
+{% comment %}
+  app/(storefront)/projects/[handle]/page.tsx — the project detail page.
+
+  Hero, a meta column, the lightbox gallery, Featured Items and Other Projects.
+  Rendered by a metaobject template, like the designer page: the `project`
+  definition already carries the online-store capability with url handle
+  `projects`, so Shopify serves each entry and hands it here as `metaobject`.
+
+  The gallery reuses `sb-lightbox` — the same viewer the Gallery page opens,
+  which is why that snippet lives on its own rather than beside either caller.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+  assign project = metaobject
+
+  capture rhythm_class
+    render 'sb-section-classes', rhythm: s.rhythm, pad: 'none'
+  endcapture
+
+  assign hero = project.hero_image.value | default: project.card_image.value
+  assign hero_alt = hero.alt | default: project.title
+  assign gallery = project.gallery.value
+  assign featured = project.featured_items.value
+  assign related = project.related_projects.value
+
+  assign t_featured = 'project.featured_items' | t
+  assign t_other = 'project.other_projects' | t
+-%}
+
+<section
+  data-surface="{{ s.surface }}"
+  class="bg-background text-foreground"
+  {{ section.shopify_attributes }}
+>
+  {%- if hero -%}
+    <div class="relative overflow-hidden" style="aspect-ratio: {{ s.hero_ratio }};">
+      {%- render 'sb-image',
+        image: hero,
+        alt: hero_alt,
+        sizes: '100vw',
+        widths: '830, 1240, 1660, 2400',
+        priority: true,
+        crop: 'center',
+        class: 'absolute inset-0 h-full w-full object-cover'
+      -%}
+    </div>
+  {%- endif -%}
+
+  <div class="sb-container pt-12 pb-section {{ rhythm_class }}">
+    <div class="grid gap-12 lg:grid-cols-[2fr_1fr] lg:gap-20">
+      <div class="max-w-[44rem]">
+        <h1 class="text-h1">{{ project.title }}</h1>
+        {%- if project.subtitle != blank -%}
+          <p class="text-h3 mt-3 text-muted">{{ project.subtitle }}</p>
+        {%- endif -%}
+        {%- if project.body != blank -%}
+          <div class="sb-prose mt-8">{{ project.body }}</div>
+        {%- endif -%}
+      </div>
+
+      {% comment %} The meta column — each row hides itself when its field is empty. {% endcomment %}
+      <dl class="flex flex-col gap-4 lg:pt-2">
+        {%- if project.location != blank -%}
+          <div>
+            <dt class="text-h4">{{ 'project.location' | t }}</dt>
+            <dd class="text-tertiary mt-1 text-muted">{{ project.location }}</dd>
+          </div>
+        {%- endif -%}
+        {%- if project.year != blank -%}
+          <div>
+            <dt class="text-h4">{{ 'project.year' | t }}</dt>
+            <dd class="text-tertiary mt-1 text-muted">{{ project.year }}</dd>
+          </div>
+        {%- endif -%}
+        {%- if project.category != blank -%}
+          <div>
+            <dt class="text-h4">{{ 'project.category' | t }}</dt>
+            <dd class="text-tertiary mt-1 text-muted">{{ project.category }}</dd>
+          </div>
+        {%- endif -%}
+        {%- if project.creative_lead != blank -%}
+          <div>
+            <dt class="text-h4">{{ 'project.creative_lead' | t }}</dt>
+            <dd class="text-tertiary mt-1 text-muted">{{ project.creative_lead }}</dd>
+          </div>
+        {%- endif -%}
+      </dl>
+    </div>
+
+    {%- if gallery != blank and gallery.size > 0 -%}
+      <div class="sb-masonry mt-16" data-sb-lightbox-group>
+        {%- for entry in gallery -%}
+          {%- if entry.image -%}
+            {%- liquid
+              assign alt = entry.alt_text | default: entry.caption | default: project.title
+              assign full = entry.image | image_url: width: 2000
+              assign open_label = 'gallery.open' | t: index: forloop.index, total: gallery.size
+            -%}
+            <figure>
+              <button
+                type="button"
+                data-sb-lightbox-item
+                data-src="{{ full }}"
+                data-alt="{{ alt | escape }}"
+                data-caption="{{ entry.caption | escape }}"
+                data-credit="{{ entry.credit | escape }}"
+                aria-label="{{ open_label }}"
+                class="group block w-full overflow-hidden bg-foreground/10"
+              >
+                {%- render 'sb-image',
+                  image: entry.image,
+                  alt: alt,
+                  sizes: '(max-width: 749px) 100vw, (max-width: 1023px) 50vw, 33vw',
+                  widths: '620, 830, 1240',
+                  class: 'h-auto w-full transition-transform duration-500 ease-out-soft group-hover:scale-[1.02]'
+                -%}
+              </button>
+              {%- if entry.caption != blank -%}
+                <figcaption class="text-tertiary mt-2 text-muted">{{ entry.caption }}</figcaption>
+              {%- endif -%}
+            </figure>
+          {%- endif -%}
+        {%- endfor -%}
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+{%- if featured != blank and featured.size > 0 -%}
+  {%- render 'sb-product-rail', heading: t_featured, products: featured, view_all: routes.all_products_collection_url, limit: 4 -%}
+{%- endif -%}
+
+{%- if related != blank and related.size > 0 -%}
+  <div class="sb-container py-section">
+    <h2 class="text-h2 mb-8">{{ t_other }}</h2>
+    <div class="grid gap-grid-gap gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
+      {%- for entry in related -%}
+        <div>{%- render 'sb-project-card', project: entry, view: 'm' -%}</div>
+      {%- endfor -%}
+    </div>
+  </div>
+{%- endif -%}
+
+{%- render 'sb-lightbox' -%}
+
+{% schema %}
+{
+  "name": "Project",
+  "tag": "section",
+  "settings": [
+    {
+      "type": "select",
+      "id": "hero_ratio",
+      "label": "Hero height",
+      "options": [
+        { "value": "16 / 9", "label": "16:9" },
+        { "value": "2 / 1", "label": "2:1" },
+        { "value": "3 / 1", "label": "3:1 — shallow" },
+        { "value": "4 / 3", "label": "4:3 — tall" }
+      ],
+      "default": "2 / 1"
+    },
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Ground",
+      "info": "Off black in the design.",
+      "options": [
+        { "value": "light", "label": "Earth" },
+        { "value": "dark", "label": "Dark wood" },
+        { "value": "olive", "label": "Black olive" },
+        { "value": "blue", "label": "Charcoal blue" },
+        { "value": "mocha", "label": "Deep mocha" },
+        { "value": "black", "label": "Off black" }
+      ],
+      "default": "black"
+    },
+    {
+      "type": "select",
+      "id": "rhythm",
+      "label": "Vertical space",
+      "options": [
+        { "value": "theme", "label": "Theme default" },
+        { "value": "xs", "label": "Extra tight" },
+        { "value": "sm", "label": "Tight" },
+        { "value": "md", "label": "Medium" },
+        { "value": "lg", "label": "Loose" },
+        { "value": "xl", "label": "Extra loose" }
+      ],
+      "default": "theme"
+    }
+  ]
+}
+{% endschema %}

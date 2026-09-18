@@ -45,11 +45,94 @@
     "quantity": "Quantity",
     "review": "Review inquiry",
     "submit": "Send inquiry",
-    "continue": "Continue browsing"
+    "continue": "Continue browsing",
+    "add_named": "Add {{ title }} to your inquiry",
+    "added_named": "Added to your inquiry",
+    "moq_note": "Minimum order {{ count }}"
   },
   "placeholder": {
     "pending": "Not yet ported",
     "source": "Source",
     "empty_page_body": "This page has no body text yet. Write it in Shopify admin, under Content > Pages."
+  },
+  "collection": {
+    "all": "all",
+    "sort_by": "sort by",
+    "apply": "Apply",
+    "item_count": {
+      "one": "{{ count }} item",
+      "other": "{{ count }} items"
+    },
+    "empty": "Nothing here yet. Try another filter.",
+    "load_more": "load more",
+    "by_designer": "by {{ name }}",
+    "title": "Collections",
+    "none": "No collections published yet.",
+    "the_idea": "The Idea",
+    "the_designer": "The Designer"
+  },
+  "product": {
+    "view_image": "View image {{ index }} of {{ total }}",
+    "breadcrumb_root": "products",
+    "by_designer": "by {{ name }}",
+    "price_on_request": "Price on request",
+    "downloads": "Downloads",
+    "download_fallback": "Download",
+    "the_idea": "The Idea",
+    "the_designer": "The Designer",
+    "learn_more": "learn more",
+    "the_collection": "The Collection",
+    "discover_more": "Discover More",
+    "view_all": "view all",
+    "quantity": "Quantity",
+    "decrease": "Decrease quantity",
+    "increase": "Increase quantity",
+    "enquire": "enquire",
+    "added": "Added to your inquiry",
+    "share": "Share this product",
+    "link_copied": "Link copied",
+    "spec": {
+      "material_finish": "Material / Finish",
+      "colour": "Colour",
+      "upholstery": "Upholstery",
+      "availability": "Availability"
+    },
+    "panel": {
+      "technical_specifications": "Technical Specifications",
+      "dimensions": "Dimensions",
+      "care_maintenance": "Care & Maintenance",
+      "shipping_delivery": "Shipping & Delivery"
+    }
+  },
+  "designer": {
+    "title": "Our Designers",
+    "none": "No designers published yet.",
+    "designed_by": "Designed by {{ name }}",
+    "collections": "Collections",
+    "back": "go back"
+  },
+  "gallery": {
+    "viewer": "Image viewer",
+    "close": "Close",
+    "previous": "Previous image",
+    "next": "Next image",
+    "open": "Open image {{ index }} of {{ total }}",
+    "none": "No images published yet.",
+    "counter": "{{ index }} / {{ total }}",
+    "go_to": "Go to slide {{ index }} of {{ total }}"
+  },
+  "project": {
+    "title": "Projects",
+    "none": "No projects published yet.",
+    "view": "view",
+    "view_l": "L",
+    "view_m": "M",
+    "all": "all",
+    "other_projects": "Other Projects",
+    "featured_items": "Featured Items",
+    "location": "Location",
+    "year": "Year",
+    "category": "Category",
+    "creative_lead": "Creative lead"
   }
 }

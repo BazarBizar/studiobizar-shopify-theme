@@ -1,0 +1,58 @@
+{% comment %}
+  The sort control.
+
+  PRICE OPTIONS ARE STRIPPED, not hidden with CSS. Shopify offers
+  `price-ascending` and `price-descending` on every collection; this storefront
+  has no price on any page, so a control offering to sort by one would contradict
+  everything around it — and `scripts/check-theme-price.mjs` would be right to
+  object if the value reached the markup.
+
+  The React version listed its own four options from `SORT_OPTIONS`. Here the
+  list comes from the collection, because Shopify decides what a given collection
+  can be sorted by — a manually ordered one offers `manual`, which no hand-written
+  list would know about.
+
+  It is a plain form that submits on change, so sorting works without JavaScript
+  and every sorted view has its own URL.
+{% endcomment %}
+
+{%- liquid
+  assign current = collection.sort_by | default: collection.default_sort_by
+-%}
+
+<form method="get" class="flex items-center gap-3" data-sb-sort>
+  {% comment %}
+    Filters live in the query string too, so they have to be carried through a
+    sort change or sorting would silently clear them.
+  {% endcomment %}
+  {%- for filter in collection.filters -%}
+    {%- for value in filter.active_values -%}
+      <input type="hidden" name="{{ value.param_name }}" value="{{ value.value | escape }}">
+    {%- endfor -%}
+  {%- endfor -%}
+
+  <label for="sb-sort" class="text-secondary">{{ 'collection.sort_by' | t }}</label>
+
+  <select
+    id="sb-sort"
+    name="sort_by"
+    class="text-secondary cursor-pointer border-b border-current bg-transparent pb-0.5 focus:outline-none"
+  >
+    {%- for option in collection.sort_options -%}
+      {%- unless option.value contains 'price' -%}
+        <option
+          value="{{ option.value }}"
+          {% if option.value == current %}selected{% endif %}
+          class="text-foreground"
+        >
+          {{ option.name | downcase }}
+        </option>
+      {%- endunless -%}
+    {%- endfor -%}
+  </select>
+
+  {% comment %} Submits on change when JS is available; this is the fallback. {% endcomment %}
+  <noscript>
+    <button type="submit" class="text-secondary sb-underline">{{ 'collection.apply' | t }}</button>
+  </noscript>
+</form>

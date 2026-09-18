@@ -1,0 +1,69 @@
+{% comment %}
+  components/collection/collection-card.tsx.
+
+  A 3:5 image with the collection wordmark laid over it, then the title and the
+  designer byline — the card from `DESK - Collections All.pdf`. The mobile frame
+  runs it full width at 353×235, so the media turns landscape below 750px rather
+  than becoming a 588px-tall portrait.
+
+  The design uses a supplied logo per collection (`custom.hero_logo`). Where none
+  is set the title is typeset instead, which is why the wordmark can be either an
+  image or text.
+
+  The overlay carries `data-surface="dark"` so the wordmark takes earth ink over
+  the photograph regardless of the page's own ground.
+{% endcomment %}
+
+{%- liquid
+  assign image = collection.metafields.custom.card_image.value | default: collection.image
+  assign logo = collection.metafields.custom.hero_logo.value
+  assign designer = collection.metafields.custom.designer.value
+
+  comment
+    "The Arc Teak Collection" reads as "ARC TEAK" in the design. Liquid has no
+    regex, so the two affixes are stripped with `remove_first` / `remove` —
+    which is exactly what the React version's two replaces did.
+  endcomment
+  assign wordmark = collection.title | remove_first: 'The ' | remove: ' Collection'
+
+  assign byline = ''
+  if designer.name != blank
+    assign byline = designer.name
+    if designer.studio != blank
+      assign byline = byline | append: ', ' | append: designer.studio
+    endif
+  endif
+
+  assign card_alt = image.alt | default: collection.title
+-%}
+
+<article>
+  <a href="{{ collection.url }}" class="group mb-5 block">
+    <div class="relative aspect-3/2 overflow-hidden bg-foreground/5 sm:aspect-3/5">
+      {%- if image -%}
+        {%- render 'sb-image',
+          image: image,
+          alt: card_alt,
+          sizes: '(max-width: 749px) 50vw, 25vw',
+          crop: 'center',
+          class: 'absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out-soft group-hover:scale-[1.03]'
+        -%}
+      {%- endif -%}
+
+      <div class="absolute inset-0 flex items-center justify-center p-6" data-surface="dark">
+        {%- if logo -%}
+          {%- render 'sb-image', image: logo, alt: '', widths: '300, 600', sizes: '20vw', class: 'h-auto w-3/5 object-contain' -%}
+        {%- else -%}
+          <span class="text-display text-center leading-none tracking-[0.02em] text-foreground uppercase">
+            {{ wordmark }}
+          </span>
+        {%- endif -%}
+      </div>
+    </div>
+
+    <h2 class="text-dark-wood mt-3">{{ collection.title }}</h2>
+    {%- if byline != blank -%}
+      <p class="text-tertiary mt-1 text-slate">{{ 'collection.by_designer' | t: name: byline }}</p>
+    {%- endif -%}
+  </a>
+</article>

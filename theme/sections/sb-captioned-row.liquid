@@ -1,0 +1,130 @@
+{% comment %}
+  components/sections/captioned-row.tsx — the three-up row of captioned
+  photographs that closes Our Story and Service, and sits third on the landing
+  page.
+
+  Captions sit at x=20 / 588 / 1155 in the designs — three ~556px columns.
+  Capped at three: the design has no fourth position, and a fourth image would
+  start a second row of one.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+
+  capture rhythm_class
+    render 'sb-section-classes', rhythm: s.rhythm, pad: 'none'
+  endcapture
+
+  assign paints_ground = true
+  if s.surface == 'inherit'
+    assign paints_ground = false
+  endif
+
+  assign entries = page.metafields.custom[s.metafield].value
+-%}
+
+{%- if entries != blank and entries.size > 0 -%}
+  <section
+    {% if paints_ground %}data-surface="{{ s.surface }}" class="bg-background text-foreground"{% endif %}
+    {{ section.shopify_attributes }}
+  >
+    <div class="sb-container pb-section {{ rhythm_class }}">
+      {%- if s.heading != blank -%}
+        <h2 class="text-h2 mb-8">{{ s.heading }}</h2>
+      {%- endif -%}
+
+      <ul class="grid gap-grid-gap sm:grid-cols-2 lg:grid-cols-3">
+        {%- for entry in entries limit: 3 -%}
+          {%- if entry.image -%}
+            {%- assign alt = entry.alt_text | default: entry.caption | default: '' -%}
+            <li>
+              <figure>
+                <div class="relative aspect-[3/4] overflow-hidden bg-foreground/10">
+                  {%- render 'sb-image',
+                    image: entry.image,
+                    alt: alt,
+                    sizes: '(max-width: 749px) 100vw, 33vw',
+                    widths: '620, 830, 1240',
+                    crop: 'center',
+                    class: 'absolute inset-0 h-full w-full object-cover'
+                  -%}
+                </div>
+                {%- if entry.caption != blank -%}
+                  <figcaption class="text-secondary mt-3">{{ entry.caption }}</figcaption>
+                {%- endif -%}
+              </figure>
+            </li>
+          {%- endif -%}
+        {%- endfor -%}
+      </ul>
+    </div>
+  </section>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Captioned row",
+  "tag": "section",
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Three captioned photographs from a page metafield. Shows nothing when the metafield is empty."
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "info": "Leave empty for the bare row, as the landing page has it."
+    },
+    {
+      "type": "select",
+      "id": "metafield",
+      "label": "Source metafield",
+      "options": [
+        { "value": "feature_images", "label": "feature_images" },
+        { "value": "gallery", "label": "gallery" },
+        { "value": "hero_slides", "label": "hero_slides" }
+      ],
+      "default": "feature_images"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Ground",
+      "options": [
+        { "value": "inherit", "label": "Inherit" },
+        { "value": "light", "label": "Earth" },
+        { "value": "dark", "label": "Dark wood" },
+        { "value": "olive", "label": "Black olive" },
+        { "value": "blue", "label": "Charcoal blue" },
+        { "value": "mocha", "label": "Deep mocha" },
+        { "value": "black", "label": "Off black" }
+      ],
+      "default": "inherit"
+    },
+    {
+      "type": "select",
+      "id": "rhythm",
+      "label": "Vertical space",
+      "options": [
+        { "value": "theme", "label": "Theme default" },
+        { "value": "xs", "label": "Extra tight" },
+        { "value": "sm", "label": "Tight" },
+        { "value": "md", "label": "Medium" },
+        { "value": "lg", "label": "Loose" },
+        { "value": "xl", "label": "Extra loose" }
+      ],
+      "default": "theme"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Captioned row"
+    }
+  ]
+}
+{% endschema %}

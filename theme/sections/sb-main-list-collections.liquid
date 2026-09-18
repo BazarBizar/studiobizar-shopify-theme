@@ -1,0 +1,145 @@
+{% comment %}
+  app/(storefront)/collections/page.tsx — the 4-up collection grid.
+
+  ORDER COMES FROM A SETTING, NOT A METAFIELD. The Next build sorted on
+  `custom.sort_order` and fell back to alphabetical, because a headless query had
+  no other way to express a curated sequence. Liquid cannot sort a collection
+  list on a nested metafield at all — but the theme editor has a collection-list
+  picker, which gives the merchant the order directly and visibly. That is
+  strictly better than a number typed into a metafield nobody can see.
+
+  Leaving the picker empty falls back to every collection in the store, minus the
+  ones Shopify creates for itself.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+
+  capture rhythm_class
+    render 'sb-section-classes', rhythm: s.rhythm, pad: 'none'
+  endcapture
+
+  assign paints_ground = true
+  if s.surface == 'inherit'
+    assign paints_ground = false
+  endif
+
+  assign chosen = s.collections
+
+  comment
+    `frontpage` is created by Shopify for a theme's home page and `all` is the
+    automatic catch-all; neither is a Studio Bizar collection and both would sit
+    in the grid looking like one.
+  endcomment
+  assign hidden = 'frontpage,all'
+
+  comment
+    `| default: 'collection.title'` would print the KEY when the setting is
+    blank, not the translation — `default` substitutes the string, it does not
+    run `t` over it. Resolved here instead.
+  endcomment
+  assign heading = s.heading
+  if heading == blank
+    assign heading = 'collection.title' | t
+  endif
+-%}
+
+<section
+  {% if paints_ground %}data-surface="{{ s.surface }}" class="bg-background text-foreground"{% endif %}
+  {{ section.shopify_attributes }}
+>
+  <div class="sb-container pt-12 pb-section {{ rhythm_class }}">
+    <header class="max-w-[46rem]">
+      <h1 class="text-h1">{{ heading }}</h1>
+      {%- if s.intro != blank -%}
+        <div class="sb-prose mt-6">{{ s.intro }}</div>
+      {%- endif -%}
+    </header>
+
+    {%- capture cards -%}
+      {%- if chosen.count > 0 -%}
+        {%- for item in chosen -%}
+          <li>{%- render 'sb-collection-card', collection: item -%}</li>
+        {%- endfor -%}
+      {%- else -%}
+        {%- for item in collections -%}
+          {%- unless hidden contains item.handle -%}
+            <li>{%- render 'sb-collection-card', collection: item -%}</li>
+          {%- endunless -%}
+        {%- endfor -%}
+      {%- endif -%}
+    {%- endcapture -%}
+
+    {%- if cards contains '<li>' -%}
+      <ul class="sb-grid-4 mt-12">{{ cards }}</ul>
+    {%- else -%}
+      <p class="text-body mt-16 text-muted">{{ 'collection.none' | t }}</p>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Collection list",
+  "tag": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Collections"
+    },
+    {
+      "type": "richtext",
+      "id": "intro",
+      "label": "Intro",
+      "info": "The lede under the heading."
+    },
+    {
+      "type": "collection_list",
+      "id": "collections",
+      "label": "Collections",
+      "info": "Drag to set the order shown. Leave empty to show every collection in the store.",
+      "limit": 24
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Ground",
+      "options": [
+        { "value": "inherit", "label": "Inherit" },
+        { "value": "light", "label": "Earth" },
+        { "value": "dark", "label": "Dark wood" },
+        { "value": "olive", "label": "Black olive" },
+        { "value": "blue", "label": "Charcoal blue" },
+        { "value": "mocha", "label": "Deep mocha" },
+        { "value": "black", "label": "Off black" }
+      ],
+      "default": "inherit"
+    },
+    {
+      "type": "select",
+      "id": "rhythm",
+      "label": "Vertical space",
+      "options": [
+        { "value": "theme", "label": "Theme default" },
+        { "value": "xs", "label": "Extra tight" },
+        { "value": "sm", "label": "Tight" },
+        { "value": "md", "label": "Medium" },
+        { "value": "lg", "label": "Loose" },
+        { "value": "xl", "label": "Extra loose" }
+      ],
+      "default": "theme"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Collection list"
+    }
+  ]
+}
+{% endschema %}

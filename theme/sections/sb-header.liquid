@@ -123,6 +123,15 @@
             type="button"
             data-sb-inquiry-open
             aria-label="{{ 'inquiry.open' | t }}"
+            {%- comment -%}
+              The count is not known server-side, so the richer label is handed to
+              the script as a template and swapped in once localStorage is read.
+
+              The placeholder is a LITERAL STRING passed through `t`, not a nested
+              `{{ }}` — Liquid cannot nest an output inside an output, and doing so
+              is a syntax error that takes the whole section down.
+            {%- endcomment -%}
+            data-label-with-count="{{ 'inquiry.open_with_count' | t: count: '%count%' }}"
             aria-haspopup="dialog"
             class="relative transition-opacity hover:opacity-70"
           >

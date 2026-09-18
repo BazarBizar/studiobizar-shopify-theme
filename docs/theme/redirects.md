@@ -21,8 +21,15 @@ That leaves three classes of URL that need one row per record:
 | Pattern | Rows | Source of the handles |
 |---|---|---|
 | `/shop/<handle>` → `/products/<handle>` | ~1,595 | active products |
-| `/projects/<handle>` → `/metaobjects/project/<handle>` | 10 | `project` metaobjects |
-| `/designers/<handle>` → `/metaobjects/designer/<handle>` | 10 | `designer` metaobjects |
+| `/projects/<handle>` → `/pages/projects/<handle>` | 10 | `project` metaobjects |
+| `/designers/<handle>` → `/pages/designers/<handle>` | 10 | `designer` metaobjects |
+
+**The two metaobject targets were wrong in an earlier draft of this file**, which
+said `/metaobjects/<type>/<handle>`. Both definitions already have the online-store
+capability enabled with a url handle set, and Shopify reports the real URL as
+`https://studiobizar.be/pages/designers/adelie-ducasse`. Checked against the store
+rather than assumed — the generic `/metaobjects/` form is what you get without
+that capability, and this store does not use it.
 
 Generate them in phase 9 against the live store rather than by hand, and import
 the result through the same CSV as the fixed rows. The handles are unchanged on
@@ -31,6 +38,20 @@ mechanical rewrite of the prefix, not a lookup.
 
 Shopify's redirect importer takes a CSV with exactly the two columns in
 [redirects.csv](redirects.csv): `Redirect from,Redirect to`.
+
+## None of this does anything until DNS moves
+
+`studiobizar.be` is served by **Vercel**, not Shopify. The Next app answers `/`
+with a 200 and `/pages/our-story` with a 404, and Shopify's own
+`myshopify.com` URLs 301 to a domain it does not actually serve.
+
+So a URL redirect created in Shopify today is inert: redirects are executed by the
+Online Store, and the Online Store is not on the end of that hostname. They begin
+working at the moment DNS is pointed back at Shopify, which is the cutover — and
+that is also the moment the theme has to be finished, because the same switch
+turns the Next storefront off.
+
+The store currently has **zero** redirects configured.
 
 ## Fixed routes
 
@@ -41,7 +62,7 @@ and `/collections/<handle>` are absent because they are unchanged on both sides.
 |---|---|---|
 | `/shop` | `/collections/all` | The catalogue collection stands in for the whole shop, as `CATALOGUE_HANDLES` already did |
 | `/projects` | `/pages/projects` | |
-| `/designers` | `/pages/designers` | |
+| `/designers` | `/pages/professionals` | **No page has the handle `designers`** — the Next route reads `getPage("professionals")`, and `/pages/designers/` is reserved by the designer metaobject's url handle. Assign `page.designers` to the `professionals` page, or create a page and repoint this row |
 | `/gallery` | `/pages/gallery` | |
 | `/our-story` | `/pages/our-story` | |
 | `/services` | `/pages/our-services` | The Shopify handle is `our-services`; the Next route dropped the `our-` |

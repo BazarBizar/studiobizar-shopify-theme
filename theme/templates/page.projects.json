@@ -1,0 +1,18 @@
+{
+  "sections": {
+    "main": {
+      "type": "sb-project-list",
+      "settings": {
+        "heading": "Projects",
+        "show_categories": true,
+        "show_density": true,
+        "default_view": "m",
+        "surface": "light",
+        "rhythm": "theme"
+      }
+    }
+  },
+  "order": [
+    "main"
+  ]
+}

@@ -1,0 +1,97 @@
+{% comment %}
+  components/product/add-to-inquiry.tsx — the qty stepper, `enquire` and share.
+
+  133×48, 372×48 and 48×48 outlined boxes in the design. There is no price and no
+  stock check: `enquire` only ever adds to the inquiry list.
+
+  `moq` is the product's `custom.moq` metafield — the minimum this piece can be
+  ordered in. It is the stepper's floor as well as its starting value, so the
+  visitor cannot walk below it.
+
+  The button carries the same `data-sb-inquiry-add` attributes the product card
+  uses, so `assets/sb-inquiry-cart.js` handles both with one listener. The only
+  addition here is `data-qty`, which the stepper keeps in step.
+{% endcomment %}
+
+{%- liquid
+  assign variant = product.variants.first
+  assign moq = product.metafields.custom.moq.value | default: 1
+  if moq < 1
+    assign moq = 1
+  endif
+
+  assign variant_title = variant.title
+  if variant_title == 'Default Title'
+    assign variant_title = ''
+  endif
+-%}
+
+{%- if variant -%}
+  <div class="flex flex-col gap-3" data-sb-inquiry-form>
+    <div class="flex flex-wrap items-stretch gap-3">
+      <div class="flex h-12 w-[8.3rem] items-center justify-between border border-foreground px-4">
+        <button
+          type="button"
+          data-sb-qty-step="-1"
+          aria-label="{{ 'product.decrease' | t }}"
+          class="transition-opacity hover:opacity-60 disabled:opacity-30"
+        >
+          {%- render 'sb-icon', icon: 'minus', class: 'size-4' -%}
+        </button>
+
+        <label for="sb-qty" class="sr-only">{{ 'product.quantity' | t }}</label>
+        <input
+          id="sb-qty"
+          type="number"
+          data-sb-qty
+          value="{{ moq }}"
+          min="{{ moq }}"
+          max="999"
+          step="1"
+          inputmode="numeric"
+          class="text-secondary w-12 bg-transparent text-center tabular-nums focus:outline-none"
+        >
+
+        <button
+          type="button"
+          data-sb-qty-step="1"
+          aria-label="{{ 'product.increase' | t }}"
+          class="transition-opacity hover:opacity-60 disabled:opacity-30"
+        >
+          {%- render 'sb-icon', icon: 'plus', class: 'size-4' -%}
+        </button>
+      </div>
+
+      <button
+        type="button"
+        data-sb-inquiry-add
+        data-variant-id="{{ variant.id }}"
+        data-product-handle="{{ product.handle }}"
+        data-sku="{{ variant.sku }}"
+        data-title="{{ product.title | escape }}"
+        data-variant-title="{{ variant_title | escape }}"
+        data-image="{{ product.featured_image | image_url: width: 200 }}"
+        data-qty="{{ moq }}"
+        class="sb-enquire text-button h-12 flex-1 border border-foreground px-8 font-medium uppercase transition-colors hover:bg-foreground hover:text-background"
+      >
+        <span class="sb-enquire-idle">{{ 'product.enquire' | t }}</span>
+        <span class="sb-enquire-done">{{ 'product.added' | t }}</span>
+      </button>
+
+      <button
+        type="button"
+        data-sb-share
+        aria-label="{{ 'product.share' | t }}"
+        class="flex size-12 shrink-0 items-center justify-center border border-foreground transition-colors hover:bg-foreground hover:text-background"
+      >
+        {%- render 'sb-icon', icon: 'share', class: 'size-4' -%}
+      </button>
+    </div>
+
+    {%- if moq > 1 -%}
+      <p class="text-tertiary text-muted">{{ 'inquiry.moq_note' | t: count: moq }}</p>
+    {%- endif -%}
+
+    <p class="text-tertiary text-muted" data-sb-share-note hidden>{{ 'product.link_copied' | t }}</p>
+  </div>
+{%- endif -%}

@@ -1,10 +1,10 @@
 {
   "sections": {
     "main": {
-      "type": "sb-main-list-collections",
+      "type": "sb-main-project",
       "settings": {
-        "heading": "Collections",
-        "surface": "inherit",
+        "hero_ratio": "2 / 1",
+        "surface": "black",
         "rhythm": "theme"
       }
     }

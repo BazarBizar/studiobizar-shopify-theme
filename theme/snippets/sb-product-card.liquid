@@ -1,0 +1,113 @@
+{% comment %}
+  components/product/product-card.tsx.
+
+  A square media crop with the product's first real Shopify tag inset top-left,
+  then the title, the collection label, and a `+` that adds the product to the
+  inquiry list straight from the grid.
+
+  NO PRICE, NO AVAILABILITY — by design, and enforced by
+  `scripts/check-theme-price.mjs`.
+
+  The second product photo crossfades in on hover: a layer stacked over the
+  primary image at `opacity:0`, raised to `1` on hover. In React that needed a
+  `group` class and nothing else; the same is true here.
+
+  The quick-add carries its payload on data attributes read by
+  `assets/sb-inquiry-cart.js`. It adds the product's FIRST variant with no trip
+  to the product page — there is no size or colour picker at this density, so it
+  only ever adds one of whatever that default variant is.
+
+  Accepts:
+    product  — a product object (required)
+    aspect   — card | wide, default card. `wide` is the double-width cell in the
+               Collections Detail mosaic.
+    priority — true for the first row, which is above the fold
+    sizes    — overrides the responsive sizes attribute
+{% endcomment %}
+
+{%- liquid
+  assign variant = product.variants.first
+
+  comment
+    The card badge is the first REAL Shopify tag, e.g. "New" — not a computed
+    state. The designs show one; more would not fit the inset.
+  endcomment
+  assign tag = product.tags.first
+
+  assign label = product.metafields.custom.collection_label.value
+
+  if aspect == 'wide'
+    assign ratio = '2 / 1'
+  else
+    assign ratio = '1 / 1'
+  endif
+
+  assign card_sizes = sizes | default: '(max-width: 749px) 50vw, 25vw'
+  assign primary_alt = product.featured_image.alt | default: product.title
+  assign add_label = 'inquiry.add_named' | t: title: product.title
+-%}
+
+<article>
+  <a href="{{ product.url }}" class="group block">
+    <div class="relative overflow-hidden bg-foreground/5" style="aspect-ratio: {{ ratio }};">
+      {%- if product.featured_image -%}
+        {%- render 'sb-image',
+          image: product.featured_image,
+          alt: primary_alt,
+          sizes: card_sizes,
+          priority: priority,
+          crop: 'center',
+          class: 'absolute inset-0 h-full w-full object-cover'
+        -%}
+      {%- endif -%}
+
+      {%- if product.images[1] -%}
+        <span aria-hidden="true">
+          {%- render 'sb-image',
+            image: product.images[1],
+            alt: '',
+            sizes: card_sizes,
+            crop: 'center',
+            class: 'absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-300 ease-out group-hover:opacity-100'
+          -%}
+        </span>
+      {%- endif -%}
+
+      {%- if tag != blank -%}
+        <span class="text-tertiary absolute top-[0.875rem] left-[0.875rem] uppercase">{{ tag }}</span>
+      {%- endif -%}
+    </div>
+  </a>
+
+  <div class="mt-3 flex items-start justify-between gap-3">
+    <a href="{{ product.url }}" class="min-w-0">
+      <h3 class="text-secondary truncate font-medium">{{ product.title }}</h3>
+      {%- if label != blank -%}
+        <p class="text-tertiary mt-1 truncate text-muted">{{ label }}</p>
+      {%- endif -%}
+    </a>
+
+    {%- if variant -%}
+      {% comment %}
+        `data-added` is set by the script for two seconds after a click; the two
+        icons are both in the DOM and CSS picks which is visible, so the
+        acknowledgement costs no layout and no second render.
+      {% endcomment %}
+      <button
+        type="button"
+        data-sb-inquiry-add
+        data-variant-id="{{ variant.id }}"
+        data-product-handle="{{ product.handle }}"
+        data-sku="{{ variant.sku }}"
+        data-title="{{ product.title | escape }}"
+        data-variant-title="{{ variant.title | escape }}"
+        data-image="{{ product.featured_image | image_url: width: 200 }}"
+        aria-label="{{ add_label }}"
+        class="sb-quick-add flex size-8 shrink-0 items-center justify-center border border-foreground/20 transition-colors hover:border-foreground hover:bg-foreground hover:text-background"
+      >
+        {%- render 'sb-icon', icon: 'plus', class: 'size-4 sb-quick-add-idle' -%}
+        {%- render 'sb-icon', icon: 'check', class: 'size-4 sb-quick-add-done' -%}
+      </button>
+    {%- endif -%}
+  </div>
+</article>

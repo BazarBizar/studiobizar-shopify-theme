@@ -1,10 +1,11 @@
 {
   "sections": {
     "main": {
-      "type": "sb-main-list-collections",
+      "type": "sb-main-designer",
       "settings": {
-        "heading": "Collections",
-        "surface": "inherit",
+        "show_products": true,
+        "product_limit": 8,
+        "surface": "mocha",
         "rhythm": "theme"
       }
     }

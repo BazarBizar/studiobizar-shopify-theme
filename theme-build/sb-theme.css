@@ -500,6 +500,81 @@
   }
 }
 
+/**
+ * A scroll-snap track. This is what replaces embla-carousel: the browser does
+ * the snapping, the momentum and the touch handling, and without JavaScript the
+ * track is still a scrollable strip rather than a dead stack of slides.
+ *
+ * `assets/sb-carousel.js` only adds the arrows and the dot state on top.
+ */
+@utility sb-track {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+
+  /* The scrollbar is the one thing the browser gets wrong here — it sits over
+     the image and the design has no room for it. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  & > * {
+    scroll-snap-align: start;
+    flex: 0 0 100%;
+    min-width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sb-track {
+    scroll-behavior: auto;
+  }
+}
+
+/**
+ * The quick-add button's two-second acknowledgement.
+ *
+ * Both icons ship in the markup and CSS picks which is visible, driven by the
+ * `data-added` attribute `sb-inquiry-cart.js` sets. Swapping the icon in JS
+ * instead would mean a second render and a reflow for what is a confirmation.
+ */
+@utility sb-quick-add {
+  & .sb-quick-add-done {
+    display: none;
+  }
+
+  &[data-added="true"] .sb-quick-add-idle {
+    display: none;
+  }
+
+  &[data-added="true"] .sb-quick-add-done {
+    display: block;
+  }
+}
+
+/**
+ * `enquire` says "Added to your inquiry" for two seconds after a click. Same
+ * approach as the quick-add: both labels ship and CSS picks, so the button does
+ * not change width mid-acknowledgement.
+ */
+@utility sb-enquire {
+  & .sb-enquire-done {
+    display: none;
+  }
+
+  &[data-added="true"] .sb-enquire-idle {
+    display: none;
+  }
+
+  &[data-added="true"] .sb-enquire-done {
+    display: inline;
+  }
+}
+
 /* `<summary>` carries a disclosure triangle in every engine; every dropdown and
    accordion in the designs is drawn without one. */
 @utility sb-summary {

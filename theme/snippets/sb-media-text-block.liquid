@@ -1,0 +1,84 @@
+{% comment %}
+  The image-beside-copy band, as markup.
+
+  Extracted so `sections/sb-media-text.liquid` and `sections/sb-main-product.liquid`
+  render the same thing rather than two drifting copies — The Idea and The
+  Designer on a product page are this block with different props, exactly as they
+  were in the React build where both imported `<MediaText>`.
+
+  Accepts:
+    heading  — the title
+    body     — HTML (rich text metafield, or a richtext setting)
+    image    — an image drop
+    align    — left | right, which side the image sits on
+    ratio    — aspect-ratio for the image, default 2 / 3
+    padding  — normal | wide. `wide` insets further than the page gutter.
+    surface  — a ground, or `inherit` to take the surrounding one
+    rhythm   — xs | sm | md | lg | xl | theme
+    link_label / link_url / link_style — optional button
+{% endcomment %}
+
+{%- liquid
+  assign align = align | default: 'left'
+  assign ratio = ratio | default: '2 / 3'
+  assign surface = surface | default: 'inherit'
+
+  if padding == 'wide'
+    comment
+      `wide` REPLACES the page gutter rather than adding to it — both set
+      padding-inline, and stacking two classes for one property is a cascade
+      gamble. Measured at ~200px on the 1728px Shop Detail frame.
+    endcomment
+    assign padding_class = 'w-full px-6 sm:px-16 lg:px-[13.1rem]'
+  else
+    assign padding_class = 'sb-container'
+  endif
+
+  capture rhythm_class
+    render 'sb-section-classes', rhythm: rhythm, pad: 'none'
+  endcapture
+
+  assign paints_ground = true
+  if surface == 'inherit'
+    assign paints_ground = false
+  endif
+
+  assign button_variant = link_style | default: 'outline'
+-%}
+
+<div {% if paints_ground %}data-surface="{{ surface }}" class="bg-background text-foreground"{% endif %}>
+  <div class="py-section {{ rhythm_class }} {{ padding_class }}">
+    <div class="grid items-center gap-10 lg:grid-cols-2 lg:gap-20">
+      {%- if image != blank -%}
+        <figure class="relative w-full overflow-hidden bg-foreground/5 {% if align == 'right' %}lg:order-2{% endif %}">
+          {%- render 'sb-image',
+            image: image,
+            ratio: ratio,
+            sizes: '(max-width: 1023px) 100vw, 45vw',
+            widths: '620, 830, 1240, 1660',
+            crop: 'center'
+          -%}
+        </figure>
+      {%- endif -%}
+
+      <div class="max-w-[34rem]">
+        {%- if heading != blank -%}
+          <h2 class="text-h2">{{ heading }}</h2>
+        {%- endif -%}
+
+        {%- if body != blank -%}
+          <div class="sb-prose mt-6">{{ body }}</div>
+        {%- endif -%}
+
+        {%- if link_label != blank and link_url != blank -%}
+          {%- render 'sb-button',
+            label: link_label,
+            href: link_url,
+            variant: button_variant,
+            class: 'mt-8'
+          -%}
+        {%- endif -%}
+      </div>
+    </div>
+  </div>
+</div>

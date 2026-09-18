@@ -1,0 +1,251 @@
+{% comment %}
+  app/(storefront)/projects/page.tsx — the project overview with category chips
+  and the L/M density toggle.
+
+  BOTH CONTROLS ARE LINKS, NOT BUTTONS. In the Next build they were nuqs state;
+  here they are plain `?category=` and `?view=` links read back with
+  `request.query_string`. That keeps every view shareable and the back button
+  working — which is what nuqs was for — and costs no JavaScript at all.
+
+  Filtering happens in Liquid rather than in Shopify, because these are
+  metaobjects: there is no `filters` object for them and no query argument on
+  `shop.metaobjects`. With ten projects that is a loop, not a problem.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+
+  capture rhythm_class
+    render 'sb-section-classes', rhythm: s.rhythm, pad: 'none'
+  endcapture
+
+  assign projects = shop.metaobjects.project.values | sort: 'sort_order'
+
+  comment
+    `request.query_string` is the only place a page template can read a query
+    parameter — Liquid has no params object. Split on & then on = rather than
+    reaching for a filter that does not exist.
+  endcomment
+  assign active_category = ''
+  assign view = s.default_view
+
+  assign pairs = request.query_string | split: '&'
+  for pair in pairs
+    assign parts = pair | split: '='
+    if parts[0] == 'category'
+      assign active_category = parts[1] | replace: '+', ' ' | replace: '%20', ' '
+    endif
+    if parts[0] == 'view' and parts[1] == 'l'
+      assign view = 'l'
+    endif
+    if parts[0] == 'view' and parts[1] == 'm'
+      assign view = 'm'
+    endif
+  endfor
+
+  comment
+    The chip row is built from the categories actually in use, so a category
+    added in the admin panel appears here with no code change — and one that
+    nothing uses does not linger as a chip returning nothing.
+  endcomment
+  assign categories = '|'
+  for entry in projects
+    if entry.category != blank
+      comment
+        Delimiters on BOTH sides before the test. A bare `contains` is a
+        substring match, so a category that is a prefix of another — "Home"
+        inside "Homeware" — would be silently swallowed.
+      endcomment
+      assign probe = entry.category | prepend: '|' | append: '|'
+      unless categories contains probe
+        assign categories = categories | append: entry.category | append: '|'
+      endunless
+    endif
+  endfor
+  assign category_list = categories | split: '|' | compact
+
+  if view == 'l'
+    assign grid_class = 'mt-12 flex flex-col gap-16'
+  else
+    assign grid_class = 'mt-12 grid gap-grid-gap gap-y-12 sm:grid-cols-2 lg:grid-cols-3'
+  endif
+
+  assign heading = s.heading
+  if heading == blank
+    assign heading = 'project.title' | t
+  endif
+-%}
+
+<section
+  data-surface="{{ s.surface }}"
+  class="bg-background text-foreground"
+  {{ section.shopify_attributes }}
+>
+  <div class="sb-container pt-12 pb-section {{ rhythm_class }}">
+    <header class="max-w-[46rem]">
+      <h1 class="text-h1">{{ heading }}</h1>
+      {%- if s.intro != blank -%}
+        <div class="sb-prose mt-6">{{ s.intro }}</div>
+      {%- endif -%}
+    </header>
+
+    <div class="mt-10 flex flex-wrap items-center justify-between gap-6 border-b border-border pb-4">
+      {%- if s.show_categories and category_list.size > 0 -%}
+        <ul class="flex flex-wrap items-center gap-x-8 gap-y-3">
+          <li>
+            <a
+              href="{{ request.path }}?view={{ view }}"
+              class="text-secondary sb-underline{% if active_category == blank %} font-medium{% endif %}"
+            >
+              {{ 'project.all' | t }}
+            </a>
+          </li>
+          {%- for category in category_list -%}
+            <li>
+              <a
+                href="{{ request.path }}?category={{ category | url_encode }}&view={{ view }}"
+                {% if active_category == category %}aria-current="true"{% endif %}
+                class="text-secondary sb-underline{% if active_category == category %} font-medium{% endif %}"
+              >
+                {{ category | downcase }}
+              </a>
+            </li>
+          {%- endfor -%}
+        </ul>
+      {%- else -%}
+        <span></span>
+      {%- endif -%}
+
+      {%- if s.show_density -%}
+        {%- liquid
+          comment
+            Encode the VALUE, then build the pair. Piping the whole
+            `category=Residential` string through url_encode would escape the
+            `=` as well and produce a parameter nothing can read back.
+          endcomment
+          assign category_param = ''
+          if active_category != blank
+            assign encoded_category = active_category | url_encode
+            assign category_param = 'category=' | append: encoded_category | append: '&'
+          endif
+        -%}
+        <div class="flex items-center gap-4">
+          <span class="text-secondary">{{ 'project.view' | t }}:</span>
+          <a
+            href="{{ request.path }}?{{ category_param }}view=l"
+            {% if view == 'l' %}aria-current="true"{% endif %}
+            class="text-secondary sb-underline{% if view == 'l' %} font-medium{% endif %}"
+          >
+            {{ 'project.view_l' | t }}
+          </a>
+          <a
+            href="{{ request.path }}?{{ category_param }}view=m"
+            {% if view == 'm' %}aria-current="true"{% endif %}
+            class="text-secondary sb-underline{% if view == 'm' %} font-medium{% endif %}"
+          >
+            {{ 'project.view_m' | t }}
+          </a>
+        </div>
+      {%- endif -%}
+    </div>
+
+    {%- capture cards -%}
+      {%- for entry in projects -%}
+        {%- if active_category == blank or entry.category == active_category -%}
+          {%- liquid
+            assign eager = false
+            if forloop.index0 < 3
+              assign eager = true
+            endif
+          -%}
+          <div>{%- render 'sb-project-card', project: entry, view: view, priority: eager -%}</div>
+        {%- endif -%}
+      {%- endfor -%}
+    {%- endcapture -%}
+
+    {%- if cards contains '<article>' -%}
+      <div class="{{ grid_class }}">{{ cards }}</div>
+    {%- else -%}
+      <p class="text-body mt-16 text-muted">{{ 'project.none' | t }}</p>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Project list",
+  "tag": "section",
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Reads every `project` metaobject, ordered by its sort_order field. The category chips are built from the categories actually in use."
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Projects"
+    },
+    {
+      "type": "richtext",
+      "id": "intro",
+      "label": "Intro"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_categories",
+      "label": "Show category chips",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_density",
+      "label": "Show the L / M density toggle",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "default_view",
+      "label": "Default density",
+      "options": [
+        { "value": "l", "label": "L — one per row" },
+        { "value": "m", "label": "M — three across" }
+      ],
+      "default": "m"
+    },
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Ground",
+      "options": [
+        { "value": "light", "label": "Earth" },
+        { "value": "dark", "label": "Dark wood" },
+        { "value": "olive", "label": "Black olive" },
+        { "value": "blue", "label": "Charcoal blue" },
+        { "value": "mocha", "label": "Deep mocha" },
+        { "value": "black", "label": "Off black" }
+      ],
+      "default": "light"
+    },
+    {
+      "type": "select",
+      "id": "rhythm",
+      "label": "Vertical space",
+      "options": [
+        { "value": "theme", "label": "Theme default" },
+        { "value": "xs", "label": "Extra tight" },
+        { "value": "sm", "label": "Tight" },
+        { "value": "md", "label": "Medium" },
+        { "value": "lg", "label": "Loose" },
+        { "value": "xl", "label": "Extra loose" }
+      ],
+      "default": "theme"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Project list"
+    }
+  ]
+}
+{% endschema %}
