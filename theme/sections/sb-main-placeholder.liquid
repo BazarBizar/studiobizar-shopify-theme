@@ -1,0 +1,72 @@
+{% comment %}
+  A template that has not been ported yet.
+
+  This exists so the theme boots, the header and footer are previewable on every
+  route, and nobody mistakes an unbuilt page for a broken one. Each template
+  names the migration phase that owns it. Delete the placeholder from a template
+  as soon as its real sections land — there should be none left when phase 7
+  closes.
+
+  It renders nothing at all on a live store: an unfinished page must not be
+  published, and a visitor seeing scaffolding is worse than a visitor seeing an
+  empty band. `request.design_mode` is true in the theme editor and in a
+  development theme preview, which is where this is meant to be read.
+{% endcomment %}
+
+{%- if request.design_mode -%}
+  <div
+    data-surface="{{ section.settings.surface }}"
+    class="bg-background text-foreground"
+  >
+    <div class="sb-container py-section">
+      <p class="text-h4 uppercase tracking-[0.06em] opacity-60">
+        {{ 'placeholder.pending' | t }}
+      </p>
+      <h1 class="text-h1 mt-4">{{ section.settings.title }}</h1>
+      <p class="text-body mt-4 max-w-[44rem] opacity-80">{{ section.settings.note }}</p>
+      <p class="text-tertiary mt-8 opacity-60">
+        {{ 'placeholder.source' | t }}: <code>{{ section.settings.source }}</code>
+      </p>
+    </div>
+  </div>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Not yet ported",
+  "settings": [
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Page",
+      "default": "Untitled"
+    },
+    {
+      "type": "text",
+      "id": "note",
+      "label": "Which phase owns it",
+      "default": "Pending migration."
+    },
+    {
+      "type": "text",
+      "id": "source",
+      "label": "Source in the Next app",
+      "default": ""
+    },
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Ground",
+      "options": [
+        { "value": "light", "label": "Earth" },
+        { "value": "dark", "label": "Dark wood" },
+        { "value": "olive", "label": "Black olive" },
+        { "value": "blue", "label": "Charcoal blue" },
+        { "value": "mocha", "label": "Deep mocha" },
+        { "value": "black", "label": "Off black" }
+      ],
+      "default": "light"
+    }
+  ]
+}
+{% endschema %}

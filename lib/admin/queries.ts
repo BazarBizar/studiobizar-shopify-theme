@@ -185,3 +185,61 @@ export async function deleteEntryRequest(input: { id: string }): Promise<WriteRe
     ...input,
   });
 }
+
+export type PageWriteResult = { id: string; title: string; handle: string; updatedAt: string };
+
+/**
+ * EDIT ONLY. There is no createPageRequest or deletePageRequest, and neither
+ * `pageCreate` nor `pageDelete` is in the operation allowlist — pages and their
+ * template suffixes are owned by `schema-push`, which is what decides that a
+ * handle has a storefront route at all.
+ *
+ * `clearMetafields` carries the keys the operator emptied. A cleared metafield is
+ * DELETED rather than set to "", because an empty value still reads as present to
+ * every storefront check that guards a section on it.
+ */
+export async function updatePageRequest(input: {
+  id: string;
+  title?: string;
+  handle?: string;
+  body?: string;
+  isPublished?: boolean;
+  metafields?: { key: string; type: string; value: string }[];
+  clearMetafields?: string[];
+}): Promise<PageWriteResult> {
+  return post<PageWriteResult>("/api/admin/pages/update", {
+    operation: "pageUpdate",
+    ...input,
+  });
+}
+
+export type MenuItemPayload = {
+  id?: string;
+  title: string;
+  type: string;
+  url?: string | null;
+  resourceId?: string | null;
+  items?: Omit<MenuItemPayload, "items">[];
+};
+
+export type MenuWriteResult = { id: string; handle: string; title: string };
+
+/**
+ * EDIT ONLY, and it sends the WHOLE tree.
+ *
+ * `menuUpdate` replaces rather than patches, so an item missing from `items` is
+ * deleted. The editor therefore holds the complete list and posts all of it; the
+ * route refuses an empty one, which is what stops a truncated payload from
+ * quietly emptying the site's navigation.
+ */
+export async function updateMenuRequest(input: {
+  id: string;
+  title: string;
+  handle: string;
+  items: MenuItemPayload[];
+}): Promise<MenuWriteResult> {
+  return post<MenuWriteResult>("/api/admin/menus/update", {
+    operation: "menuUpdate",
+    ...input,
+  });
+}

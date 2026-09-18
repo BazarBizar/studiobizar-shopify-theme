@@ -1,0 +1,16 @@
+{
+  "sections": {
+    "main": {
+      "type": "sb-main-placeholder",
+      "settings": {
+        "title": "Search",
+        "note": "Phase 4 — results grid; the overlay itself ships with the header.",
+        "source": "app/(storefront)/search/page.tsx",
+        "surface": "light"
+      }
+    }
+  },
+  "order": [
+    "main"
+  ]
+}

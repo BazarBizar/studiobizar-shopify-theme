@@ -67,7 +67,7 @@ export function slugForType(type: string): string {
  * No store has such a type today. This exists so that if one is ever created, the
  * sidebar says so rather than leading somewhere else.
  */
-const RESERVED_SLUGS = new Set(["collections", "products", "customers"]);
+const RESERVED_SLUGS = new Set(["collections", "products", "customers", "pages", "menus"]);
 
 export function reservedSlug(type: string): boolean {
   return RESERVED_SLUGS.has(type);
@@ -108,6 +108,20 @@ const BESPOKE: { group: GroupKey; item: NavItem }[] = [
   {
     group: "catalogue",
     item: { href: "/admin/collections", label: "Collections", readOnly: false, type: null },
+  },
+  {
+    group: "pages",
+    /**
+     * Sits at the top of its group because the metaobjects grouped under "Pages"
+     * are the PARTS of a page — services, FAQ items, locations, contact channels —
+     * while this is the page itself and the metafields that assemble them.
+     */
+    item: { href: "/admin/pages", label: "Pages", readOnly: false, type: null },
+  },
+  {
+    group: "pages",
+    /** Next to Pages: the two together are what a visitor can reach and how. */
+    item: { href: "/admin/menus", label: "Menus", readOnly: false, type: null },
   },
   {
     group: "inbox",

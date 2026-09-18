@@ -4,10 +4,17 @@ import { shopifyFetch } from "./client";
 import {
   PRODUCTS_PER_PAGE,
   REVALIDATE,
+  SITE_SETTINGS_HANDLE,
+  SITE_SETTINGS_TYPE,
   TAGS,
   resolveCollectionSort,
   resolveSort,
 } from "./constants";
+import {
+  EMPTY_SITE_SETTINGS,
+  normalizeSiteSettings,
+  type SiteSettings,
+} from "./entities";
 import {
   getCollectionProductsQuery,
   getCollectionQuery,
@@ -233,6 +240,25 @@ export async function getMetaobject(
   });
 
   return data.metaobject;
+}
+
+/**
+ * The `site_settings` singleton — store-wide copy an operator edits in the panel
+ * instead of a developer editing a string literal.
+ *
+ * NEVER THROWS. The footer reads this and the footer is on every route, so a
+ * store where the entry has not been created, or one Shopify is briefly unhappy
+ * about, must still render. Callers get `EMPTY_SITE_SETTINGS` and fall back to
+ * the copy that was hardcoded before — which is why nothing downstream needs a
+ * null check of its own.
+ */
+export async function getSiteSettings(): Promise<SiteSettings> {
+  try {
+    const entry = await getMetaobject(SITE_SETTINGS_TYPE, SITE_SETTINGS_HANDLE);
+    return entry ? normalizeSiteSettings(entry) : EMPTY_SITE_SETTINGS;
+  } catch {
+    return EMPTY_SITE_SETTINGS;
+  }
 }
 
 /* -------------------------------------------------------------------------- *

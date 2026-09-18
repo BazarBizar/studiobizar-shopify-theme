@@ -188,3 +188,59 @@ export function normalizeLocation(entry: ShopifyMetaobject): Location {
 
 export const galleryImagesFrom = (entry: ShopifyMetaobject, key: string): ShopifyImage[] =>
   fieldImages(toFieldMap(entry.fields), key);
+
+/* -------------------------------------------------------------------------- *
+ * Site settings — the singleton
+ * -------------------------------------------------------------------------- */
+
+/**
+ * Store-wide copy that used to be string literals in components.
+ *
+ * Every field is nullable and every consumer falls back to the literal it
+ * replaced, so an empty field — or the whole entry missing, on a store where
+ * `scripts/add-site-settings.mjs` has not run — renders exactly what the site
+ * rendered before. That is the property that makes this safe to read from the
+ * footer, which appears on all twenty-three routes: there is no state of the
+ * data that can leave a page blank.
+ */
+export type SiteSettings = {
+  footerTagline: Maybe<string>;
+  newsletterInvitation: Maybe<string>;
+  footerRegionLine: Maybe<string>;
+  contactCtaBody: Maybe<string>;
+  contactCtaLabel: Maybe<string>;
+  /** Keyed by the metaobject field key, e.g. `social_instagram`. */
+  social: Record<string, Maybe<string>>;
+};
+
+const SOCIAL_KEYS = [
+  "social_instagram",
+  "social_facebook",
+  "social_pinterest",
+  "social_linkedin",
+  "social_five",
+  "social_six",
+] as const;
+
+export function normalizeSiteSettings(entry: ShopifyMetaobject): SiteSettings {
+  const fields = toFieldMap(entry.fields);
+
+  return {
+    footerTagline: fieldText(fields, "footer_tagline"),
+    newsletterInvitation: fieldText(fields, "newsletter_invitation"),
+    footerRegionLine: fieldText(fields, "footer_region_line"),
+    contactCtaBody: fieldText(fields, "contact_cta_body"),
+    contactCtaLabel: fieldText(fields, "contact_cta_label"),
+    social: Object.fromEntries(SOCIAL_KEYS.map((key) => [key, fieldText(fields, key)])),
+  };
+}
+
+/** What every consumer sees when the entry is absent or unreadable. */
+export const EMPTY_SITE_SETTINGS: SiteSettings = {
+  footerTagline: null,
+  newsletterInvitation: null,
+  footerRegionLine: null,
+  contactCtaBody: null,
+  contactCtaLabel: null,
+  social: {},
+};

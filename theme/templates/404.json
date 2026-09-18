@@ -1,0 +1,16 @@
+{
+  "sections": {
+    "main": {
+      "type": "sb-main-placeholder",
+      "settings": {
+        "title": "Not found",
+        "note": "Phase 7 — branded 404.",
+        "source": "app/(storefront)/collections/[handle]/not-found.tsx",
+        "surface": "light"
+      }
+    }
+  },
+  "order": [
+    "main"
+  ]
+}

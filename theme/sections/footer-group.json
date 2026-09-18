@@ -1,0 +1,33 @@
+{
+  "name": "Footer",
+  "type": "footer",
+  "sections": {
+    "footer": {
+      "type": "sb-footer",
+      "blocks": {
+        "about": {
+          "type": "menu",
+          "settings": { "heading": "About", "menu": "desk-footer-about" }
+        },
+        "info": {
+          "type": "menu",
+          "settings": { "heading": "Info", "menu": "desk-footer-info" }
+        },
+        "legal": {
+          "type": "menu",
+          "settings": { "heading": "Legal", "menu": "desk-footer-legal" }
+        }
+      },
+      "block_order": ["about", "info", "legal"],
+      "settings": {
+        "surface": "olive",
+        "tagline": "Designed for life, inspired by the world",
+        "region_line": "Belgium — (EUR)",
+        "show_newsletter": true,
+        "newsletter_copy": "Sign up for our newsletters to receive seasonal promotions and updates on the latest news of Studio Bizar.",
+        "show_social": true
+      }
+    }
+  },
+  "order": ["footer"]
+}

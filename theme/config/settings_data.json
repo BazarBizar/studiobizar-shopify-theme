@@ -1,0 +1,38 @@
+{
+  "current": {
+    "meta_theme_color": "#EBE8E3",
+
+    "color_earth": "#EBE8E3",
+    "color_dark_wood": "#302F2D",
+    "color_black_olive": "#41473E",
+    "color_charcoal_blue": "#47515C",
+    "color_deep_mocha": "#4A3C3F",
+    "color_off_black": "#1D1D1B",
+
+    "font_body_woff2": "",
+    "font_body_medium_woff2": "",
+    "type_scale": 1.0,
+    "type_scale_mobile": 1.0,
+
+    "layout_gutter": 20,
+    "layout_grid_gap": 10,
+    "layout_section_rhythm": "md",
+    "layout_card_ratio": "4 / 5",
+    "page_surface": "light",
+
+    "motion_duration": 220,
+
+    "social_instagram": "https://www.instagram.com/studiobizarantwerp",
+    "social_facebook": "https://www.facebook.com/studiobizarantwerp",
+    "social_pinterest": "https://www.pinterest.com/studiobizarantwerp",
+    "social_linkedin": "",
+    "social_five": "",
+    "social_six": "",
+
+    "inquiry_proxy_path": "/apps/inquiry",
+    "inquiry_max_qty": 999,
+
+    "sections": {}
+  },
+  "platform_customizations": {}
+}

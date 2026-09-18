@@ -993,6 +993,244 @@ ${ENTRY_FIELDS}
     `,
   },
 
+  /* ---------------------------------------------------------------- menus */
+
+  /**
+   * Navigation menus.
+   *
+   * TWO LEVELS, because that is what the storefront renders: `Header` maps
+   * `item.items` for the secondary nav's dropdowns and stops there, and the
+   * mobile drawer does the same. Asking for a third level would return data no
+   * screen can show and no editor here can put back.
+   *
+   * Eight menus exist and only the five `desk-*` ones are this site's; the rest
+   * are Shopify's defaults. Small enough to take whole.
+   */
+  menus: {
+    kind: "read",
+    document: `
+      query AdminMenus($first: Int!) {
+        menus(first: $first) {
+          nodes {
+            id
+            handle
+            title
+            isDefault
+            items {
+              id
+              title
+              type
+              url
+              resourceId
+              items {
+                id
+                title
+                type
+                url
+                resourceId
+              }
+            }
+          }
+        }
+      }
+    `,
+  },
+
+  /**
+   * REPLACES THE WHOLE TREE. `menuUpdate` takes the complete item list, not a
+   * patch — an item left out of `items` is deleted, and that is the API's
+   * design, not an accident of this document. The editor therefore always sends
+   * every item it is holding.
+   *
+   * An item's destination is `type` plus ONE of `url` (HTTP only) or
+   * `resourceId` (PAGE, COLLECTION, SHOP_POLICY, …). The derived types —
+   * FRONTPAGE, CATALOG, COLLECTIONS, SEARCH — take neither; Shopify resolves the
+   * url itself, and sending one back is rejected.
+   */
+  menuUpdate: {
+    kind: "write",
+    document: `
+      mutation AdminMenuUpdate($id: ID!, $title: String!, $handle: String!, $items: [MenuItemUpdateInput!]!) {
+        menuUpdate(id: $id, title: $title, handle: $handle, items: $items) {
+          menu {
+            id
+            handle
+            title
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    `,
+  },
+
+  /**
+   * The destinations a menu item can point at, for the editor's picker.
+   *
+   * Collections are capped at 100 and pages at 100 — this store has 13 and 16.
+   * A store that outgrew either would need a searching picker rather than a
+   * bigger number, which is the same conclusion `useFiles` reached for media.
+   */
+  menuDestinations: {
+    kind: "read",
+    document: `
+      query AdminMenuDestinations {
+        pages(first: 100, sortKey: TITLE) {
+          nodes {
+            id
+            title
+            handle
+          }
+        }
+        collections(first: 100, sortKey: TITLE) {
+          nodes {
+            id
+            title
+            handle
+          }
+        }
+        shop {
+          shopPolicies {
+            id
+            title
+            type
+          }
+        }
+      }
+    `,
+  },
+
+  /* ---------------------------------------------------------------- pages */
+
+  /**
+   * Online Store pages.
+   *
+   * There are eleven of them and no prospect of hundreds, so this takes the lot in
+   * one request and sorts in the browser — the same call the metaobject screens
+   * make for the same reason.
+   *
+   * NO `body` HERE. A page body is unbounded HTML and the list shows a table; ten
+   * bodies fetched to render ten rows that do not display them is a lot of
+   * response for nothing. The detail query asks for it.
+   */
+  pages: {
+    kind: "read",
+    document: `
+      query AdminPages($first: Int!, $after: String) {
+        pages(first: $first, after: $after, sortKey: TITLE) {
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+          nodes {
+            id
+            title
+            handle
+            templateSuffix
+            isPublished
+            updatedAt
+          }
+        }
+      }
+    `,
+  },
+
+  /**
+   * One page, with the metafields that carry everything the storefront renders
+   * around the body. Fifteen of the twenty-three public routes read one of these.
+   *
+   * Namespaced to `custom`, matching METAFIELD_NAMESPACE in
+   * lib/shopify/constants.ts. An app-owned metafield in another namespace is not
+   * this panel's to edit and is deliberately invisible here.
+   */
+  page: {
+    kind: "read",
+    document: `
+      query AdminPage($id: ID!) {
+        page(id: $id) {
+          id
+          title
+          handle
+          body
+          templateSuffix
+          isPublished
+          updatedAt
+          metafields(first: 50, namespace: "custom") {
+            nodes {
+              id
+              key
+              type
+              value
+            }
+          }
+        }
+      }
+    `,
+  },
+
+  /**
+   * The signature is `(id:, page:)` — the id is a SIBLING argument, not a key
+   * inside the input, the same shape productUpdate uses. Confirmed against this
+   * store on 2026-07 by schema-push, which patches templateSuffix through it.
+   *
+   * Metafields ride along inside the input rather than going through a separate
+   * metafieldsSet, so a save is one mutation and cannot half-apply. Clearing one
+   * is still metafieldsDelete — see the note there on why an empty string is not
+   * the same as absent.
+   */
+  pageUpdate: {
+    kind: "write",
+    document: `
+      mutation AdminPageUpdate($id: ID!, $page: PageUpdateInput!) {
+        pageUpdate(id: $id, page: $page) {
+          page {
+            id
+            title
+            handle
+            updatedAt
+          }
+          userErrors {
+            field
+            message
+            code
+          }
+        }
+      }
+    `,
+  },
+
+  /**
+   * PAGE metafield definitions, as the form's schema. Same role
+   * productMetafieldDefinitions plays for the product editor, and the same reason
+   * for seeding a form from definitions rather than from stored values: a field
+   * nobody has filled in has no metafield on that page at all, so building from
+   * values would drop exactly the fields somebody opened the screen to fill in.
+   */
+  pageMetafieldDefinitions: {
+    kind: "read",
+    document: `
+      query AdminPageMetafieldDefinitions {
+        metafieldDefinitions(first: 100, ownerType: PAGE, namespace: "custom") {
+          nodes {
+            key
+            name
+            description
+            type {
+              name
+            }
+            validations {
+              name
+              type
+              value
+            }
+          }
+        }
+      }
+    `,
+  },
+
   /**
    * Thumbnails for inquiry line items. The items store a variant gid taken at submission
    * time, so the image has to be looked up now — one request for the whole inquiry.

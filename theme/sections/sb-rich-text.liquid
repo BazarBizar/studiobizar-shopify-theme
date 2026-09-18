@@ -1,0 +1,198 @@
+{% comment %}
+  A band of copy with an optional button.
+
+  It has no single counterpart in the Next build because it did not need one:
+  `IntroBlock` on the landing page, `ContactCta` and the lede on half the content
+  pages were three hard-coded components that differ only in their words. As a
+  section with settings they collapse into one, and a non-technical editor gets
+  the block they will reach for most often when building a page.
+
+  The `scale` setting is why one section covers all three. ContactCta sets its
+  paragraph at text-h2 with no heading above it; a page lede uses a heading plus
+  body. Both are this section, configured differently.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+
+  capture rhythm_class
+    render 'sb-section-classes', rhythm: s.rhythm, pad: 'none'
+  endcapture
+
+  assign paints_ground = true
+  if s.surface == 'inherit'
+    assign paints_ground = false
+  endif
+
+  case s.width
+    when 'narrow'
+      assign width_class = 'max-w-[38rem]'
+    when 'medium'
+      assign width_class = 'max-w-[44rem]'
+    else
+      assign width_class = ''
+  endcase
+
+  if s.align == 'center'
+    assign align_class = 'mx-auto text-center'
+  else
+    assign align_class = ''
+  endif
+-%}
+
+<section
+  {% if paints_ground %}data-surface="{{ s.surface }}" class="bg-background text-foreground"{% endif %}
+  {{ section.shopify_attributes }}
+>
+  <div class="sb-container py-section {{ rhythm_class }}">
+    <div class="{{ width_class }} {{ align_class }}">
+      {%- if s.heading != blank -%}
+        <h2 class="text-h2">{{ s.heading }}</h2>
+      {%- endif -%}
+
+      {%- if s.body != blank -%}
+        {% comment %}
+          `lead` prints the copy at heading size with no heading above it — the
+          closing block on Collections Detail, Designers, Our Story and Service.
+          `body` is ordinary running copy.
+        {% endcomment %}
+        <div
+          class="{% if s.scale == 'lead' %}text-h2{% else %}sb-prose{% endif %}{% if s.heading != blank %} mt-6{% endif %}"
+        >
+          {{ s.body }}
+        </div>
+      {%- endif -%}
+
+      {%- if s.link_label != blank and s.link_url != blank -%}
+        {%- render 'sb-button',
+          label: s.link_label,
+          href: s.link_url,
+          variant: s.link_style,
+          class: 'mt-8'
+        -%}
+      {%- endif -%}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Text",
+  "tag": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "info": "Leave empty for a band of copy with no heading."
+    },
+    {
+      "type": "richtext",
+      "id": "body",
+      "label": "Body",
+      "default": "<p>Whether you have a question about an order, a product, or would like more information about what we do, we'd love to hear from you.</p>"
+    },
+    {
+      "type": "select",
+      "id": "scale",
+      "label": "Copy size",
+      "options": [
+        { "value": "body", "label": "Running copy" },
+        { "value": "lead", "label": "Lead — heading size" }
+      ],
+      "default": "body"
+    },
+    {
+      "type": "text",
+      "id": "link_label",
+      "label": "Button label",
+      "info": "Leave empty for no button."
+    },
+    {
+      "type": "url",
+      "id": "link_url",
+      "label": "Button link"
+    },
+    {
+      "type": "select",
+      "id": "link_style",
+      "label": "Button style",
+      "options": [
+        { "value": "outline", "label": "Outlined" },
+        { "value": "solid", "label": "Filled" },
+        { "value": "text", "label": "Underlined text" }
+      ],
+      "default": "outline"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "width",
+      "label": "Measure",
+      "info": "How wide the copy runs before it wraps. Narrow keeps a line readable.",
+      "options": [
+        { "value": "narrow", "label": "Narrow" },
+        { "value": "medium", "label": "Medium" },
+        { "value": "full", "label": "Full width" }
+      ],
+      "default": "medium"
+    },
+    {
+      "type": "select",
+      "id": "align",
+      "label": "Alignment",
+      "options": [
+        { "value": "left", "label": "Left" },
+        { "value": "center", "label": "Centred" }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Ground",
+      "options": [
+        { "value": "inherit", "label": "Inherit" },
+        { "value": "light", "label": "Earth" },
+        { "value": "dark", "label": "Dark wood" },
+        { "value": "olive", "label": "Black olive" },
+        { "value": "blue", "label": "Charcoal blue" },
+        { "value": "mocha", "label": "Deep mocha" },
+        { "value": "black", "label": "Off black" }
+      ],
+      "default": "inherit"
+    },
+    {
+      "type": "select",
+      "id": "rhythm",
+      "label": "Vertical space",
+      "options": [
+        { "value": "theme", "label": "Theme default" },
+        { "value": "xs", "label": "Extra tight" },
+        { "value": "sm", "label": "Tight" },
+        { "value": "md", "label": "Medium" },
+        { "value": "lg", "label": "Loose" },
+        { "value": "xl", "label": "Extra loose" }
+      ],
+      "default": "theme"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Text"
+    },
+    {
+      "name": "Contact call to action",
+      "settings": {
+        "scale": "lead",
+        "width": "narrow",
+        "link_label": "contact us",
+        "link_style": "outline"
+      }
+    }
+  ]
+}
+{% endschema %}

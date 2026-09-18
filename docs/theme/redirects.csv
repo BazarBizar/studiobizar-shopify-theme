@@ -1,0 +1,20 @@
+Redirect from,Redirect to
+/shop,/collections/all
+/projects,/pages/projects
+/designers,/pages/designers
+/gallery,/pages/gallery
+/our-story,/pages/our-story
+/services,/pages/our-services
+/contact,/pages/contact
+/faq,/pages/faq
+/careers,/pages/careers
+/care-maintenance,/pages/care-maintenance
+/our-artisans,/pages/our-artisans
+/our-locations,/pages/our-locations
+/professionals,/pages/professionals
+/inquiry,/pages/inquiry
+/inquiry/success,/pages/inquiry-success
+/legal/privacy-policy,/policies/privacy-policy
+/legal/terms-conditions,/policies/terms-of-service
+/legal/shipping-delivery,/policies/shipping-policy
+/legal/returns-refunds,/policies/refund-policy

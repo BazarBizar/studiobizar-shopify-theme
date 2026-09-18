@@ -1,0 +1,16 @@
+{
+  "sections": {
+    "main": {
+      "type": "sb-main-placeholder",
+      "settings": {
+        "title": "Landing",
+        "note": "Phase 7 — 11 bands on dark wood, each becoming its own reorderable section.",
+        "source": "app/(storefront)/page.tsx",
+        "surface": "dark"
+      }
+    }
+  },
+  "order": [
+    "main"
+  ]
+}

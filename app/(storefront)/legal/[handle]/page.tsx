@@ -4,25 +4,21 @@ import { notFound } from "next/navigation";
 import { PageShell } from "@/components/layout/page-shell";
 import { Container } from "@/components/ui/container";
 import { GoBack } from "@/components/ui/go-back";
+import { LEGAL_HANDLES } from "@/lib/routes";
 import { getPage } from "@/lib/shopify";
 
-/** The four legal pages provisioned by `schema-push`. */
-const LEGAL_HANDLES = new Set([
-  "privacy-policy",
-  "terms-conditions",
-  "shipping-delivery",
-  "returns-refunds",
-]);
+/** Shared with the sitemap — see `lib/routes.ts`. */
+const LEGAL = new Set<string>(LEGAL_HANDLES);
 
 export function generateStaticParams() {
-  return [...LEGAL_HANDLES].map((handle) => ({ handle }));
+  return LEGAL_HANDLES.map((handle) => ({ handle }));
 }
 
 export async function generateMetadata({
   params,
 }: PageProps<"/legal/[handle]">): Promise<Metadata> {
   const { handle } = await params;
-  if (!LEGAL_HANDLES.has(handle)) return { title: "Not found" };
+  if (!LEGAL.has(handle)) return { title: "Not found" };
 
   const page = await getPage(handle).catch(() => null);
   if (!page) return { title: "Not found" };
@@ -37,7 +33,7 @@ export async function generateMetadata({
 export default async function LegalPage({ params }: PageProps<"/legal/[handle]">) {
   const { handle } = await params;
   // Only the four known legal handles, so /legal/<anything> cannot proxy a page.
-  if (!LEGAL_HANDLES.has(handle)) notFound();
+  if (!LEGAL.has(handle)) notFound();
 
   const page = await getPage(handle);
   if (!page) notFound();

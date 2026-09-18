@@ -1,0 +1,21 @@
+{% comment %}
+  Appears past 900px of scroll, as in the Next build.
+
+  `hidden` is the initial state so the control is absent for a visitor with no
+  JS rather than floating there doing nothing; sb-theme.js toggles it. The
+  smooth scroll is skipped for anyone who asks for reduced motion — that check
+  lives in the script, because the CSS `scroll-behavior` override cannot cancel
+  a programmatic smooth scroll.
+{% endcomment %}
+
+<button
+  type="button"
+  id="sb-back-to-top"
+  data-sb-back-to-top
+  data-threshold="900"
+  aria-label="{{ 'general.accessibility.back_to_top' | t }}"
+  hidden
+  class="fixed right-5 bottom-5 z-30 border border-current p-3 text-foreground opacity-70 transition-opacity hover:opacity-100"
+>
+  {%- render 'sb-icon', icon: 'arrow-up', class: 'size-4' -%}
+</button>

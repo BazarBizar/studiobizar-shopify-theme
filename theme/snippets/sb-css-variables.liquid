@@ -1,0 +1,36 @@
+{% comment %}
+  Writes the theme settings over the token defaults compiled into sb-theme.css.
+
+  Every default in settings_schema.json is the value measured off the Figma
+  frames, so a store that never opens these controls computes to exactly what
+  the Next build renders. This block exists so the palette, the type ladder and
+  the layout metrics are editable without a rebuild — a theme has no build step,
+  and the merchant has no access to one.
+
+  Only the primitives are overridden. The semantic layer (--sb-background and
+  friends) and the six surfaces derive from these in CSS, so they follow on
+  their own and stay consistent.
+{% endcomment %}
+
+<style>
+  :root {
+    --color-earth: {{ settings.color_earth }};
+    --color-dark-wood: {{ settings.color_dark_wood }};
+    --color-black-olive: {{ settings.color_black_olive }};
+    --color-charcoal-blue: {{ settings.color_charcoal_blue }};
+    --color-deep-mocha: {{ settings.color_deep_mocha }};
+    --color-off-black: {{ settings.color_off_black }};
+
+    --sb-type-scale: {{ settings.type_scale }};
+    --sb-type-scale-mobile: {{ settings.type_scale_mobile }};
+
+    --sb-gutter: {{ settings.layout_gutter | divided_by: 16.0 }}rem;
+    --sb-grid-gap: {{ settings.layout_grid_gap | divided_by: 16.0 }}rem;
+    --sb-section: var(--sb-section-{{ settings.layout_section_rhythm }});
+    --sb-ratio-card: {{ settings.layout_card_ratio }};
+
+    --sb-duration-fast: {{ settings.motion_duration | times: 0.68 | round }}ms;
+    --sb-duration-base: {{ settings.motion_duration }}ms;
+    --sb-duration-slow: {{ settings.motion_duration | times: 1.36 | round }}ms;
+  }
+</style>

@@ -1,0 +1,55 @@
+{
+  "general": {
+    "meta": {
+      "tags": "Tagged \"{{ tags }}\"",
+      "page": "Page {{ page }}"
+    },
+    "accessibility": {
+      "skip_to_content": "Skip to content",
+      "home": "home",
+      "account": "Account",
+      "search": "Search",
+      "back_to_top": "Back to top",
+      "language": "Language: {{ name }}",
+      "link_messages": {
+        "new_window": "Opens in a new window"
+      }
+    },
+    "navigation": {
+      "primary": "Primary",
+      "secondary": "Secondary",
+      "menu": "Menu",
+      "open_menu": "Open menu",
+      "close_menu": "Close menu"
+    },
+    "social": {
+      "follow": "Follow {{ name }}"
+    },
+    "language": {
+      "soon": "Soon"
+    }
+  },
+  "newsletter": {
+    "email_label": "Your email address",
+    "placeholder": "Your email address",
+    "submit": "Submit",
+    "success": "You are on the list."
+  },
+  "inquiry": {
+    "open": "Your inquiry",
+    "open_with_count": "Your inquiry, {{ count }} items",
+    "empty": "Your inquiry list is empty.",
+    "add": "enquire",
+    "added": "Added",
+    "remove": "Remove",
+    "quantity": "Quantity",
+    "review": "Review inquiry",
+    "submit": "Send inquiry",
+    "continue": "Continue browsing"
+  },
+  "placeholder": {
+    "pending": "Not yet ported",
+    "source": "Source",
+    "empty_page_body": "This page has no body text yet. Write it in Shopify admin, under Content > Pages."
+  }
+}

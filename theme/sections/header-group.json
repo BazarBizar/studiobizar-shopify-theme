@@ -1,0 +1,19 @@
+{
+  "name": "Header",
+  "type": "header",
+  "sections": {
+    "header": {
+      "type": "sb-header",
+      "settings": {
+        "menu_primary": "desk-primary",
+        "menu_secondary": "desk-secondary",
+        "sticky": true,
+        "show_language": true,
+        "show_account": true,
+        "show_search": true,
+        "show_inquiry": true
+      }
+    }
+  },
+  "order": ["header"]
+}

@@ -1,0 +1,49 @@
+{% comment %}
+  Turns a section's two universal settings — ground and vertical rhythm — into
+  a class string. Capture it, don't render it inline:
+
+    {%- capture band -%}
+      {%- render 'sb-section-classes', rhythm: section.settings.rhythm -%}
+    {%- endcapture -%}
+    <section data-surface="{{ section.settings.surface }}" class="bg-background text-foreground {{ band }}">
+
+  WHY A SNIPPET AND NOT STRING CONCATENATION: Tailwind emits only the utilities
+  it can find as literal text while scanning. `section-{{ setting }}` is invisible
+  to it, and the class would be missing from the built stylesheet — the classic
+  way a themed setting silently does nothing. Writing all five out here, in a
+  case statement, is what keeps them in the build.
+
+  The `section-*` utilities rebind --sb-section for everything inside the band,
+  so a nested `py-section` follows without a per-element override. That is the
+  same trick data-surface plays with colour.
+
+  Accepts:
+    rhythm — xs | sm | md | lg | xl | theme (default: theme, i.e. inherit the
+             global setting rather than pinning this band to a size)
+    pad    — none | y (default: y, which applies py-section)
+{% endcomment %}
+
+{%- liquid
+  case rhythm
+    when 'xs'
+      assign rhythm_class = 'section-xs'
+    when 'sm'
+      assign rhythm_class = 'section-sm'
+    when 'md'
+      assign rhythm_class = 'section-md'
+    when 'lg'
+      assign rhythm_class = 'section-lg'
+    when 'xl'
+      assign rhythm_class = 'section-xl'
+    else
+      assign rhythm_class = ''
+  endcase
+
+  if pad == 'none'
+    assign pad_class = ''
+  else
+    assign pad_class = 'py-section'
+  endif
+-%}
+
+{{- rhythm_class }} {{ pad_class -}}

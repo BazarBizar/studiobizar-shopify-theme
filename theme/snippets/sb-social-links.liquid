@@ -1,0 +1,55 @@
+{% comment %}
+  The 2×3 grid of 27px circular marks in the footer, as measured.
+
+  The six SVGs were extracted from the Figma frames because lucide ships no
+  brand icons. Like the logo they are drawn as masks over `bg-current`, so they
+  recolour with the surface.
+
+  The icon → platform mapping is INFERRED from each glyph's geometry, not stated
+  anywhere in the design. Only Instagram, Facebook and Pinterest are confirmed —
+  the Contact page names all three as @studiobizarantwerp. A channel with no URL
+  in the theme settings renders dimmed rather than guessing a destination, which
+  is the same thing the Next build does with a null href.
+{% endcomment %}
+
+{%- liquid
+  assign labels = 'Instagram,Facebook,Pinterest,LinkedIn,Social channel,Social channel' | split: ','
+  assign urls = settings.social_instagram | append: '|' | append: settings.social_facebook | append: '|' | append: settings.social_pinterest | append: '|' | append: settings.social_linkedin | append: '|' | append: settings.social_five | append: '|' | append: settings.social_six | split: '|'
+-%}
+
+<ul class="grid grid-cols-2 gap-x-[0.45rem] gap-y-[0.45rem]">
+  {%- for label in labels -%}
+    {%- liquid
+      assign index = forloop.index0
+      assign file = 'sb-social-' | append: forloop.index | append: '.svg'
+      assign src = file | asset_url
+      assign href = urls[index]
+    -%}
+
+    {%- capture mark -%}
+      <span
+        aria-hidden="true"
+        class="block size-[1.7rem] bg-current"
+        style="-webkit-mask-image: url({{ src }}); mask-image: url({{ src }});
+               -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+               -webkit-mask-size: contain; mask-size: contain;"
+      ></span>
+    {%- endcapture -%}
+
+    <li>
+      {%- if href != blank -%}
+        <a
+          href="{{ href }}"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="{{ label | strip }}"
+          class="block transition-opacity hover:opacity-70"
+        >
+          {{ mark }}
+        </a>
+      {%- else -%}
+        <span class="block opacity-45">{{ mark }}</span>
+      {%- endif -%}
+    </li>
+  {%- endfor -%}
+</ul>

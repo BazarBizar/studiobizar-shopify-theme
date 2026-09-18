@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="{{ request.locale.iso_code }}" class="h-full">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="{{ settings.meta_theme_color }}">
+    <link rel="canonical" href="{{ canonical_url }}">
+
+    {%- if settings.favicon != blank -%}
+      <link rel="icon" type="image/png" href="{{ settings.favicon | image_url: width: 32, height: 32 }}">
+    {%- endif -%}
+
+    <title>
+      {{- page_title -}}
+      {%- if current_tags %} &middot; {{ 'general.meta.tags' | t: tags: current_tags | join: ', ' }}{% endif -%}
+      {%- if current_page != 1 %} &middot; {{ 'general.meta.page' | t: page: current_page }}{% endif -%}
+      {%- unless page_title contains shop.name %} &middot; {{ shop.name }}{% endunless -%}
+    </title>
+
+    {%- if page_description -%}
+      <meta name="description" content="{{ page_description | escape }}">
+    {%- endif -%}
+
+    {%- render 'sb-meta-tags' -%}
+
+    {{ 'sb-theme.css' | asset_url | stylesheet_tag }}
+    {%- render 'sb-css-variables' -%}
+
+    {% comment %}
+      TYPEFACE — Helvetica Neue is a licensed Linotype face, so there is nothing
+      to fetch from a font service and Shopify's font_picker cannot offer it.
+      Upload the .woff2 files to assets/ and name them in the theme settings;
+      until then the stack in sb-theme.css renders Helvetica Neue natively on
+      macOS/iOS and falls back to Arial elsewhere — exactly as the Next build
+      does today. Nothing else changes when the files arrive.
+    {% endcomment %}
+    {%- if settings.font_body_woff2 != blank -%}
+      <style>
+        @font-face {
+          font-family: 'Helvetica Neue Licensed';
+          src: url('{{ settings.font_body_woff2 | asset_url }}') format('woff2');
+          font-weight: 400;
+          font-style: normal;
+          font-display: swap;
+        }
+        {%- if settings.font_body_medium_woff2 != blank -%}
+          @font-face {
+            font-family: 'Helvetica Neue Licensed';
+            src: url('{{ settings.font_body_medium_woff2 | asset_url }}') format('woff2');
+            font-weight: 500;
+            font-style: normal;
+            font-display: swap;
+          }
+        {%- endif -%}
+        :root {
+          --font-sb-heading: 'Helvetica Neue Licensed';
+          --font-sb-body: 'Helvetica Neue Licensed';
+        }
+      </style>
+    {%- endif -%}
+
+    {% comment %}
+      Both scripts are deferred: nothing in the shell needs to run before paint,
+      and the designs have no above-the-fold behaviour that JS provides.
+    {% endcomment %}
+    <script src="{{ 'sb-theme.js' | asset_url }}" defer></script>
+    <script src="{{ 'sb-nav.js' | asset_url }}" defer></script>
+
+    {{ content_for_header }}
+  </head>
+
+  {% comment %}
+    The ground. In the Next build every page composed its own PageShell and
+    picked a surface; here each section carries its own `data-surface`, which is
+    both more granular and editable in the theme editor. This body-level value is
+    what shows between and below sections, so it is the page's base ground rather
+    than a default nobody sees.
+
+    `min-h-full flex flex-col` + `flex-1` on <main> is what keeps the footer at
+    the bottom of a short page — the same three classes app/layout.tsx used.
+  {% endcomment %}
+  <body
+    data-surface="{{ settings.page_surface }}"
+    class="min-h-full flex flex-col bg-background text-foreground antialiased"
+  >
+    <a class="sb-skip-link" href="#main">{{ 'general.accessibility.skip_to_content' | t }}</a>
+
+    {% sections 'header-group' %}
+
+    <main id="main" class="flex-1" role="main">
+      {{ content_for_layout }}
+    </main>
+
+    {% sections 'footer-group' %}
+
+    {%- render 'sb-back-to-top' -%}
+
+    <ul hidden>
+      <li id="a11y-new-window-message">{{ 'general.accessibility.link_messages.new_window' | t }}</li>
+    </ul>
+  </body>
+</html>

@@ -1,0 +1,214 @@
+{% comment %}
+  Footer — components/layout/footer.tsx plus newsletter-form.tsx.
+
+  Two changes from the Next build, both deliberate:
+
+  · The three link columns are blocks, not a fixed FOOTER_COLUMNS array. The
+    headings and menus are editable, and a fourth column costs nothing.
+
+  · The newsletter posts to Shopify's own customer form instead of
+    /api/newsletter. The subscriber lands in Shopify's customer list tagged
+    `newsletter`, which is where the marketing tools already look — one fewer
+    endpoint, and one fewer place for the list to get out of step.
+{% endcomment %}
+
+{%- liquid
+  assign column_count = section.blocks.size
+
+  comment
+    The desktop track list has to be a literal class or Tailwind will not emit
+    it. One `1fr` for the brand column, an `auto` per link column, and a final
+    `auto` for the social grid.
+  endcomment
+  case column_count
+    when 1
+      assign grid_class = 'lg:grid-cols-[1fr_auto_auto]'
+    when 2
+      assign grid_class = 'lg:grid-cols-[1fr_auto_auto_auto]'
+    when 3
+      assign grid_class = 'lg:grid-cols-[1fr_auto_auto_auto_auto]'
+    when 4
+      assign grid_class = 'lg:grid-cols-[1fr_auto_auto_auto_auto_auto]'
+    else
+      assign grid_class = 'lg:grid-cols-[1fr_auto]'
+  endcase
+-%}
+
+<footer
+  data-surface="{{ section.settings.surface }}"
+  class="bg-background text-foreground"
+>
+  <div class="sb-container grid gap-12 pt-12 pb-4 {{ grid_class }} lg:gap-[12.3rem]">
+    {% comment %} ── brand + newsletter ──────────────────────────────────────── {% endcomment %}
+    <div class="flex flex-col gap-[4.65rem]">
+      <div class="flex flex-col gap-7">
+        {%- render 'sb-logo', variant: 'mark', class: 'size-[5.625rem]', link: false -%}
+        {%- if section.settings.tagline != blank -%}
+          {% comment %} Measured at 12px — smaller than text-tertiary (14px), which the rest of the footer uses. {% endcomment %}
+          <p class="max-w-[12rem] text-[0.75rem]">{{ section.settings.tagline }}</p>
+        {%- endif -%}
+      </div>
+
+      {%- if section.settings.show_newsletter -%}
+        <div class="flex flex-col gap-4">
+          {%- if section.settings.newsletter_copy != blank -%}
+            <p class="text-secondary max-w-[26.25rem]">{{ section.settings.newsletter_copy }}</p>
+          {%- endif -%}
+
+          {%- form 'customer', id: 'sb-newsletter', class: 'max-w-[26.25rem]' -%}
+            <input type="hidden" name="contact[tags]" value="newsletter">
+
+            <div class="flex items-center gap-4 border-b border-current pb-2">
+              <label for="sb-newsletter-email" class="sr-only">
+                {{ 'newsletter.email_label' | t }}
+              </label>
+              <input
+                id="sb-newsletter-email"
+                type="email"
+                name="contact[email]"
+                value="{{ form.email }}"
+                placeholder="{{ 'newsletter.placeholder' | t }}"
+                autocomplete="email"
+                required
+                class="text-secondary w-full bg-transparent placeholder:text-current placeholder:opacity-70 focus:outline-none"
+              >
+              <button type="submit" class="text-secondary shrink-0 transition-opacity hover:opacity-70">
+                {{ 'newsletter.submit' | t }}
+              </button>
+            </div>
+
+            {%- if form.posted_successfully? -%}
+              <p role="status" class="text-tertiary mt-2 opacity-80">{{ 'newsletter.success' | t }}</p>
+            {%- elsif form.errors -%}
+              <p role="status" class="text-tertiary mt-2 opacity-80">
+                {{ form.errors.translated_fields.email | capitalize }} {{ form.errors.messages.email }}
+              </p>
+            {%- endif -%}
+          {%- endform -%}
+        </div>
+      {%- endif -%}
+    </div>
+
+    {% comment %} ── link columns ────────────────────────────────────────────── {% endcomment %}
+    {%- for block in section.blocks -%}
+      {%- if block.settings.menu != blank -%}
+        <nav aria-label="{{ block.settings.heading | escape }}" {{ block.shopify_attributes }}>
+          <h2 class="text-h4 mb-4 uppercase tracking-[0.06em]">{{ block.settings.heading }}</h2>
+          <ul class="flex flex-col gap-3">
+            {%- for link in block.settings.menu.links -%}
+              <li>
+                <a href="{{ link.url }}" class="text-secondary sb-underline">{{ link.title }}</a>
+              </li>
+            {%- endfor -%}
+          </ul>
+        </nav>
+      {%- endif -%}
+    {%- endfor -%}
+
+    {%- if section.settings.show_social -%}
+      <div class="lg:justify-self-end">
+        <h2 class="sr-only">{{ 'general.social.follow' | t: name: shop.name }}</h2>
+        {%- render 'sb-social-links' -%}
+      </div>
+    {%- endif -%}
+  </div>
+
+  <div class="sb-container flex flex-col gap-2 pb-4 text-tertiary sm:flex-row sm:justify-center sm:gap-12">
+    <span>{{ section.settings.region_line }}</span>
+    <span>&copy; {{ 'now' | date: '%Y' }} {{ shop.name }}</span>
+  </div>
+</footer>
+
+{% schema %}
+{
+  "name": "Footer",
+  "max_blocks": 4,
+  "settings": [
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Ground",
+      "info": "Black olive on 11 of the 14 designs; Contact puts it on dark wood.",
+      "options": [
+        { "value": "light", "label": "Earth" },
+        { "value": "dark", "label": "Dark wood" },
+        { "value": "olive", "label": "Black olive" },
+        { "value": "blue", "label": "Charcoal blue" },
+        { "value": "mocha", "label": "Deep mocha" },
+        { "value": "black", "label": "Off black" }
+      ],
+      "default": "olive"
+    },
+    {
+      "type": "text",
+      "id": "tagline",
+      "label": "Tagline",
+      "default": "Designed for life, inspired by the world"
+    },
+    {
+      "type": "text",
+      "id": "region_line",
+      "label": "Region line",
+      "info": "Bottom bar, beside the copyright.",
+      "default": "Belgium — (EUR)"
+    },
+    {
+      "type": "header",
+      "content": "Newsletter"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_newsletter",
+      "label": "Show the signup",
+      "default": true
+    },
+    {
+      "type": "textarea",
+      "id": "newsletter_copy",
+      "label": "Invitation",
+      "default": "Sign up for our newsletters to receive seasonal promotions and updates on the latest news of Studio Bizar."
+    },
+    {
+      "type": "header",
+      "content": "Social"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_social",
+      "label": "Show the social marks",
+      "info": "The destinations are set once for the whole theme, under Social in theme settings.",
+      "default": true
+    }
+  ],
+  "blocks": [
+    {
+      "type": "menu",
+      "name": "Link column",
+      "settings": [
+        {
+          "type": "text",
+          "id": "heading",
+          "label": "Heading",
+          "default": "About"
+        },
+        {
+          "type": "link_list",
+          "id": "menu",
+          "label": "Menu",
+          "default": "footer"
+        }
+      ]
+    }
+  ],
+  "default": {
+    "blocks": [
+      { "type": "menu", "settings": { "heading": "About" } },
+      { "type": "menu", "settings": { "heading": "Info" } },
+      { "type": "menu", "settings": { "heading": "Legal" } }
+    ]
+  },
+  "enabled_on": {
+    "groups": ["footer"]
+  }
+}
+{% endschema %}

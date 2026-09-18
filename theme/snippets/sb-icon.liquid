@@ -1,0 +1,76 @@
+{% comment %}
+  The lucide icons the storefront uses, inlined.
+
+  lucide-react is a 1.4MB dependency for what amounts to ten sets of path data,
+  and a theme has no tree-shaking to cut it down. The paths below are lucide's
+  own, at its 24×24 grid and 1.5 stroke — the same weight the Next components
+  pass as strokeWidth.
+
+  Usage:
+    {% render 'sb-icon', icon: 'search', class: 'size-[1.15rem]' %}
+
+  Accepts:
+    icon   — search | user | bag | menu | close | chevron-down | arrow-up
+             arrow-left | arrow-right | check
+    class  — utility classes for the <svg>
+    size   — stroke width override, default 1.5
+{% endcomment %}
+
+{%- liquid
+  assign stroke = size | default: 1.5
+  assign klass = class | default: 'size-4'
+-%}
+
+<svg
+  class="{{ klass }}"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="{{ stroke }}"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  aria-hidden="true"
+  focusable="false"
+>
+  {%- case icon -%}
+    {%- when 'search' -%}
+      <circle cx="11" cy="11" r="8"></circle>
+      <path d="m21 21-4.3-4.3"></path>
+
+    {%- when 'user' -%}
+      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+      <circle cx="12" cy="7" r="4"></circle>
+
+    {%- when 'bag' -%}
+      <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path>
+      <path d="M3 6h18"></path>
+      <path d="M16 10a4 4 0 0 1-8 0"></path>
+
+    {%- when 'menu' -%}
+      <path d="M4 6h16"></path>
+      <path d="M4 12h16"></path>
+      <path d="M4 18h16"></path>
+
+    {%- when 'close' -%}
+      <path d="M18 6 6 18"></path>
+      <path d="m6 6 12 12"></path>
+
+    {%- when 'chevron-down' -%}
+      <path d="m6 9 6 6 6-6"></path>
+
+    {%- when 'arrow-up' -%}
+      <path d="m5 12 7-7 7 7"></path>
+      <path d="M12 19V5"></path>
+
+    {%- when 'arrow-left' -%}
+      <path d="m12 19-7-7 7-7"></path>
+      <path d="M19 12H5"></path>
+
+    {%- when 'arrow-right' -%}
+      <path d="M5 12h14"></path>
+      <path d="m12 5 7 7-7 7"></path>
+
+    {%- when 'check' -%}
+      <path d="M20 6 9 17l-5-5"></path>
+  {%- endcase -%}
+</svg>

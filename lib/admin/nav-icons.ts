@@ -22,6 +22,7 @@ import {
   InboxIcon,
   LayersIcon,
   LayoutDashboardIcon,
+  ListTreeIcon,
   type LucideIcon,
   MapPinIcon,
   PackageIcon,
@@ -51,6 +52,8 @@ const BY_HREF: Record<string, LucideIcon> = {
   "/admin": LayoutDashboardIcon,
   "/admin/products": PackageIcon,
   "/admin/collections": BoxIcon,
+  "/admin/pages": FileTextIcon,
+  "/admin/menus": ListTreeIcon,
   "/admin/customers": UsersRoundIcon,
 };
 

@@ -1,13 +1,17 @@
-import { SOCIAL_LINKS } from "@/lib/social";
+import { SOCIAL_LINKS, type SocialLink } from "@/lib/social";
 
 /**
- * 2×3 grid of 27px circular marks, as measured in the footer. Unconfirmed
- * channels render without a link rather than guessing a destination.
+ * 2×3 grid of 27px circular marks, as measured in the footer. A channel with no
+ * destination renders dimmed rather than guessing one.
+ *
+ * `links` comes in already resolved against the panel's site settings — see
+ * `resolveSocialLinks`. It falls back to the module constant so a caller that
+ * has no settings to hand still renders the marks.
  */
-export function SocialLinks() {
+export function SocialLinks({ links = SOCIAL_LINKS }: { links?: SocialLink[] }) {
   return (
     <ul className="grid grid-cols-2 gap-x-[0.45rem] gap-y-[0.45rem]">
-      {SOCIAL_LINKS.map((social) => {
+      {links.map((social) => {
         const mark = (
           <span
             aria-hidden

@@ -1,0 +1,16 @@
+{
+  "sections": {
+    "main": {
+      "type": "sb-main-placeholder",
+      "settings": {
+        "title": "Collections",
+        "note": "Phase 6 — 4-up cards on 3:5 media with a wordmark overlay.",
+        "source": "app/(storefront)/collections/page.tsx",
+        "surface": "light"
+      }
+    }
+  },
+  "order": [
+    "main"
+  ]
+}

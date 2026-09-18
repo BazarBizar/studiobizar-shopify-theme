@@ -1,0 +1,16 @@
+{
+  "sections": {
+    "main": {
+      "type": "sb-main-placeholder",
+      "settings": {
+        "title": "Cart",
+        "note": "Not migrated. This storefront has no cart — visitors build an inquiry list instead. The route exists so /cart is never a hard error.",
+        "source": "—",
+        "surface": "light"
+      }
+    }
+  },
+  "order": [
+    "main"
+  ]
+}

@@ -59,6 +59,17 @@ export const PAGE_METAFIELDS = [
   "locations",
 ] as const;
 
+/**
+ * The `site_settings` singleton, created by `scripts/add-site-settings.mjs`.
+ *
+ * Not in METAOBJECT_TYPES below because that list is what schema-push provisions,
+ * and this one is not schema-push's. The handle is fixed: there is exactly one
+ * entry and every reader asks for it by name rather than taking the first row of
+ * a list, so a second entry created by accident changes nothing.
+ */
+export const SITE_SETTINGS_TYPE = "site_settings";
+export const SITE_SETTINGS_HANDLE = "site-settings";
+
 /** Metaobject types provisioned by schema-push. */
 export const METAOBJECT_TYPES = {
   captionedImage: "captioned_image",

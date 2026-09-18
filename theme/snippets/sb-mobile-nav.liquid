@@ -1,0 +1,91 @@
+{% comment %}
+  The mobile drawer — components/layout/mobile-nav.tsx.
+
+  framer-motion's AnimatePresence is replaced by two CSS transitions driven off
+  a `data-open` attribute. The markup stays in the document and is `hidden`
+  until opened, so there is nothing to mount or unmount: sb-nav.js drops the
+  `hidden`, waits a frame, then sets data-open, which is what gives the
+  transition something to animate from.
+
+  Durations and easing are the ones the React version passed to motion — 0.22s
+  for the scrim, 0.28s for the panel, both on cubic-bezier(0.16, 1, 0.3, 1),
+  which is --sb-ease-out and reaches Tailwind as `ease-out-soft`.
+{% endcomment %}
+
+<div
+  id="sb-mobile-nav"
+  data-sb-nav
+  data-open="false"
+  hidden
+  class="fixed inset-0 z-50 opacity-0 transition-opacity duration-[220ms] ease-out-soft data-[open=true]:opacity-100 lg:hidden"
+>
+  <button
+    type="button"
+    data-sb-nav-close
+    aria-label="{{ 'general.navigation.close_menu' | t }}"
+    class="absolute inset-0 bg-foreground/40"
+    tabindex="-1"
+  ></button>
+
+  <div
+    role="dialog"
+    aria-modal="true"
+    aria-label="{{ 'general.navigation.menu' | t }}"
+    data-sb-nav-panel
+    class="absolute inset-y-0 right-0 flex w-[min(22rem,88vw)] translate-x-full flex-col bg-background text-foreground transition-transform duration-[280ms] ease-out-soft data-[open=true]:translate-x-0"
+  >
+    <div class="flex items-center justify-between px-gutter py-5">
+      {%- render 'sb-logo', class: 'h-5 w-[11.47rem]' -%}
+      <button
+        type="button"
+        data-sb-nav-close
+        aria-label="{{ 'general.navigation.close_menu' | t }}"
+      >
+        {%- render 'sb-icon', icon: 'close', class: 'size-[1.35rem]' -%}
+      </button>
+    </div>
+
+    {%- if primary != blank and primary.links.size > 0 -%}
+      <nav aria-label="{{ 'general.navigation.primary' | t }}" class="px-gutter pt-6">
+        <ul class="flex flex-col gap-5">
+          {%- for link in primary.links -%}
+            <li>
+              <a href="{{ link.url }}" class="text-h3">{{ link.title }}</a>
+            </li>
+          {%- endfor -%}
+        </ul>
+      </nav>
+    {%- endif -%}
+
+    {%- if secondary != blank and secondary.links.size > 0 -%}
+      <nav aria-label="{{ 'general.navigation.secondary' | t }}" class="mt-auto px-gutter pb-10">
+        <ul class="flex flex-col gap-3 border-t border-border pt-6">
+          {%- for link in secondary.links -%}
+            <li>
+              {%- if link.links.size > 0 -%}
+                <details class="group">
+                  <summary class="sb-summary text-secondary flex items-center justify-between opacity-80">
+                    {{ link.title }}
+                    {%- render 'sb-icon',
+                      icon: 'chevron-down',
+                      class: 'size-4 transition-transform group-open:rotate-180'
+                    -%}
+                  </summary>
+                  <ul class="mt-3 flex flex-col gap-3 pl-4">
+                    {%- for child in link.links -%}
+                      <li>
+                        <a href="{{ child.url }}" class="text-secondary opacity-70">{{ child.title }}</a>
+                      </li>
+                    {%- endfor -%}
+                  </ul>
+                </details>
+              {%- else -%}
+                <a href="{{ link.url }}" class="text-secondary opacity-80">{{ link.title }}</a>
+              {%- endif -%}
+            </li>
+          {%- endfor -%}
+        </ul>
+      </nav>
+    {%- endif -%}
+  </div>
+</div>

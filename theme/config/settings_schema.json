@@ -1,0 +1,267 @@
+[
+  {
+    "name": "theme_info",
+    "theme_name": "Studio Bizar",
+    "theme_version": "1.0.0",
+    "theme_author": "Studio Bizar",
+    "theme_documentation_url": "https://github.com/studiobizar",
+    "theme_support_url": "https://github.com/studiobizar"
+  },
+
+  {
+    "name": "Brand",
+    "settings": [
+      {
+        "type": "paragraph",
+        "content": "The logo and mark are vector paths extracted from the Figma frames and shipped in assets/ (sb-logo.svg, sb-mark.svg). They are drawn as a CSS mask so they recolour with the surface, which an image setting cannot do — replace the files themselves to change the lockup."
+      },
+      {
+        "type": "image_picker",
+        "id": "favicon",
+        "label": "Favicon"
+      },
+      {
+        "type": "color",
+        "id": "meta_theme_color",
+        "label": "Browser chrome colour",
+        "info": "The tint mobile browsers paint around the page.",
+        "default": "#EBE8E3"
+      }
+    ]
+  },
+
+  {
+    "name": "Colour",
+    "settings": [
+      {
+        "type": "paragraph",
+        "content": "Six grounds, each read out of the Figma content streams rather than sampled by eye. Everything else in the theme — body copy, borders, buttons, muted text — is derived from these in CSS, so changing one value moves every surface that uses it."
+      },
+      {
+        "type": "color",
+        "id": "color_earth",
+        "label": "Earth",
+        "info": "Primary ground; text colour on dark pages.",
+        "default": "#EBE8E3"
+      },
+      {
+        "type": "color",
+        "id": "color_dark_wood",
+        "label": "Dark wood",
+        "info": "Body copy, and the ground of the landing page.",
+        "default": "#302F2D"
+      },
+      {
+        "type": "color",
+        "id": "color_black_olive",
+        "label": "Black olive",
+        "info": "Footer ground on 11 of the 14 designs.",
+        "default": "#41473E"
+      },
+      {
+        "type": "color",
+        "id": "color_charcoal_blue",
+        "label": "Charcoal blue",
+        "info": "Collections detail, Services, Our Story.",
+        "default": "#47515C"
+      },
+      {
+        "type": "color",
+        "id": "color_deep_mocha",
+        "label": "Deep mocha",
+        "info": "Contact and Designers.",
+        "default": "#4A3C3F"
+      },
+      {
+        "type": "color",
+        "id": "color_off_black",
+        "label": "Off black",
+        "info": "Gallery and project detail.",
+        "default": "#1D1D1B"
+      }
+    ]
+  },
+
+  {
+    "name": "Typography",
+    "settings": [
+      {
+        "type": "paragraph",
+        "content": "Helvetica Neue is a licensed Linotype face, so it cannot be served from a font service and does not appear in Shopify's font list. Until the webfont files are uploaded it renders natively on macOS and iOS and falls back to Arial elsewhere — metrically compatible, so the layout holds."
+      },
+      {
+        "type": "text",
+        "id": "font_body_woff2",
+        "label": "Regular .woff2 filename",
+        "info": "The file must be uploaded to the theme's assets folder. Example: HelveticaNeue-Regular.woff2"
+      },
+      {
+        "type": "text",
+        "id": "font_body_medium_woff2",
+        "label": "Medium .woff2 filename",
+        "info": "Optional. Used for buttons and footer headings."
+      },
+      {
+        "type": "range",
+        "id": "type_scale",
+        "label": "Type scale — desktop",
+        "info": "Multiplies the whole ladder at once, keeping its proportions. 1.0 is the measured size.",
+        "min": 0.8,
+        "max": 1.3,
+        "step": 0.05,
+        "default": 1
+      },
+      {
+        "type": "range",
+        "id": "type_scale_mobile",
+        "label": "Type scale — 749px and below",
+        "min": 0.8,
+        "max": 1.3,
+        "step": 0.05,
+        "default": 1
+      }
+    ]
+  },
+
+  {
+    "name": "Layout",
+    "settings": [
+      {
+        "type": "paragraph",
+        "content": "Measured from the Shop All product grid on the 1728px canvas. Content deliberately runs edge to edge — it is not capped at the canvas width, because centring at 1728px leaves five times the design's margin on a 1920 display."
+      },
+      {
+        "type": "range",
+        "id": "layout_gutter",
+        "label": "Page gutter",
+        "min": 0,
+        "max": 80,
+        "step": 2,
+        "unit": "px",
+        "default": 20
+      },
+      {
+        "type": "range",
+        "id": "layout_grid_gap",
+        "label": "Grid gap",
+        "info": "Between product and collection cards.",
+        "min": 0,
+        "max": 48,
+        "step": 2,
+        "unit": "px",
+        "default": 10
+      },
+      {
+        "type": "select",
+        "id": "layout_section_rhythm",
+        "label": "Default section rhythm",
+        "info": "The vertical air between bands. Any section can override this on itself.",
+        "options": [
+          { "value": "xs", "label": "Extra tight (24 – 40px)" },
+          { "value": "sm", "label": "Tight (40 – 64px)" },
+          { "value": "md", "label": "Medium (56 – 104px)" },
+          { "value": "lg", "label": "Loose (80 – 144px)" },
+          { "value": "xl", "label": "Extra loose (176px, as measured)" }
+        ],
+        "default": "md"
+      },
+      {
+        "type": "select",
+        "id": "layout_card_ratio",
+        "label": "Product card ratio",
+        "info": "The Figma card media frame is 415 × 519, which is 4:5.",
+        "options": [
+          { "value": "4 / 5", "label": "4:5 — as measured" },
+          { "value": "1 / 1", "label": "1:1 — square" },
+          { "value": "3 / 4", "label": "3:4" },
+          { "value": "3 / 5", "label": "3:5 — tall" },
+          { "value": "16 / 9", "label": "16:9 — wide" }
+        ],
+        "default": "4 / 5"
+      },
+      {
+        "type": "select",
+        "id": "page_surface",
+        "label": "Base page ground",
+        "info": "What shows between and below sections. Each section picks its own ground on top of this.",
+        "options": [
+          { "value": "light", "label": "Earth" },
+          { "value": "dark", "label": "Dark wood" },
+          { "value": "olive", "label": "Black olive" },
+          { "value": "blue", "label": "Charcoal blue" },
+          { "value": "mocha", "label": "Deep mocha" },
+          { "value": "black", "label": "Off black" }
+        ],
+        "default": "light"
+      }
+    ]
+  },
+
+  {
+    "name": "Motion",
+    "settings": [
+      {
+        "type": "paragraph",
+        "content": "Short and ease-out, nothing decorative. Visitors who ask their system for reduced motion get none of it, regardless of this setting."
+      },
+      {
+        "type": "range",
+        "id": "motion_duration",
+        "label": "Base duration",
+        "info": "The fast and slow durations scale with this. 0 turns transitions off.",
+        "min": 0,
+        "max": 600,
+        "step": 10,
+        "unit": "ms",
+        "default": 220
+      }
+    ]
+  },
+
+  {
+    "name": "Social",
+    "settings": [
+      {
+        "type": "paragraph",
+        "content": "Six marks in a 2×3 grid, extracted as SVG from the Figma frames. Only Instagram, Facebook and Pinterest are confirmed — the Contact page names all three as @studiobizarantwerp. A mark with no URL renders dimmed rather than guessing a destination."
+      },
+      { "type": "url", "id": "social_instagram", "label": "Instagram" },
+      { "type": "url", "id": "social_facebook", "label": "Facebook" },
+      { "type": "url", "id": "social_pinterest", "label": "Pinterest" },
+      { "type": "url", "id": "social_linkedin", "label": "LinkedIn" },
+      {
+        "type": "url",
+        "id": "social_five",
+        "label": "Fifth channel",
+        "info": "Platform unconfirmed — the glyph was read off the design, not named in it."
+      },
+      { "type": "url", "id": "social_six", "label": "Sixth channel" }
+    ]
+  },
+
+  {
+    "name": "Inquiry",
+    "settings": [
+      {
+        "type": "paragraph",
+        "content": "This storefront has no price, no stock and no checkout. Visitors collect products into an inquiry list held in their browser, then submit it. The submission is written to Shopify as a metaobject, turned into a PDF and emailed — none of which a theme can do, so it is posted through an App Proxy."
+      },
+      {
+        "type": "text",
+        "id": "inquiry_proxy_path",
+        "label": "App Proxy path",
+        "info": "Where the inquiry form posts. Must match the proxy configured on the app.",
+        "default": "/apps/inquiry"
+      },
+      {
+        "type": "range",
+        "id": "inquiry_max_qty",
+        "label": "Maximum quantity per item",
+        "min": 1,
+        "max": 999,
+        "step": 1,
+        "default": 999
+      }
+    ]
+  }
+]

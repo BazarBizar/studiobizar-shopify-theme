@@ -1,0 +1,16 @@
+{
+  "sections": {
+    "main": {
+      "type": "sb-main-placeholder",
+      "settings": {
+        "title": "Contact",
+        "note": "Phase 7 — contact channels, form, and a dark-wood footer per the design.",
+        "source": "app/(storefront)/contact/page.tsx",
+        "surface": "mocha"
+      }
+    }
+  },
+  "order": [
+    "main"
+  ]
+}

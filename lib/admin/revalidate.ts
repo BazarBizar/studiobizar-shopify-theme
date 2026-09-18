@@ -32,6 +32,12 @@ const EXTRA_TAGS: Record<string, string[]> = {
   /** Not a metaobject type — the collection write path passes this sentinel so a
    *  collection edit drops the catalogue's collection cache and nothing else. */
   collection: [TAGS.collections],
+  /**
+   * The footer reads this on all twenty-three routes, and the contact block on
+   * five of them — both inside documents cached under `content`, which the
+   * `metaobjects` tag does not cover.
+   */
+  site_settings: [TAGS.content],
   contact_channel: [TAGS.content],
   location: [TAGS.content],
   faq_item: [TAGS.content],
@@ -49,6 +55,27 @@ export async function revalidateForType(type: string): Promise<string[]> {
   if (type === "product") {
     revalidateTag(TAGS.products, "max");
     return [TAGS.products];
+  }
+  /**
+   * A page edit drops `content`, which is the tag every `getPage` document
+   * carries. It also drops `metaobjects`, because a PAGE metafield is usually a
+   * REFERENCE — `hero_slides` points at captioned_image entries, `locations` at
+   * location entries — and changing which entries a page points at changes what
+   * those cached documents resolve to.
+   */
+  /**
+   * A menu is read by the header and the footer, which render inside every
+   * cached page document — the same reason a page edit drops `content`. Nothing
+   * about menus touches metaobjects.
+   */
+  if (type === "menu") {
+    revalidateTag(TAGS.content, "max");
+    return [TAGS.content];
+  }
+  if (type === "page") {
+    revalidateTag(TAGS.content, "max");
+    revalidateTag(TAGS.metaobjects, "max");
+    return [TAGS.content, TAGS.metaobjects];
   }
 
   const tags = [TAGS.metaobjects, ...(EXTRA_TAGS[type] ?? [])];

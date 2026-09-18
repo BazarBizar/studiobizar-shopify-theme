@@ -1,0 +1,87 @@
+{% comment %}
+  components/layout/language-switcher.tsx — with the dead part made live.
+
+  The React version hard-coded EN, NL and FR and disabled the last two, because
+  the Next app had no translation layer to switch into. Shopify does: published
+  locales come from Markets, and the localization form switches between them for
+  real. So this renders the actual published locales when there is more than
+  one, and falls back to the original three-item list — the other two marked
+  "Soon" — when the store is still single-locale.
+
+  The visual treatment is unchanged either way: a 9px uppercase trigger, a
+  bordered panel, a tick on the current locale.
+{% endcomment %}
+
+{%- liquid
+  assign locales = shop.published_locales
+  assign is_live = false
+  if locales.size > 1
+    assign is_live = true
+  endif
+-%}
+
+<details class="group relative">
+  <summary
+    class="sb-summary text-micro flex items-center gap-1 tracking-[0.08em] uppercase opacity-80 transition-opacity hover:opacity-100"
+    aria-label="{{ 'general.accessibility.language' | t: name: request.locale.endonym_name }}"
+  >
+    {{ request.locale.iso_code }}
+    {%- render 'sb-icon',
+      icon: 'chevron-down',
+      class: 'size-3 transition-transform group-open:rotate-180'
+    -%}
+  </summary>
+
+  {%- if is_live -%}
+    {%- form 'localization', class: 'absolute top-full right-0 z-10 mt-3 min-w-36 border border-border bg-background py-2 shadow-sm' -%}
+      <ul>
+        {%- for locale in locales -%}
+          <li>
+            <button
+              type="submit"
+              name="locale_code"
+              value="{{ locale.iso_code }}"
+              lang="{{ locale.iso_code }}"
+              {% if locale.iso_code == request.locale.iso_code %}aria-current="true"{% endif %}
+              class="text-secondary flex w-full items-center justify-between gap-4 px-4 py-2 text-left whitespace-nowrap hover:bg-foreground/5"
+            >
+              {{ locale.endonym_name | capitalize }}
+              {%- if locale.iso_code == request.locale.iso_code -%}
+                {%- render 'sb-icon', icon: 'check', class: 'size-3.5 shrink-0' -%}
+              {%- endif -%}
+            </button>
+          </li>
+        {%- endfor -%}
+      </ul>
+    {%- endform -%}
+  {%- else -%}
+    <ul class="absolute top-full right-0 z-10 mt-3 min-w-36 border border-border bg-background py-2 shadow-sm">
+      {%- for locale in locales -%}
+        <li>
+          <span
+            aria-current="true"
+            class="text-secondary flex w-full items-center justify-between gap-4 px-4 py-2 whitespace-nowrap"
+          >
+            {{ locale.endonym_name | capitalize }}
+            {%- render 'sb-icon', icon: 'check', class: 'size-3.5 shrink-0' -%}
+          </span>
+        </li>
+      {%- endfor -%}
+
+      {% comment %}
+        Publish these in Shopify Markets and they move into the live branch
+        above on their own — this list is only what the design shows while the
+        store has nothing to switch to.
+      {% endcomment %}
+      {%- assign pending = 'Nederlands,Français' | split: ',' -%}
+      {%- for name in pending -%}
+        <li>
+          <span class="text-secondary flex w-full items-center justify-between gap-4 px-4 py-2 whitespace-nowrap opacity-40">
+            {{ name }}
+            <span class="text-micro shrink-0 text-muted">{{ 'general.language.soon' | t }}</span>
+          </span>
+        </li>
+      {%- endfor -%}
+    </ul>
+  {%- endif -%}
+</details>

@@ -1,0 +1,14 @@
+{
+  "sections": {
+    "content": {
+      "type": "sb-page-content",
+      "settings": {
+        "show_title": true,
+        "width": "medium",
+        "surface": "inherit",
+        "rhythm": "theme"
+      }
+    }
+  },
+  "order": ["content"]
+}

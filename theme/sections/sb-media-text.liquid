@@ -1,0 +1,202 @@
+{% comment %}
+  components/sections/media-text.tsx — a tall image beside a column of copy.
+
+  In the Next build this was a component three pages imported with different
+  props. Here it is a section anyone can add to any page and configure, which is
+  what makes "build a page from scratch" possible without a developer. Shop
+  Detail alternates it — The Idea has the image left, The Designer has it right —
+  and Our Story and Collections Detail reuse the same block.
+
+  `surface: inherit` reproduces the optional `surface` prop: the band paints no
+  ground of its own and takes the one around it, instead of forcing a colour onto
+  a page that already has one.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+
+  if s.padding == 'wide'
+    comment
+      `wide` REPLACES the page gutter rather than adding to it — both set
+      padding-inline, and stacking two classes for one property is a cascade
+      gamble. Measured at ~200px on the 1728px Shop Detail frame.
+    endcomment
+    assign padding_class = 'w-full px-6 sm:px-16 lg:px-[13.1rem]'
+  else
+    assign padding_class = 'sb-container'
+  endif
+
+  capture rhythm_class
+    render 'sb-section-classes', rhythm: s.rhythm, pad: 'none'
+  endcapture
+
+  assign paints_ground = true
+  if s.surface == 'inherit'
+    assign paints_ground = false
+  endif
+-%}
+
+<section
+  {% if paints_ground %}data-surface="{{ s.surface }}" class="bg-background text-foreground"{% endif %}
+  {{ section.shopify_attributes }}
+>
+  <div class="py-section {{ rhythm_class }} {{ padding_class }}">
+    <div class="grid items-center gap-10 lg:grid-cols-2 lg:gap-20">
+      {%- if s.image != blank -%}
+        <figure class="relative w-full overflow-hidden bg-foreground/5 {% if s.align == 'right' %}lg:order-2{% endif %}">
+          {%- render 'sb-image',
+            image: s.image,
+            ratio: s.image_ratio,
+            sizes: '(max-width: 1023px) 100vw, 45vw',
+            widths: '620, 830, 1240, 1660',
+            crop: 'center'
+          -%}
+        </figure>
+      {%- endif -%}
+
+      <div class="max-w-[34rem]">
+        {%- if s.heading != blank -%}
+          <h2 class="text-h2">{{ s.heading }}</h2>
+        {%- endif -%}
+
+        {%- if s.body != blank -%}
+          <div class="sb-prose mt-6">{{ s.body }}</div>
+        {%- endif -%}
+
+        {%- if s.link_label != blank and s.link_url != blank -%}
+          {%- render 'sb-button',
+            label: s.link_label,
+            href: s.link_url,
+            variant: s.link_style,
+            class: 'mt-8'
+          -%}
+        {%- endif -%}
+      </div>
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Media and text",
+  "tag": "section",
+  "settings": [
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "Image"
+    },
+    {
+      "type": "select",
+      "id": "align",
+      "label": "Image side",
+      "info": "Below 1024px the image always sits above the copy.",
+      "options": [
+        { "value": "left", "label": "Left" },
+        { "value": "right", "label": "Right" }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "select",
+      "id": "image_ratio",
+      "label": "Image shape",
+      "options": [
+        { "value": "2 / 3", "label": "2:3 — tall, as measured" },
+        { "value": "3 / 4", "label": "3:4" },
+        { "value": "4 / 5", "label": "4:5" },
+        { "value": "1 / 1", "label": "1:1 — square" },
+        { "value": "16 / 9", "label": "16:9 — wide" }
+      ],
+      "default": "2 / 3"
+    },
+    {
+      "type": "header",
+      "content": "Copy"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "The Idea"
+    },
+    {
+      "type": "richtext",
+      "id": "body",
+      "label": "Body",
+      "default": "<p>Describe the piece, the maker, or the thinking behind it.</p>"
+    },
+    {
+      "type": "text",
+      "id": "link_label",
+      "label": "Button label",
+      "info": "Leave empty for no button."
+    },
+    {
+      "type": "url",
+      "id": "link_url",
+      "label": "Button link"
+    },
+    {
+      "type": "select",
+      "id": "link_style",
+      "label": "Button style",
+      "options": [
+        { "value": "outline", "label": "Outlined" },
+        { "value": "solid", "label": "Filled" },
+        { "value": "text", "label": "Underlined text" }
+      ],
+      "default": "outline"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Ground",
+      "info": "Inherit takes the colour of whatever surrounds the band.",
+      "options": [
+        { "value": "inherit", "label": "Inherit" },
+        { "value": "light", "label": "Earth" },
+        { "value": "dark", "label": "Dark wood" },
+        { "value": "olive", "label": "Black olive" },
+        { "value": "blue", "label": "Charcoal blue" },
+        { "value": "mocha", "label": "Deep mocha" },
+        { "value": "black", "label": "Off black" }
+      ],
+      "default": "inherit"
+    },
+    {
+      "type": "select",
+      "id": "rhythm",
+      "label": "Vertical space",
+      "options": [
+        { "value": "theme", "label": "Theme default" },
+        { "value": "xs", "label": "Extra tight" },
+        { "value": "sm", "label": "Tight" },
+        { "value": "md", "label": "Medium" },
+        { "value": "lg", "label": "Loose" },
+        { "value": "xl", "label": "Extra loose" }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "select",
+      "id": "padding",
+      "label": "Side inset",
+      "options": [
+        { "value": "normal", "label": "Page gutter" },
+        { "value": "wide", "label": "Wide — as The Idea band" }
+      ],
+      "default": "normal"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Media and text"
+    }
+  ]
+}
+{% endschema %}

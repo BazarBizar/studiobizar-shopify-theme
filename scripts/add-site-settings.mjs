@@ -74,6 +74,47 @@ const DEFINITIONS = [
       { key: "title", name: "Title", type: "single_line_text_field", required: true },
       /** The Featured tab on the Collections screen edits this ordered list. */
       { key: "featured_collections", name: "Featured Collections", type: "list.collection_reference" },
+
+      /**
+       * COPY THAT USED TO BE HARDCODED.
+       *
+       * Each of these was a string literal in a component, so changing "Belgium —
+       * (EUR)" or a social URL meant an edit, a review and a deploy. They live
+       * here because a metaobject singleton already gets the generic admin form
+       * for free — adding the next one is a line in this file, not a screen.
+       *
+       * Every consumer falls back to the literal it replaced, so an empty field
+       * or a missing entry renders exactly what the site renders today. Nothing
+       * here is load-bearing for the page to work.
+       */
+      /** Multi-line because the design breaks it after "life,". */
+      { key: "footer_tagline", name: "Footer tagline", type: "multi_line_text_field",
+        description: "Beside the mark in the footer. Line breaks are kept." },
+      { key: "newsletter_invitation", name: "Newsletter invitation", type: "multi_line_text_field",
+        description: "The sentence above the newsletter field." },
+      { key: "footer_region_line", name: "Footer region line", type: "single_line_text_field",
+        description: "Bottom bar, beside the copyright." },
+
+      { key: "contact_cta_body", name: "Contact CTA copy", type: "multi_line_text_field",
+        description: "The closing block on Collections detail, Designers, Our Story, Services and the landing page." },
+      { key: "contact_cta_label", name: "Contact CTA button", type: "single_line_text_field" },
+
+      /**
+       * The six footer marks, in the order they are drawn. The artwork is fixed —
+       * it was extracted from the Figma frames — so only the destination is
+       * editable here; a channel left empty renders dimmed rather than guessing.
+       *
+       * Slots five and six have no confirmed platform. Their glyphs were read off
+       * the design, not named in it, so `lib/social.ts` still owns the labels.
+       */
+      { key: "social_instagram", name: "Instagram URL", type: "url" },
+      { key: "social_facebook", name: "Facebook URL", type: "url" },
+      { key: "social_pinterest", name: "Pinterest URL", type: "url" },
+      { key: "social_linkedin", name: "LinkedIn URL", type: "url" },
+      { key: "social_five", name: "Fifth channel URL", type: "url",
+        description: "Platform unconfirmed — the glyph was read off the design, not named in it." },
+      { key: "social_six", name: "Sixth channel URL", type: "url",
+        description: "Platform unconfirmed." },
     ],
   },
 ];
@@ -91,7 +132,7 @@ async function main() {
 
   const existing = await gql(`{
     metaobjectDefinitions(first: 100) {
-      nodes { id type fieldDefinitions { key } }
+      nodes { id type fieldDefinitions { key type { name } } }
     }
   }`);
 
@@ -99,7 +140,11 @@ async function main() {
   const byType = new Map(
     existing.metaobjectDefinitions.nodes.map((node) => [
       node.type,
-      { id: node.id, keys: new Set(node.fieldDefinitions.map((field) => field.key)) },
+      {
+        id: node.id,
+        keys: new Set(node.fieldDefinitions.map((field) => field.key)),
+        types: new Map(node.fieldDefinitions.map((field) => [field.key, field.type.name])),
+      },
     ]),
   );
 
@@ -162,7 +207,26 @@ async function main() {
       continue;
     }
 
-    // Present already: append only what is missing, never rewrite what is there.
+    /**
+     * Present already: append only what is missing, never rewrite what is there.
+     *
+     * A field's TYPE is also checked, because a key alone is not enough — this
+     * script once created `footer_tagline` as single-line and then silently
+     * skipped it forever while every seed into it was rejected. Shopify cannot
+     * change a field's type in place, so this reports rather than repairs: the
+     * fix is to delete the empty field in the Shopify admin and re-run.
+     */
+    const mismatched = definition.fields.filter(
+      (field) => already.types.has(field.key) && already.types.get(field.key) !== field.type,
+    );
+
+    for (const field of mismatched) {
+      console.log(
+        `WARN    ${definition.type}.${field.key}  is ${already.types.get(field.key)}, ` +
+          `this file says ${field.type} — delete the field in Shopify and re-run`,
+      );
+    }
+
     const missing = definition.fields.filter((field) => !already.keys.has(field.key));
 
     if (missing.length === 0) {
@@ -239,12 +303,77 @@ async function main() {
 
   /* ---- the site_settings singleton -------------------------------------- */
 
+  /**
+   * The copy each field replaced, seeded so the panel opens showing what the site
+   * actually says rather than eleven empty boxes an operator has to reverse-engineer.
+   *
+   * WRITTEN ONLY INTO AN EMPTY FIELD. A field an operator has filled in is never
+   * touched, on any run — that is the same promise the definitions above make.
+   *
+   * These are also the fallbacks the components use when a field is empty, so
+   * seeding changes what the panel SHOWS and never what the site RENDERS.
+   */
+  const SEED = {
+    footer_tagline: "Designed for life,\ninspired by the world",
+    newsletter_invitation:
+      "Sign up for our newsletters to receive seasonal promotions and updates on the latest news of Studio Bizar.",
+    footer_region_line: "Belgium — (EUR)",
+    contact_cta_body:
+      "Whether you have a question about an order, a product, or would like more information about what we do, we’d love to hear from you.",
+    contact_cta_label: "contact us",
+    /** The three the Contact page names. The other three stay empty and render dimmed. */
+    social_instagram: "https://www.instagram.com/studiobizarantwerp",
+    social_facebook: "https://www.facebook.com/studiobizarantwerp",
+    social_pinterest: "https://www.pinterest.com/studiobizarantwerp",
+  };
+
   const entries = await gql(
     `query { metaobjects(type: "site_settings", first: 2) { nodes { id handle } } }`,
   );
 
   if (entries.metaobjects.nodes.length > 0) {
-    console.log(`SKIP    site_settings entry  (${entries.metaobjects.nodes[0].handle} exists)`);
+    const entry = entries.metaobjects.nodes[0];
+    console.log(`SKIP    site_settings entry  (${entry.handle} exists)`);
+
+    /**
+     * Fill in fields that are still empty. A metaobject only stores a field once
+     * something has been written to it, so a key absent from `fields` and a key
+     * holding "" are the same thing here: nobody has set it.
+     */
+    const current = await gql(
+      `query($id: ID!) { metaobject(id: $id) { fields { key value } } }`,
+      { id: entry.id },
+    );
+
+    const filled = new Set(
+      current.metaobject.fields
+        .filter((field) => field.value !== null && field.value !== "")
+        .map((field) => field.key),
+    );
+
+    const toSeed = Object.entries(SEED).filter(([key]) => !filled.has(key));
+
+    if (toSeed.length === 0) {
+      console.log("SKIP    site_settings values  (all set)");
+    } else {
+      console.log(`SEED    site_settings values  (+${toSeed.length}: ${toSeed.map(([k]) => k).join(", ")})`);
+      if (!DRY_RUN) {
+        const seeded = await gql(
+          `mutation($id: ID!, $metaobject: MetaobjectUpdateInput!) {
+            metaobjectUpdate(id: $id, metaobject: $metaobject) {
+              metaobject { id }
+              userErrors { field message code }
+            }
+          }`,
+          {
+            id: entry.id,
+            metaobject: { fields: toSeed.map(([key, value]) => ({ key, value })) },
+          },
+        );
+
+        assertNoUserErrors(seeded.metaobjectUpdate.userErrors, "metaobjectUpdate site_settings");
+      }
+    }
   } else {
     console.log("CREATE  site_settings entry  (singleton)");
     if (!DRY_RUN) {

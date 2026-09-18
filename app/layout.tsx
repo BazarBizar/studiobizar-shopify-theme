@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
 
+import { SITE_URL } from "@/lib/site";
+
 import "./globals.css";
 
 /**
@@ -24,6 +26,12 @@ import "./globals.css";
  */
 
 export const metadata: Metadata = {
+  /**
+   * Without this every relative `alternates.canonical` and Open Graph url in the
+   * app resolves against localhost, which Next warns about and then ships. It is
+   * the one piece of metadata that cannot be set per route.
+   */
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "Studio Bizar",
     template: "%s · Studio Bizar",

@@ -1,0 +1,117 @@
+{% comment %}
+  The page's own title and body, as typed in Shopify admin.
+
+  This is the bridge between the two halves of creating a page. Someone adds a
+  page in admin and writes into the rich-text box there; this section is what
+  puts that writing on the screen. Everything else they stack around it — Media
+  and text, Text, a product rail — is composed in the theme editor.
+
+  Without it, a new page would render its sections and silently drop whatever was
+  typed in the admin box, which is the first thing a non-technical editor tries.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+
+  capture rhythm_class
+    render 'sb-section-classes', rhythm: s.rhythm, pad: 'none'
+  endcapture
+
+  assign paints_ground = true
+  if s.surface == 'inherit'
+    assign paints_ground = false
+  endif
+
+  case s.width
+    when 'narrow'
+      assign width_class = 'max-w-[38rem]'
+    when 'medium'
+      assign width_class = 'max-w-[44rem]'
+    else
+      assign width_class = ''
+  endcase
+-%}
+
+<section
+  {% if paints_ground %}data-surface="{{ s.surface }}" class="bg-background text-foreground"{% endif %}
+  {{ section.shopify_attributes }}
+>
+  <div class="sb-container py-section {{ rhythm_class }}">
+    {%- if s.show_title -%}
+      <h1 class="text-h1">{{ page.title }}</h1>
+    {%- endif -%}
+
+    {%- if page.content != blank -%}
+      <div class="sb-prose {{ width_class }}{% if s.show_title %} mt-8{% endif %}">
+        {{ page.content }}
+      </div>
+    {%- elsif request.design_mode -%}
+      {% comment %} Only the editor sees this; a live page shows nothing rather than scaffolding. {% endcomment %}
+      <p class="text-tertiary opacity-60">{{ 'placeholder.empty_page_body' | t }}</p>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Page content",
+  "tag": "section",
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Shows the title and body written on this page in Shopify admin, under Content › Pages."
+    },
+    {
+      "type": "checkbox",
+      "id": "show_title",
+      "label": "Show the page title",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "width",
+      "label": "Measure",
+      "options": [
+        { "value": "narrow", "label": "Narrow" },
+        { "value": "medium", "label": "Medium" },
+        { "value": "full", "label": "Full width" }
+      ],
+      "default": "medium"
+    },
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Ground",
+      "options": [
+        { "value": "inherit", "label": "Inherit" },
+        { "value": "light", "label": "Earth" },
+        { "value": "dark", "label": "Dark wood" },
+        { "value": "olive", "label": "Black olive" },
+        { "value": "blue", "label": "Charcoal blue" },
+        { "value": "mocha", "label": "Deep mocha" },
+        { "value": "black", "label": "Off black" }
+      ],
+      "default": "inherit"
+    },
+    {
+      "type": "select",
+      "id": "rhythm",
+      "label": "Vertical space",
+      "options": [
+        { "value": "theme", "label": "Theme default" },
+        { "value": "xs", "label": "Extra tight" },
+        { "value": "sm", "label": "Tight" },
+        { "value": "md", "label": "Medium" },
+        { "value": "lg", "label": "Loose" },
+        { "value": "xl", "label": "Extra loose" }
+      ],
+      "default": "theme"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Page content"
+    }
+  ]
+}
+{% endschema %}

@@ -183,11 +183,11 @@ export default async function HomePage() {
         />
       )}
 
-      {/* {featureImages.length > 0 && <CaptionedRow images={featureImages} />} */}
+      {featureImages.length > 0 && <CaptionedRow images={featureImages} />}
 
       {projects.length > 0 && (
         <Container className="pb-section">
-          {/* <RowHeading title="Selected Projects" href="/projects" /> */}
+          <RowHeading title="Selected Projects" href="/projects" />
           <ul className="grid gap-grid-gap gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
             {projects.map((project) => (
               <li key={project.handle}>

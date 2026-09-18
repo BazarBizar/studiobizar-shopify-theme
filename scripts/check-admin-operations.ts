@@ -154,6 +154,32 @@ async function main() {
   await run("publications", {});
   await run("productMetafieldDefinitions", {});
 
+  await run("menus", { first: 5 });
+  await run("menuDestinations", {});
+  /**
+   * Menu id 0, and an empty item list. `menuUpdate` REPLACES the tree, so an
+   * empty list against a menu that resolves would empty it — which is exactly
+   * why the id must be one Shopify never issues. Do not give this a real id.
+   */
+  await run("menuUpdate", {
+    id: "gid://shopify/Menu/0",
+    title: "check only",
+    handle: "zz-check-only-does-not-exist",
+    items: [],
+  });
+
+  await run("pages", { first: 3, after: null });
+  /**
+   * Page id 0, on the same assumption products and collections rely on: Shopify
+   * never issues it, so the document is parsed and validated while resolving
+   * nothing. `pageUpdate` sends an empty input for the same reason — it is the
+   * DOCUMENT being checked, and an empty input cannot change a page that does not
+   * exist anyway.
+   */
+  await run("page", { id: "gid://shopify/Page/0" });
+  await run("pageUpdate", { id: "gid://shopify/Page/0", page: {} });
+  await run("pageMetafieldDefinitions", {});
+
   await run("stagedUploadsCreate", { input: [] });
   await run("fileCreate", { files: [] });
   await run("fileUpdate", { files: [] });

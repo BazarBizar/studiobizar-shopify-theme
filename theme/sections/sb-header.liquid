@@ -1,0 +1,215 @@
+{% comment %}
+  Header — components/layout/header.tsx, header-actions.tsx, mobile-nav.tsx and
+  language-switcher.tsx, folded into one section.
+
+  Four React components become one because a theme section is the unit a
+  merchant reorders and configures; splitting the bar into four would put three
+  of them in the editor as things nobody can move independently.
+
+  It paints `bg-background`, which resolves against the surrounding
+  `data-surface` — so the bar is dark wood on the landing page and earth on Shop
+  without a per-page override, exactly as the Next build behaves.
+
+  What lib/routes.ts did — rewriting Shopify's absolute menu URLs onto the Next
+  app's routes — is gone. In a theme the menu URLs are already the right ones.
+{% endcomment %}
+
+{%- liquid
+  assign primary = section.settings.menu_primary
+  assign secondary = section.settings.menu_secondary
+-%}
+
+<header
+  class="{% if section.settings.sticky %}sticky top-0 {% endif %}z-40 bg-background text-foreground"
+  data-sb-header
+>
+  <div class="sb-container flex items-center gap-13 py-5">
+    {%- render 'sb-logo', class: 'h-5 w-[11.47rem]' -%}
+
+    {%- if primary != blank and primary.links.size > 0 -%}
+      <nav aria-label="{{ 'general.navigation.primary' | t }}" class="hidden lg:block">
+        <ul class="flex items-center gap-9">
+          {%- for link in primary.links -%}
+            <li>
+              <a
+                href="{{ link.url }}"
+                class="text-secondary sb-underline"
+                {% if link.current %}aria-current="page"{% endif %}
+              >
+                {{ link.title }}
+              </a>
+            </li>
+          {%- endfor -%}
+        </ul>
+      </nav>
+    {%- endif -%}
+
+    <div class="ml-auto flex items-center gap-[4.3rem]">
+      {%- if secondary != blank and secondary.links.size > 0 -%}
+        <nav aria-label="{{ 'general.navigation.secondary' | t }}" class="hidden lg:block">
+          <ul class="flex items-center gap-5">
+            {%- for link in secondary.links -%}
+              <li class="group relative">
+                <a
+                  href="{{ link.url }}"
+                  class="text-tertiary sb-underline"
+                  {% if link.current %}aria-current="page"{% endif %}
+                >
+                  {{ link.title }}
+                </a>
+
+                {%- if link.links.size > 0 -%}
+                  {% comment %}
+                    Hover and focus-within only — no JS. `invisible` rather than
+                    `hidden` so the submenu stays in the tab order and a keyboard
+                    user can reach it, which display:none would prevent.
+                  {% endcomment %}
+                  <ul class="invisible absolute top-full left-0 z-10 mt-3 min-w-48 border border-border bg-background py-2 opacity-0 shadow-sm transition-[opacity,visibility] duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+                    {%- for child in link.links -%}
+                      <li>
+                        <a
+                          href="{{ child.url }}"
+                          class="text-secondary block px-4 py-2 whitespace-nowrap hover:bg-foreground/5"
+                        >
+                          {{ child.title }}
+                        </a>
+                      </li>
+                    {%- endfor -%}
+                  </ul>
+                {%- endif -%}
+              </li>
+            {%- endfor -%}
+          </ul>
+        </nav>
+      {%- endif -%}
+
+      {% comment %} ── the right cluster — header-actions.tsx ────────────────── {% endcomment %}
+      <div class="flex items-center gap-4">
+        {%- if section.settings.show_language -%}
+          {%- render 'sb-language-switcher' -%}
+        {%- endif -%}
+
+        {%- if section.settings.show_account -%}
+          <a
+            href="{{ routes.account_url }}"
+            class="transition-opacity hover:opacity-70"
+            aria-label="{{ 'general.accessibility.account' | t }}"
+          >
+            {%- render 'sb-icon', icon: 'user', class: 'size-[1.15rem]' -%}
+          </a>
+        {%- endif -%}
+
+        {%- if section.settings.show_search -%}
+          <button
+            type="button"
+            data-sb-search-open
+            aria-label="{{ 'general.accessibility.search' | t }}"
+            aria-haspopup="dialog"
+            class="transition-opacity hover:opacity-70"
+          >
+            {%- render 'sb-icon', icon: 'search', class: 'size-[1.15rem]' -%}
+          </button>
+        {%- endif -%}
+
+        {%- if section.settings.show_inquiry -%}
+          {% comment %}
+            The count is written by sb-inquiry-cart.js after it reads
+            localStorage. It starts empty and `hidden` for the same reason the
+            React version gates on `hydrated`: printing 0 before the list is
+            known is wrong, and printing it server-side would be wrong on every
+            visitor's second page view.
+          {% endcomment %}
+          <button
+            type="button"
+            data-sb-inquiry-open
+            aria-label="{{ 'inquiry.open' | t }}"
+            aria-haspopup="dialog"
+            class="relative transition-opacity hover:opacity-70"
+          >
+            {%- render 'sb-icon', icon: 'bag', class: 'size-[1.15rem]' -%}
+            <span
+              data-sb-inquiry-count
+              hidden
+              class="text-micro absolute -top-1.5 -right-2 min-w-4 rounded-pill bg-foreground px-1 text-center tabular-nums text-background"
+            ></span>
+          </button>
+        {%- endif -%}
+      </div>
+
+      {% comment %} ── mobile drawer trigger — mobile-nav.tsx ────────────────── {% endcomment %}
+      <button
+        type="button"
+        data-sb-nav-open
+        aria-label="{{ 'general.navigation.open_menu' | t }}"
+        aria-expanded="false"
+        aria-controls="sb-mobile-nav"
+        class="lg:hidden"
+      >
+        {%- render 'sb-icon', icon: 'menu', class: 'size-[1.35rem]' -%}
+      </button>
+    </div>
+  </div>
+</header>
+
+{%- render 'sb-mobile-nav', primary: primary, secondary: secondary -%}
+
+{% schema %}
+{
+  "name": "Header",
+  "settings": [
+    {
+      "type": "link_list",
+      "id": "menu_primary",
+      "label": "Primary menu",
+      "info": "Products, Collections, Projects, Services. Created by schema-push as desk-primary.",
+      "default": "main-menu"
+    },
+    {
+      "type": "link_list",
+      "id": "menu_secondary",
+      "label": "Secondary menu",
+      "info": "About, Info, Professionals. Nested items open on hover and on keyboard focus.",
+      "default": "footer"
+    },
+    {
+      "type": "checkbox",
+      "id": "sticky",
+      "label": "Stick to the top on scroll",
+      "info": "The bar is opaque when sticky — a transparent one would let the page scroll through it.",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Controls"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_language",
+      "label": "Language switch",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_account",
+      "label": "Account",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_search",
+      "label": "Search",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_inquiry",
+      "label": "Inquiry list",
+      "info": "The bag icon and its count. Turning this off hides the only way to open the inquiry drawer.",
+      "default": true
+    }
+  ],
+  "enabled_on": {
+    "groups": ["header"]
+  }
+}
+{% endschema %}

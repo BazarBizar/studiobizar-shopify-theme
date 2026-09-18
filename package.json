@@ -23,7 +23,16 @@
     "measure:first-load": "node scripts/first-load-js.mjs",
     "check:rich-text": "tsx --conditions=react-server scripts/check-rich-text.ts",
     "check:nesting": "node scripts/check-html-nesting.mjs",
-    "check:tokens": "node scripts/check-token-collisions.mjs"
+    "check:tokens": "node scripts/check-token-collisions.mjs",
+    "theme:build": "node theme-build/build.mjs",
+    "theme:watch": "node theme-build/build.mjs --watch",
+    "theme:check": "node theme-build/build.mjs --check",
+    "check:theme-price": "node scripts/check-theme-price.mjs",
+    "theme:dev": "shopify theme dev --path theme",
+    "theme:push": "shopify theme push --path theme",
+    "check:theme-refs": "node scripts/check-theme-refs.mjs",
+    "seed:in-context": "tsx scripts/seed-in-context.ts",
+    "seed:nav-pages": "tsx scripts/seed-nav-pages.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

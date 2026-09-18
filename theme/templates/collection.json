@@ -1,0 +1,16 @@
+{
+  "sections": {
+    "main": {
+      "type": "sb-main-placeholder",
+      "settings": {
+        "title": "Collection detail",
+        "note": "Phase 6 — 128px wordmark hero, The Idea, The Designer, product grid, In Context.",
+        "source": "app/(storefront)/collections/[handle]/page.tsx",
+        "surface": "blue"
+      }
+    }
+  },
+  "order": [
+    "main"
+  ]
+}

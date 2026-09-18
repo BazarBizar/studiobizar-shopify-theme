@@ -1,0 +1,60 @@
+{% comment %}
+  The lockup, drawn as a CSS mask over `bg-current`.
+
+  Extracted from the Figma PDFs as vector paths, so it is exact — and because a
+  mask inherits currentColor, one file works on all six surfaces. An <img> would
+  need a light and a dark copy and would still be wrong on the other four.
+
+  `full` is the lockup with the wordmark (183.5 × 20); `mark` is the stone glyph
+  alone (15 × 15).
+
+  Accepts:
+    variant — full | mark, default full
+    class   — utilities for the mask box
+    href    — destination, default the store root
+    link    — pass false to render the mark unlinked (the footer mark is not a link)
+{% endcomment %}
+
+{%- liquid
+  assign variant = variant | default: 'full'
+  if variant == 'mark'
+    assign src = 'sb-mark.svg' | asset_url
+    assign ratio = '1 / 1'
+  else
+    assign src = 'sb-logo.svg' | asset_url
+    assign ratio = '183.5 / 20'
+  endif
+  assign klass = class | default: 'h-5 w-[11.47rem]'
+-%}
+
+{%- capture mark -%}
+  <span
+    aria-hidden="true"
+    class="block bg-current {{ klass }}"
+    style="aspect-ratio: {{ ratio }};
+           -webkit-mask-image: url({{ src }}); mask-image: url({{ src }});
+           -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+           -webkit-mask-size: contain; mask-size: contain;
+           -webkit-mask-position: center; mask-position: center;"
+  ></span>
+{%- endcapture -%}
+
+{%- liquid
+  assign show_link = true
+  if link == false
+    assign show_link = false
+  endif
+  assign destination = href | default: routes.root_url
+-%}
+
+{%- if show_link -%}
+  <a
+    href="{{ destination }}"
+    class="inline-block shrink-0"
+    aria-label="{{ shop.name }} — {{ 'general.accessibility.home' | t }}"
+  >
+    {{ mark }}
+  </a>
+{%- else -%}
+  {{ mark }}
+{%- endif -%}

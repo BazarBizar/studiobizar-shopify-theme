@@ -1,0 +1,61 @@
+{% comment %}
+  The one call-to-action control, in three weights. Class lists are copied
+  verbatim from components/ui/button.tsx — if they drift, the two storefronts
+  stop matching.
+
+    solid   — the landing-page button, 251 × 33 filled, 14px label centred.
+              Painted with bg-primary / text-primary-foreground so it inverts
+              with the surface on its own.
+    outline — the taller bordered control used beside a form field, 48px.
+    text    — the inline underlined link (`learn more`, `go back`).
+
+  Accepts:
+    label    — the text (required)
+    href     — renders an <a>; omit for a <button>
+    variant  — solid | outline | text, default solid
+    class    — extra utilities
+    type     — button type when there is no href, default button
+    external — opens in a new tab with the right rel
+    disabled — <button> only
+    attrs    — raw attribute string, e.g. 'data-sb-inquiry-open'
+{% endcomment %}
+
+{%- liquid
+  assign variant = variant | default: 'solid'
+
+  assign base = 'h-[1.625rem] min-w-[13.25rem] sm:h-[2rem] sm:min-w-[16rem] text-button uppercase inline-flex items-center font-medium justify-center transition-colors disabled:cursor-not-allowed disabled:opacity-40'
+
+  case variant
+    when 'outline'
+      assign variant_class = 'gap-2 border border-foreground px-8 hover:bg-foreground hover:text-background'
+    when 'text'
+      assign variant_class = 'sb-underline gap-2'
+    else
+      assign variant_class = 'gap-2 px-6 bg-primary text-primary-foreground hover:opacity-85'
+  endcase
+
+  assign classes = base | append: ' ' | append: variant_class | append: ' ' | append: class
+-%}
+
+{%- if href != blank -%}
+  <a
+    href="{{ href }}"
+    class="{{ classes }}"
+    {%- if external %} target="_blank" rel="noopener noreferrer"{% endif %}
+    {{ attrs }}
+  >
+    {{ label }}
+    {%- if external -%}
+      <span class="sr-only"> ({{ 'general.accessibility.link_messages.new_window' | t }})</span>
+    {%- endif -%}
+  </a>
+{%- else -%}
+  <button
+    type="{{ type | default: 'button' }}"
+    class="{{ classes }}"
+    {%- if disabled %} disabled{% endif %}
+    {{ attrs }}
+  >
+    {{ label }}
+  </button>
+{%- endif -%}

@@ -1,0 +1,76 @@
+{% comment %}
+  Replaces next/image.
+
+  The Next build sets `images.unoptimized` and sizes everything with Shopify's
+  own `?width=` transform — which is precisely what Liquid's `image_url` filter
+  emits. So this is a genuine 1:1 port, not an approximation: the same CDN, the
+  same transform, the same bytes on the wire.
+
+  Accepts:
+    image   — an image drop (product.featured_image, metafield reference, …)
+    alt     — overrides the image's own alt text
+    class   — utilities for the <img>
+    sizes   — the sizes attribute, default full width
+    widths  — comma-separated srcset widths, default the card ladder
+    ratio   — aspect-ratio for the wrapper, e.g. '4 / 5'; omit to use intrinsic
+    crop    — center | top | bottom | left | right, passed to image_url
+    loading — lazy | eager, default lazy
+    priority — true sets fetchpriority=high and loading=eager (hero images)
+    wrapper_class — utilities for the wrapping <div>, only when ratio is set
+{% endcomment %}
+
+{%- liquid
+  assign widths = widths | default: '415, 620, 830, 1240, 1660'
+  assign width_list = widths | split: ', '
+  assign sizes = sizes | default: '100vw'
+  assign alt_text = alt | default: image.alt | escape
+
+  if priority
+    assign loading_attr = 'eager'
+    assign priority_attr = 'high'
+  else
+    assign loading_attr = loading | default: 'lazy'
+    assign priority_attr = 'auto'
+  endif
+-%}
+
+{%- if image == blank -%}
+  {% comment %} No placeholder: the designs hide a block that has no media rather than reserving space for it. {% endcomment %}
+{%- else -%}
+  {%- capture srcset -%}
+    {%- for w in width_list -%}
+      {%- assign wi = w | plus: 0 -%}
+      {%- if wi <= image.width -%}
+        {%- if crop != blank -%}
+          {{ image | image_url: width: wi, crop: crop }} {{ wi }}w,
+        {%- else -%}
+          {{ image | image_url: width: wi }} {{ wi }}w,
+        {%- endif -%}
+      {%- endif -%}
+    {%- endfor -%}
+    {{ image | image_url: width: image.width }} {{ image.width }}w
+  {%- endcapture -%}
+
+  {%- capture img -%}
+    <img
+      src="{{ image | image_url: width: 1240 }}"
+      srcset="{{ srcset }}"
+      sizes="{{ sizes }}"
+      alt="{{ alt_text }}"
+      width="{{ image.width }}"
+      height="{{ image.height }}"
+      loading="{{ loading_attr }}"
+      fetchpriority="{{ priority_attr }}"
+      decoding="async"
+      class="{% if ratio != blank %}h-full w-full object-cover {% endif %}{{ class }}"
+    >
+  {%- endcapture -%}
+
+  {%- if ratio != blank -%}
+    <div class="relative overflow-hidden {{ wrapper_class }}" style="aspect-ratio: {{ ratio }};">
+      {{ img }}
+    </div>
+  {%- else -%}
+    {{ img }}
+  {%- endif -%}
+{%- endif -%}

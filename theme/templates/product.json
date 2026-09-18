@@ -1,0 +1,16 @@
+{
+  "sections": {
+    "main": {
+      "type": "sb-main-placeholder",
+      "settings": {
+        "title": "Shop detail",
+        "note": "Phase 4 — gallery, specs, accordions, The Idea, The Designer, two rails.",
+        "source": "app/(storefront)/shop/[handle]/page.tsx",
+        "surface": "light"
+      }
+    }
+  },
+  "order": [
+    "main"
+  ]
+}
