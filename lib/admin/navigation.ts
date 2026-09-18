@@ -67,7 +67,7 @@ export function slugForType(type: string): string {
  * No store has such a type today. This exists so that if one is ever created, the
  * sidebar says so rather than leading somewhere else.
  */
-const RESERVED_SLUGS = new Set(["collections", "products", "customers", "pages", "menus"]);
+const RESERVED_SLUGS = new Set(["collections", "products", "customers", "pages", "menus", "media"]);
 
 export function reservedSlug(type: string): boolean {
   return RESERVED_SLUGS.has(type);
@@ -122,6 +122,12 @@ const BESPOKE: { group: GroupKey; item: NavItem }[] = [
     group: "pages",
     /** Next to Pages: the two together are what a visitor can reach and how. */
     item: { href: "/admin/menus", label: "Menus", readOnly: false, type: null },
+  },
+  {
+    group: "library",
+    /** Sits beside the `captioned_image` entries, which are metaobjects ABOUT files;
+     *  this is the files themselves. */
+    item: { href: "/admin/media", label: "Media", readOnly: false, type: null },
   },
   {
     group: "inbox",

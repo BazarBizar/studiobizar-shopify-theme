@@ -54,6 +54,7 @@ const BY_HREF: Record<string, LucideIcon> = {
   "/admin/collections": BoxIcon,
   "/admin/pages": FileTextIcon,
   "/admin/menus": ListTreeIcon,
+  "/admin/media": ImagesIcon,
   "/admin/customers": UsersRoundIcon,
 };
 

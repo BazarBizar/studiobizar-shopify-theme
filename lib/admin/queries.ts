@@ -243,3 +243,21 @@ export async function updateMenuRequest(input: {
     ...input,
   });
 }
+
+/**
+ * Alt text on an existing file — the one property of a file the panel may change.
+ *
+ * There is no delete counterpart and will not be one: `fileDelete` is absent from
+ * the operation allowlist because Shopify removes a file without checking what
+ * references it, which would silently empty every product, metaobject and page
+ * metafield pointing at it.
+ */
+export async function setFileAltRequest(input: {
+  id: string;
+  alt: string;
+}): Promise<{ id: string; alt: string }> {
+  return post<{ id: string; alt: string }>("/api/admin/files/alt", {
+    operation: "fileAlt",
+    ...input,
+  });
+}
