@@ -20,10 +20,17 @@
   endcapture
 
   assign designers = shop.metaobjects.designer.values | sort: 'sort_order'
-  assign shown = designers
 
-  if s.limit > 0
-    assign shown = designers | slice: 0, s.limit
+  comment
+    `for ... limit:` below rather than slicing here. `slice` is an array filter
+    and this IS an array, so it would work — but the product rail was bitten by
+    slicing a paginated drop, and having one way to take the first N removes the
+    question of which case you are in.
+  endcomment
+  assign shown = designers
+  assign show_limit = s.limit
+  if show_limit == 0
+    assign show_limit = designers.size
   endif
 
   assign heading = s.heading
@@ -49,7 +56,7 @@
       <p class="text-body mt-16 text-muted">{{ 'designer.none' | t }}</p>
     {%- else -%}
       <ul class="sb-grid-4 mt-12 gap-y-12">
-        {%- for entry in shown -%}
+        {%- for entry in shown limit: show_limit -%}
           {%- liquid
             comment
               The first row is above the fold on every viewport the designs cover.

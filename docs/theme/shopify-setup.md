@@ -40,8 +40,9 @@ the generic `/metaobjects/<type>/<handle>` an earlier draft of
 nothing. That is a deliberate degradation and the grid works without it, but the
 11 chips from `lib/shopify/categories.ts` are simply absent until filters exist.
 
-Install Shopify's free **Search & Discovery** app and add a filter on **Product
-type**. The store has 63 distinct `productType` values against 11 chips in the
+It is not installed: the store has exactly two apps, the custom `Admin Studi
+Bizar` one and Shopify's `Messaging`. Install Shopify's free **Search &
+Discovery** app and add a filter on **Product type**. The store has 63 distinct `productType` values against 11 chips in the
 Next build, so the two do not map one to one — decide whether to expose all 63,
 group them with product tags, or add a `category` metafield and filter on that.
 This is the open question the plan has carried since phase 0, and it is now the
@@ -65,7 +66,7 @@ it natively and everything else falls back to Arial — exactly as the Next buil
 behaves today. Not a blocker, but it is the last thing standing between the two
 storefronts being pixel-identical on Windows.
 
-### 4. A Theme Access password — `theme dev` is blocked without one
+### 4. Log the CLI in — `theme dev` is blocked until you do
 
 The CLI is now a devDependency, so `yarn theme:lint`, `yarn theme:push` and
 `yarn theme:dev` all resolve. Authentication works by exporting the Admin API
@@ -78,13 +79,20 @@ why: an Admin API token cannot open a session on a **password-protected
 storefront**, which this store is (`onlineStore.passwordProtection.enabled` is
 true). Hot module reloading is unavailable for the same reason.
 
-Two ways out, both a minute's work in the Shopify admin:
+The fix is one command, and it is not an app install:
 
-- **Install the Theme Access app** and generate a password (`shptka_…`). Export
-  it as `SHOPIFY_CLI_THEME_TOKEN` instead of the Admin token and `theme dev`
-  works, hot reload included. This is the one to do.
-- Or run `shopify auth login` once in a terminal and drop the token entirely;
-  the CLI then holds its own browser-obtained session.
+```bash
+npx shopify auth login          # then unset SHOPIFY_CLI_THEME_TOKEN
+```
+
+A browser session has none of the token's limitations, so `theme dev` and hot
+reload both work. **Unset the token afterwards** — while it is exported the CLI
+prefers it and ignores the session.
+
+Theme Access (`shptka_…` passwords) is the other route, but it is for granting
+theme access to someone who should not have full admin, or to a CI pipeline. The
+store owner on their own machine does not need it. See
+[your-turn.md](your-turn.md) for that path.
 
 Until then, the working loop is `yarn theme:push` against the unpublished theme
 and previewing from Shopify admin — which is what the theme is set up for now.
@@ -120,7 +128,7 @@ Three consequences worth holding on to:
   after DNS moves.
 - **The theme can be built and reviewed without touching DNS.** The unpublished
   theme is already on the store and previews against live data. (`theme dev`
-  needs the Theme Access password — see section 4.)
+  needs a browser session — see section 4.)
 - **The published theme is Dawn.** Keep the new theme unpublished until the
   cutover; publishing it changes nothing while DNS points at Vercel, but it
   removes the safety of having an obviously-inactive theme.

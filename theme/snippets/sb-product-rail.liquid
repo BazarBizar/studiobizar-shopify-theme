@@ -15,7 +15,16 @@
 
 {%- liquid
   assign limit = limit | default: 4
-  assign shown = products | slice: 0, limit
+
+  comment
+    `for ... limit:` rather than `products | slice: 0, limit`.
+
+    `slice` is an ARRAY filter, and `collection.products` is a paginated drop.
+    Slicing it produced one item per row, and that item was not a usable product
+    — the card rendered with no variant, so no quick-add button. `for` with a
+    limit walks the drop the way Shopify intends.
+  endcomment
+
   comment
     Liquid does not allow a filter on a `render` argument, so every translated
     label in this theme is resolved into a variable first.
@@ -23,7 +32,7 @@
   assign view_all_label = 'product.view_all' | t
 -%}
 
-{%- if shown.size > 0 -%}
+{%- if products != blank and products.size > 0 -%}
   <div class="sb-container py-section">
     <div class="mb-8 flex items-end justify-between gap-6">
       <h2 class="text-h2">{{ heading }}</h2>
@@ -33,7 +42,7 @@
     </div>
 
     <ul class="sb-grid-4">
-      {%- for item in shown -%}
+      {%- for item in products limit: limit -%}
         <li>{%- render 'sb-product-card', product: item -%}</li>
       {%- endfor -%}
     </ul>

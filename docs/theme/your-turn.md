@@ -40,17 +40,41 @@ design. Three ways:
 Tell us which and the section follows it; nothing in the theme has to change for
 the first two.
 
-## 3. Generate a Theme Access password
+## 3. Log the CLI in — one command, no app to install
 
 Unblocks `yarn theme:dev` and hot reload, which is the difference between
 previewing a change in a second and pushing for it.
 
-**Apps → Theme Access → install → Generate password.** It looks like
-`shptka_…`. Then set `SHOPIFY_CLI_THEME_TOKEN` to that instead of the Admin API
-token.
+```bash
+npx shopify auth login
+```
 
-The Admin token works for `theme push` and `theme check` but cannot open a
-development session on a password-protected storefront, which this store is.
+It opens a browser, you sign in as you normally would, and the CLI keeps the
+session. Then `yarn theme:dev` works in full.
+
+**Unset `SHOPIFY_CLI_THEME_TOKEN` first** if it is still exported. When that
+variable is present the CLI uses it and ignores the browser session — and an
+Admin API token cannot open a development session on a password-protected
+storefront, which this store is. That is the failure this step exists to avoid;
+the same token remains fine for `theme push` and `theme check`.
+
+### Theme Access — only if you need to hand access to someone else
+
+An earlier draft of this file led with Theme Access. That was the wrong default:
+it exists to give theme access to someone who should *not* have full admin — an
+agency, a contractor, a CI pipeline. As the store owner running the CLI on your
+own machine, you do not need it.
+
+If you do want it later: install from <https://apps.shopify.com/theme-access>,
+then **Apps → Theme Access → Add user** with a name and an email address. The
+part the UI does not tell you: **the password arrives by email**, it is never
+shown on screen. It looks like `shptka_…` and is used as
+`SHOPIFY_CLI_THEME_TOKEN`.
+
+Checked on 18 September 2026: the store has two apps installed — the custom
+`Admin Studi Bizar` app and Shopify's `Messaging`. Neither Theme Access nor
+Search & Discovery is there, which is the same finding section 2 reaches from the
+other direction.
 
 ## 4. Configure the App Proxy — blocks the inquiry submission
 

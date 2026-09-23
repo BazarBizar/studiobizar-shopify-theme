@@ -31,9 +31,23 @@
     assign paints_ground = false
   endif
 
+  comment
+    WHICH PAGE THE METAFIELDS COME FROM.
+
+    `page` is EMPTY on the index template — a Shopify home page is not a page
+    object, and the Next build reached its content with an explicit
+    getPage("home"). So the source is a named handle when one is set, and the
+    page being viewed otherwise. Without this the landing page rendered its
+    sections with nothing in them, which is how the dev server found it.
+  endcomment
+  assign source_page = page
+  if s.page_handle != blank
+    assign source_page = pages[s.page_handle]
+  endif
+
   assign source = blank
   if s.metafield != 'none'
-    assign source = page.metafields.custom[s.metafield].value
+    assign source = source_page.metafields.custom[s.metafield].value
   endif
   if source == blank
     assign source = s.collection
@@ -78,6 +92,12 @@
         { "value": "none", "label": "None — use the picker" }
       ],
       "default": "new_in"
+    },
+    {
+      "type": "text",
+      "id": "page_handle",
+      "label": "Read metafields from this page",
+      "info": "Leave empty to use the page being viewed. The home template has no page of its own, so it names one \u2014 usually `home`."
     },
     {
       "type": "collection",

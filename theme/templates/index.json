@@ -5,7 +5,8 @@
       "settings": {
         "metafield": "hero_slides",
         "label": "Featured interiors",
-        "surface": "black"
+        "surface": "black",
+        "page_handle": "home"
       }
     },
     "services": {
@@ -28,7 +29,8 @@
       "settings": {
         "metafield": "feature_images",
         "surface": "inherit",
-        "rhythm": "theme"
+        "rhythm": "theme",
+        "page_handle": "home"
       }
     },
     "new_in": {
@@ -38,7 +40,8 @@
         "metafield": "new_in",
         "limit": 4,
         "surface": "inherit",
-        "rhythm": "theme"
+        "rhythm": "theme",
+        "page_handle": "home"
       }
     },
     "monthly": {
@@ -48,7 +51,8 @@
         "metafield": "monthly_selection",
         "limit": 4,
         "surface": "inherit",
-        "rhythm": "theme"
+        "rhythm": "theme",
+        "page_handle": "home"
       }
     },
     "contact": {
