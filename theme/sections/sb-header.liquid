@@ -23,8 +23,8 @@
   class="{% if section.settings.sticky %}sticky top-0 {% endif %}z-40 bg-background text-foreground"
   data-sb-header
 >
-  <div class="sb-container flex items-center gap-13 py-5">
-    {%- render 'sb-logo', class: 'h-5 w-[11.47rem]' -%}
+  <div class="sb-container flex items-center gap-4 py-5 lg:gap-13">
+    {%- render 'sb-logo', class: 'h-4 w-[9.5rem] shrink-0 sm:h-5 sm:w-[11.47rem]' -%}
 
     {%- if primary != blank and primary.links.size > 0 -%}
       <nav aria-label="{{ 'general.navigation.primary' | t }}" class="hidden lg:block">
@@ -44,7 +44,7 @@
       </nav>
     {%- endif -%}
 
-    <div class="ml-auto flex items-center gap-[4.3rem]">
+    <div class="ml-auto flex items-center gap-4 lg:gap-[4.3rem]">
       {%- if secondary != blank and secondary.links.size > 0 -%}
         <nav aria-label="{{ 'general.navigation.secondary' | t }}" class="hidden lg:block">
           <ul class="flex items-center gap-5">
@@ -84,7 +84,7 @@
       {%- endif -%}
 
       {% comment %} ── the right cluster — header-actions.tsx ────────────────── {% endcomment %}
-      <div class="flex items-center gap-4">
+      <div class="flex items-center gap-3 sm:gap-4">
         {%- if section.settings.show_language -%}
           {%- render 'sb-language-switcher' -%}
         {%- endif -%}

@@ -8,8 +8,9 @@
   The icon → platform mapping is INFERRED from each glyph's geometry, not stated
   anywhere in the design. Only Instagram, Facebook and Pinterest are confirmed —
   the Contact page names all three as @studiobizarantwerp. A channel with no URL
-  in the theme settings renders dimmed rather than guessing a destination, which
-  is the same thing the Next build does with a null href.
+  in the theme settings is left out rather than guessing a destination — or
+  showing a dimmed mark that does nothing — which is what the Next build does
+  with a null href.
 {% endcomment %}
 
 {%- liquid
@@ -36,8 +37,8 @@
       ></span>
     {%- endcapture -%}
 
-    <li>
-      {%- if href != blank -%}
+    {%- if href != blank -%}
+      <li>
         <a
           href="{{ href }}"
           target="_blank"
@@ -47,9 +48,7 @@
         >
           {{ mark }}
         </a>
-      {%- else -%}
-        <span class="block opacity-45">{{ mark }}</span>
-      {%- endif -%}
-    </li>
+      </li>
+    {%- endif -%}
   {%- endfor -%}
 </ul>

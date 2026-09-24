@@ -172,6 +172,9 @@ export default async function HomePage() {
 
   return (
     <PageShell surface="dark">
+      {/* The hero is image-only by design, so the page's one h1 is for screen
+          readers and search engines — every other page has a visible one. */}
+      <h1 className="sr-only">Studio Bizar — designed for life, inspired by the world</h1>
       <HeroSlider slides={heroSlides} />
 
       {servicesHtml && (
@@ -179,7 +182,7 @@ export default async function HomePage() {
           title="Our Services"
           html={servicesHtml}
           href="/services"
-          label="read more"
+          label="explore our services"
         />
       )}
 
@@ -202,7 +205,7 @@ export default async function HomePage() {
                 title="Selected Project"
                 html={projectsIntroHtml}
                 href="/projects"
-                label="read more"
+                label="view all projects"
               />
             </div>
           )}
@@ -277,7 +280,7 @@ export default async function HomePage() {
           title="Our Story"
           html={storyHtml}
           href="/our-story"
-          label="read more"
+          label="read our story"
         />
       )}
 

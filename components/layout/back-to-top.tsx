@@ -26,7 +26,7 @@ export function BackToTop() {
             : "smooth",
         })
       }
-      className="fixed right-5 bottom-5 z-30 border border-current p-3 text-foreground opacity-70 transition-opacity hover:opacity-100"
+      className="fixed right-5 bottom-5 z-30 border border-foreground/20 bg-background p-3 text-foreground shadow-sm transition-colors hover:border-foreground"
     >
       <ArrowUp className="size-4" strokeWidth={1.5} aria-hidden />
     </button>

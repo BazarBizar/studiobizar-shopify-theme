@@ -27,7 +27,7 @@
 {%- if images.size == 0 -%}
   <div class="aspect-card w-full bg-foreground/5"></div>
 {%- else -%}
-  <div class="flex flex-col-reverse gap-4 lg:flex-row lg:gap-6" data-sb-gallery>
+  <div class="flex min-w-0 flex-col-reverse gap-4 lg:flex-row lg:gap-6" data-sb-gallery>
     {%- if images.size > 1 -%}
       <ul class="flex shrink-0 gap-3 overflow-x-auto lg:w-[3.8rem] lg:flex-col lg:overflow-visible">
         {%- for image in images -%}

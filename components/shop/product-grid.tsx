@@ -26,17 +26,20 @@ async function fetchPage({
   category,
   sort,
   collection,
+  search,
 }: {
   pageParam?: string;
   category?: string;
   sort?: string;
   collection?: string;
+  search?: string;
 }): Promise<Paginated<ProductCardType>> {
   const params = new URLSearchParams();
   if (pageParam) params.set("after", pageParam);
   if (category) params.set("category", category);
   if (sort) params.set("sort", sort);
   if (collection) params.set("collection", collection);
+  if (search) params.set("q", search);
 
   const response = await fetch(`/api/products?${params}`);
   if (!response.ok) throw new Error("Could not load more products.");
@@ -53,12 +56,15 @@ export function ProductGrid({
   category,
   sort,
   collection,
+  search,
 }: {
   initial: Paginated<ProductCardType>;
   category?: string;
   sort?: string;
   /** Pages through one collection instead of the whole catalogue. */
   collection?: string;
+  /** Pages through search results for this query, in relevance order. */
+  search?: string;
 }) {
   const sentinel = useRef<HTMLDivElement>(null);
   // Density is purely visual, so it never touches the query key or the server.
@@ -68,8 +74,10 @@ export function ProductGrid({
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isError, refetch } =
     useInfiniteQuery({
       // The key carries the filters, so switching category starts a fresh list.
-      queryKey: ["products", collection ?? category ?? "all", sort ?? DEFAULT_SORT],
-      queryFn: ({ pageParam }) => fetchPage({ pageParam, category, sort, collection }),
+      queryKey: search
+        ? ["products", "search", search]
+        : ["products", collection ?? category ?? "all", sort ?? DEFAULT_SORT],
+      queryFn: ({ pageParam }) => fetchPage({ pageParam, category, sort, collection, search }),
       initialPageParam: undefined as string | undefined,
       getNextPageParam: (last) => (last.pageInfo.hasNextPage ? last.pageInfo.endCursor ?? undefined : undefined),
       initialData: { pages: [initial], pageParams: [undefined] },

@@ -101,7 +101,7 @@ export function ProductCard({
       {!compact && (
         <div className="mt-3 flex items-start justify-between gap-3">
           <Link href={`/shop/${product.handle}`} className="min-w-0">
-            <h3 className="text-secondary truncate font-medium">{product.title}</h3>
+            <h3 className="text-secondary line-clamp-2 font-medium">{product.title}</h3>
             {product.collectionLabel && (
               <p className="text-tertiary mt-1 truncate text-muted">{product.collectionLabel}</p>
             )}
@@ -112,6 +112,7 @@ export function ProductCard({
               type="button"
               onClick={quickAdd}
               aria-label={added ? "Added to your inquiry" : `Add ${product.title} to your inquiry`}
+              title={added ? "Added to your inquiry" : "Add to inquiry"}
               className="flex size-8 shrink-0 items-center justify-center border border-foreground/20 transition-colors hover:border-foreground hover:bg-foreground hover:text-background"
             >
               {added ? (

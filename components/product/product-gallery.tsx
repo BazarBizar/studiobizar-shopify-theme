@@ -25,7 +25,7 @@ export function ProductGallery({ images, title }: { images: ShopifyImage[]; titl
   }
 
   return (
-    <div className="flex flex-col-reverse gap-4 lg:flex-row lg:gap-6">
+    <div className="flex min-w-0 flex-col-reverse gap-4 lg:flex-row lg:gap-6">
       {images.length > 1 && (
         <ul className="flex shrink-0 gap-3 overflow-x-auto lg:w-[3.8rem] lg:flex-col lg:overflow-visible">
           {images.map((image, index) => (

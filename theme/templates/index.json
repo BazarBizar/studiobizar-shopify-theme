@@ -16,7 +16,7 @@
         "scale": "body",
         "width": "medium",
         "align": "left",
-        "link_label": "read more",
+        "link_label": "explore our services",
         "link_url": "/pages/our-services",
         "link_style": "outline",
         "surface": "inherit",

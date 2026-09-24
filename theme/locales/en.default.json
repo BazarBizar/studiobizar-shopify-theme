@@ -47,6 +47,7 @@
     "submit": "Send inquiry",
     "continue": "Continue browsing",
     "add_named": "Add {{ title }} to your inquiry",
+    "add_tooltip": "Add to inquiry",
     "added_named": "Added to your inquiry",
     "moq_note": "Minimum order {{ count }}"
   },

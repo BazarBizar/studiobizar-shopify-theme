@@ -40,8 +40,8 @@ export async function Header() {
      * z-40 keeps it under the two drawers at z-50, which are meant to cover it.
      */
     <header className="sticky top-0 z-40 bg-background text-foreground">
-      <Container className="flex items-center gap-13 py-5">
-        <Logo className="h-5 w-[11.47rem]" />
+      <Container className="flex items-center gap-4 py-5 lg:gap-13">
+        <Logo className="h-4 w-[9.5rem] shrink-0 sm:h-5 sm:w-[11.47rem]" />
 
         <nav aria-label="Primary" className="hidden lg:block">
           <ul className="flex items-center gap-9">
@@ -55,7 +55,7 @@ export async function Header() {
           </ul>
         </nav>
 
-        <div className="ml-auto flex items-center gap-[4.3rem]">
+        <div className="ml-auto flex items-center gap-4 lg:gap-[4.3rem]">
           <nav aria-label="Secondary" className="hidden lg:block">
             <ul className="flex items-center gap-5">
               {secondary.map((item) => (

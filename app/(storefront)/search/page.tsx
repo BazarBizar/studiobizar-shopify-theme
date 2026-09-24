@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { PageShell } from "@/components/layout/page-shell";
+import { ProductGrid } from "@/components/shop/product-grid";
 import { Container } from "@/components/ui/container";
-import { cdnImage, searchProducts } from "@/lib/shopify";
+import { PRODUCTS_PER_PAGE, searchProducts } from "@/lib/shopify";
 
 export const metadata: Metadata = {
   title: "Search",
@@ -11,15 +12,14 @@ export const metadata: Metadata = {
 };
 
 /**
- * Minimal but working, so the header's search control has a real destination.
- * Step 13 adds projects and designers, `nuqs` URL state and infinite scroll,
- * and swaps this grid for the shared product card.
+ * Product results on the shared grid — the same card as the shop, and the same
+ * load more / infinite scroll, so "332 results" is not a promise of 24.
  */
 export default async function SearchPage({ searchParams }: PageProps<"/search">) {
   const { q } = await searchParams;
   const query = typeof q === "string" ? q.trim() : "";
 
-  const results = query ? await searchProducts({ query, first: 24 }) : null;
+  const results = query ? await searchProducts({ query, first: PRODUCTS_PER_PAGE }) : null;
 
   return (
     <PageShell surface="light">
@@ -52,31 +52,9 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
         )}
 
         {results && results.items.length > 0 && (
-          <ul className="sb-grid-4 mt-10">
-            {results.items.map((product) => (
-              <li key={product.id}>
-                <Link href={`/shop/${product.handle}`} className="group block">
-                  <div className="aspect-card overflow-hidden bg-surface">
-                    {product.image && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={cdnImage(product.image.url)}
-                        alt={product.image.altText ?? product.title}
-                        width={415}
-                        height={519}
-                        className="size-full object-cover"
-                        loading="lazy"
-                      />
-                    )}
-                  </div>
-                  <h2 className="text-secondary mt-3">{product.title}</h2>
-                  {product.collectionLabel && (
-                    <p className="text-tertiary text-muted">{product.collectionLabel}</p>
-                  )}
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <div className="mt-10">
+            <ProductGrid key={query} initial={results} search={query} />
+          </div>
         )}
 
         {results && results.items.length === 0 && (

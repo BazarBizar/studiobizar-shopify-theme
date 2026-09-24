@@ -436,7 +436,11 @@
   }
 
   &:hover::after,
-  &:focus-visible::after {
+  &:focus-visible::after,
+  /* The selected chip, filter or density keeps its line, so the active state
+     reads as more than a weight change. */
+  &[aria-pressed="true"]::after,
+  &[aria-current]:not([aria-current="false"])::after {
     transform: scaleX(1);
   }
 }
