@@ -20,6 +20,11 @@
   · Paging. `paginate` replaces the cursor bookkeeping in `/api/products`.
     `assets/sb-collection.js` turns it into infinite scroll through the Section
     Rendering API; without JS the same markup is a working "load more" link.
+
+  THE S / M / L DENSITY is a plain `?size=` link read back from
+  `request.query_string`, the same way sb-project-list does its L / M toggle.
+  S is 8 across and image only, M is 6, L is 4. Filters, sort and load more all
+  carry `size` through, so neither control resets the other.
 {% endcomment %}
 
 {%- liquid
@@ -36,6 +41,45 @@
   endif
 
   assign load_more_label = 'collection.load_more' | t
+
+  comment
+    Liquid has no params object, so `size` is read out of the raw query string.
+    `size_base` is that same query string minus `size` and `page` — the density
+    links append to it, so they keep filters and sort but start at page one.
+  endcomment
+  assign size = s.default_size | default: 'l'
+  assign size_base = ''
+  assign pairs = request.query_string | split: '&'
+  for pair in pairs
+    assign parts = pair | split: '='
+    case parts[0]
+      when 'size'
+        if parts[1] == 's' or parts[1] == 'm' or parts[1] == 'l'
+          assign size = parts[1]
+        endif
+      when 'page', 'section_id'
+        continue
+      else
+        assign size_base = size_base | append: pair | append: '&'
+    endcase
+  endfor
+
+  case size
+    when 's'
+      assign grid_class = 'grid grid-cols-4 gap-grid-gap min-[750px]:grid-cols-8'
+      assign card_sizes = '(max-width: 749px) 25vw, 12.5vw'
+    when 'm'
+      assign grid_class = 'grid grid-cols-3 gap-grid-gap min-[750px]:grid-cols-6'
+      assign card_sizes = '(max-width: 749px) 34vw, 17vw'
+    else
+      assign grid_class = 'sb-grid-4'
+      assign card_sizes = nil
+  endcase
+
+  assign compact = false
+  if size == 's'
+    assign compact = true
+  endif
 -%}
 
 <section
@@ -63,7 +107,7 @@
                 <ul class="flex flex-wrap items-center gap-x-8 gap-y-3">
                   <li>
                     <a
-                      href="{{ collection.url }}"
+                      href="{{ collection.url }}?size={{ size }}"
                       class="text-secondary sb-underline{% unless current_tags or filter.active_values.size > 0 %} font-medium{% endunless %}"
                     >
                       {{ 'collection.all' | t }}
@@ -73,7 +117,7 @@
                     {%- if value.count > 0 -%}
                       <li>
                         <a
-                          href="{{ value.url_to_add }}"
+                          href="{{ value.url_to_add }}{% if value.url_to_add contains '?' %}&{% else %}?{% endif %}size={{ size }}"
                           {% if value.active %}aria-current="true"{% endif %}
                           class="text-secondary sb-underline{% if value.active %} font-medium{% endif %}"
                         >
@@ -91,25 +135,45 @@
         <div class="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-4">
           <div class="flex items-center gap-3">
             {%- if s.show_sort -%}
-              {%- render 'sb-collection-sort' -%}
+              {%- render 'sb-collection-sort', size: size -%}
             {%- endif -%}
 
             <span class="text-tertiary text-muted">
               {{ 'collection.item_count' | t: count: collection.products_count }}
             </span>
           </div>
+
+          {%- if s.show_size -%}
+            <div class="flex items-center gap-4">
+              <span class="text-secondary">{{ 'collection.size' | t }}:</span>
+              {%- assign size_options = 's,m,l' | split: ',' -%}
+              {%- for option in size_options -%}
+                {%- assign option_label_key = 'collection.size_' | append: option | append: '_label' -%}
+                <a
+                  href="{{ request.path }}?{{ size_base }}size={{ option }}"
+                  {% if size == option %}aria-current="true"{% endif %}
+                  aria-label="{{ option_label_key | t }}"
+                  class="text-secondary sb-underline uppercase{% if size == option %} font-medium{% else %} opacity-60{% endif %}"
+                >
+                  {{- option -}}
+                </a>
+              {%- endfor -%}
+            </div>
+          {%- endif -%}
         </div>
       </div>
 
       {%- if collection.products.size == 0 -%}
         <p class="text-body mt-12 text-muted">{{ 'collection.empty' | t }}</p>
       {%- else -%}
-        <ul class="sb-grid-4 mt-8" data-sb-collection-grid>
+        <ul class="{{ grid_class }} mt-8" data-sb-collection-grid>
           {%- for product in collection.products -%}
             <li>
               {%- render 'sb-product-card',
                 product: product,
-                priority: forloop.first
+                priority: forloop.first,
+                sizes: card_sizes,
+                compact: compact
               -%}
             </li>
           {%- endfor -%}
@@ -158,6 +222,23 @@
       "label": "Show the sort control",
       "info": "Price options are never offered — this storefront has no price.",
       "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_size",
+      "label": "Show the S / M / L size toggle",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "default_size",
+      "label": "Default size",
+      "options": [
+        { "value": "s", "label": "S — eight across, image only" },
+        { "value": "m", "label": "M — six across" },
+        { "value": "l", "label": "L — four across" }
+      ],
+      "default": "l"
     },
     {
       "type": "range",

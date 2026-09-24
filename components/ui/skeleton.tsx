@@ -5,12 +5,16 @@ export function Skeleton({ className }: { className?: string }) {
   return <div aria-hidden className={cn("animate-pulse bg-foreground/10", className)} />;
 }
 
-export function ProductCardSkeleton() {
+export function ProductCardSkeleton({ compact = false }: { compact?: boolean }) {
   return (
     <div className="flex flex-col gap-3">
       <Skeleton className="aspect-card w-full" />
-      <Skeleton className="h-4 w-3/4" />
-      <Skeleton className="h-3 w-1/2" />
+      {!compact && (
+        <>
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-3 w-1/2" />
+        </>
+      )}
     </div>
   );
 }

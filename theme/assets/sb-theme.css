@@ -663,6 +663,9 @@
   .grid-cols-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+  .grid-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
   .grid-cols-\[10rem_1fr\] {
     grid-template-columns: 10rem 1fr;
   }
@@ -1327,6 +1330,12 @@
     }
     .sm\:min-w-\[16rem\] {
       min-width: 16rem;
+    }
+    .min-\[750px\]\:grid-cols-6 {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+    .min-\[750px\]\:grid-cols-8 {
+      grid-template-columns: repeat(8, minmax(0, 1fr));
     }
     .sm\:grid-cols-2 {
       grid-template-columns: repeat(2, minmax(0, 1fr));

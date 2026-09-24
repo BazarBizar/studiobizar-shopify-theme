@@ -23,6 +23,8 @@
                Collections Detail mosaic.
     priority — true for the first row, which is above the fold
     sizes    — overrides the responsive sizes attribute
+    compact  — true for the product grid's S density: image only, no title,
+               label or `+`
 {% endcomment %}
 
 {%- liquid
@@ -48,7 +50,11 @@
 -%}
 
 <article>
-  <a href="{{ product.url }}" class="group block">
+  <a
+    href="{{ product.url }}"
+    {% if compact %}aria-label="{{ product.title | escape }}"{% endif %}
+    class="group block"
+  >
     <div class="relative overflow-hidden bg-foreground/5" style="aspect-ratio: {{ ratio }};">
       {%- if product.featured_image -%}
         {%- render 'sb-image',
@@ -79,35 +85,37 @@
     </div>
   </a>
 
-  <div class="mt-3 flex items-start justify-between gap-3">
-    <a href="{{ product.url }}" class="min-w-0">
-      <h3 class="text-secondary truncate font-medium">{{ product.title }}</h3>
-      {%- if label != blank -%}
-        <p class="text-tertiary mt-1 truncate text-muted">{{ label }}</p>
-      {%- endif -%}
-    </a>
+  {%- unless compact -%}
+    <div class="mt-3 flex items-start justify-between gap-3">
+      <a href="{{ product.url }}" class="min-w-0">
+        <h3 class="text-secondary truncate font-medium">{{ product.title }}</h3>
+        {%- if label != blank -%}
+          <p class="text-tertiary mt-1 truncate text-muted">{{ label }}</p>
+        {%- endif -%}
+      </a>
 
-    {%- if variant -%}
-      {% comment %}
-        `data-added` is set by the script for two seconds after a click; the two
-        icons are both in the DOM and CSS picks which is visible, so the
-        acknowledgement costs no layout and no second render.
-      {% endcomment %}
-      <button
-        type="button"
-        data-sb-inquiry-add
-        data-variant-id="{{ variant.id }}"
-        data-product-handle="{{ product.handle }}"
-        data-sku="{{ variant.sku }}"
-        data-title="{{ product.title | escape }}"
-        data-variant-title="{{ variant.title | escape }}"
-        data-image="{{ product.featured_image | image_url: width: 200 }}"
-        aria-label="{{ add_label }}"
-        class="sb-quick-add flex size-8 shrink-0 items-center justify-center border border-foreground/20 transition-colors hover:border-foreground hover:bg-foreground hover:text-background"
-      >
-        {%- render 'sb-icon', icon: 'plus', class: 'size-4 sb-quick-add-idle' -%}
-        {%- render 'sb-icon', icon: 'check', class: 'size-4 sb-quick-add-done' -%}
-      </button>
-    {%- endif -%}
-  </div>
+      {%- if variant -%}
+        {% comment %}
+          `data-added` is set by the script for two seconds after a click; the two
+          icons are both in the DOM and CSS picks which is visible, so the
+          acknowledgement costs no layout and no second render.
+        {% endcomment %}
+        <button
+          type="button"
+          data-sb-inquiry-add
+          data-variant-id="{{ variant.id }}"
+          data-product-handle="{{ product.handle }}"
+          data-sku="{{ variant.sku }}"
+          data-title="{{ product.title | escape }}"
+          data-variant-title="{{ variant.title | escape }}"
+          data-image="{{ product.featured_image | image_url: width: 200 }}"
+          aria-label="{{ add_label }}"
+          class="sb-quick-add flex size-8 shrink-0 items-center justify-center border border-foreground/20 transition-colors hover:border-foreground hover:bg-foreground hover:text-background"
+        >
+          {%- render 'sb-icon', icon: 'plus', class: 'size-4 sb-quick-add-idle' -%}
+          {%- render 'sb-icon', icon: 'check', class: 'size-4 sb-quick-add-done' -%}
+        </button>
+      {%- endif -%}
+    </div>
+  {%- endunless -%}
 </article>

@@ -14,6 +14,9 @@
 
   It is a plain form that submits on change, so sorting works without JavaScript
   and every sorted view has its own URL.
+
+  Accepts:
+    size — the grid's current S / M / L density, carried through a sort change
 {% endcomment %}
 
 {%- liquid
@@ -30,6 +33,9 @@
       <input type="hidden" name="{{ value.param_name }}" value="{{ value.value | escape }}">
     {%- endfor -%}
   {%- endfor -%}
+  {%- if size != blank -%}
+    <input type="hidden" name="size" value="{{ size }}">
+  {%- endif -%}
 
   <label for="sb-sort" class="text-secondary">{{ 'collection.sort_by' | t }}</label>
 

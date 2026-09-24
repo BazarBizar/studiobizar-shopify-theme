@@ -2,15 +2,23 @@
 
 import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 
+import { SIZES, sizeParser } from "@/components/shop/product-grid";
 import { CATEGORIES } from "@/lib/shopify/categories";
 import { DEFAULT_SORT, SORT_OPTIONS } from "@/lib/shopify/constants";
 import { cn } from "@/lib/utils/cn";
 
 const VIEWS = ["type", "collection"] as const;
 
+const SIZE_LABELS = {
+  s: "Small, eight per row, images only",
+  m: "Medium, six per row",
+  l: "Large, four per row",
+} as const;
+
 /**
- * Category chips, sort and the by type / by collection view — all held in the
- * URL so a filtered shop is shareable and the back button works.
+ * Category chips, sort, the by type / by collection view and the S / M / L
+ * density — all held in the URL so a filtered shop is shareable and the back
+ * button works.
  */
 export function ShopControls({ total }: { total?: number }) {
   const [category, setCategory] = useQueryState(
@@ -19,11 +27,20 @@ export function ShopControls({ total }: { total?: number }) {
   );
   const [sort, setSort] = useQueryState(
     "sort",
-    parseAsString.withOptions({ shallow: false, history: "push" }).withDefault(DEFAULT_SORT),
+    parseAsString
+      .withOptions({ shallow: false, history: "push" })
+      .withDefault(DEFAULT_SORT),
   );
   const [view, setView] = useQueryState(
     "view",
-    parseAsStringLiteral(VIEWS).withOptions({ shallow: false }).withDefault("type"),
+    parseAsStringLiteral(VIEWS)
+      .withOptions({ shallow: false })
+      .withDefault("type"),
+  );
+  // Shallow: the grid re-lays out on the client, no server round trip.
+  const [size, setSize] = useQueryState(
+    "size",
+    sizeParser.withOptions({ history: "push" }),
   );
 
   return (
@@ -34,7 +51,10 @@ export function ShopControls({ total }: { total?: number }) {
             type="button"
             onClick={() => setCategory(null)}
             aria-pressed={!category}
-            className={cn("text-secondary sb-underline", !category && "font-medium")}
+            className={cn(
+              "text-secondary sb-underline",
+              !category && "font-medium",
+            )}
           >
             all
           </button>
@@ -68,7 +88,11 @@ export function ShopControls({ total }: { total?: number }) {
             className="text-secondary cursor-pointer border-b border-current bg-transparent pb-0.5 focus:outline-none"
           >
             {SORT_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value} className="text-foreground">
+              <option
+                key={option.value}
+                value={option.value}
+                className="text-foreground"
+              >
                 {option.label}
               </option>
             ))}
@@ -80,19 +104,43 @@ export function ShopControls({ total }: { total?: number }) {
           )}
         </div>
 
-        <div className="flex items-center gap-4">
-          <span className="text-secondary">view:</span>
-          {VIEWS.map((option) => (
-            <button
-              key={option}
-              type="button"
-              onClick={() => setView(option)}
-              aria-pressed={view === option}
-              className={cn("text-secondary sb-underline", view === option && "font-medium")}
-            >
-              by {option}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
+          <div className="flex items-center gap-4">
+            <span className="text-secondary">view:</span>
+            {VIEWS.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setView(option)}
+                aria-pressed={view === option}
+                className={cn(
+                  "text-secondary sb-underline",
+                  view === option && "font-medium",
+                )}
+              >
+                by {option}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-4">
+            <span className="text-secondary">size:</span>
+            {SIZES.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setSize(option)}
+                aria-pressed={size === option}
+                aria-label={SIZE_LABELS[option]}
+                className={cn(
+                  "text-secondary sb-underline uppercase",
+                  size === option ? "font-medium" : "opacity-60",
+                )}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>

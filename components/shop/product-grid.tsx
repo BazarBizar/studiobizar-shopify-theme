@@ -1,12 +1,25 @@
 "use client";
 
 import { useInfiniteQuery } from "@tanstack/react-query";
+import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { useEffect, useRef } from "react";
 
 import { ProductCard } from "@/components/product/product-card";
 import { ProductCardSkeleton } from "@/components/ui/skeleton";
 import { DEFAULT_SORT } from "@/lib/shopify/constants";
 import type { Paginated, ProductCard as ProductCardType } from "@/lib/shopify/types";
+
+export const SIZES = ["s", "m", "l"] as const;
+export const DEFAULT_SIZE = "l";
+
+/** Shared with the S / M / L toggle in ShopControls — one URL param, read in both. */
+export const sizeParser = parseAsStringLiteral(SIZES).withDefault(DEFAULT_SIZE);
+
+const GRID = {
+  s: "grid grid-cols-4 gap-(--sb-grid-gap) min-[750px]:grid-cols-8",
+  m: "grid grid-cols-3 gap-(--sb-grid-gap) min-[750px]:grid-cols-6",
+  l: "sb-grid-4",
+} as const;
 
 async function fetchPage({
   pageParam,
@@ -48,6 +61,9 @@ export function ProductGrid({
   collection?: string;
 }) {
   const sentinel = useRef<HTMLDivElement>(null);
+  // Density is purely visual, so it never touches the query key or the server.
+  const [size] = useQueryState("size", sizeParser);
+  const compact = size === "s";
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isError, refetch } =
     useInfiniteQuery({
@@ -86,16 +102,16 @@ export function ProductGrid({
 
   return (
     <>
-      <ul className="sb-grid-4">
+      <ul className={GRID[size]}>
         {products.map((product, index) => (
           <li key={`${product.id}-${index}`}>
-            <ProductCard product={product} priority={index < 4} />
+            <ProductCard product={product} priority={index < 4} compact={compact} />
           </li>
         ))}
         {isFetchingNextPage &&
           Array.from({ length: 4 }).map((_, index) => (
             <li key={`skeleton-${index}`}>
-              <ProductCardSkeleton />
+              <ProductCardSkeleton compact={compact} />
             </li>
           ))}
       </ul>

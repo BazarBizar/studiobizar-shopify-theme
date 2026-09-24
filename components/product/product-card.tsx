@@ -30,15 +30,19 @@ const ASPECT = {
  * The `+` adds the product's first variant straight from the grid, with no
  * trip to the product page — there's no size/colour picker at this density,
  * so it only ever adds one of whatever that default variant is.
+ *
+ * `compact` is the Shop's S density: image only, no title, label or `+`.
  */
 export function ProductCard({
   product,
   priority = false,
   aspect = "card",
+  compact = false,
 }: {
   product: ProductCardType;
   priority?: boolean;
   aspect?: keyof typeof ASPECT;
+  compact?: boolean;
 }) {
   const [added, setAdded] = useState(false);
   const add = useInquiryCart((state) => state.add);
@@ -60,7 +64,11 @@ export function ProductCard({
 
   return (
     <article>
-      <Link href={`/shop/${product.handle}`} className="group block">
+      <Link
+        href={`/shop/${product.handle}`}
+        aria-label={compact ? product.title : undefined}
+        className="group block"
+      >
         <div className={cn("relative overflow-hidden bg-foreground/5", ASPECT[aspect])}>
           {product.image ? (
             <Image
@@ -90,29 +98,31 @@ export function ProductCard({
         </div>
       </Link>
 
-      <div className="mt-3 flex items-start justify-between gap-3">
-        <Link href={`/shop/${product.handle}`} className="min-w-0">
-          <h3 className="text-secondary truncate font-medium">{product.title}</h3>
-          {product.collectionLabel && (
-            <p className="text-tertiary mt-1 truncate text-muted">{product.collectionLabel}</p>
-          )}
-        </Link>
-
-        {product.defaultVariantId && (
-          <button
-            type="button"
-            onClick={quickAdd}
-            aria-label={added ? "Added to your inquiry" : `Add ${product.title} to your inquiry`}
-            className="flex size-8 shrink-0 items-center justify-center border border-foreground/20 transition-colors hover:border-foreground hover:bg-foreground hover:text-background"
-          >
-            {added ? (
-              <Check className="size-4" strokeWidth={1.5} aria-hidden />
-            ) : (
-              <Plus className="size-4" strokeWidth={1.5} aria-hidden />
+      {!compact && (
+        <div className="mt-3 flex items-start justify-between gap-3">
+          <Link href={`/shop/${product.handle}`} className="min-w-0">
+            <h3 className="text-secondary truncate font-medium">{product.title}</h3>
+            {product.collectionLabel && (
+              <p className="text-tertiary mt-1 truncate text-muted">{product.collectionLabel}</p>
             )}
-          </button>
-        )}
-      </div>
+          </Link>
+
+          {product.defaultVariantId && (
+            <button
+              type="button"
+              onClick={quickAdd}
+              aria-label={added ? "Added to your inquiry" : `Add ${product.title} to your inquiry`}
+              className="flex size-8 shrink-0 items-center justify-center border border-foreground/20 transition-colors hover:border-foreground hover:bg-foreground hover:text-background"
+            >
+              {added ? (
+                <Check className="size-4" strokeWidth={1.5} aria-hidden />
+              ) : (
+                <Plus className="size-4" strokeWidth={1.5} aria-hidden />
+              )}
+            </button>
+          )}
+        </div>
+      )}
     </article>
   );
 }
