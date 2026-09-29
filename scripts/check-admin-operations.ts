@@ -90,7 +90,13 @@ async function main() {
     console.log(`skip  metaobject (no entries of type ${probeType})`);
   }
 
-  await run("files", { first: 3, after: null, query: null });
+  await run("files", {
+    first: 3,
+    after: null,
+    query: null,
+    sortKey: "ORIGINAL_UPLOAD_SIZE",
+    reverse: true,
+  });
   await run("nodes", { ids: [] });
 
   /* ---- collections ---- */

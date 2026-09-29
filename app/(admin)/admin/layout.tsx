@@ -63,18 +63,22 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
    */
   const groups = await buildNavigation();
 
-  const sections: SidebarSection[] = groups.map((group) => ({
-    key: group.key,
-    label: group.label,
-    items: group.items.map((item) => ({
-      href: item.href,
-      label: item.label,
-      readOnly: item.readOnly,
-      badge: item.badge,
-      type: item.type ?? null,
-      group: group.key,
-    })),
-  }));
+  const sections: SidebarSection[] = groups
+    .map((group) => ({
+      key: group.key,
+      label: group.label,
+      items: group.items
+        .filter((item) => !item.hidden)
+        .map((item) => ({
+          href: item.href,
+          label: item.label,
+          readOnly: item.readOnly,
+          badge: item.badge,
+          type: item.type ?? null,
+          group: group.key,
+        })),
+    }))
+    .filter((section) => section.items.length > 0);
 
   /** Type -> display name, so the breadcrumb can say "FAQ" rather than "faq_item". */
   const crumbLabels = Object.fromEntries(

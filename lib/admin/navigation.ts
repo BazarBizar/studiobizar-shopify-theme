@@ -40,6 +40,8 @@ export type NavItem = {
    * means something an operator can act on rather than just how big a table is.
    */
   badge?: number;
+  /** Left out of the sidebar only; still labels the breadcrumb. See `hideFromSidebar`. */
+  hidden?: boolean;
 };
 
 /** `key` is the group key from `lib/admin/groups.ts` — the sidebar uses it to pick
@@ -92,6 +94,7 @@ function toItem(definition: Definition): NavItem {
       ? `${labelForDefinition(definition)} (shadowed by a built-in screen)`
       : labelForDefinition(definition),
     readOnly: moduleFor(definition.type).readOnly === true,
+    hidden: moduleFor(definition.type).hideFromSidebar === true,
   };
 }
 
@@ -125,8 +128,8 @@ const BESPOKE: { group: GroupKey; item: NavItem }[] = [
   },
   {
     group: "library",
-    /** Sits beside the `captioned_image` entries, which are metaobjects ABOUT files;
-     *  this is the files themselves. */
+    /** The files themselves. The `captioned_image` entries that wrap them with a
+     *  caption and credit are hidden from the sidebar — see `modules.ts`. */
     item: { href: "/admin/media", label: "Media", readOnly: false, type: null },
   },
   {

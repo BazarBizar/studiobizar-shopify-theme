@@ -17,9 +17,35 @@ const schema = z.object({
   after: z.string().max(4096).nullable().optional(),
   /** Free-text search. Sanitised, never quoted — see below. */
   search: z.string().max(128).nullable().optional(),
-  /** Narrows to what a given field will accept. */
-  kind: z.enum(["image", "video", "any"]).optional(),
+  /** Narrows to what a given field will accept, or what the library filter asks for. */
+  kind: z.enum(["image", "video", "model3d", "file", "any"]).optional(),
+  sort: z.enum(["newest", "oldest", "largest", "smallest", "name"]).optional(),
 });
+
+/**
+ * Every sort here is one Shopify performs, so it orders the WHOLE library, not the
+ * page already loaded. Resolution is missing on purpose: `FileSortKeys` has no key
+ * for it, and the library sorts loaded rows for that instead.
+ */
+const SORTS = {
+  newest: { sortKey: "CREATED_AT", reverse: true },
+  oldest: { sortKey: "CREATED_AT", reverse: false },
+  largest: { sortKey: "ORIGINAL_UPLOAD_SIZE", reverse: true },
+  smallest: { sortKey: "ORIGINAL_UPLOAD_SIZE", reverse: false },
+  name: { sortKey: "FILENAME", reverse: false },
+} as const;
+
+/**
+ * Shopify's documented `media_type` values. Note `MODEL3D`, with no underscore —
+ * unlike the `MODEL_3D` of `MediaContentType`. An unknown value is not an error; it
+ * silently matches nothing, which is why these are spelled out rather than derived.
+ */
+const MEDIA_TYPES = {
+  image: "IMAGE",
+  video: "VIDEO",
+  model3d: "MODEL3D",
+  file: "GENERIC_FILE",
+} as const;
 
 const MAX_BODY_BYTES = 8 * 1024;
 
@@ -35,7 +61,7 @@ export async function POST(request: Request) {
   const parsed = validate(schema, body.value, "files.list");
   if (!parsed.ok) return parsed.response;
 
-  const { first = 50, after = null, search, kind = "any" } = parsed.data;
+  const { first = 50, after = null, search, kind = "any", sort = "newest" } = parsed.data;
 
   /**
    * Built here rather than accepted from the client, so a caller cannot inject Shopify
@@ -48,8 +74,7 @@ export async function POST(request: Request) {
    * carry query meaning instead, so `a" OR id:*` cannot become an expression.
    */
   const clauses: string[] = [];
-  if (kind === "image") clauses.push("media_type:IMAGE");
-  if (kind === "video") clauses.push("media_type:VIDEO");
+  if (kind !== "any") clauses.push(`media_type:${MEDIA_TYPES[kind]}`);
 
   const term = search ? sanitizeFileSearch(search) : null;
   if (term) clauses.push(term);
@@ -64,6 +89,7 @@ export async function POST(request: Request) {
       first,
       after,
       query: clauses.length ? clauses.join(" AND ") : null,
+      ...SORTS[sort],
     });
 
     return NextResponse.json({

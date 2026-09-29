@@ -77,6 +77,12 @@ export type ModuleDef = {
    * items and product thumbnails, which CSV cannot carry at all.
    */
   excelExport?: boolean;
+  /**
+   * Keeps the type out of the sidebar while the screen itself stays reachable by URL
+   * and from the dashboard. For a type whose sidebar row reads as a duplicate of a
+   * bespoke screen — the entries still matter, the row just confuses.
+   */
+  hideFromSidebar?: boolean;
 };
 
 /**
@@ -104,6 +110,13 @@ export function isHeavyType(type: string): boolean {
 export const MODULES: Record<string, ModuleDef> = {
   captioned_image: {
     label: "Images",
+    /**
+     * Beside Media, "Images" read as the same thing twice. It is not: these are the
+     * caption + credit wrappers the storefront's hero slider and galleries point at,
+     * where Media is the raw files. Hidden from the sidebar, still linked from the
+     * dashboard's Images tile for editing a caption or credit.
+     */
+    hideFromSidebar: true,
     columns: ["image", "caption", "credit", "alt_text"],
     searchFields: ["caption", "credit", "alt_text"],
     load: "client",

@@ -100,6 +100,13 @@ export type MediaFile = {
   height: number | null;
   /** `READY`, `PROCESSING`, `FAILED`, `UPLOADED`. */
   status: string | null;
+  /** Only the `files` listing selects the fields below; `nodes` and `fileCreate` leave them null. */
+  filename: string | null;
+  /** Original upload size in bytes. */
+  size: number | null;
+  /** Seconds, videos only. */
+  duration: number | null;
+  createdAt: string | null;
 };
 
 type RawFile = {
@@ -107,24 +114,61 @@ type RawFile = {
   id: string;
   alt?: string | null;
   fileStatus?: string | null;
+  createdAt?: string | null;
   url?: string | null;
   mimeType?: string | null;
+  filename?: string | null;
+  /** Milliseconds, per Shopify. */
+  duration?: number | null;
+  originalFileSize?: number | null;
+  originalSource?: {
+    fileSize?: number | null;
+    /** `Model3dSource` spells it lower-case; every other source does not. */
+    filesize?: number | null;
+    mimeType?: string | null;
+    width?: number | null;
+    height?: number | null;
+  } | null;
   image?: { url: string; width: number | null; height: number | null } | null;
   preview?: { image: { url: string } | null } | null;
 };
 
+/**
+ * The last path segment of a CDN url, without its query. A MediaImage has no
+ * `filename` field, but its CDN url carries the name it was uploaded under.
+ */
+function filenameFromUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const name = new URL(url).pathname.split("/").pop();
+    return name ? decodeURIComponent(name) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function normalizeFile(raw: RawFile): MediaFile {
+  const url = raw.url ?? raw.image?.url ?? null;
+
   return {
     id: raw.id,
     kind: raw.__typename,
     alt: raw.alt ?? null,
-    // A Video has no `image`, only a poster frame under `preview`.
+    // A Video or Model3d has no `image`, only a poster frame under `preview`.
     thumbnail: raw.image?.url ?? raw.preview?.image?.url ?? null,
-    url: raw.url ?? raw.image?.url ?? null,
-    mimeType: raw.mimeType ?? null,
-    width: raw.image?.width ?? null,
-    height: raw.image?.height ?? null,
+    url,
+    mimeType: raw.mimeType ?? raw.originalSource?.mimeType ?? null,
+    width: raw.image?.width ?? raw.originalSource?.width ?? null,
+    height: raw.image?.height ?? raw.originalSource?.height ?? null,
     status: raw.fileStatus ?? null,
+    filename: raw.filename ?? filenameFromUrl(url),
+    size:
+      raw.originalSource?.fileSize ??
+      raw.originalSource?.filesize ??
+      raw.originalFileSize ??
+      null,
+    duration: raw.duration != null ? raw.duration / 1000 : null,
+    createdAt: raw.createdAt ?? null,
   };
 }
 

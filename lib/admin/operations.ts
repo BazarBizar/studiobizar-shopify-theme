@@ -217,25 +217,42 @@ ${ENTRY_FIELDS}
   },
 
   /**
-   * Shopify Files, for the media picker behind every `file_reference` field.
-   * Needs the `read_files` scope. Newest first, because the file an operator wants
-   * is almost always one they just uploaded.
+   * Shopify Files, for the media picker behind every `file_reference` field and the
+   * media library. Needs the `read_files` scope. The sort is a variable so the library
+   * can order by upload size or filename server-side; the picker still asks for
+   * CREATED_AT reversed, because the file an operator wants is almost always one they
+   * just uploaded.
+   *
+   * `originalSource.url` is deliberately NOT selected: for an image it is a signed
+   * storage URL that expires in five minutes, useless as a preview and a leak in a log.
+   * Note the casing trap — `Model3dSource.filesize`, every other source `fileSize`.
    */
   files: {
     kind: "read",
     document: `
-      query AdminFiles($first: Int!, $after: String, $query: String) {
-        files(first: $first, after: $after, query: $query, sortKey: CREATED_AT, reverse: true) {
+      query AdminFiles(
+        $first: Int!
+        $after: String
+        $query: String
+        $sortKey: FileSortKeys!
+        $reverse: Boolean!
+      ) {
+        files(first: $first, after: $after, query: $query, sortKey: $sortKey, reverse: $reverse) {
           pageInfo {
             hasNextPage
             endCursor
           }
           nodes {
             __typename
+            id
+            alt
+            fileStatus
+            createdAt
             ... on MediaImage {
-              id
-              alt
-              createdAt
+              mimeType
+              originalSource {
+                fileSize
+              }
               image {
                 url
                 altText
@@ -244,9 +261,15 @@ ${ENTRY_FIELDS}
               }
             }
             ... on Video {
-              id
-              alt
-              createdAt
+              filename
+              duration
+              originalSource {
+                fileSize
+                format
+                mimeType
+                width
+                height
+              }
               preview {
                 image {
                   url
@@ -254,10 +277,27 @@ ${ENTRY_FIELDS}
               }
             }
             ... on GenericFile {
-              id
               url
-              createdAt
               mimeType
+              originalFileSize
+              preview {
+                image {
+                  url
+                }
+              }
+            }
+            ... on Model3d {
+              filename
+              originalSource {
+                filesize
+                format
+                mimeType
+              }
+              preview {
+                image {
+                  url
+                }
+              }
             }
           }
         }

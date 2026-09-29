@@ -26,7 +26,19 @@ export type PickerFile = {
   height: number | null;
   /** `READY` once Shopify has finished processing; anything else has no preview yet. */
   status: string | null;
+  /** Filled by the listing only — a resolved or freshly uploaded file leaves these null. */
+  filename: string | null;
+  /** Original upload size in bytes. */
+  size: number | null;
+  /** Seconds, videos only. */
+  duration: number | null;
+  createdAt: string | null;
 };
+
+export type FileKind = "image" | "video" | "model3d" | "file" | "any";
+
+/** Every value is a sort Shopify performs across the whole library — see the files route. */
+export type FileSort = "newest" | "oldest" | "largest" | "smallest" | "name";
 
 export type PickerEntry = {
   id: string;
@@ -70,14 +82,16 @@ type FilePage = { files: PickerFile[]; hasNextPage: boolean; endCursor: string |
 export function useFiles({
   kind,
   search,
+  sort = "newest",
   enabled,
 }: {
-  kind: "image" | "video" | "any";
+  kind: FileKind;
   search: string;
+  sort?: FileSort;
   enabled: boolean;
 }) {
   return useInfiniteQuery({
-    queryKey: ["admin", "files", kind, search],
+    queryKey: ["admin", "files", kind, search, sort],
     enabled,
     initialPageParam: null as string | null,
     queryFn: ({ pageParam }) =>
@@ -86,6 +100,7 @@ export function useFiles({
         first: 50,
         after: pageParam,
         kind,
+        sort,
         search: search || null,
       }),
     getNextPageParam: (lastPage) => (lastPage.hasNextPage ? lastPage.endCursor : undefined),
