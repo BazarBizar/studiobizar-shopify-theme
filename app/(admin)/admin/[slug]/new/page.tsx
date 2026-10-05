@@ -6,6 +6,7 @@ import { buildFieldSpecs } from "@/lib/admin/form-specs";
 import { listDefinitions } from "@/lib/admin/metaobjects";
 import { isReadOnly } from "@/lib/admin/modules";
 import { labelForDefinition, typeForSlug } from "@/lib/admin/navigation";
+import { listHrefFor, siteWideSection } from "@/lib/admin/site-wide";
 
 /**
  * Create one entry. Safe as a sibling of `[id]` because an entry id is always digits, so
@@ -46,8 +47,9 @@ export default async function EntryCreatePage({ params }: PageProps<"/admin/[slu
   return (
     <div className="w-full max-w-3xl space-y-6">
       <DetailHeader
-        backHref={`/admin/${definition.type}`}
-        backLabel={label}
+        // A Site-wide type has no list screen of its own; back goes to its tab.
+        backHref={listHrefFor(definition.type)}
+        backLabel={siteWideSection(definition.type)?.label ?? label}
         title={`New ${singular}`}
         meta={definition.type}
       />

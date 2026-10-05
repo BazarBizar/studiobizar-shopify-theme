@@ -1,6 +1,6 @@
 "use client";
 
-import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
+import { parseAsString, parseAsStringLiteral, useQueryState, useQueryStates } from "nuqs";
 
 import { SIZES, sizeParser } from "@/components/shop/product-grid";
 import { CATEGORIES } from "@/lib/shopify/categories";
@@ -15,27 +15,59 @@ const SIZE_LABELS = {
   l: "Large, four per row",
 } as const;
 
+type CollectionChip = { handle: string; title: string };
+
 /**
- * Category chips, sort, the by type / by collection view and the S / M / L
- * density — all held in the URL so a filtered shop is shareable and the back
- * button works.
+ * "The Duna Collection" → "duna". The chip row already sits under
+ * "view: by collection", so the article and the word "collection" are noise —
+ * and twelve of them in a row is a lot of noise. A title that doesn't follow the
+ * pattern is shown whole, lowercased like the category chips.
  */
-export function ShopControls({ total }: { total?: number }) {
-  const [category, setCategory] = useQueryState(
-    "category",
-    parseAsString.withOptions({ shallow: false, history: "push" }),
+const chipLabel = (title: string) =>
+  title
+    .replace(/^the\s+/i, "")
+    .replace(/\s+collection$/i, "")
+    .toLowerCase();
+
+/**
+ * The chips, sort, the by type / by collection view and the S / M / L density —
+ * all held in the URL so a filtered shop is shareable and the back button works.
+ *
+ * `view` picks which row of chips filters the grid: product-type categories, or
+ * collections. The grid, sort and paging stay the same either way.
+ */
+export function ShopControls({
+  total,
+  collections,
+}: {
+  /** Products under the active chip; absent when unfiltered or uncountable. */
+  total?: number;
+  collections: CollectionChip[];
+}) {
+  // One hook for the three, so switching view clears the other view's filter in
+  // the same URL update — never a stale ?category= under "by collection".
+  const [filters, setFilters] = useQueryStates(
+    {
+      view: parseAsStringLiteral(VIEWS).withDefault("type"),
+      category: parseAsString,
+      collection: parseAsString,
+    },
+    { shallow: false, history: "push" },
   );
+  const { view } = filters;
+  // A value no chip owns (a stale or mistyped link) reads as "all", which is
+  // also what the server rendered for it.
+  const category = CATEGORIES.some((item) => item.slug === filters.category)
+    ? filters.category
+    : null;
+  const collection = collections.some((item) => item.handle === filters.collection)
+    ? filters.collection
+    : null;
   const [sort, setSort] = useQueryState(
     "sort",
     parseAsString
       .withOptions({ shallow: false, history: "push" })
       .withDefault(DEFAULT_SORT),
-  );
-  const [view, setView] = useQueryState(
-    "view",
-    parseAsStringLiteral(VIEWS)
-      .withOptions({ shallow: false })
-      .withDefault("type"),
   );
   // Shallow: the grid re-lays out on the client, no server round trip.
   const [size, setSize] = useQueryState(
@@ -46,34 +78,37 @@ export function ShopControls({ total }: { total?: number }) {
   return (
     <div className="flex flex-col gap-6">
       <ul className="flex flex-wrap items-center gap-x-8 gap-y-3">
-        <li>
-          <button
-            type="button"
-            onClick={() => setCategory(null)}
-            aria-pressed={!category}
-            className={cn(
-              "text-secondary sb-underline",
-              !category && "font-medium",
-            )}
-          >
-            all
-          </button>
-        </li>
-        {CATEGORIES.map((item) => (
-          <li key={item.slug}>
-            <button
-              type="button"
-              onClick={() => setCategory(item.slug)}
-              aria-pressed={category === item.slug}
-              className={cn(
-                "text-secondary sb-underline",
-                category === item.slug && "font-medium",
-              )}
-            >
-              {item.label}
-            </button>
-          </li>
-        ))}
+        {view === "collection" ? (
+          <>
+            <Chip active={!collection} onClick={() => setFilters({ collection: null })}>
+              all
+            </Chip>
+            {collections.map((item) => (
+              <Chip
+                key={item.handle}
+                active={collection === item.handle}
+                onClick={() => setFilters({ collection: item.handle })}
+              >
+                {chipLabel(item.title)}
+              </Chip>
+            ))}
+          </>
+        ) : (
+          <>
+            <Chip active={!category} onClick={() => setFilters({ category: null })}>
+              all
+            </Chip>
+            {CATEGORIES.map((item) => (
+              <Chip
+                key={item.slug}
+                active={category === item.slug}
+                onClick={() => setFilters({ category: item.slug })}
+              >
+                {item.label}
+              </Chip>
+            ))}
+          </>
+        )}
       </ul>
 
       <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-4">
@@ -111,7 +146,7 @@ export function ShopControls({ total }: { total?: number }) {
               <button
                 key={option}
                 type="button"
-                onClick={() => setView(option)}
+                onClick={() => setFilters({ view: option, category: null, collection: null })}
                 aria-pressed={view === option}
                 className={cn(
                   "text-secondary sb-underline",
@@ -144,5 +179,28 @@ export function ShopControls({ total }: { total?: number }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function Chip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onClick}
+        aria-pressed={active}
+        className={cn("text-secondary sb-underline", active && "font-medium")}
+      >
+        {children}
+      </button>
+    </li>
   );
 }

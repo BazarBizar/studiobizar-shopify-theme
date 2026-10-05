@@ -16,6 +16,7 @@ import {
   type SiteSettings,
 } from "./entities";
 import {
+  countCollectionProductsQuery,
   getCollectionProductsQuery,
   getCollectionQuery,
   getCollectionsQuery,
@@ -29,7 +30,7 @@ import {
   getProductsByIdsQuery,
   getProductsQuery,
 } from "./queries/product";
-import { predictiveSearchQuery, searchProductsQuery } from "./queries/search";
+import { countProductsQuery, predictiveSearchQuery, searchProductsQuery } from "./queries/search";
 import {
   normalizeCollection,
   normalizeCollectionCard,
@@ -87,6 +88,21 @@ export async function getProducts({
     items: data.products.nodes.map(normalizeProductCard),
     pageInfo: data.products.pageInfo,
   };
+}
+
+/**
+ * How many products a Storefront `query` matches — Shop All's "N items" under a
+ * category chip. Runs through `search`, the only connection with a total.
+ */
+export async function countProducts(query: string): Promise<number> {
+  const data = await shopifyFetch<{ search: { totalCount: number } }>({
+    query: countProductsQuery,
+    variables: { query },
+    tags: [TAGS.products],
+    revalidate: REVALIDATE.products,
+  });
+
+  return data.search.totalCount;
 }
 
 export async function getProduct(handle: string): Promise<Maybe<Product>> {
@@ -167,6 +183,26 @@ export async function getCollections({
   };
 }
 
+/** Shopify auto-creates this for the theme's home page; it is not a collection. */
+const HIDDEN_COLLECTION_HANDLES = new Set(["frontpage"]);
+
+/**
+ * The collections a visitor should see, in curated order: `sort_order` first,
+ * then anything without one, alphabetically. Shared by /collections and Shop
+ * All's "by collection" chips so both list them the same way.
+ */
+export async function getListedCollections(): Promise<CollectionCard[]> {
+  const page = await getCollections({ first: 100 });
+
+  return page.items
+    .filter((collection) => !HIDDEN_COLLECTION_HANDLES.has(collection.handle))
+    .sort((a, b) => {
+      const left = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
+      const right = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
+      return left - right || a.title.localeCompare(b.title);
+    });
+}
+
 export async function getCollection(handle: string): Promise<Maybe<Collection>> {
   const data = await shopifyFetch<{ collection: Maybe<ShopifyCollection> }>({
     query: getCollectionQuery,
@@ -208,6 +244,25 @@ export async function getCollectionProducts({
       products?.pageInfo ??
       { hasNextPage: false, hasPreviousPage: false, startCursor: null, endCursor: null },
   };
+}
+
+/**
+ * Products in one collection, or null when it holds more than the 250 one page
+ * can count — the caller then shows no number rather than a wrong one.
+ */
+export async function countCollectionProducts(handle: string): Promise<number | null> {
+  const data = await shopifyFetch<{
+    collection: Maybe<{ products: { nodes: { id: string }[]; pageInfo: { hasNextPage: boolean } } }>;
+  }>({
+    query: countCollectionProductsQuery,
+    variables: { handle },
+    tags: [TAGS.collections, TAGS.products],
+    revalidate: REVALIDATE.products,
+  });
+
+  const products = data.collection?.products;
+  if (!products) return 0;
+  return products.pageInfo.hasNextPage ? null : products.nodes.length;
 }
 
 /* -------------------------------------------------------------------------- *

@@ -4,6 +4,7 @@ import { GROUP_ORDER, groupFor, groupLabel, type GroupKey } from "./groups";
 import { countUnreadInquiries, INQUIRY_TYPE } from "./inquiries";
 import { listDefinitions, type Definition } from "./metaobjects";
 import { moduleFor } from "./modules";
+import { isSiteWide, SITE_WIDE_HREF, SITE_WIDE_SECTIONS } from "./site-wide";
 
 /**
  * Builds the sidebar from the definitions that exist in the store right now.
@@ -42,6 +43,8 @@ export type NavItem = {
   badge?: number;
   /** Left out of the sidebar only; still labels the breadcrumb. See `hideFromSidebar`. */
   hidden?: boolean;
+  /** Other path prefixes this row counts as active for — a screen reached from it. */
+  matches?: string[];
 };
 
 /** `key` is the group key from `lib/admin/groups.ts` — the sidebar uses it to pick
@@ -69,7 +72,15 @@ export function slugForType(type: string): string {
  * No store has such a type today. This exists so that if one is ever created, the
  * sidebar says so rather than leading somewhere else.
  */
-const RESERVED_SLUGS = new Set(["collections", "products", "customers", "pages", "menus", "media"]);
+const RESERVED_SLUGS = new Set([
+  "collections",
+  "products",
+  "customers",
+  "pages",
+  "menus",
+  "media",
+  "site-wide",
+]);
 
 export function reservedSlug(type: string): boolean {
   return RESERVED_SLUGS.has(type);
@@ -94,7 +105,8 @@ function toItem(definition: Definition): NavItem {
       ? `${labelForDefinition(definition)} (shadowed by a built-in screen)`
       : labelForDefinition(definition),
     readOnly: moduleFor(definition.type).readOnly === true,
-    hidden: moduleFor(definition.type).hideFromSidebar === true,
+    // A Site-wide type is a tab on that screen, not a row of its own.
+    hidden: moduleFor(definition.type).hideFromSidebar === true || isSiteWide(definition.type),
   };
 }
 
@@ -131,6 +143,21 @@ const BESPOKE: { group: GroupKey; item: NavItem }[] = [
     /** The files themselves. The `captioned_image` entries that wrap them with a
      *  caption and credit are hidden from the sidebar — see `modules.ts`. */
     item: { href: "/admin/media", label: "Media", readOnly: false, type: null },
+  },
+  {
+    group: "settings",
+    /**
+     * Site settings, locations, contact channels, email routing and the panel's own
+     * branding, as tabs — see `lib/admin/site-wide.ts`. Active on those types' entry
+     * screens too, because that is where their rows lead.
+     */
+    item: {
+      href: SITE_WIDE_HREF,
+      label: "Site-wide",
+      readOnly: false,
+      type: null,
+      matches: SITE_WIDE_SECTIONS.map((section) => `/admin/${section.type}`),
+    },
   },
   {
     group: "inbox",

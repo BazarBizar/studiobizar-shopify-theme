@@ -318,7 +318,10 @@ export async function pushMetaobjects(client, { dryRun = false, only = null, pat
       type: definition.type,
       name: definition.name,
       fieldDefinitions: createFields,
-      access: { storefront: 'PUBLIC_READ' },
+      // Public unless the definition says otherwise — only what the storefront renders
+      // should be readable with the storefront token. Set at creation only; an existing
+      // definition's access is changed by `scripts/set-private-access.mjs`.
+      access: definition.access ?? { storefront: 'PUBLIC_READ' },
     };
     if (definition.description) input.description = definition.description;
     if (definition.displayNameKey) input.displayNameKey = definition.displayNameKey;

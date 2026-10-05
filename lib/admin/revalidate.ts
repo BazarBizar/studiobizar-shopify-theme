@@ -2,6 +2,8 @@ import "server-only";
 
 import { revalidateTag } from "next/cache";
 
+import { clearAdminSettingsCache } from "@/lib/admin/admin-settings";
+import { clearNotificationRecipientsCache } from "@/lib/email/notification-recipients";
 import { TAGS } from "@/lib/shopify/constants";
 
 /**
@@ -76,6 +78,21 @@ export async function revalidateForType(type: string): Promise<string[]> {
     revalidateTag(TAGS.content, "max");
     revalidateTag(TAGS.metaobjects, "max");
     return [TAGS.content, TAGS.metaobjects];
+  }
+
+  /**
+   * Not a page cache: the routing is held in memory by the email senders for a
+   * minute. Dropping it here makes an edit live at once on this instance; any other
+   * instance picks it up when its minute runs out.
+   */
+  if (type === "email_notification") {
+    clearNotificationRecipientsCache();
+    return [];
+  }
+  // The panel's own branding — no storefront page reads it.
+  if (type === "admin_settings") {
+    clearAdminSettingsCache();
+    return [];
   }
 
   const tags = [TAGS.metaobjects, ...(EXTRA_TAGS[type] ?? [])];

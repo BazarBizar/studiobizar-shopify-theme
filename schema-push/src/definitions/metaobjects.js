@@ -228,6 +228,9 @@ export const metaobjectDefinitions = [
     description: 'A product inquiry submitted from the storefront.',
     displayNameKey: 'inquiry_id',
     publishable: false,
+    // Names, emails, phone numbers. Read and written through the Admin API only
+    // (`lib/inquiry/*`), so the storefront token has no business seeing them.
+    access: { storefront: 'NONE' },
     fields: [
       { key: 'inquiry_id', name: 'Inquiry ID', type: 'single_line_text_field', required: true },
       { key: 'submitted_at', name: 'Submitted At', type: 'date_time', required: true },

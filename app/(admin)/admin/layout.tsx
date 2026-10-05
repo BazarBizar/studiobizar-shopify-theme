@@ -7,6 +7,7 @@ import { AppBreadcrumbs } from "@/components/admin/app-breadcrumbs";
 import { AppSidebar, type SidebarSection } from "@/components/admin/app-sidebar";
 import { Separator } from "@/components/admin/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/admin/ui/sidebar";
+import { getAdminSettings } from "@/lib/admin/admin-settings";
 import { currentStaff } from "@/lib/admin/auth";
 import { STAFF_LOGIN_PATH } from "@/lib/admin/cookie";
 import { buildNavigation } from "@/lib/admin/navigation";
@@ -21,12 +22,21 @@ import { staffSignOut } from "./actions";
  */
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: { default: "Admin", template: "%s · Admin" },
-  // `proxy.ts` sends `X-Robots-Tag` as well, so a crawler that ignores one still
-  // sees the other.
-  robots: { index: false, follow: false },
-};
+/**
+ * The tab title and icon come from `admin_settings` (Site-wide → Admin panel), falling
+ * back to "Admin" and the site's own favicon — see `getAdminSettings`, which never throws.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getAdminSettings();
+
+  return {
+    title: { default: settings.title, template: `%s · ${settings.title}` },
+    ...(settings.faviconUrl ? { icons: { icon: settings.faviconUrl } } : {}),
+    // `proxy.ts` sends `X-Robots-Tag` as well, so a crawler that ignores one still
+    // sees the other.
+    robots: { index: false, follow: false },
+  };
+}
 
 /**
  * THE AUTHORITATIVE AUTH GATE.
@@ -61,7 +71,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
    * on the next page load, grouped by `lib/admin/groups.ts` or, if nobody has
    * classified it, under "Other".
    */
-  const groups = await buildNavigation();
+  const [groups, settings] = await Promise.all([buildNavigation(), getAdminSettings()]);
 
   const sections: SidebarSection[] = groups
     .map((group) => ({
@@ -74,6 +84,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
           label: item.label,
           readOnly: item.readOnly,
           badge: item.badge,
+          matches: item.matches,
           type: item.type ?? null,
           group: group.key,
         })),
@@ -95,7 +106,12 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
           tokens — see the bridge block in globals.css. */}
       <div data-admin className="flex min-h-svh flex-1">
         <SidebarProvider>
-          <AppSidebar sections={sections} email={staff.email} onSignOut={staffSignOut} />
+          <AppSidebar
+            sections={sections}
+            email={staff.email}
+            brand={{ title: settings.title, initials: settings.initials }}
+            onSignOut={staffSignOut}
+          />
 
           <SidebarInset className="min-w-0">
             {/* h-14 and z-10 are fixed by convention: anything sticky inside a page

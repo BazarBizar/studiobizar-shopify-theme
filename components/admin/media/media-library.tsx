@@ -1,18 +1,14 @@
 "use client";
 
 import {
-  BoxIcon,
   CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronsLeftIcon,
-  FileIcon,
   Grid3x3Icon,
-  ImageIcon,
   LayoutGridIcon,
   ListIcon,
   Loader2Icon,
-  PlayIcon,
   SearchIcon,
   UploadIcon,
 } from "lucide-react";
@@ -42,6 +38,9 @@ import {
   type PickerFile,
 } from "@/lib/admin/queries";
 import { cn } from "@/lib/utils/cn";
+
+import { describe, FallbackIcon, formatBytes, formatOf, pixels, sized } from "./media-utils";
+import { MediaViewer, VIEWER_LAST } from "./media-viewer";
 
 /**
  * The media library.
@@ -169,88 +168,27 @@ const GRID_CLASS: Record<Exclude<View, "list">, string> = {
   "grid-small": "grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-10",
 };
 
-/** What an operator calls a format, not what a MIME registry does. */
-const FORMAT_BY_MIME: Record<string, string> = {
-  "image/jpeg": "JPG",
-  "image/svg+xml": "SVG",
-  "video/quicktime": "MOV",
-  "model/gltf-binary": "GLB",
-  "model/gltf+json": "GLTF",
-  "model/vnd.usdz+zip": "USDZ",
-  "application/pdf": "PDF",
-};
-
-function formatOf(file: PickerFile): string | null {
-  if (file.mimeType) {
-    return FORMAT_BY_MIME[file.mimeType] ?? file.mimeType.split("/").pop()!.toUpperCase();
-  }
-  const extension = file.filename?.match(/\.([a-z0-9]+)$/i)?.[1];
-  return extension ? extension.toUpperCase() : null;
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-  return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
-}
-
-function formatDuration(seconds: number): string {
-  const whole = Math.round(seconds);
-  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
-}
-
-/** Format · size · resolution · duration — whichever of them Shopify reported. */
-function describe(file: PickerFile): string {
-  return [
-    formatOf(file),
-    file.size != null ? formatBytes(file.size) : null,
-    file.width && file.height ? `${file.width}×${file.height}` : null,
-    file.duration != null ? formatDuration(file.duration) : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-}
-
-function pixels(file: PickerFile): number | null {
-  return file.width && file.height ? file.width * file.height : null;
-}
-
-/**
- * Shopify's CDN resizes on request. The listing hands back the ORIGINAL — a 4 MB
- * PNG is common in this store — and fifty of those per page to fill 56px squares
- * is most of the page weight. Anything not on the CDN is left alone.
- */
-function sized(url: string, width: number): string {
-  try {
-    const parsed = new URL(url);
-    if (parsed.hostname !== "cdn.shopify.com") return url;
-    parsed.searchParams.set("width", String(width));
-    return parsed.toString();
-  } catch {
-    return url;
-  }
-}
-
-function FallbackIcon({ kind, className }: { kind: string; className?: string }) {
-  const Icon =
-    kind === "Video"
-      ? PlayIcon
-      : kind === "Model3d"
-        ? BoxIcon
-        : kind === "GenericFile"
-          ? FileIcon
-          : ImageIcon;
-  return <Icon className={cn("text-muted-foreground", className)} />;
-}
-
-function Thumbnail({ file, size, className }: { file: PickerFile; size: number; className?: string }) {
+/** A button: every thumbnail opens the viewer on its file. */
+function Thumbnail({
+  file,
+  size,
+  className,
+  onOpen,
+}: {
+  file: PickerFile;
+  size: number;
+  className?: string;
+  onOpen: () => void;
+}) {
   const processing = file.status !== "READY";
 
   return (
-    <span
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={`View ${file.filename ?? "file"}`}
       className={cn(
-        "bg-muted flex shrink-0 items-center justify-center overflow-hidden",
+        "bg-muted focus-visible:ring-ring flex shrink-0 cursor-zoom-in items-center justify-center overflow-hidden transition-opacity outline-none hover:opacity-90 focus-visible:ring-2",
         className,
       )}
     >
@@ -266,11 +204,11 @@ function Thumbnail({ file, size, className }: { file: PickerFile; size: number; 
       ) : (
         <FallbackIcon kind={file.kind} className="size-5" />
       )}
-    </span>
+    </button>
   );
 }
 
-function useAltEditor(file: PickerFile) {
+function useAltEditor(file: PickerFile, onSaved: (id: string, alt: string) => void) {
   /**
    * TWO pieces of state, not one plus an effect.
    *
@@ -297,6 +235,7 @@ function useAltEditor(file: PickerFile) {
     try {
       await setFileAltRequest({ id: file.id, alt });
       setStored(alt);
+      onSaved(file.id, alt);
       setSaved(true);
       // The tick is an acknowledgement, not a state — it should fade rather than
       // sit there implying the row is different from its neighbours.
@@ -369,13 +308,19 @@ function StatusBadges({ editor }: { editor: AltEditor }) {
   );
 }
 
-function Row({ file }: { file: PickerFile }) {
-  const editor = useAltEditor(file);
+type ItemProps = {
+  file: PickerFile;
+  onOpen: () => void;
+  onSaved: (id: string, alt: string) => void;
+};
+
+function Row({ file, onOpen, onSaved }: ItemProps) {
+  const editor = useAltEditor(file, onSaved);
   const meta = describe(file);
 
   return (
     <li className="flex items-center gap-4 border-b p-3 last:border-b-0">
-      <Thumbnail file={file} size={56} className="size-14 rounded-md border" />
+      <Thumbnail file={file} size={56} className="size-14 rounded-md border" onOpen={onOpen} />
 
       <div className="min-w-0 flex-1">
         <AltInput editor={editor} />
@@ -394,18 +339,23 @@ function Row({ file }: { file: PickerFile }) {
   );
 }
 
-function Tile({ file }: { file: PickerFile }) {
-  const editor = useAltEditor(file);
+function Tile({ file, onOpen, onSaved }: ItemProps) {
+  const editor = useAltEditor(file, onSaved);
   const meta = describe(file);
 
   return (
     <li className="flex min-w-0 flex-col overflow-hidden rounded-md border">
       <div className="relative">
-        <Thumbnail file={file} size={240} className="aspect-square w-full border-b" />
+        <Thumbnail
+          file={file}
+          size={240}
+          className="aspect-square w-full border-b"
+          onOpen={onOpen}
+        />
         {formatOf(file) && (
           <Badge
             variant="secondary"
-            className="absolute top-1.5 left-1.5 text-[10px] font-medium"
+            className="pointer-events-none absolute top-1.5 left-1.5 text-[10px] font-medium"
           >
             {formatOf(file)}
           </Badge>
@@ -430,7 +380,7 @@ function Tile({ file }: { file: PickerFile }) {
  * Read-only on purpose — see the note at the top. Everything the medium tile spells
  * out is still here, in the tooltip and for a screen reader, just not on the tile.
  */
-function SmallTile({ file }: { file: PickerFile }) {
+function SmallTile({ file, onOpen }: Pick<ItemProps, "file" | "onOpen">) {
   const format = formatOf(file);
   const size = file.size != null ? formatBytes(file.size) : null;
   const details = [file.filename, describe(file), file.alt ? `Alt: ${file.alt}` : "No alt text"]
@@ -440,9 +390,9 @@ function SmallTile({ file }: { file: PickerFile }) {
   return (
     <li className="min-w-0 overflow-hidden rounded-md border" title={details}>
       <div className="relative">
-        <Thumbnail file={file} size={120} className="aspect-square w-full" />
+        <Thumbnail file={file} size={120} className="aspect-square w-full" onOpen={onOpen} />
         {format && (
-          <span className="bg-background/85 absolute top-1 left-1 rounded px-1 text-[9px] leading-4 font-medium">
+          <span className="bg-background/85 pointer-events-none absolute top-1 left-1 rounded px-1 text-[9px] leading-4 font-medium">
             {format}
           </span>
         )}
@@ -532,6 +482,17 @@ export function MediaLibrary() {
   const [view, setView] = React.useState<View>("list");
   const [onlyMissing, setOnlyMissing] = React.useState(false);
   const [uploading, setUploading] = React.useState(false);
+  /** Index into `shown` of the file open in the viewer. */
+  const [viewing, setViewing] = React.useState<number | null>(null);
+  /**
+   * Alt text saved since the page loaded. The rows keep their own saved value, but the
+   * list itself is not refetched after a save, so the viewer reads this first.
+   */
+  const [altOverrides, setAltOverrides] = React.useState<Record<string, string>>({});
+  const onSaved = React.useCallback(
+    (id: string, alt: string) => setAltOverrides((current) => ({ ...current, [id]: alt })),
+    [],
+  );
 
   const top = React.useRef<HTMLDivElement>(null);
 
@@ -563,18 +524,30 @@ export function MediaLibrary() {
   const files = React.useMemo(() => data?.pages[page]?.files ?? [], [data, page]);
   const hasNext = page < loadedPages - 1 || Boolean(hasNextPage);
 
-  function goTo(index: number) {
+  /**
+   * `viewer` is the file the viewer should show on the new page — null closes it. The
+   * viewer pages through here too, so the list behind it is on the same page when it
+   * closes.
+   */
+  function goTo(index: number, viewer: number | null = null) {
     setPaging({ key: queryKey, index });
+    setViewing(viewer);
     // Next sits at the bottom of a long page; the operator wants to start reading the
-    // new one from the top, where the toolbar and the page indicator are.
-    top.current?.scrollIntoView({ block: "start" });
+    // new one from the top, where the toolbar and the page indicator are. Not while
+    // the viewer is open — the page behind it is locked and out of sight.
+    if (viewer === null) top.current?.scrollIntoView({ block: "start" });
   }
 
-  async function next() {
-    if (page + 1 < loadedPages) return goTo(page + 1);
-    if (!hasNextPage) return;
+  async function next(viewer: number | null = null): Promise<boolean> {
+    if (page + 1 < loadedPages) {
+      goTo(page + 1, viewer);
+      return true;
+    }
+    if (!hasNextPage) return false;
     const result = await fetchNextPage();
-    if (!result.isError) goTo(page + 1);
+    if (result.isError) return false;
+    goTo(page + 1, viewer);
+    return true;
   }
 
   const shown = React.useMemo(() => {
@@ -732,25 +705,44 @@ export function MediaLibrary() {
         </p>
       ) : view === "grid" ? (
         <ul className={GRID_CLASS.grid}>
-          {shown.map((file) => (
-            <Tile key={file.id} file={file} />
+          {shown.map((file, index) => (
+            <Tile key={file.id} file={file} onOpen={() => setViewing(index)} onSaved={onSaved} />
           ))}
         </ul>
       ) : view === "grid-small" ? (
         <ul className={GRID_CLASS["grid-small"]}>
-          {shown.map((file) => (
-            <SmallTile key={file.id} file={file} />
+          {shown.map((file, index) => (
+            <SmallTile key={file.id} file={file} onOpen={() => setViewing(index)} />
           ))}
         </ul>
       ) : (
         <ul className="overflow-hidden rounded-md border">
-          {shown.map((file) => (
-            <Row key={file.id} file={file} />
+          {shown.map((file, index) => (
+            <Row key={file.id} file={file} onOpen={() => setViewing(index)} onSaved={onSaved} />
           ))}
         </ul>
       )}
 
       {pagination}
+
+      {/* The same order as the grid or list behind it, so Next in the viewer is the
+          file to the right of, or below, the one that was clicked. */}
+      <MediaViewer
+        files={shown}
+        index={viewing}
+        onClose={() => setViewing(null)}
+        altOverrides={altOverrides}
+        page={page}
+        pageKey={`${queryKey}|${page}|${onlyMissing}|${sort}`}
+        hasPrevPage={page > 0}
+        hasNextPage={hasNext}
+        onPrevPage={async () => {
+          if (page === 0) return false;
+          goTo(page - 1, VIEWER_LAST);
+          return true;
+        }}
+        onNextPage={() => next(0)}
+      />
     </div>
   );
 }

@@ -193,6 +193,26 @@ export const MODULES: Record<string, ModuleDef> = {
     load: "client",
   },
 
+  admin_settings: {
+    label: "Admin panel",
+    columns: ["panel_title", "panel_initials", "favicon"],
+    /** A singleton the panel reads on every page; see `site_settings` above. */
+    deletable: false,
+    load: "client",
+  },
+
+  email_notification: {
+    label: "Email notifications",
+    /**
+     * Who gets the staff copy of each storefront email — see
+     * `lib/email/notification-recipients.ts` for the routing. Deletable: removing an
+     * entry sends that type to the `default` entry, which is a meaningful state.
+     */
+    columns: ["name", "notification_type", "recipients", "enabled"],
+    searchFields: ["name", "notification_type"],
+    load: "client",
+  },
+
 
   inquiry: {
     label: "Inquiries",

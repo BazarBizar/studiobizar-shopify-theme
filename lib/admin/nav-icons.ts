@@ -17,6 +17,7 @@ import {
   BoxIcon,
   BuildingIcon,
   FileTextIcon,
+  GlobeIcon,
   HelpCircleIcon,
   ImagesIcon,
   InboxIcon,
@@ -56,6 +57,7 @@ const BY_HREF: Record<string, LucideIcon> = {
   "/admin/menus": ListTreeIcon,
   "/admin/media": ImagesIcon,
   "/admin/customers": UsersRoundIcon,
+  "/admin/site-wide": GlobeIcon,
 };
 
 /** Last resort, by group, so an unclassified new definition still gets a mark. */

@@ -1,5 +1,7 @@
 "use client";
 
+import * as React from "react";
+
 import { Input } from "@/components/admin/ui/input";
 import {
   Select,
@@ -37,6 +39,57 @@ type Props = {
 
 /** A sentinel, because a Radix SelectItem cannot have an empty string value. */
 const NONE = "__none__";
+
+/**
+ * A list of plain text — one item per line.
+ *
+ * The TEXT is held locally, and only the cleaned list goes up. Emitting on every
+ * keystroke and rendering back from the parsed list would eat the newline the
+ * operator just typed, because an empty line is dropped from the list; the cursor
+ * could never reach a second row.
+ */
+function TextListField({
+  id,
+  value,
+  onChange,
+  disabled,
+  invalid,
+  describedBy,
+}: {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+  disabled: boolean;
+  invalid?: boolean;
+  describedBy?: string;
+}) {
+  const [text, setText] = React.useState(() => parseList(value).join("\n"));
+
+  return (
+    <div className="space-y-1">
+      <Textarea
+        id={id}
+        value={text}
+        disabled={disabled}
+        rows={Math.max(3, text.split("\n").length + 1)}
+        spellCheck={false}
+        aria-invalid={invalid}
+        aria-describedby={describedBy}
+        onChange={(event) => {
+          setText(event.target.value);
+          const items = event.target.value
+            .split("\n")
+            .map((line) => line.trim())
+            .filter(Boolean);
+          // Empty is "", not "[]" — the same convention as the other list fields, so
+          // Shopify clears the field rather than storing an empty array.
+          onChange(items.length ? JSON.stringify(items) : "");
+        }}
+      />
+      <p className="text-muted-foreground text-xs">One per line.</p>
+    </div>
+  );
+}
 
 export function FieldRenderer({ spec, value, onChange, invalid }: Props) {
   const disabled = !spec.editable;
@@ -134,6 +187,23 @@ export function FieldRenderer({ spec, value, onChange, invalid }: Props) {
         />
         <span className="text-muted-foreground text-xs">{isTrue(value) ? "Yes" : "No"}</span>
       </div>
+    );
+  }
+
+  /**
+   * Before the choices branch: a list with a `choices` validation would otherwise get
+   * the single Select below and save one bare string where Shopify expects an array.
+   */
+  if (spec.type === "list.single_line_text_field") {
+    return (
+      <TextListField
+        id={spec.key}
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        invalid={invalid}
+        describedBy={describedBy}
+      />
     );
   }
 

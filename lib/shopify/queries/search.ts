@@ -49,3 +49,16 @@ export const predictiveSearchQuery = withFragments(
   `,
   PRODUCT_CARD_DEPS,
 );
+
+/**
+ * Only the count — Shop All's "N items" for a category chip. `search` takes the
+ * same `product_type:"…" OR …` syntax as `products(query:)` and was checked to
+ * return the same total; `products` itself has no count.
+ */
+export const countProductsQuery = /* GraphQL */ `
+  query CountProducts($query: String!) {
+    search(query: $query, first: 1, types: [PRODUCT]) {
+      totalCount
+    }
+  }
+`;

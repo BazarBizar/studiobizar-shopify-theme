@@ -48,7 +48,8 @@ adds a "Type of Inquiry" select fed by the `custom.inquiry_types` PAGE metafield
 schema (`lib/contact/schema.ts`) and its own route.
 
 `POST /api/contact` is **email-only** — a message has nothing to store, unlike an inquiry. It
-degrades the same way: with no `INQUIRY_NOTIFY_EMAIL` it logs and reports success.
+degrades the same way: with no recipient for `contact` in `email_notification` it logs why and
+reports success.
 
 `channelHref` maps the metaobject's `link_type` choice onto `mailto:` / `tel:` / an external link /
 plain text. Verified: 3 mailto, 1 tel, 3 external.

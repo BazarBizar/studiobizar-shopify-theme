@@ -92,6 +92,21 @@ are the three that work. `newest`, `a-z` and `z-a` each return all 1,595 in 67 p
 | Price/stock in HTML | none |
 | `yarn build`, `eslint`, `yarn check:price` | pass |
 
+## View toggle and item count
+
+- **`view: by type / by collection`** switches which row of chips filters the grid, not the layout.
+  `by type` shows the category chips (`?category=`); `by collection` shows one chip per collection
+  (`?collection=<handle>`), in the same curated order as /collections (`getListedCollections`). The
+  grid, sort and infinite scroll are the same in both. Switching view clears the other view's filter
+  in one URL update. Chip labels drop the "The … Collection" wrapper, so "The Duna Collection" reads
+  `duna`.
+- **`N items`** appears next to sort only while a chip is active. It is feedback for the click, and
+  Storefront search reports at most 1,000 for the unfiltered catalogue. Categories are counted with
+  `search(query:).totalCount`, which returns the same total as the `products(query:)` filter
+  (checked: dining = 60 both ways). Collections have no count field, so their product ids are counted.
+  The count is null above 250, and then no number is shown.
+- An unknown `?category=` or `?collection=` falls back to `all`.
+
 ## Deliberately incomplete
 
 - **Intro copy** — the design shows a paragraph under the title. Its source would be a Shopify page
@@ -99,6 +114,4 @@ are the three that work. `newest`, `a-z` and `z-a` each return all 1,595 in 67 p
   placeholder text; add the page in S2 and it appears.
 - **`new` flag** — wired to `custom.is_new`, which is unset on every product, so no badge renders
   yet. Data gap, not a code gap.
-- **`view=collection`** — the toggle is in the URL and the design, but grouping by collection needs
-  collections to exist (Step 7 / S1).
 - **Collection label** — reads `custom.collection_label`, also unpopulated.

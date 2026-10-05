@@ -270,6 +270,11 @@ ${ENTRY_FIELDS}
                 width
                 height
               }
+              # Transcoded renditions on cdn.shopify.com, for the media viewer to play.
+              sources {
+                url
+                mimeType
+              }
               preview {
                 image {
                   url

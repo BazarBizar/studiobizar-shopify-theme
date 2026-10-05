@@ -59,3 +59,23 @@ export const getCollectionProductsQuery = withFragments(
   `,
   PRODUCT_CARD_DEPS,
 );
+
+/**
+ * Collection has no product count in the Storefront API, so Shop All's
+ * "N items" counts the ids instead. Curated collections hold a dozen or so
+ * products; one page of 250 covers them, and `hasNextPage` says when it doesn't.
+ */
+export const countCollectionProductsQuery = /* GraphQL */ `
+  query CountCollectionProducts($handle: String!) {
+    collection(handle: $handle) {
+      products(first: 250) {
+        nodes {
+          id
+        }
+        pageInfo {
+          hasNextPage
+        }
+      }
+    }
+  }
+`;

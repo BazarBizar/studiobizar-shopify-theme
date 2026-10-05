@@ -3,32 +3,20 @@ import type { Metadata } from "next";
 import { CollectionCard } from "@/components/collection/collection-card";
 import { PageShell } from "@/components/layout/page-shell";
 import { Container } from "@/components/ui/container";
-import { getCollections, getPage } from "@/lib/shopify";
+import { getListedCollections, getPage } from "@/lib/shopify";
 
 export const metadata: Metadata = {
   title: "Collections",
   description:
-    "The Studio Bizar signature collections — Duna, Safari, Hardy and Arc Teak. Each one built around a single material idea.",
+    "The Studio Bizar signature collections, each one built around a single material idea.",
   alternates: { canonical: "/collections" },
 };
 
-/** Shopify auto-creates this for the theme's home page; it is not a collection. */
-const HIDDEN_HANDLES = new Set(["frontpage"]);
-
 export default async function CollectionsPage() {
-  const [page, intro] = await Promise.all([
-    getCollections({ first: 100 }),
+  const [collections, intro] = await Promise.all([
+    getListedCollections(),
     getPage("collections").catch(() => null),
   ]);
-
-  const collections = page.items
-    .filter((collection) => !HIDDEN_HANDLES.has(collection.handle))
-    .sort((a, b) => {
-      // Curated order first, then anything without a sort_order, alphabetically.
-      const left = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
-      const right = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
-      return left - right || a.title.localeCompare(b.title);
-    });
 
   return (
     <PageShell surface="light">

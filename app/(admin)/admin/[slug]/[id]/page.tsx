@@ -9,6 +9,7 @@ import { buildFieldSpecs } from "@/lib/admin/form-specs";
 import { getEntry, listDefinitions, NotAllowedError, NotFoundError } from "@/lib/admin/metaobjects";
 import { moduleFor } from "@/lib/admin/modules";
 import { labelForDefinition, typeForSlug } from "@/lib/admin/navigation";
+import { listHrefFor, siteWideSection } from "@/lib/admin/site-wide";
 
 /**
  * Edit one entry. Generic: the fields, their inputs and their validation all come from
@@ -75,8 +76,9 @@ export default async function EntryEditPage({ params }: PageProps<"/admin/[slug]
        nothing to submit does not need to be held to a comfortable typing width. */
     <div className={moduleDef.readOnly ? "w-full space-y-6" : "w-full max-w-3xl space-y-6"}>
       <DetailHeader
-        backHref={`/admin/${definition.type}`}
-        backLabel={label}
+        // A Site-wide type has no list screen of its own; back goes to its tab.
+        backHref={listHrefFor(definition.type)}
+        backLabel={siteWideSection(definition.type)?.label ?? label}
         title={entry.displayName || entry.handle}
         meta={entry.handle}
         readOnly={moduleDef.readOnly === true}

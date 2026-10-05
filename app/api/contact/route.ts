@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { BRAND } from "@/lib/brand";
 import { contactSchema } from "@/lib/contact/schema";
 import { sendEmail } from "@/lib/email/client";
+import { notificationRecipients } from "@/lib/email/notification-recipients";
 
 /**
  * The Contact page form. Unlike an inquiry there is nothing to store — the
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
   }
 
   const { firstName, lastName, email, phone, company, inquiryType, message } = parsed.data;
-  const notify = process.env.INQUIRY_NOTIFY_EMAIL;
+  const notify = await notificationRecipients("contact");
 
   const escape = (value: string) =>
     value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -53,13 +54,11 @@ export async function POST(request: Request) {
   `;
 
   try {
-    if (!notify) {
-      console.warn(
-        `[contact] INQUIRY_NOTIFY_EMAIL is not set — message from ${email} was not delivered.`,
-      );
+    if (!notify.to.length) {
+      console.warn(`[contact] message from ${email} was not delivered: ${notify.source}.`);
     } else {
       const result = await sendEmail({
-        to: notify,
+        to: notify.to,
         subject: `${inquiryType} — ${firstName} ${lastName}`,
         html,
         text: `${rows.map(([l, v]) => `${l}: ${v}`).join("\n")}\n\n${message}`,

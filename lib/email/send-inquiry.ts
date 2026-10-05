@@ -4,6 +4,7 @@ import { render } from "@react-email/render";
 
 import { BRAND } from "@/lib/brand";
 import { sendEmail, type SendResult } from "@/lib/email/client";
+import { notificationRecipients } from "@/lib/email/notification-recipients";
 import { InquiryEmail, type InquiryEmailProps } from "@/lib/email/templates/inquiry-email";
 import { generateInquiryPdf } from "@/lib/pdf/inquiry-pdf";
 import type { InquirySubmission } from "@/lib/inquiry/schema";
@@ -68,7 +69,7 @@ export async function sendInquiryEmails({
   const internalHtml = await render(InquiryEmail(internalProps));
   const internalText = await render(InquiryEmail(internalProps), { plainText: true });
 
-  const notify = process.env.INQUIRY_NOTIFY_EMAIL;
+  const notify = await notificationRecipients("product_inquiry");
 
   const [customer, internal] = await Promise.all([
     sendEmail({
@@ -83,9 +84,9 @@ export async function sendInquiryEmails({
       error: error instanceof Error ? error.message : "Unknown error",
     })),
 
-    notify
+    notify.to.length
       ? sendEmail({
-          to: notify,
+          to: notify.to,
           subject: `New inquiry ${inquiryId} — ${submission.name}`,
           html: internalHtml,
           text: internalText,
@@ -98,10 +99,8 @@ export async function sendInquiryEmails({
       : Promise.resolve({ skipped: "no-recipient" as const }),
   ]);
 
-  if (!notify) {
-    console.warn(
-      `[inquiry ${inquiryId}] INQUIRY_NOTIFY_EMAIL is not set — no internal notification sent.`,
-    );
+  if (!notify.to.length) {
+    console.warn(`[inquiry ${inquiryId}] no internal notification sent: ${notify.source}.`);
   }
 
   return { pdf: pdfStatus, customer, internal };

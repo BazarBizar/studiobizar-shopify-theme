@@ -131,6 +131,8 @@ type RawFile = {
   } | null;
   image?: { url: string; width: number | null; height: number | null } | null;
   preview?: { image: { url: string } | null } | null;
+  /** Video renditions. */
+  sources?: { url: string; mimeType: string | null }[] | null;
 };
 
 /**
@@ -148,7 +150,11 @@ function filenameFromUrl(url: string | null | undefined): string | null {
 }
 
 export function normalizeFile(raw: RawFile): MediaFile {
-  const url = raw.url ?? raw.image?.url ?? null;
+  // A video's playable url is one of its renditions — MP4 first, because every browser
+  // the panel supports plays it; HLS would need a player.
+  const video =
+    raw.sources?.find((source) => source.mimeType === "video/mp4") ?? raw.sources?.[0] ?? null;
+  const url = raw.url ?? raw.image?.url ?? video?.url ?? null;
 
   return {
     id: raw.id,

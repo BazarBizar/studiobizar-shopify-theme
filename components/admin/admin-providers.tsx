@@ -71,6 +71,17 @@ export function AdminProviders({
        * where the script does anything.
        */
       nonce={nonce}
+      /**
+       * The same script, rendered by the CLIENT (e.g. a client-side navigation into
+       * /admin), trips React 19's "Encountered a script tag" dev error — a client-created
+       * <script> never runs anyway. Typing it as a data block on the client silences that
+       * while the server copy stays executable; next-themes already sets
+       * `suppressHydrationWarning` on the element, so the differing `type` doesn't
+       * produce a hydration mismatch (the same trick it uses for `nonce`).
+       */
+      scriptProps={{
+        type: typeof window === "undefined" ? "text/javascript" : "application/json",
+      }}
     >
       <QueryClientProvider client={queryClient}>
         <TooltipProvider delayDuration={300}>

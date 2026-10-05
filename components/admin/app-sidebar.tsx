@@ -1,6 +1,6 @@
 "use client";
 
-import { BoxIcon, LogOutIcon } from "lucide-react";
+import { LogOutIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 import { AppLink } from "@/components/admin/app-link";
@@ -32,6 +32,8 @@ export type SidebarItem = {
   type?: string | null;
   /** Unread/needs-attention count. Amber, like every other "needs action" marker. */
   badge?: number;
+  /** Other path prefixes this row is active for. */
+  matches?: string[];
 };
 
 export type SidebarSection = { key: string; label: string | null; items: SidebarItem[] };
@@ -39,18 +41,24 @@ export type SidebarSection = { key: string; label: string | null; items: Sidebar
 export function AppSidebar({
   sections,
   email,
+  brand = { title: "Studio Bizar", initials: "SB" },
   loading = false,
   onSignOut,
 }: {
   sections: SidebarSection[];
   email: string;
+  /** From `admin_settings`; see `lib/admin/admin-settings.ts`. */
+  brand?: { title: string; initials: string };
   loading?: boolean;
   onSignOut: () => void;
 }) {
   const pathname = usePathname();
 
-  const isActive = (href: string) =>
-    href === "/admin" ? pathname === "/admin" : pathname === href || pathname.startsWith(`${href}/`);
+  const under = (prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
+  const isActive = (item: SidebarItem) =>
+    item.href === "/admin"
+      ? pathname === "/admin"
+      : under(item.href) || (item.matches ?? []).some(under);
 
   return (
     <Sidebar collapsible="icon">
@@ -59,11 +67,14 @@ export function AppSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton asChild size="lg">
               <AppLink href="/admin" showPending={false}>
-                <div className="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-md">
-                  <BoxIcon className="size-4" />
+                <div
+                  className="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-md text-[11px] font-semibold tracking-tight"
+                  aria-hidden
+                >
+                  {brand.initials}
                 </div>
                 <div className="grid flex-1 text-left leading-tight">
-                  <span className="truncate text-sm font-semibold">Studio Bizar</span>
+                  <span className="truncate text-sm font-semibold">{brand.title}</span>
                   <span className="text-muted-foreground truncate text-xs">Admin</span>
                 </div>
               </AppLink>
@@ -101,7 +112,7 @@ export function AppSidebar({
                     <SidebarMenuItem key={item.href}>
                       <SidebarMenuButton
                         asChild
-                        isActive={isActive(item.href)}
+                        isActive={isActive(item)}
                         tooltip={item.label}
                       >
                         <AppLink href={item.href} showPending={false}>

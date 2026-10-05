@@ -80,9 +80,12 @@ so the section does not render. The Idea and The Designer likewise hide without 
 
 ## Deliberately omitted
 
-**The `sort by` / `view: by type | by collection` control row** at y=437 on Collections All. With
-four curated collections a sort control is noise, and `by type / by collection` duplicates the
-toggle already on Shop All. Worth adding if the collection count grows — the design implies twelve.
+**The `sort by` / `view: by type | by collection` control row** at y=437 on Collections All. The
+store now has twelve collections, the count the design implies (eight are seed placeholders, see
+`landing.md`), so this is open again. It stays out for now:
+- The page lists collections in curated `sort_order`, which a sort control would override.
+- `view: by collection` now exists on Shop All as a chip row, one chip per collection, so the toggle
+  here would only duplicate it.
 
 ## Note
 
