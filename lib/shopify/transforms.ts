@@ -237,6 +237,21 @@ const escapeHtml = (value: string) =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 
+/**
+ * Whether a rich text link may become an `<a href>`. Escaping the url stops it
+ * breaking out of the attribute, but not `javascript:alert(1)` running on click —
+ * so any url with a scheme other than these four renders as its text alone.
+ * Relative urls (`/shop`, `#care`, `page`) have no scheme and pass. Control
+ * characters and whitespace are stripped first, as browsers do, so `java\tscript:`
+ * is judged as what it is.
+ */
+const SAFE_SCHEMES = new Set(["http", "https", "mailto", "tel"]);
+
+function isSafeLinkUrl(url: string): boolean {
+  const scheme = url.replace(/[\u0000- ]/g, "").match(/^([a-z][a-z0-9+.-]*):/i)?.[1];
+  return !scheme || SAFE_SCHEMES.has(scheme.toLowerCase());
+}
+
 function renderNode(node: RichTextNode): string {
   const children = (node.children ?? []).map(renderNode).join("");
 
@@ -254,6 +269,7 @@ function renderNode(node: RichTextNode): string {
     case "list-item":
       return `<li>${children}</li>`;
     case "link": {
+      if (!isSafeLinkUrl(node.url ?? "#")) return children;
       const href = escapeHtml(node.url ?? "#");
       const target = node.target ? ` target="${escapeHtml(node.target)}" rel="noopener noreferrer"` : "";
       const title = node.title ? ` title="${escapeHtml(node.title)}"` : "";
