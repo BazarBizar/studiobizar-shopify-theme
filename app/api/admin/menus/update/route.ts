@@ -6,6 +6,9 @@ import { audit } from "@/lib/admin/audit";
 import { updateMenu } from "@/lib/admin/menus";
 import { revalidateForType } from "@/lib/admin/revalidate";
 
+/** Room for the second cache drop `revalidateForType` schedules after responding. */
+export const maxDuration = 60;
+
 /**
  * EDIT ONLY. `menuCreate` and `menuDelete` are not in the operation allowlist: a
  * menu exists because a component asks for it by handle, so a new one is

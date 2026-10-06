@@ -6,6 +6,9 @@ import { audit } from "@/lib/admin/audit";
 import { clearProductMetafields, updateProduct } from "@/lib/admin/products";
 import { revalidateForType } from "@/lib/admin/revalidate";
 
+/** Room for the second cache drop `revalidateForType` schedules after responding. */
+export const maxDuration = 60;
+
 /**
  * EDIT ONLY. There is no create and no delete route for products, and neither
  * `productCreate` nor `productDelete` is in the operation allowlist — so this is not a

@@ -8,6 +8,9 @@ import { revalidateForType } from "@/lib/admin/revalidate";
 import { BUILDER_METAFIELD_KEYS } from "@/lib/page-builder/document";
 import { isReservedHandle } from "@/lib/page-builder/handles";
 
+/** Room for the second cache drop `revalidateForType` schedules after responding. */
+export const maxDuration = 60;
+
 /**
  * EDIT ONLY, like the product route — and for a sharper reason.
  *

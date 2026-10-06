@@ -6,6 +6,9 @@ import { audit } from "@/lib/admin/audit";
 import { setProductPublication } from "@/lib/admin/products";
 import { revalidateForType } from "@/lib/admin/revalidate";
 
+/** Room for the second cache drop `revalidateForType` schedules after responding. */
+export const maxDuration = 60;
+
 /**
  * One channel toggle. Saves immediately rather than joining a form's Save — a switch that
  * looked flipped but was not yet stored would be lying about where the product is live.

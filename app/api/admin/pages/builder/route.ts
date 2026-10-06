@@ -11,7 +11,7 @@ import {
   saveDraft,
   waitForStorefront,
 } from "@/lib/admin/page-builder";
-import { revalidateForType } from "@/lib/admin/revalidate";
+import { dropInFreshRequest, revalidateForType } from "@/lib/admin/revalidate";
 import { documentContentSchema, MAX_DOCUMENT_BYTES } from "@/lib/page-builder/document";
 
 /**
@@ -33,11 +33,16 @@ import { documentContentSchema, MAX_DOCUMENT_BYTES } from "@/lib/page-builder/do
 /** Room for `after()` to wait out Shopify's cache (at most 75s) once the response is sent. */
 export const maxDuration = 120;
 
-function revalidateWhenLive(handle: string, publishedAt: string) {
+/**
+ * `tags` are the ones the immediate drop returned. The second drop goes through
+ * `dropInFreshRequest`: repeating `revalidateTag` for the same tag in this
+ * request would be ignored.
+ */
+function revalidateWhenLive(handle: string, publishedAt: string, tags: string[]) {
   after(async () => {
     const landed = await waitForStorefront(handle, { publishedAt });
     if (!landed) console.warn(`[page-builder] /${handle}: Storefront still serving an older version after 75s.`);
-    await revalidateForType("page");
+    await dropInFreshRequest(tags);
   });
 }
 
@@ -96,8 +101,8 @@ export async function POST(request: Request) {
         break;
       case "builderPublish": {
         const published = await publish(input.id, input.baseRevision, staff.email);
-        await revalidateForType("page");
-        revalidateWhenLive(published.handle, published.publishedAt);
+        const tags = await revalidateForType("page", { settle: false });
+        revalidateWhenLive(published.handle, published.publishedAt, tags);
         result = published;
         break;
       }
@@ -106,8 +111,8 @@ export async function POST(request: Request) {
         break;
       case "builderRollback": {
         const restored = await rollback(input.id, input.baseRevision, staff.email);
-        await revalidateForType("page");
-        revalidateWhenLive(restored.handle, restored.publishedAt);
+        const tags = await revalidateForType("page", { settle: false });
+        revalidateWhenLive(restored.handle, restored.publishedAt, tags);
         result = restored;
         break;
       }

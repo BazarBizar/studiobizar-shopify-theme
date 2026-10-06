@@ -132,8 +132,12 @@ refills it from that stale response for the full ISR hour. The second drop, once
 new `publishedAt`, is what makes a publish reliably visible within about half a minute. Delete does
 the same, waiting until Shopify stops serving the page.
 
-The generic page/metaobject edits elsewhere in the panel revalidate once, at write time, and are
-exposed to the same window; that predates the builder and is not changed by it.
+**The second drop is a separate request.** Next honours one `revalidateTag` per tag per request;
+repeating it later in the same request, `after()` included, is ignored (measured). So
+`dropInFreshRequest` in `lib/admin/revalidate.ts` POSTs to `/api/revalidate` — only ever to this
+app's own origin (`STOREFRONT_URL`, the Vercel URLs, or localhost), since the call carries
+`REVALIDATE_SECRET`. Every other panel write gets the same treatment from `revalidateForType`,
+on a fixed 35-second delay; the write routes set `maxDuration = 60` for it.
 
 - A save names the revision it was made from; a stale one is refused with `CONFLICT`.
 - Drafts may be incomplete. Publish refuses while a visible section has an empty required field.

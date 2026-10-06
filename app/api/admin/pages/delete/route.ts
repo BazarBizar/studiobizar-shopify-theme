@@ -4,7 +4,7 @@ import { z } from "zod";
 import { fail, failure, guard, readJson, validate } from "@/lib/admin/api";
 import { audit } from "@/lib/admin/audit";
 import { BuilderError, deleteBuilderPage, waitForStorefront } from "@/lib/admin/page-builder";
-import { revalidateForType } from "@/lib/admin/revalidate";
+import { dropInFreshRequest, revalidateForType } from "@/lib/admin/revalidate";
 
 /** Room for `after()` to wait until Shopify stops serving the page. */
 export const maxDuration = 120;
@@ -46,12 +46,13 @@ export async function POST(request: Request) {
     const deleted = await deleteBuilderPage(parsed.data.id);
     audit({ action: "page.delete", actor: staff.email, outcome: "ok", type: "page", entryId: deleted.id, ip });
 
-    await revalidateForType("page");
+    const tags = await revalidateForType("page", { settle: false });
     // Again once Shopify has stopped serving it — the first drop can refill from
-    // the Storefront API's cached copy. See `waitForStorefront`.
+    // the Storefront API's cached copy. A fresh request, because a second
+    // `revalidateTag` in this one would be ignored. See `waitForStorefront`.
     after(async () => {
       await waitForStorefront(deleted.handle, { gone: true });
-      await revalidateForType("page");
+      await dropInFreshRequest(tags);
     });
     return NextResponse.json(deleted);
   } catch (error) {
