@@ -5,6 +5,8 @@ import { fail, failure, guard, readJson, validate } from "@/lib/admin/api";
 import { audit } from "@/lib/admin/audit";
 import { clearPageMetafields, updatePage } from "@/lib/admin/pages";
 import { revalidateForType } from "@/lib/admin/revalidate";
+import { BUILDER_METAFIELD_KEYS } from "@/lib/page-builder/document";
+import { isReservedHandle } from "@/lib/page-builder/handles";
 
 /**
  * EDIT ONLY, like the product route — and for a sharper reason.
@@ -18,6 +20,14 @@ import { revalidateForType } from "@/lib/admin/revalidate";
  *
  * Core fields and metafields arrive together because they land in ONE `pageUpdate`.
  */
+/**
+ * The page builder's documents are written ONLY through `/api/admin/pages/builder`,
+ * which validates them against the section registry. Accepting them here would be
+ * a way round that validation, so they are refused by key.
+ */
+const notBuilderKey = (key: string) => !BUILDER_METAFIELD_KEYS.includes(key);
+const BUILDER_KEY_MESSAGE = "Page builder content is saved from the page builder.";
+
 const schema = z.strictObject({
   operation: z.literal("pageUpdate"),
   id: z.string().regex(/^gid:\/\/shopify\/Page\/\d+$/, "not a page id"),
@@ -26,6 +36,8 @@ const schema = z.strictObject({
     .string()
     .max(255)
     .regex(/^[a-z0-9][a-z0-9-]*$/, "lowercase letters, numbers and hyphens only")
+    // A handle a route or Shopify already owns — renaming onto one breaks that route.
+    .refine((handle) => !isReservedHandle(handle), "That handle is already used by the site.")
     .optional(),
   body: z.string().max(512 * 1024).optional(),
   isPublished: z.boolean().optional(),
@@ -33,7 +45,7 @@ const schema = z.strictObject({
   metafields: z
     .array(
       z.strictObject({
-        key: z.string().max(64),
+        key: z.string().max(64).refine(notBuilderKey, BUILDER_KEY_MESSAGE),
         type: z.string().max(64),
         value: z.string().max(256 * 1024),
       }),
@@ -41,7 +53,7 @@ const schema = z.strictObject({
     .max(100)
     .optional(),
   /** Keys to clear. A cleared metafield is DELETED, not set to "". */
-  clearMetafields: z.array(z.string().max(64)).max(100).optional(),
+  clearMetafields: z.array(z.string().max(64).refine(notBuilderKey, BUILDER_KEY_MESSAGE)).max(100).optional(),
 });
 
 export async function POST(request: Request) {

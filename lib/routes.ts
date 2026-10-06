@@ -26,6 +26,13 @@ const PAGE_ROUTES: Record<string, string> = {
 };
 
 /**
+ * Page handles that have a route of their own. A page builder page may not take
+ * one of these — `/home` and `/our-services` would otherwise render a second copy
+ * of a page that already lives at `/` and `/services`.
+ */
+export const DEDICATED_PAGE_HANDLES: readonly string[] = Object.keys(PAGE_ROUTES);
+
+/**
  * The route that renders a given page, for the admin panel's Pages screen.
  *
  * Deliberately NOT derived from `templateSuffix`. A suffix names a Liquid

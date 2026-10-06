@@ -57,6 +57,9 @@ export const PAGE_METAFIELDS = [
   "story_image",
   "projects_intro",
   "locations",
+  // Page builder — the PUBLISHED document only. `sections_draft` and
+  // `sections_previous` are storefront access NONE and must never be listed here.
+  "sections",
 ] as const;
 
 /**

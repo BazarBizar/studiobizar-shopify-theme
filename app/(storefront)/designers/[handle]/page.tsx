@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PageShell } from "@/components/layout/page-shell";
-import { ProductCard } from "@/components/product/product-card";
+import { ProductCardGrid } from "@/components/product/product-card-grid";
 import { Container } from "@/components/ui/container";
 import { GoBack } from "@/components/ui/go-back";
 import { METAOBJECT_TYPES, getMetaobject, getProductsByDesigner } from "@/lib/shopify";
@@ -122,13 +122,7 @@ export default async function DesignerPage({ params }: PageProps<"/designers/[ha
       {products.length > 0 && (
         <Container className="pb-section">
           <h2 className="text-h2 mb-8">Designed by {designer.name}</h2>
-          <ul className="sb-grid-4">
-            {products.map((product) => (
-              <li key={product.id}>
-                <ProductCard product={product} />
-              </li>
-            ))}
-          </ul>
+          <ProductCardGrid products={products} />
         </Container>
       )}
 

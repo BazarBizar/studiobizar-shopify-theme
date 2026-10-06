@@ -29,6 +29,7 @@ export type ErrorCode =
   | "PAYLOAD_TOO_LARGE"
   | "NOT_ALLOWED"
   | "INVALID"
+  | "CONFLICT"
   | "UPSTREAM";
 
 const STATUS: Record<ErrorCode, number> = {
@@ -40,6 +41,7 @@ const STATUS: Record<ErrorCode, number> = {
   PAYLOAD_TOO_LARGE: 413,
   NOT_ALLOWED: 403,
   INVALID: 422,
+  CONFLICT: 409,
   UPSTREAM: 502,
 };
 

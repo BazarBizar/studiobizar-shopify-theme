@@ -57,3 +57,19 @@ export const getShopQuery = /* GraphQL */ `
     }
   }
 `;
+
+/**
+ * Just the published page builder document — what the admin polls after a publish
+ * to learn when Shopify has started serving it. See `waitForStorefront` in
+ * `lib/admin/page-builder.ts`.
+ */
+export const getPageBuilderDocumentQuery = /* GraphQL */ `
+  query GetPageBuilderDocument($handle: String!) {
+    page(handle: $handle) {
+      id
+      document: metafield(namespace: "custom", key: "sections") {
+        value
+      }
+    }
+  }
+`;

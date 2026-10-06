@@ -1,33 +1,32 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 
-import { CollectionCard } from "@/components/collection/collection-card";
 import { PageShell } from "@/components/layout/page-shell";
 import { ProductCard } from "@/components/product/product-card";
-import { ProjectCard } from "@/components/project/project-card";
 import { CaptionedRow } from "@/components/sections/captioned-row";
+import { CollectionCarousel } from "@/components/sections/collection-carousel";
 import { ContactCta } from "@/components/sections/contact-cta";
+import { FullBleedImage } from "@/components/sections/full-bleed-image";
 import { HeroSlider } from "@/components/sections/hero-slider";
 import { InstagramRow } from "@/components/sections/instagram-row";
-import { ButtonLink } from "@/components/ui/button";
+import { IntroBlock, IntroBody } from "@/components/sections/intro-block";
+import { ProjectCards } from "@/components/sections/project-cards";
+import { RowHeading } from "@/components/sections/row-heading";
 import { Carousel } from "@/components/ui/carousel";
 import { Container } from "@/components/ui/container";
 import { getInstagramPosts } from "@/lib/instagram/behold";
-import { cn } from "@/lib/utils/cn";
 import {
   METAOBJECT_TYPES,
   getCollectionProducts,
-  getCollections,
   getMetaobjects,
   getPage,
+  getSignatureCollections,
 } from "@/lib/shopify";
 import {
+  featuredProjects,
   normalizeCaptionedImage,
   normalizeProjectCard,
-  sortProjects,
 } from "@/lib/shopify/entities";
 import {
-  cdnImage,
   metafieldImage,
   metafieldMetaobjects,
   metafieldRichText,
@@ -43,64 +42,6 @@ export const metadata: Metadata = {
 
 /** Every carousel row on this page shows at most twelve. */
 const ROW_LIMIT = 12;
-
-type IntroProps = {
-  title: string;
-  html: string;
-  href: string;
-  label: string;
-};
-
-/**
- * Heading + copy + a text link. `IntroBody` is the bare block, for when it
- * already sits inside a Container — nesting one Container in another doubles
- * the gutter and pushes the copy out of line with the rest of the page.
- */
-function IntroBody({ title, html, href, label }: IntroProps) {
-  return (
-    <>
-      <h2 className="text-h2">{title}</h2>
-      <div
-        className="sb-prose mt-6 max-w-[44rem]"
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
-      <ButtonLink href={href} className="mt-8" variant="outline">
-        {label}
-      </ButtonLink>
-    </>
-  );
-}
-
-/** The same block on its own band, as Our Services and Our Story use it. */
-function IntroBlock(props: IntroProps) {
-  return (
-    <Container className="py-section">
-      <IntroBody {...props} />
-    </Container>
-  );
-}
-
-function RowHeading({
-  title,
-  href,
-  className,
-}: {
-  title: string;
-  href?: string;
-  /** For a row that sits on its own band and needs a different ink. */
-  className?: string;
-}) {
-  return (
-    <div className={cn("mb-8 flex items-end justify-between gap-6", className)}>
-      <h2 className="text-h2">{title}</h2>
-      {href && (
-        <ButtonLink href={href} className="shrink-0">
-          view all
-        </ButtonLink>
-      )}
-    </div>
-  );
-}
 
 export default async function HomePage() {
   const page = await getPage("home").catch(() => null);
@@ -132,9 +73,9 @@ export default async function HomePage() {
       ? (monthlyRef as { handle: string }).handle
       : null;
 
-  const [collectionsPage, projectsPage, newIn, monthly, instagramPosts] =
+  const [collections, projectsPage, newIn, monthly, instagramPosts] =
     await Promise.all([
-      getCollections({ first: 100 }).catch(() => ({ items: [] })),
+      getSignatureCollections(ROW_LIMIT).catch(() => []),
       getMetaobjects(METAOBJECT_TYPES.project, { first: 100 }).catch(() => ({
         items: [],
       })),
@@ -152,23 +93,9 @@ export default async function HomePage() {
       getInstagramPosts(10),
     ]);
 
-  const collections = collectionsPage.items
-    .filter((collection) => collection.isSignature)
-    .sort(
-      (a, b) =>
-        (a.sortOrder ?? Number.MAX_SAFE_INTEGER) -
-          (b.sortOrder ?? Number.MAX_SAFE_INTEGER) ||
-        a.title.localeCompare(b.title),
-    )
-    .slice(0, ROW_LIMIT);
-
   // `is_selected` marks the projects meant for the landing page; if none is
   // flagged, fall back to the first three by sort order.
-  const allProjects = sortProjects(
-    projectsPage.items.map(normalizeProjectCard),
-  );
-  const selected = allProjects.filter((project) => project.isSelected);
-  const projects = (selected.length > 0 ? selected : allProjects).slice(0, 3);
+  const projects = featuredProjects(projectsPage.items.map(normalizeProjectCard), 3);
 
   return (
     <PageShell surface="dark">
@@ -188,52 +115,24 @@ export default async function HomePage() {
 
       {featureImages.length > 0 && <CaptionedRow images={featureImages} />}
 
-      {projects.length > 0 && (
-        <Container className="pb-section">
-          <RowHeading title="Selected Projects" href="/projects" />
-          <ul className="grid gap-grid-gap gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
-            {projects.map((project) => (
-              <li key={project.handle}>
-                <ProjectCard project={project} view="m" />
-              </li>
-            ))}
-          </ul>
+      <ProjectCards title="Selected Projects" href="/projects" projects={projects}>
+        {projectsIntroHtml && (
+          <div className="mt-section-sm">
+            <IntroBody
+              title="Selected Project"
+              html={projectsIntroHtml}
+              href="/projects"
+              label="view all projects"
+            />
+          </div>
+        )}
+      </ProjectCards>
 
-          {projectsIntroHtml && (
-            <div className="mt-section-sm">
-              <IntroBody
-                title="Selected Project"
-                html={projectsIntroHtml}
-                href="/projects"
-                label="view all projects"
-              />
-            </div>
-          )}
-        </Container>
-      )}
-
-      {collections.length > 0 && (
-        <>
-          <section
-            data-surface="light"
-            className="bg-background py-16 text-foreground"
-          >
-            <Container>
-              <h2 className="text-h2 mb-8">Signature Collections</h2>
-              <Carousel ariaLabel="Signature Collections">
-                {collections.map((collection) => (
-                  <CollectionCard key={collection.id} collection={collection} />
-                ))}
-              </Carousel>
-            </Container>
-          </section>
-
-          {/* Centred beneath the band, on the dark ground — as measured. */}
-          <Container className="flex justify-center py-14">
-            <ButtonLink href="/collections">view all</ButtonLink>
-          </Container>
-        </>
-      )}
+      <CollectionCarousel
+        title="Signature Collections"
+        collections={collections}
+        viewAllHref="/collections"
+      />
 
       {newIn.length > 0 && (
         <Container className="pb-section">
@@ -264,15 +163,7 @@ export default async function HomePage() {
       )}
 
       {storyImage && (
-        <div className="relative aspect-[16/10] w-full overflow-hidden lg:aspect-[16/7]">
-          <Image
-            src={cdnImage(storyImage.url)}
-            alt={storyImage.altText ?? "Studio Bizar"}
-            fill
-            className="object-cover"
-            sizes="100vw"
-          />
-        </div>
+        <FullBleedImage image={storyImage} alt={storyImage.altText ?? "Studio Bizar"} />
       )}
 
       {storyHtml && (

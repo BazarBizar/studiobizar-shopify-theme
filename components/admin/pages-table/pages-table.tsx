@@ -13,14 +13,13 @@ import { paramFromPageId, type PageSummary } from "@/lib/admin/pages";
 /**
  * A plain server-rendered table, not `DataTable`.
  *
- * The store has eleven pages and no mechanism that creates more — they come from
- * `schema-push`, one per storefront route. Sorting, faceting, column menus,
- * pagination and client-side search are all answers to a problem eleven rows do
- * not have, and every one of them would ship JavaScript to render a list that
- * fits on the screen.
+ * The store has a couple of dozen pages: the ones `schema-push` provisions, one
+ * per storefront route, plus whatever the page builder has made. Sorting,
+ * faceting, column menus, pagination and client-side search are all answers to a
+ * problem that many rows do not have, and every one of them would ship
+ * JavaScript to render a list that fits on the screen.
  *
- * Move this to `DataTable` if pages ever become something people create freely.
- * Today that would be furniture.
+ * Move this to `DataTable` once builder pages run into the hundreds.
  */
 export function PagesTable({
   pages,
@@ -49,12 +48,19 @@ export function PagesTable({
             return (
               <TableRow key={page.id}>
                 <TableCell>
-                  <AppLink
-                    href={`/admin/pages/${paramFromPageId(page.id)}`}
-                    className="font-medium underline-offset-4 hover:underline"
-                  >
-                    {page.title}
-                  </AppLink>
+                  <div className="flex items-center gap-2">
+                    <AppLink
+                      href={`/admin/pages/${paramFromPageId(page.id)}${page.builder ? "/builder" : ""}`}
+                      className="font-medium underline-offset-4 hover:underline"
+                    >
+                      {page.title}
+                    </AppLink>
+                    {page.builder && (
+                      <Badge variant="outline" className="text-[11px] font-normal">
+                        Page builder
+                      </Badge>
+                    )}
+                  </div>
                 </TableCell>
 
                 <TableCell className="text-muted-foreground font-mono text-xs">

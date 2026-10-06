@@ -50,6 +50,25 @@ export type PickerEntry = {
 type ApiError = { code?: string; message?: string };
 
 /**
+ * A failed request, with the server's code and body kept for callers that act on
+ * them — the page builder tells a conflict from a publish blocked by empty
+ * fields. Still an `Error`, so every existing `catch` reads `.message` as before.
+ */
+export class RequestError extends Error {
+  readonly code: string | null;
+  readonly status: number;
+  readonly detail: Record<string, unknown>;
+
+  constructor(message: string, status: number, detail: Record<string, unknown> | null) {
+    super(message);
+    this.name = "RequestError";
+    this.status = status;
+    this.code = typeof detail?.code === "string" ? detail.code : null;
+    this.detail = detail ?? {};
+  }
+}
+
+/**
  * `same-origin` is explicit rather than relied upon: the write endpoints reject a
  * cross-origin request outright, and a read that quietly sent credentials
  * elsewhere would be the one place that behaved differently.
@@ -63,9 +82,9 @@ async function post<T>(url: string, body: unknown): Promise<T> {
   });
 
   if (!response.ok) {
-    const detail = (await response.json().catch(() => null)) as ApiError | null;
+    const detail = (await response.json().catch(() => null)) as (ApiError & Record<string, unknown>) | null;
     // The server has already stripped anything sensitive; this is the safe message.
-    throw new Error(detail?.message ?? `Request failed (${response.status})`);
+    throw new RequestError(detail?.message ?? `Request failed (${response.status})`, response.status, detail);
   }
 
   return (await response.json()) as T;
@@ -274,5 +293,66 @@ export async function setFileAltRequest(input: {
   return post<{ id: string; alt: string }>("/api/admin/files/alt", {
     operation: "fileAlt",
     ...input,
+  });
+}
+
+/* -------------------------------------------------------------------------- *
+ * Page builder
+ * -------------------------------------------------------------------------- */
+
+export type CreatedPage = { id: string; title: string; handle: string };
+
+export async function createBuilderPageRequest(input: {
+  title: string;
+  handle: string;
+  template: string;
+}): Promise<CreatedPage> {
+  return post<CreatedPage>("/api/admin/pages/create", { operation: "pageCreate", ...input });
+}
+
+export async function deletePageRequest(id: string): Promise<{ id: string; handle: string }> {
+  return post("/api/admin/pages/delete", { operation: "pageDelete", id });
+}
+
+export type BuilderSaveResult = { revision: number; savedAt: string; hasUnpublishedChanges: boolean };
+
+/** The draft content goes in whole; the server validates every section against the registry. */
+export async function saveDraftRequest(input: {
+  id: string;
+  baseRevision: number;
+  content: unknown;
+}): Promise<BuilderSaveResult> {
+  return post<BuilderSaveResult>("/api/admin/pages/builder", { operation: "builderSaveDraft", ...input });
+}
+
+export async function builderActionRequest(
+  operation: "builderPublish" | "builderDiscard" | "builderRollback",
+  input: { id: string; baseRevision: number },
+): Promise<{ revision: number }> {
+  return post<{ revision: number }>("/api/admin/pages/builder", { operation, ...input });
+}
+
+export type ProductOption = { id: string; title: string; handle: string; thumbnail: string | null };
+
+/**
+ * Active products matching a search, for the builder's product picker. The same
+ * list endpoint the Products screen uses — no new route, no new query.
+ */
+export function useProductSearch(search: string, enabled = true) {
+  return useQuery({
+    queryKey: ["admin", "product-search", search],
+    enabled,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const page = await post<{ products: ProductOption[] }>("/api/admin/products", {
+        operation: "products",
+        first: 20,
+        search: search || null,
+        status: ["ACTIVE"],
+        sortKey: "TITLE",
+        reverse: false,
+      });
+      return page.products.map(({ id, title, handle, thumbnail }) => ({ id, title, handle, thumbnail }));
+    },
   });
 }

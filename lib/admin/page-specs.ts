@@ -1,5 +1,7 @@
 import "server-only";
 
+import { BUILDER_METAFIELD_KEYS } from "@/lib/page-builder/document";
+
 import { choicesFrom, fileKindFrom, referenceDefinitionId, type FieldSpec } from "./form-fields";
 import { listDefinitions } from "./metaobjects";
 import { OPERATIONS } from "./operations";
@@ -53,7 +55,15 @@ export async function buildPageMetafieldSpecs(
     metaobjectDefinitions.map((definition) => [definition.id, definition.type]),
   );
 
-  return data.metafieldDefinitions.nodes.map((definition) => {
+  /**
+   * The page builder's three JSON documents are edited in the builder, never as
+   * raw JSON here — and the update route refuses them anyway.
+   */
+  const editable = data.metafieldDefinitions.nodes.filter(
+    (definition) => !BUILDER_METAFIELD_KEYS.includes(definition.key),
+  );
+
+  return editable.map((definition) => {
     const definitionId = referenceDefinitionId(definition.validations);
 
     return {

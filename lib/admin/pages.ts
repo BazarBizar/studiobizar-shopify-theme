@@ -2,6 +2,7 @@ import "server-only";
 
 import { OPERATIONS } from "./operations";
 import { adminGraphQL, assertNoUserErrors } from "./shopify";
+import { BUILDER_METAFIELDS } from "@/lib/page-builder/document";
 import { METAFIELD_NAMESPACE } from "@/lib/shopify/constants";
 
 /**
@@ -61,6 +62,8 @@ export type PageSummary = {
   templateSuffix: string | null;
   isPublished: boolean;
   updatedAt: string;
+  /** Has a page builder document — rendered at `/<handle>` by the builder route. */
+  builder: boolean;
 };
 
 export type PageMetafield = {
@@ -75,9 +78,12 @@ export type PageDetail = PageSummary & {
   metafields: PageMetafield[];
 };
 
-type RawSummary = PageSummary;
+type RawSummary = Omit<PageSummary, "builder"> & {
+  builderDraft?: { id: string } | null;
+  builderPublished?: { id: string } | null;
+};
 
-type RawDetail = RawSummary & {
+type RawDetail = Omit<PageSummary, "builder"> & {
   body: string | null;
   metafields: { nodes: PageMetafield[] };
 };
@@ -99,7 +105,12 @@ export async function listPages(): Promise<PageSummary[]> {
       pages: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: RawSummary[] };
     } = await adminGraphQL("pages", OPERATIONS.pages.document, { first: 100, after });
 
-    all.push(...data.pages.nodes);
+    all.push(
+      ...data.pages.nodes.map(({ builderDraft, builderPublished, ...page }) => ({
+        ...page,
+        builder: Boolean(builderDraft || builderPublished),
+      })),
+    );
     after = data.pages.pageInfo.hasNextPage ? data.pages.pageInfo.endCursor : null;
   } while (after);
 
@@ -113,10 +124,15 @@ export async function getPage(id: string): Promise<PageDetail> {
 
   if (!data.page) throw new PageNotFoundError();
 
+  const metafields = data.page.metafields.nodes;
+
   return {
     ...data.page,
     body: data.page.body ?? "",
-    metafields: data.page.metafields.nodes,
+    metafields,
+    builder: metafields.some(
+      (field) => field.key === BUILDER_METAFIELDS.published || field.key === BUILDER_METAFIELDS.draft,
+    ),
   };
 }
 

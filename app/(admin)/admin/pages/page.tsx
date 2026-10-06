@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/admin/page-header";
+import { CreatePageDialog } from "@/components/admin/page-builder/create-page-dialog";
 import { PagesTable } from "@/components/admin/pages-table/pages-table";
 import { listPages } from "@/lib/admin/pages";
 import { routeForPageHandle } from "@/lib/routes";
@@ -21,8 +22,9 @@ export default async function PagesScreen() {
     <div className="space-y-6">
       <PageHeader
         title="Pages"
-        description="The copy and content behind the public pages. Most of what a page shows lives in its metafields rather than its body. Creating and deleting pages stays with schema-push."
+        description="The copy and content behind the public pages. New pages are built from the site’s own sections with the page builder; pages with a layout of their own in code still come from schema-push."
         meta={`${pages.length} pages`}
+        actions={<CreatePageDialog />}
       />
 
       <PagesTable pages={pages} routeFor={routeForPageHandle} />

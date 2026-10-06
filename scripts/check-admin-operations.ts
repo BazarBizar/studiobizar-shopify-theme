@@ -184,6 +184,13 @@ async function main() {
    */
   await run("page", { id: "gid://shopify/Page/0" });
   await run("pageUpdate", { id: "gid://shopify/Page/0", page: {} });
+  /**
+   * A blank title is refused by Shopify's validation before anything is created,
+   * so the document is parsed and nothing is written. `pageDelete` gets id 0 for
+   * the reason `metaobjectDelete` does: Shopify never issues it.
+   */
+  await run("pageCreate", { page: { title: "" } });
+  await run("pageDelete", { id: "gid://shopify/Page/0" });
   await run("pageMetafieldDefinitions", {});
 
   await run("stagedUploadsCreate", { input: [] });

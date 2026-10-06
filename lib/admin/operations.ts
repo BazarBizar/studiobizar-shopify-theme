@@ -1176,6 +1176,12 @@ ${ENTRY_FIELDS}
             templateSuffix
             isPublished
             updatedAt
+            builderDraft: metafield(namespace: "custom", key: "sections_draft") {
+              id
+            }
+            builderPublished: metafield(namespace: "custom", key: "sections") {
+              id
+            }
           }
         }
       }
@@ -1236,6 +1242,53 @@ ${ENTRY_FIELDS}
             handle
             updatedAt
           }
+          userErrors {
+            field
+            message
+            code
+          }
+        }
+      }
+    `,
+  },
+
+  /**
+   * Creates a PAGE BUILDER page — and only that. The route refuses any handle a
+   * builder page may not take, and always sends the first draft document with it,
+   * so a page made here is reachable at `/<handle>` the moment it is published.
+   * Ordinary pages, whose route is code, are still created by schema-push.
+   */
+  pageCreate: {
+    kind: "write",
+    document: `
+      mutation AdminPageCreate($page: PageCreateInput!) {
+        pageCreate(page: $page) {
+          page {
+            id
+            title
+            handle
+          }
+          userErrors {
+            field
+            message
+            code
+          }
+        }
+      }
+    `,
+  },
+
+  /**
+   * Deletes a page. Reachable only through the page builder's delete route, which
+   * re-reads the page and refuses unless it is a builder page — a page whose route
+   * is code (`home`, `our-story`) cannot be deleted from the panel.
+   */
+  pageDelete: {
+    kind: "write",
+    document: `
+      mutation AdminPageDelete($id: ID!) {
+        pageDelete(id: $id) {
+          deletedPageId
           userErrors {
             field
             message

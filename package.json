@@ -33,7 +33,9 @@
     "check:theme-refs": "node scripts/check-theme-refs.mjs",
     "seed:in-context": "tsx scripts/seed-in-context.ts",
     "seed:nav-pages": "tsx scripts/seed-nav-pages.ts",
-    "theme:lint": "shopify theme check --path theme"
+    "theme:lint": "shopify theme check --path theme",
+    "check:page-builder": "tsx scripts/check-page-builder.ts",
+    "check:handles": "tsx scripts/check-reserved-handles.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

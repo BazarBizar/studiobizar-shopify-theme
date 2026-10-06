@@ -158,13 +158,17 @@ export async function pushMetafields(
         key: definition.key,
         type: definition.type,
         ownerType: definition.ownerType,
-        access: { storefront: 'PUBLIC_READ' },
+        // PUBLIC_READ unless a definition says otherwise — the page builder's
+        // draft and rollback copies are NONE so a draft never reaches the shop.
+        access: { storefront: definition.storefrontAccess ?? 'PUBLIC_READ' },
       };
       if (definition.description) input.description = definition.description;
       if (resolved.length) input.validations = resolved;
       // Pinned definitions show up directly on the admin edit screen, which is
       // the whole point for a catalogue the team fills in by hand.
-      if (pin) input.pin = true;
+      // `pin: false` on a definition opts out — the page builder's JSON is not
+      // something to put in front of an editor on Shopify's page screen.
+      if (pin && definition.pin !== false) input.pin = true;
 
       if (dryRun) {
         log.result('PLAN', label, `create ${definition.type}`);

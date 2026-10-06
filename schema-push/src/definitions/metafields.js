@@ -136,6 +136,37 @@ const page = [
     type: 'collection_reference',
   },
   { key: 'story_image', name: 'Story Image', type: 'file_reference', validations: [IMAGE_ONLY] },
+
+  /* ------------------------------------------------------------------ *
+   * Page builder (lib/page-builder/document.ts). Three copies of one JSON
+   * document. Only the PUBLISHED copy is readable by the storefront — the
+   * draft and the rollback copy are `storefrontAccess: 'NONE'`, so an
+   * unpublished draft cannot be fetched through the Storefront API at all.
+   * Written only by /api/admin/pages/builder, which validates every section.
+   * ------------------------------------------------------------------ */
+  {
+    key: 'sections',
+    name: 'Page Builder — Published',
+    type: 'json',
+    pin: false,
+    description: 'Managed by the page builder in the admin panel. Do not edit by hand.',
+  },
+  {
+    key: 'sections_draft',
+    name: 'Page Builder — Draft',
+    type: 'json',
+    storefrontAccess: 'NONE',
+    pin: false,
+    description: 'Managed by the page builder in the admin panel. Do not edit by hand.',
+  },
+  {
+    key: 'sections_previous',
+    name: 'Page Builder — Previous version',
+    type: 'json',
+    storefrontAccess: 'NONE',
+    pin: false,
+    description: 'Managed by the page builder in the admin panel. Do not edit by hand.',
+  },
 ];
 
 /**
