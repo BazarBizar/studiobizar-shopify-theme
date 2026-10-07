@@ -293,6 +293,9 @@ function SortableList({
   depth: 0 | 1;
   onChange: (next: Draft[]) => void;
 }) {
+  // dnd-kit numbers its screen-reader ids from a module counter, which the server and the
+  // browser count differently — a hydration mismatch on every drag handle. A stable id fixes it.
+  const dndId = React.useId();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -314,6 +317,7 @@ function SortableList({
 
   return (
     <DndContext
+      id={dndId}
       sensors={sensors}
       collisionDetection={closestCenter}
       modifiers={[restrictToVerticalAxis, restrictToParentElement]}

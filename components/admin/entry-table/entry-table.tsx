@@ -183,6 +183,12 @@ export function EntryTable({
     return null;
   }, [orderField, search, columnFilters, sorting]);
 
+  // dnd-kit numbers its screen-reader ids from a module counter, which the server and the
+
+  // browser count differently — a hydration mismatch on every drag handle. A stable id fixes it.
+
+  const dndId = React.useId();
+
   const sensors = useSensors(
     // A few pixels of travel before a drag starts, so a click on the grip is still a
     // click.
@@ -286,6 +292,7 @@ export function EntryTable({
 
       {orderField ? (
         <DndContext
+          id={dndId}
           sensors={sensors}
           collisionDetection={closestCenter}
           modifiers={[restrictToVerticalAxis, restrictToParentElement]}

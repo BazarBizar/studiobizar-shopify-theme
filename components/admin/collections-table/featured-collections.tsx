@@ -133,6 +133,12 @@ export function FeaturedCollections({
   const byId = React.useMemo(() => new Map(options.map((option) => [option.id, option])), [options]);
   const isDirty = JSON.stringify(order) !== JSON.stringify(selected);
 
+  // dnd-kit numbers its screen-reader ids from a module counter, which the server and the
+
+  // browser count differently — a hydration mismatch on every drag handle. A stable id fixes it.
+
+  const dndId = React.useId();
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -198,6 +204,7 @@ export function FeaturedCollections({
 
       {order.length > 0 ? (
         <DndContext
+          id={dndId}
           sensors={sensors}
           collisionDetection={closestCenter}
           modifiers={[restrictToVerticalAxis, restrictToParentElement]}
