@@ -17,6 +17,36 @@ import {
   url,
 } from "./fields";
 
+/**
+ * For a list section that, on the page it came from, sits in the same band as the
+ * page heading — the FAQ, Our Locations, Our Designers, Gallery. Has an effect only
+ * directly after a Page heading section; anywhere else the section is its own band.
+ */
+const PLACEMENT_FIELD = select(
+  "placement",
+  "Band",
+  [
+    { value: "band", label: "Separate band" },
+    { value: "heading", label: "Same band as the heading" },
+  ],
+  {
+    group: "layout",
+    help: "Same band puts this directly under the page heading, as one block — as on the FAQ page.",
+  },
+);
+
+/** Panel screens that hold what the data-driven sections show. */
+const SOURCES = {
+  services: { label: "Services", href: "/admin/service" },
+  faq: { label: "FAQ", href: "/admin/faq_item" },
+  locations: { label: "Locations, under Site-wide", href: "/admin/site-wide?tab=location" },
+  channels: { label: "Contact channels, under Site-wide", href: "/admin/site-wide?tab=contact_channel" },
+  siteSettings: { label: "Site settings, under Site-wide", href: "/admin/site-wide" },
+  designers: { label: "Designers", href: "/admin/designer" },
+  projects: { label: "Projects", href: "/admin/project" },
+  collections: { label: "Collections", href: "/admin/collections" },
+} as const;
+
 /** The three weights `components/ui/button.tsx` defines, and no others. */
 const BUTTON_STYLES = [
   { value: "outline", label: "Outlined" },
@@ -42,11 +72,36 @@ const BUTTON_STYLES = [
 export const pageHeading = defineSection({
   type: "page_heading",
   label: "Page heading",
-  description: "The page's title as its one visible heading, with an optional intro.",
+  description: "The page's one main heading, with an optional intro. Can be kept for screen readers only, under an image-only hero.",
   category: "Intro",
   fields: [
     text("title", "Heading", { help: "Leave empty to use the page title." }),
-    richText("intro", "Intro"),
+    richText("intro", "Intro", { when: { field: "style", is: ["standard", "lead"] } }),
+    textarea("summary", "Summary", {
+      max: 600,
+      when: { field: "style", is: ["summary"] },
+      help: "One short paragraph under the heading.",
+    }),
+    select(
+      "style",
+      "Style",
+      [
+        { value: "standard", label: "Heading and intro" },
+        { value: "summary", label: "Heading and summary" },
+        { value: "lead", label: "Heading and large intro" },
+        { value: "hidden", label: "Hidden heading (screen readers only)" },
+      ],
+      { group: "layout" },
+    ),
+    select(
+      "introSpacing",
+      "Space under heading",
+      [
+        { value: "standard", label: "Standard" },
+        { value: "compact", label: "Compact" },
+      ],
+      { group: "advanced", when: { field: "style", is: ["standard"] } },
+    ),
   ],
   universal: ["surface", "rhythm"],
   summaryKey: "title",
@@ -58,10 +113,13 @@ export const hero = defineSection({
   description: "Full-width photographs at the top of a page. One image is a still; several play as a slideshow.",
   category: "Intro",
   fields: [
+    // No caption: the hero is image-only by design, so a caption would be text the
+    // operator types and nobody sees. Each slide's alt text says what it shows.
     imageList("slides", "Slides", {
       max: 8,
       required: true,
-      help: "The caption is read aloud by screen readers when the image has no alt text.",
+      captions: false,
+      help: "Describe each photograph in its alt text — the hero shows images only.",
     }),
   ],
   universal: ["hideOn"],
@@ -69,14 +127,32 @@ export const hero = defineSection({
 
 export const textBlock = defineSection({
   type: "text_block",
-  label: "Heading & text",
-  description: "A heading, a few paragraphs and an optional button.",
+  label: "Text",
+  description: "A heading, a few paragraphs and one optional button — the usual text band.",
   category: "Text & media",
   fields: [
     text("title", "Heading", { required: true }),
     richText("body", "Text"),
     link("link", "Button"),
     select("buttonStyle", "Button style", BUTTON_STYLES),
+    select(
+      "textStyle",
+      "Text style",
+      [
+        { value: "prose", label: "Running copy" },
+        { value: "plain", label: "Single paragraph" },
+      ],
+      { group: "advanced", help: "Single paragraph sets a short text with tighter lines." },
+    ),
+    select(
+      "spaceAbove",
+      "Space above",
+      [
+        { value: "standard", label: "Standard" },
+        { value: "none", label: "None" },
+      ],
+      { group: "advanced", help: "None when the band above already ends in space — as under three photographs." },
+    ),
   ],
   summaryKey: "title",
 });
@@ -88,8 +164,8 @@ export const textBlock = defineSection({
  */
 export const richTextSection = defineSection({
   type: "rich_text",
-  label: "Text & buttons",
-  description: "Headings, paragraphs and buttons in any order, in one column.",
+  label: "Text blocks",
+  description: "Build text freely: several headings, paragraphs and buttons, in any order.",
   category: "Text & media",
   fields: [
     blocks("blocks", "Content", {
@@ -161,6 +237,7 @@ export const itemList = defineSection({
     }),
   ],
   summaryKey: "title",
+  source: (s) => (s.source === "services" ? SOURCES.services : null),
 });
 
 export const faq = defineSection({
@@ -169,7 +246,7 @@ export const faq = defineSection({
   description: "Questions that open to their answer — written here, or taken from the FAQ entries.",
   category: "Text & media",
   fields: [
-    text("title", "Heading"),
+    text("title", "Heading", { when: { field: "placement", is: ["band"] } }),
     select("source", "Questions", [
       { value: "custom", label: "Questions I write" },
       { value: "all", label: "All FAQ entries" },
@@ -178,7 +255,8 @@ export const faq = defineSection({
     text("category", "Category", {
       required: true,
       when: { field: "source", is: ["category"] },
-      help: "As written on the FAQ entries, e.g. Delivery.",
+      suggest: "faqCategories",
+      help: "One of the categories used on the FAQ entries.",
     }),
     blocks("questions", "Questions", {
       max: 40,
@@ -194,20 +272,24 @@ export const faq = defineSection({
         ),
       ],
     }),
+    PLACEMENT_FIELD,
   ],
   summaryKey: "title",
+  source: (s) => (s.source === "custom" ? null : SOURCES.faq),
 });
 
 export const mediaText = defineSection({
   type: "media_text",
   label: "Image with text",
-  description: "A tall photograph beside a heading, text and an optional button.",
+  description: "A photograph beside a heading, text and an optional button — shape, width and alignment are yours to set.",
   category: "Text & media",
   fields: [
+    text("eyebrow", "Small label", { max: 60, help: "Optional, above the heading." }),
     text("title", "Heading", { required: true }),
     richText("body", "Text"),
     image("image", "Image", { required: true }),
     link("link", "Button"),
+    select("buttonStyle", "Button style", BUTTON_STYLES),
     select(
       "align",
       "Image position",
@@ -223,6 +305,37 @@ export const mediaText = defineSection({
       [
         { value: "normal", label: "Standard" },
         { value: "wide", label: "Inset" },
+      ],
+      { group: "layout" },
+    ),
+    select(
+      "ratio",
+      "Image shape",
+      [
+        { value: "portrait", label: "Tall" },
+        { value: "square", label: "Square" },
+        { value: "landscape", label: "Landscape" },
+        { value: "adapt", label: "Original" },
+      ],
+      { group: "layout" },
+    ),
+    select(
+      "imageWidth",
+      "Image width",
+      [
+        { value: "half", label: "Half" },
+        { value: "narrow", label: "Smaller" },
+        { value: "wide", label: "Larger" },
+      ],
+      { group: "layout" },
+    ),
+    select(
+      "verticalAlign",
+      "Text beside the image",
+      [
+        { value: "center", label: "Middle" },
+        { value: "top", label: "Top" },
+        { value: "bottom", label: "Bottom" },
       ],
       { group: "layout" },
     ),
@@ -277,6 +390,15 @@ export const productRail = defineSection({
       default: true,
       when: { field: "source", is: ["collection"] },
     }),
+    select(
+      "viewAllPlacement",
+      "“View all” position",
+      [
+        { value: "below", label: "Under the row" },
+        { value: "heading", label: "Beside the heading" },
+      ],
+      { group: "advanced", when: { field: "source", is: ["collection"] } },
+    ),
   ],
   summaryKey: "title",
 });
@@ -310,6 +432,7 @@ export const collectionCarousel = defineSection({
   ],
   universal: ["hideOn"],
   summaryKey: "title",
+  source: (s) => s.source === "picked" ? null : SOURCES.collections,
 });
 
 export const projectCards = defineSection({
@@ -334,8 +457,12 @@ export const projectCards = defineSection({
       { group: "layout" },
     ),
     toggle("viewAll", "Show “view all”", { default: true }),
+    text("introTitle", "Intro heading", { help: "Optional text under the cards, inside the same band." }),
+    richText("introBody", "Intro text"),
+    link("introLink", "Intro button"),
   ],
   summaryKey: "title",
+  source: () => SOURCES.projects,
 });
 
 export const productGrid = defineSection({
@@ -372,6 +499,7 @@ export const collectionGrid = defineSection({
     collections("collections", "Collections", { max: 24, required: true, when: { field: "source", is: ["picked"] } }),
   ],
   summaryKey: "title",
+  source: (s) => s.source === "picked" ? null : SOURCES.collections,
 });
 
 export const designerGrid = defineSection({
@@ -379,8 +507,13 @@ export const designerGrid = defineSection({
   label: "Designers",
   description: "Designer portraits four across, in the order set on the designer entries.",
   category: "Catalogue",
-  fields: [text("title", "Heading"), number("limit", "How many", { min: 4, max: 40, default: 12 })],
+  fields: [
+    text("title", "Heading", { when: { field: "placement", is: ["band"] } }),
+    number("limit", "How many", { min: 4, max: 200, default: 12 }),
+    PLACEMENT_FIELD,
+  ],
   summaryKey: "title",
+  source: () => SOURCES.designers,
 });
 
 export const gallery = defineSection({
@@ -388,7 +521,11 @@ export const gallery = defineSection({
   label: "Gallery",
   description: "Photographs at their own proportions, each opening full screen.",
   category: "Images",
-  fields: [text("title", "Heading"), imageList("images", "Photographs", { max: 60, required: true })],
+  fields: [
+    text("title", "Heading", { when: { field: "placement", is: ["band"] } }),
+    imageList("images", "Photographs", { max: 60, required: true }),
+    PLACEMENT_FIELD,
+  ],
   summaryKey: "title",
 });
 
@@ -397,10 +534,35 @@ export const locations = defineSection({
   label: "Locations",
   description: "The showrooms and workshops, two across, from the location entries.",
   category: "Site",
-  fields: [text("title", "Heading")],
+  fields: [text("title", "Heading", { when: { field: "placement", is: ["band"] } }), PLACEMENT_FIELD],
   summaryKey: "title",
+  source: () => SOURCES.locations,
 });
 
+/**
+ * The Contact page's two columns — the contact channels, then the form. The
+ * channels are the Contact channel entries themselves, so they are still edited
+ * once, under Site-wide, and every page that lists them follows.
+ */
+export const contactDetails = defineSection({
+  type: "contact_details",
+  label: "Contact form",
+  description: "The contact form, with the ways to reach us beside it — or the form on its own.",
+  category: "Site",
+  fields: [
+    text("title", "Heading", { when: { field: "placement", is: ["band"] } }),
+    toggle("showDetails", "Show contact details beside the form", { default: true }),
+    textarea("types", "Inquiry types", {
+      max: 1000,
+      help: "One per line — what the “Type of inquiry” menu offers. Leave empty for General only.",
+    }),
+    PLACEMENT_FIELD,
+  ],
+  summaryKey: "title",
+  source: (s) => (s.showDetails ? SOURCES.channels : null),
+});
+
+/** Retired from Add section: Contact form & details does this with its details switched off. */
 export const contactForm = defineSection({
   type: "contact_form",
   label: "Contact form",
@@ -414,6 +576,7 @@ export const contactForm = defineSection({
     }),
   ],
   summaryKey: "title",
+  hidden: true,
 });
 
 export const goBack = defineSection({
@@ -437,7 +600,8 @@ export const instagram = defineSection({
     imageList("fallback", "Fallback images", {
       max: 10,
       captions: false,
-      help: "Shown only when the live feed cannot be reached.",
+      group: "advanced",
+      help: "Shown only when the live Instagram feed cannot be reached.",
     }),
   ],
   universal: ["hideOn"],
@@ -446,7 +610,8 @@ export const instagram = defineSection({
 export const contactCta = defineSection({
   type: "contact_cta",
   label: "Contact prompt",
-  description: "The closing “contact us” block. Its copy is edited once, under Site-wide.",
+  description: "The closing “contact us” block, the same on every page.",
   category: "Site",
   fields: [],
+  source: () => SOURCES.siteSettings,
 });

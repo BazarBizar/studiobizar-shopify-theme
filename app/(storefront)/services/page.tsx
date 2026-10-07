@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ButtonLink } from "@/components/ui/button";
 
 import { PageShell } from "@/components/layout/page-shell";
+import { BuilderPage, builderMetadata, publishedDocument } from "@/components/page-builder/builder-page";
 import { CaptionedRow } from "@/components/sections/captioned-row";
 import { ContactCta } from "@/components/sections/contact-cta";
 import { ItemList } from "@/components/sections/item-list";
@@ -11,18 +12,28 @@ import { getMetaobjects, getPage } from "@/lib/shopify";
 import { normalizeCaptionedImage, normalizeService, sortServices } from "@/lib/shopify/entities";
 import { metafieldMetaobjects, metafieldRichText, toMetafieldMap } from "@/lib/shopify/transforms";
 
-export const metadata: Metadata = {
+const METADATA: Metadata = {
   title: "Our Services",
   description:
     "Through our Design Program we deliver made-to-order pieces, private label collections and tailored solutions — from concept to completion.",
   alternates: { canonical: "/services" },
 };
 
+/** Shopify's SEO fields once the page builder version is live — see `builderMetadata`. */
+export async function generateMetadata(): Promise<Metadata> {
+  return builderMetadata(await getPage("our-services").catch(() => null), METADATA);
+}
+
 export default async function ServicesPage() {
   const [page, entries] = await Promise.all([
     getPage("our-services").catch(() => null),
     getMetaobjects("service", { first: 100 }).catch(() => ({ items: [] })),
   ]);
+
+  // MVP-2: the page builder version, once one is published. Until then — and if
+  // it is ever unreadable — the layout below, unchanged.
+  const doc = publishedDocument(page);
+  if (doc && page) return <BuilderPage doc={doc} title={page.title} />;
 
   const metafields = toMetafieldMap(page?.metafields);
   const intro = metafieldRichText(metafields, "intro_body");

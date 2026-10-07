@@ -207,6 +207,35 @@ export function sortLocations(locations: Location[]): Location[] {
 }
 
 /* -------------------------------------------------------------------------- *
+ * Contact channel
+ * -------------------------------------------------------------------------- */
+
+export type ContactChannel = {
+  handle: string;
+  label: string;
+  value: string;
+  linkType: Maybe<string>;
+  linkUrl: Maybe<string>;
+  sortOrder: Maybe<number>;
+};
+
+export function normalizeContactChannel(entry: ShopifyMetaobject): ContactChannel {
+  const fields = toFieldMap(entry.fields);
+  return {
+    handle: entry.handle,
+    label: fieldText(fields, "label") ?? "",
+    value: fieldText(fields, "value") ?? "",
+    linkType: fieldText(fields, "link_type"),
+    linkUrl: fieldText(fields, "link_url"),
+    sortOrder: fieldInt(fields, "sort_order"),
+  };
+}
+
+export function sortContactChannels(channels: ContactChannel[]): ContactChannel[] {
+  return [...channels].sort((a, b) => (a.sortOrder ?? 99) - (b.sortOrder ?? 99));
+}
+
+/* -------------------------------------------------------------------------- *
  * Service
  * -------------------------------------------------------------------------- */
 

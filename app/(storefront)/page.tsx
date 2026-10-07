@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 
 import { PageShell } from "@/components/layout/page-shell";
-import { ProductCard } from "@/components/product/product-card";
+import { BuilderPage, builderMetadata, publishedDocument } from "@/components/page-builder/builder-page";
+import { ProductRail } from "@/components/product/product-rail";
 import { CaptionedRow } from "@/components/sections/captioned-row";
 import { CollectionCarousel } from "@/components/sections/collection-carousel";
 import { ContactCta } from "@/components/sections/contact-cta";
@@ -10,9 +11,6 @@ import { HeroSlider } from "@/components/sections/hero-slider";
 import { InstagramRow } from "@/components/sections/instagram-row";
 import { IntroBlock, IntroBody } from "@/components/sections/intro-block";
 import { ProjectCards } from "@/components/sections/project-cards";
-import { RowHeading } from "@/components/sections/row-heading";
-import { Carousel } from "@/components/ui/carousel";
-import { Container } from "@/components/ui/container";
 import { getInstagramPosts } from "@/lib/instagram/behold";
 import {
   METAOBJECT_TYPES,
@@ -33,7 +31,7 @@ import {
   toMetafieldMap,
 } from "@/lib/shopify/transforms";
 
-export const metadata: Metadata = {
+const METADATA: Metadata = {
   title: "Studio Bizar — Designed for life, inspired by the world",
   description:
     "Furniture, lighting and objects made by hand in Bali and Java, for interiors that are meant to last.",
@@ -43,8 +41,19 @@ export const metadata: Metadata = {
 /** Every carousel row on this page shows at most twelve. */
 const ROW_LIMIT = 12;
 
+/** Shopify's SEO fields once the page builder version is live — see `builderMetadata`. */
+export async function generateMetadata(): Promise<Metadata> {
+  return builderMetadata(await getPage("home").catch(() => null), METADATA);
+}
+
 export default async function HomePage() {
   const page = await getPage("home").catch(() => null);
+
+  // MVP-2: the page builder version, once one is published. Until then — and if
+  // it is ever unreadable — the layout below, unchanged.
+  const doc = publishedDocument(page);
+  if (doc && page) return <BuilderPage doc={doc} title={page.title} />;
+
   const metafields = toMetafieldMap(page?.metafields);
 
   const heroSlides = metafieldMetaobjects(metafields, "hero_slides").map(
@@ -134,33 +143,19 @@ export default async function HomePage() {
         viewAllHref="/collections"
       />
 
-      {newIn.length > 0 && (
-        <Container className="pb-section">
-          <RowHeading
-            title="New In"
-            href={newInHandle ? `/collections/${newInHandle}` : "/shop"}
-          />
-          <Carousel ariaLabel="New In">
-            {newIn.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </Carousel>
-        </Container>
-      )}
+      <ProductRail
+        title="New In"
+        products={newIn}
+        viewAllHref={newInHandle ? `/collections/${newInHandle}` : "/shop"}
+        viewAllPlacement="heading"
+      />
 
-      {monthly.length > 0 && (
-        <Container className="pb-section">
-          <RowHeading
-            title="Monthly Selection"
-            href={monthlyHandle ? `/collections/${monthlyHandle}` : "/shop"}
-          />
-          <Carousel ariaLabel="Monthly Selection">
-            {monthly.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </Carousel>
-        </Container>
-      )}
+      <ProductRail
+        title="Monthly Selection"
+        products={monthly}
+        viewAllHref={monthlyHandle ? `/collections/${monthlyHandle}` : "/shop"}
+        viewAllPlacement="heading"
+      />
 
       {storyImage && (
         <FullBleedImage image={storyImage} alt={storyImage.altText ?? "Studio Bizar"} />

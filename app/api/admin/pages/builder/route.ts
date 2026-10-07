@@ -5,6 +5,7 @@ import { fail, failure, guard, readJson, validate } from "@/lib/admin/api";
 import { audit } from "@/lib/admin/audit";
 import {
   BuilderError,
+  convertToBuilder,
   discardDraft,
   publish,
   rollback,
@@ -21,10 +22,10 @@ import { documentContentSchema, MAX_DOCUMENT_BYTES } from "@/lib/page-builder/do
  * (`lib/page-builder/document.ts`) — unknown section types, unknown settings,
  * unsafe links and off-CDN images are all refused here, whatever the editor sent.
  *
- * Only publish and rollback drop the storefront cache: a draft save changes
- * nothing a visitor can see, so it has no business rebuilding public pages.
+ * Only publish drops the storefront cache: a draft save, a discard and loading a
+ * previous version all change the draft alone, which no visitor can see.
  *
- * They drop it TWICE: at once, and again from `after()` once the Storefront API
+ * It drops it TWICE: at once, and again from `after()` once the Storefront API
  * is serving the new version — see `waitForStorefront` for why the first drop
  * alone can leave the old page cached for an hour. The response does not wait
  * for that; the operator is told the page is live within about half a minute.
@@ -54,6 +55,8 @@ const schema = z.discriminatedUnion("operation", [
   z.strictObject({ operation: z.literal("builderPublish"), id, baseRevision }),
   z.strictObject({ operation: z.literal("builderDiscard"), id, baseRevision }),
   z.strictObject({ operation: z.literal("builderRollback"), id, baseRevision }),
+  // MVP-2: a hand-built page's first draft, made from its current content.
+  z.strictObject({ operation: z.literal("builderConvert"), id }),
 ]);
 
 const ACTIONS = {
@@ -61,6 +64,7 @@ const ACTIONS = {
   builderPublish: "page.builder.publish",
   builderDiscard: "page.builder.discard",
   builderRollback: "page.builder.rollback",
+  builderConvert: "page.builder.convert",
 } as const;
 
 export async function POST(request: Request) {
@@ -109,13 +113,14 @@ export async function POST(request: Request) {
       case "builderDiscard":
         result = await discardDraft(input.id, input.baseRevision, staff.email);
         break;
-      case "builderRollback": {
-        const restored = await rollback(input.id, input.baseRevision, staff.email);
-        const tags = await revalidateForType("page", { settle: false });
-        revalidateWhenLive(restored.handle, restored.publishedAt, tags);
-        result = restored;
+      case "builderConvert":
+        // A draft only — nothing a visitor sees changes, so nothing is revalidated.
+        result = await convertToBuilder(input.id, staff.email);
         break;
-      }
+      case "builderRollback":
+        // Into the draft only — nothing a visitor sees changes, so nothing is revalidated.
+        result = await rollback(input.id, input.baseRevision, staff.email);
+        break;
     }
 
     audit({ action, actor: staff.email, outcome: "ok", type: "page", entryId: input.id, ip });

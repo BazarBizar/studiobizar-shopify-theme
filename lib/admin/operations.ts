@@ -1208,6 +1208,13 @@ ${ENTRY_FIELDS}
           templateSuffix
           isPublished
           updatedAt
+          bodySummary
+          seoTitle: metafield(namespace: "global", key: "title_tag") {
+            value
+          }
+          seoDescription: metafield(namespace: "global", key: "description_tag") {
+            value
+          }
           metafields(first: 50, namespace: "custom") {
             nodes {
               id
@@ -1246,6 +1253,39 @@ ${ENTRY_FIELDS}
             field
             message
             code
+          }
+        }
+      }
+    `,
+  },
+
+  /**
+   * Every page with its page builder documents, for the Page builder list — the
+   * draft and the live copy, so the list can say which pages have changes waiting
+   * to be published without opening each one. Pages without a document return
+   * nulls; the documents are small (tens of kilobytes at most).
+   */
+  pagesBuilderStatus: {
+    kind: "read",
+    document: `
+      query AdminPagesBuilderStatus($first: Int!, $after: String) {
+        pages(first: $first, after: $after, sortKey: TITLE) {
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+          nodes {
+            id
+            title
+            handle
+            isPublished
+            updatedAt
+            draft: metafield(namespace: "custom", key: "sections_draft") {
+              value
+            }
+            live: metafield(namespace: "custom", key: "sections") {
+              value
+            }
           }
         }
       }

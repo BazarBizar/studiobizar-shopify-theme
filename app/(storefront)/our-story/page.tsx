@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { PageShell } from "@/components/layout/page-shell";
+import { BuilderPage, builderMetadata, publishedDocument } from "@/components/page-builder/builder-page";
 import { CaptionedRow } from "@/components/sections/captioned-row";
 import { ContactCta } from "@/components/sections/contact-cta";
 import { Container } from "@/components/ui/container";
@@ -9,15 +10,26 @@ import { getPage } from "@/lib/shopify";
 import { normalizeCaptionedImage } from "@/lib/shopify/entities";
 import { metafieldMetaobjects, metafieldRichText, toMetafieldMap } from "@/lib/shopify/transforms";
 
-export const metadata: Metadata = {
+const METADATA: Metadata = {
   title: "Our Story",
   description:
     "Studio Bizar began with a container of teak and the makers who could still do better. Two decades on, the same relationships run the workshop.",
   alternates: { canonical: "/our-story" },
 };
 
+/** Shopify's SEO fields once the page builder version is live — see `builderMetadata`. */
+export async function generateMetadata(): Promise<Metadata> {
+  return builderMetadata(await getPage("our-story").catch(() => null), METADATA);
+}
+
 export default async function OurStoryPage() {
   const page = await getPage("our-story").catch(() => null);
+
+  // MVP-2: the page builder version, once one is published. Until then — and if
+  // it is ever unreadable — the layout below, unchanged.
+  const doc = publishedDocument(page);
+  if (doc && page) return <BuilderPage doc={doc} title={page.title} />;
+
   const metafields = toMetafieldMap(page?.metafields);
 
   const blockOne = metafieldRichText(metafields, "story_block_1");

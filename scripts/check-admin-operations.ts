@@ -175,6 +175,7 @@ async function main() {
   });
 
   await run("pages", { first: 3, after: null });
+  await run("pagesBuilderStatus", { first: 3, after: null });
   /**
    * Page id 0, on the same assumption products and collections rely on: Shopify
    * never issues it, so the document is parsed and validated while resolving

@@ -36,12 +36,14 @@ export const MAX_DOCUMENT_BYTES = 200 * 1024;
 export const PAGE_SURFACES = ["light", "dark", "olive", "blue", "mocha", "black"] as const;
 export type PageSurface = (typeof PAGE_SURFACES)[number];
 
+/**
+ * How the page is drawn around its sections — the ground and the footer's. The
+ * page's SEO is NOT here: it is a property of the Shopify page, edited on the
+ * Pages screen with the rest of the page's settings.
+ */
 export type PageSettings = {
   surface: PageSurface;
   footerSurface: PageSurface;
-  /** Written to Shopify's own SEO fields on publish, so a draft title never goes live early. */
-  seoTitle: string;
-  seoDescription: string;
 };
 
 export type SectionInstance<T extends SectionType = SectionType> = {
@@ -70,8 +72,6 @@ export type DocumentContent = Pick<PageDocument, "page" | "sections">;
 export const DEFAULT_PAGE_SETTINGS: PageSettings = {
   surface: "light",
   footerSurface: "olive",
-  seoTitle: "",
-  seoDescription: "",
 };
 
 const EMPTY_META: DocumentMeta = {
@@ -118,8 +118,6 @@ export function duplicateSection(section: SectionInstance): SectionInstance {
 const pageSettingsSchema = z.strictObject({
   surface: z.enum(PAGE_SURFACES),
   footerSurface: z.enum(PAGE_SURFACES),
-  seoTitle: z.string().max(70),
-  seoDescription: z.string().max(320),
 });
 
 const sectionSchema = z.discriminatedUnion(
@@ -167,8 +165,6 @@ export type ParsedDocument =
 const lenientPageSettings = z.object({
   surface: z.enum(PAGE_SURFACES).catch(DEFAULT_PAGE_SETTINGS.surface),
   footerSurface: z.enum(PAGE_SURFACES).catch(DEFAULT_PAGE_SETTINGS.footerSurface),
-  seoTitle: z.string().max(70).catch(""),
-  seoDescription: z.string().max(320).catch(""),
 });
 
 const lenientMeta = z.object({

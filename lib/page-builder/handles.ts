@@ -1,5 +1,7 @@
 import { DEDICATED_PAGE_HANDLES, LEGAL_HANDLES } from "@/lib/routes";
 
+import { pageMigration } from "./migrations";
+
 /**
  * Which handles a page builder page may use.
  *
@@ -94,6 +96,16 @@ export function isReservedHandle(handle: string): boolean {
 
 export function isBuilderHandle(handle: string): boolean {
   return builderHandleProblem(handle) === null;
+}
+
+/**
+ * Whether the builder may EDIT this page: a builder page, or a hand-built page
+ * that has a migration (`lib/page-builder/migrations.ts`) and so renders the
+ * published document at its own route. Only `isBuilderHandle` pages render at
+ * `/<handle>` or can be deleted — a migrated page keeps its address and cannot be.
+ */
+export function isBuilderEditable(handle: string): boolean {
+  return isBuilderHandle(handle) || pageMigration(handle) !== null;
 }
 
 /** Title → a handle suggestion. The operator can still edit it. */
