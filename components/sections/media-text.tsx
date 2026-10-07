@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { ButtonLink } from "@/components/ui/button";
+import { ButtonLink, type ButtonVariant } from "@/components/ui/button";
 
 import type { Surface } from "@/components/layout/page-shell";
 import { cdnImage } from "@/lib/shopify/transforms";
@@ -17,6 +17,27 @@ const PADDING = {
   wide: "w-full px-6 sm:px-16 lg:px-[13.1rem]",
 } as const;
 
+/** The builder's choices. Each one's first value is the band as it was drawn before them. */
+const RATIO = {
+  portrait: "aspect-[2/3]",
+  square: "aspect-square",
+  landscape: "aspect-[4/3]",
+} as const;
+
+const COLUMNS = {
+  half: "lg:grid-cols-2",
+  narrow: "lg:grid-cols-[2fr_3fr]",
+  wide: "lg:grid-cols-[3fr_2fr]",
+} as const;
+
+const RIGHT_COLUMNS = {
+  half: "lg:grid-cols-2",
+  narrow: "lg:grid-cols-[3fr_2fr]",
+  wide: "lg:grid-cols-[2fr_3fr]",
+} as const;
+
+const ITEMS = { center: "items-center", top: "items-start", bottom: "items-end" } as const;
+
 /**
  * A tall image beside a column of copy. Shop Detail alternates it — The Idea
  * has the image left, The Designer has it right — and Our Story and Collections
@@ -30,6 +51,11 @@ export function MediaText({
   link,
   surface,
   padding = "normal",
+  eyebrow,
+  buttonVariant = "outline",
+  ratio = "portrait",
+  imageWidth = "half",
+  verticalAlign = "center",
 }: {
   title: string;
   html?: string;
@@ -41,17 +67,33 @@ export function MediaText({
   surface?: Surface;
   /** `wide` insets further than the page's own gutter — see `The Idea` band. */
   padding?: keyof typeof PADDING;
+  /** A small label above the heading. */
+  eyebrow?: string;
+  buttonVariant?: ButtonVariant;
+  /** `adapt` keeps the photograph's own proportions. */
+  ratio?: keyof typeof RATIO | "adapt";
+  /** The image column's share of the row on desktop. */
+  imageWidth?: keyof typeof COLUMNS;
+  verticalAlign?: keyof typeof ITEMS;
 }) {
+  const adapt = ratio === "adapt" && image?.width && image.height;
   const content = (
     <div className={cn("py-section", PADDING[padding])}>
       <div
         className={cn(
-          "grid items-center gap-10 lg:grid-cols-2 lg:gap-20",
+          "grid",
+          ITEMS[verticalAlign],
+          "gap-10",
+          (align === "right" ? RIGHT_COLUMNS : COLUMNS)[imageWidth],
+          "lg:gap-20",
           align === "right" && "lg:[&>figure]:order-2",
         )}
       >
         {image && (
-          <figure className="relative aspect-[2/3] w-full overflow-hidden bg-foreground/5">
+          <figure
+            className={cn("relative", !adapt && RATIO[ratio === "adapt" ? "portrait" : ratio], "w-full overflow-hidden bg-foreground/5")}
+            style={adapt ? { aspectRatio: `${image.width} / ${image.height}` } : undefined}
+          >
             <Image
               src={cdnImage(image.url)}
               alt={image.altText ?? ""}
@@ -63,12 +105,13 @@ export function MediaText({
         )}
 
         <div className="max-w-[34rem]">
+          {eyebrow && <p className="text-tertiary text-muted mb-3 uppercase">{eyebrow}</p>}
           <h2 className="text-h2">{title}</h2>
           {html && (
             <div className="sb-prose mt-6" dangerouslySetInnerHTML={{ __html: html }} />
           )}
           {link && (
-            <ButtonLink href={link.href} variant="outline" className="mt-8">
+            <ButtonLink href={link.href} variant={buttonVariant} external={/^https?:\/\//i.test(link.href)} className="mt-8">
               {link.label}
             </ButtonLink>
           )}

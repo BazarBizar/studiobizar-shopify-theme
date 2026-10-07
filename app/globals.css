@@ -768,3 +768,21 @@
     cursor: pointer;
   }
 }
+
+/* =============================================================================
+   PAGE BUILDER — Scrolling text section
+   ========================================================================== */
+/* The strip is drawn twice; moving it by half its width loops without a seam.
+   The reduced-motion rule above ends it after one 0.01ms run, at rest. */
+@keyframes sb-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@utility sb-marquee {
+  animation: sb-marquee var(--sb-marquee-duration, 45s) linear infinite;
+}

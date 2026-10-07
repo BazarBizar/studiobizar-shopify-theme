@@ -57,7 +57,7 @@ export default async function PreviewPage({ params, searchParams }: PageProps<"/
   return (
     <Providers>
       <PreviewBridge />
-      <BuilderPage doc={doc} title={state.page.title} />
+      <BuilderPage doc={doc} title={state.page.title} preview />
     </Providers>
   );
 }

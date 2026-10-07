@@ -1,8 +1,12 @@
 import "server-only";
 
+import type { Metadata } from "next";
+
 import { PageShell } from "@/components/layout/page-shell";
 import { Container } from "@/components/ui/container";
-import type { PageDocument } from "@/lib/page-builder/document";
+import { BUILDER_METAFIELDS, parsePageDocument, type PageDocument } from "@/lib/page-builder/document";
+import type { Maybe, ShopifyPage } from "@/lib/shopify/types";
+import { toMetafieldMap } from "@/lib/shopify/transforms";
 
 import { SectionRenderer } from "./section-renderer";
 
@@ -15,13 +19,13 @@ import { SectionRenderer } from "./section-renderer";
  * search engines only — the same arrangement the landing page uses under its
  * image-only hero.
  */
-export function BuilderPage({ doc, title }: { doc: PageDocument; title: string }) {
+export function BuilderPage({ doc, title, preview = false }: { doc: PageDocument; title: string; preview?: boolean }) {
   const hasHeading = doc.sections.some((section) => section.visible && section.type === "page_heading");
 
   return (
     <PageShell surface={doc.page.surface} footerSurface={doc.page.footerSurface}>
       {!hasHeading && <h1 className="sr-only">{title}</h1>}
-      <SectionRenderer doc={doc} context={{ pageTitle: title }} />
+      <SectionRenderer doc={doc} context={{ pageTitle: title, preview }} />
     </PageShell>
   );
 }
@@ -40,4 +44,43 @@ export function BuilderFallback({ title, body }: { title: string; body: string }
       </Container>
     </PageShell>
   );
+}
+
+/* -------------------------------------------------------------------------- *
+ * MVP-2: hand-built routes that opt in
+ * -------------------------------------------------------------------------- */
+
+/**
+ * The page's PUBLISHED builder document, or null — for a hand-built route that
+ * has a migration (`lib/page-builder/migrations.ts`):
+ *
+ *   const doc = publishedDocument(page);
+ *   if (doc && page) return <BuilderPage doc={doc} title={page.title} />;
+ *   …the route's own JSX, unchanged…
+ *
+ * Null when there is no document, and ALSO when it cannot be read, so a damaged
+ * metafield sends the route back to its own JSX rather than to a blank page. A
+ * draft is never returned: the storefront cannot read one.
+ */
+export function publishedDocument(page: Maybe<ShopifyPage>): PageDocument | null {
+  if (!page) return null;
+  const parsed = parsePageDocument(toMetafieldMap(page.metafields)[BUILDER_METAFIELDS.published]?.value);
+  if (!parsed.ok && parsed.reason === "invalid") {
+    console.error(`[page-builder] ${page.handle}: the published document is not readable — rendering the page's own layout.`);
+  }
+  return parsed.ok ? parsed.doc : null;
+}
+
+/**
+ * Metadata for an opted-in route: Shopify's own SEO fields while the builder
+ * version is live — that is what the builder publishes them to — and the route's
+ * hand-written metadata otherwise, or wherever a field is left empty.
+ */
+export function builderMetadata(page: Maybe<ShopifyPage>, fallback: Metadata): Metadata {
+  if (!page || !publishedDocument(page)) return fallback;
+  return {
+    ...fallback,
+    title: page.seo.title ?? fallback.title,
+    description: page.seo.description ?? fallback.description,
+  };
 }

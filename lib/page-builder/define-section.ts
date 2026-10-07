@@ -54,16 +54,21 @@ export const RHYTHM_OPTIONS = [
   { value: "xl", label: "Extra large" },
 ] as const;
 
+/**
+ * Stored as which device the section is HIDDEN on; offered as where it SHOWS — the
+ * question an editor actually asks. Named so it cannot be mistaken for the eye
+ * button, which hides the section everywhere.
+ */
 export const HIDE_ON_OPTIONS = [
-  { value: "none", label: "Show everywhere" },
-  { value: "mobile", label: "Hide on mobile" },
-  { value: "desktop", label: "Hide on desktop" },
+  { value: "none", label: "All devices" },
+  { value: "mobile", label: "Desktop only" },
+  { value: "desktop", label: "Mobile only" },
 ] as const;
 
 const UNIVERSAL_FIELDS = [
   select("surface", "Background", SURFACE_OPTIONS, { group: "layout" }),
   select("rhythm", "Vertical spacing", RHYTHM_OPTIONS, { group: "layout" }),
-  select("hideOn", "Visibility", HIDE_ON_OPTIONS, { group: "layout" }),
+  select("hideOn", "Show on", HIDE_ON_OPTIONS, { group: "layout" }),
 ] as const;
 
 export type UniversalKey = (typeof UNIVERSAL_FIELDS)[number]["key"];
@@ -73,7 +78,15 @@ export type UniversalSettings = SettingsOf<typeof UNIVERSAL_FIELDS>;
  * The definition
  * -------------------------------------------------------------------------- */
 
-export type SectionCategory = "Intro" | "Text & media" | "Images" | "Catalogue" | "Site";
+export type SectionCategory =
+  | "Banners"
+  | "Intro"
+  | "Text & media"
+  | "Images"
+  | "Social proof"
+  | "Catalogue"
+  | "Layout"
+  | "Site";
 
 export type SectionDefinition<
   T extends string = string,
@@ -95,7 +108,18 @@ export type SectionDefinition<
   lenient: (input: unknown) => S;
   /** Required fields that are empty, by label. Empty array = ready to publish. */
   missing: (settings: S) => string[];
+  /** Kept for pages that already use it, but no longer offered in Add section. */
+  hidden: boolean;
+  /**
+   * Where the section's content comes from when it is not typed into the section
+   * itself — so the form can say "edit it there" instead of leaving the operator
+   * hunting for fields that are not here.
+   */
+  source: (settings: S) => ContentSource | null;
 };
+
+/** A screen in the panel that holds what a section shows. */
+export type ContentSource = { label: string; href: string };
 
 export function defineSection<
   const T extends string,
@@ -115,6 +139,8 @@ export function defineSection<
   universal?: readonly UniversalKey[];
   /** The settings key whose value labels the section in the list. */
   summaryKey?: F[number]["key"];
+  hidden?: boolean;
+  source?: (settings: SettingsOf<F> & UniversalSettings) => ContentSource | null;
 }): SectionDefinition<T, SettingsOf<F> & UniversalSettings> {
   type S = SettingsOf<F> & UniversalSettings;
 
@@ -169,5 +195,7 @@ export function defineSection<
     strict,
     lenient,
     missing,
+    hidden: definition.hidden ?? false,
+    source: definition.source ?? (() => null),
   };
 }

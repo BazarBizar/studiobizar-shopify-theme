@@ -1,12 +1,10 @@
 "use client";
 
-import { ArrowLeftIcon, CopyIcon, EyeIcon, EyeOffIcon, Trash2Icon } from "lucide-react";
+import { ArrowLeftIcon, ChevronRightIcon, CopyIcon, ExternalLinkIcon, EyeIcon, EyeOffIcon, Trash2Icon } from "lucide-react";
 
 import { Button } from "@/components/admin/ui/button";
-import { Input } from "@/components/admin/ui/input";
 import { Label } from "@/components/admin/ui/label";
 import { Separator } from "@/components/admin/ui/separator";
-import { Textarea } from "@/components/admin/ui/textarea";
 import { PAGE_SURFACES, type PageSettings, type SectionInstance } from "@/lib/page-builder/document";
 import { SURFACE_OPTIONS } from "@/lib/page-builder/define-section";
 import { isFieldActive, isFieldFilled, type FieldDef } from "@/lib/page-builder/fields";
@@ -64,6 +62,7 @@ function Field({
 
 export function SectionEditor({
   section,
+  previousType,
   collections,
   onBack,
   onChange,
@@ -72,6 +71,8 @@ export function SectionEditor({
   onRemove,
 }: {
   section: SectionInstance;
+  /** The type of the section above — whether this one can share the page heading's band. */
+  previousType: string | null;
   collections: CollectionOption[];
   onBack: () => void;
   onChange: (key: string, value: unknown) => void;
@@ -83,9 +84,23 @@ export function SectionEditor({
   if (!definition) return null;
 
   const settings = section.settings as Record<string, unknown>;
-  const active = definition.fields.filter((field) => isFieldActive(field, settings));
+
+  /**
+   * "Same band as the heading" only means anything directly under a Page heading,
+   * so that is the only place it is offered. When it is on, the section draws
+   * inside the heading's band and its own background and spacing do not apply —
+   * so those are not offered either, rather than offered and ignored.
+   */
+  const afterHeading = previousType === "page_heading";
+  const joined = afterHeading && settings.placement === "heading";
+  const offered = (field: { key: string }) =>
+    !(field.key === "placement" && !afterHeading) && !(joined && (field.key === "surface" || field.key === "rhythm"));
+
+  const active = definition.fields.filter((field) => isFieldActive(field, settings) && offered(field));
   const content = active.filter((field) => (field.group ?? "content") === "content");
   const layout = active.filter((field) => field.group === "layout");
+  const advanced = active.filter((field) => field.group === "advanced");
+  const source = definition.source(settings);
 
   return (
     <div className="flex h-full flex-col">
@@ -129,6 +144,17 @@ export function SectionEditor({
           </p>
         )}
 
+        {source && (
+          <p className="bg-muted/50 rounded-md px-3 py-2 text-xs">
+            Its content comes from{" "}
+            <a href={source.href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 font-medium underline underline-offset-2">
+              {source.label}
+              <ExternalLinkIcon className="size-3" />
+            </a>
+            . Edit it there — every page that shows it updates.
+          </p>
+        )}
+
         {content.length > 0 && (
           <div className="space-y-4">
             {content.map((field) => (
@@ -144,7 +170,7 @@ export function SectionEditor({
           </div>
         )}
 
-        {content.length === 0 && layout.length === 0 && (
+        {content.length === 0 && layout.length === 0 && advanced.length === 0 && !source && (
           <p className="text-muted-foreground text-xs">This section has nothing to set.</p>
         )}
 
@@ -163,8 +189,36 @@ export function SectionEditor({
                   onChange={onChange}
                 />
               ))}
+              {joined && (
+                <p className="text-muted-foreground text-xs">
+                  Shares the page heading’s band, so it takes the heading’s background and spacing.
+                </p>
+              )}
             </div>
           </>
+        )}
+
+        {/* The fine adjustments some pages need to match their design exactly —
+            folded away so the usual edit never meets them. */}
+        {advanced.length > 0 && (
+          <details className="group rounded-md border">
+            <summary className="flex cursor-pointer list-none items-center gap-1.5 px-3 py-2 text-xs font-medium [&::-webkit-details-marker]:hidden">
+              <ChevronRightIcon className="text-muted-foreground size-3.5 transition-transform group-open:rotate-90" />
+              Advanced
+            </summary>
+            <div className="space-y-4 border-t px-3 py-3">
+              {advanced.map((field) => (
+                <Field
+                  key={field.key}
+                  field={field}
+                  sectionId={section.id}
+                  settings={settings}
+                  collections={collections}
+                  onChange={onChange}
+                />
+              ))}
+            </div>
+          </details>
         )}
       </div>
     </div>
@@ -201,12 +255,10 @@ function SurfaceSelect({
 
 export function PageSettingsEditor({
   settings,
-  pageTitle,
   onBack,
   onChange,
 }: {
   settings: PageSettings;
-  pageTitle: string;
   onBack: () => void;
   onChange: (key: keyof PageSettings, value: string) => void;
 }) {
@@ -216,7 +268,7 @@ export function PageSettingsEditor({
         <Button type="button" variant="ghost" size="icon-sm" aria-label="Back to sections" onClick={onBack}>
           <ArrowLeftIcon />
         </Button>
-        <h2 className="text-sm font-medium">Page settings</h2>
+        <h2 className="text-sm font-medium">Page colours</h2>
       </div>
 
       <div className="flex-1 space-y-5 overflow-y-auto p-4">
@@ -238,39 +290,9 @@ export function PageSettingsEditor({
           />
         </div>
 
-        <Separator />
-
-        <div className="space-y-1.5">
-          <Label htmlFor="page-seo-title" className="text-xs">
-            Search title
-          </Label>
-          <Input
-            id="page-seo-title"
-            value={settings.seoTitle}
-            maxLength={70}
-            placeholder={pageTitle}
-            onChange={(event) => onChange("seoTitle", event.target.value)}
-          />
-          <p className="text-muted-foreground text-xs">
-            {settings.seoTitle.length}/70 — leave empty to use the page title.
-          </p>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="page-seo-description" className="text-xs">
-            Search description
-          </Label>
-          <Textarea
-            id="page-seo-description"
-            value={settings.seoDescription}
-            maxLength={320}
-            rows={4}
-            onChange={(event) => onChange("seoDescription", event.target.value)}
-          />
-          <p className="text-muted-foreground text-xs">
-            {settings.seoDescription.length}/320 — what search engines show under the title. Goes live on publish.
-          </p>
-        </div>
+        <p className="text-muted-foreground text-xs">
+          Title, address, visibility and search engine listing are page settings, on the Pages screen.
+        </p>
       </div>
     </div>
   );

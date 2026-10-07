@@ -2,23 +2,23 @@
 
 import {
   ArrowLeftIcon,
+  CopyPlusIcon,
   EllipsisVerticalIcon,
   ExternalLinkIcon,
   HistoryIcon,
   Loader2Icon,
   MonitorIcon,
   RotateCcwIcon,
+  Redo2Icon,
   SendIcon,
-  SettingsIcon,
   SmartphoneIcon,
-  Trash2Icon,
   TriangleAlertIcon,
+  Undo2Icon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
 
-import { AppLink } from "@/components/admin/app-link";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,22 +41,24 @@ import {
 import { PREVIEW_MESSAGE } from "@/components/page-builder/preview-bridge";
 import {
   builderActionRequest,
-  deletePageRequest,
+  draftRevisionRequest,
   RequestError,
   saveDraftRequest,
 } from "@/lib/admin/queries";
 import {
-  createSection,
   duplicateSection,
   publishProblems,
   type DocumentContent,
   type PublishProblem,
 } from "@/lib/page-builder/document";
-import type { SectionType } from "@/lib/page-builder/registry";
+import { sectionFromPreset, type SectionPreset } from "@/lib/page-builder/presets";
 import { cn } from "@/lib/utils/cn";
 
-import type { CollectionOption } from "./field-controls";
-import { builderReducer, insertionIndex } from "./reducer";
+import { PageTabs } from "@/components/admin/pages-table/page-tabs";
+
+import { DuplicatePageDialog } from "./create-page-dialog";
+import { EditorLookupsContext, type CollectionOption, type EditorLookups } from "./field-controls";
+import { historyReducer, initialHistory, insertionIndex } from "./reducer";
 import { PageSettingsEditor, SectionEditor } from "./section-editor";
 import { SectionList } from "./section-list";
 
@@ -76,11 +78,17 @@ import { SectionList } from "./section-list";
 
 type Panel = { kind: "list" } | { kind: "section"; id: string } | { kind: "page" };
 type SaveState = "idle" | "saving" | "error" | "conflict";
-type Busy = null | "publish" | "discard" | "rollback" | "delete";
-type Confirm = null | "discard" | "rollback" | "delete";
+type Busy = null | "publish" | "discard" | "rollback";
+type Confirm = null | "discard" | "rollback";
 
 export type PageBuilderProps = {
-  page: { id: string; param: string; title: string; handle: string; isPublished: boolean };
+  page: {
+    id: string;
+    param: string;
+    title: string;
+    handle: string;
+    isPublished: boolean;
+  };
   initial: {
     content: DocumentContent;
     revision: number;
@@ -91,16 +99,33 @@ export type PageBuilderProps = {
     publishedInvalid: boolean;
   };
   collections: CollectionOption[];
+  /** Link destinations and FAQ categories, for the form's pick-lists. */
+  lookups: EditorLookups;
   publicPath: string;
 };
 
 /** Quiet long enough to be a pause, short enough that the preview feels live. */
 const AUTOSAVE_MS = 1200;
 
-export function PageBuilder({ page, initial, collections, publicPath }: PageBuilderProps) {
+export function PageBuilder({ page, initial, collections, lookups, publicPath }: PageBuilderProps) {
   const router = useRouter();
 
-  const [content, dispatch] = React.useReducer(builderReducer, initial.content);
+  const [history, dispatch] = React.useReducer(historyReducer, initial.content, initialHistory);
+  const content = history.present;
+  const canUndo = history.past.length > 0;
+  const canRedo = history.future.length > 0;
+
+  /**
+   * Bumped by every undo and redo, and part of the section form's key. The rich
+   * text editor reads its value once, when it mounts — so after an undo the form
+   * is remounted from the restored document, or the editor would go on showing
+   * (and on the next keystroke, re-saving) the text that was just undone.
+   */
+  const [epoch, setEpoch] = React.useState(0);
+  const step = React.useCallback((kind: "undo" | "redo") => {
+    dispatch({ kind });
+    setEpoch((value) => value + 1);
+  }, []);
   const [panel, setPanel] = React.useState<Panel>({ kind: "list" });
   const [savedJson, setSavedJson] = React.useState(() => JSON.stringify(initial.content));
   const [saveState, setSaveState] = React.useState<SaveState>("idle");
@@ -113,6 +138,7 @@ export function PageBuilder({ page, initial, collections, publicPath }: PageBuil
   const [busy, setBusy] = React.useState<Busy>(null);
   const [confirm, setConfirm] = React.useState<Confirm>(null);
   const [viewport, setViewport] = React.useState<"desktop" | "mobile">("desktop");
+  const [duplicating, setDuplicating] = React.useState(false);
 
   const contentJson = React.useMemo(() => JSON.stringify(content), [content]);
   const dirty = contentJson !== savedJson;
@@ -127,9 +153,19 @@ export function PageBuilder({ page, initial, collections, publicPath }: PageBuil
     contentRef.current = content;
   }, [content]);
 
+
+
   const post = React.useCallback((message: Record<string, unknown>) => {
     iframeRef.current?.contentWindow?.postMessage(message, window.location.origin);
   }, []);
+
+  // What was last saved, and whether saving is blocked by a conflict — read by the
+  // leave paths below, which run outside render.
+  const savedJsonRef = React.useRef(savedJson);
+  const conflictRef = React.useRef(false);
+  React.useEffect(() => {
+    savedJsonRef.current = savedJson;
+  }, [savedJson]);
 
   /* ---- saving ---- */
 
@@ -144,6 +180,9 @@ export function PageBuilder({ page, initial, collections, publicPath }: PageBuil
       try {
         const result = await saveDraftRequest({ id: page.id, baseRevision: revisionRef.current, content: snapshot });
         revisionRef.current = result.revision;
+        // Set at once, not only through the effect below: a leave that follows this
+        // save must see it as saved, or the unmount would send it a second time.
+        savedJsonRef.current = json;
         setSavedJson(json);
         setHasUnpublished(result.hasUnpublishedChanges);
         setSaveState("idle");
@@ -167,6 +206,59 @@ export function PageBuilder({ page, initial, collections, publicPath }: PageBuil
     return ok;
   }, [page.id, post]);
 
+  React.useEffect(() => {
+    conflictRef.current = saveState === "conflict";
+  }, [saveState]);
+
+  /**
+   * Leaving the editor — the Settings tab, the back arrow — saves what is on
+   * screen first. Without this, an edit made in the last second before leaving
+   * died with the autosave timer when the editor unmounted. False means the save
+   * failed; the caller stays, and the banner says why.
+   */
+  const leave = React.useCallback(async (): Promise<boolean> => {
+    const unsaved = JSON.stringify(contentRef.current) !== savedJsonRef.current;
+    if (!unsaved && !inflightRef.current) return true;
+    if (conflictRef.current) return false;
+    const ok = await flush();
+    if (!ok) toast.error("Your latest changes are not saved yet", { description: "Stay on this page and try again." });
+    return ok;
+  }, [flush]);
+
+  /**
+   * And the way out no button covers — a sidebar link, a breadcrumb: if the
+   * editor unmounts with unsaved changes, send them anyway. The panel is a single
+   * page app, so the request completes after this component is gone.
+   */
+  React.useEffect(() => {
+    const content = contentRef;
+    const saved = savedJsonRef;
+    const conflict = conflictRef;
+    const revision = revisionRef;
+    return () => {
+      if (conflict.current || JSON.stringify(content.current) === saved.current) return;
+      void saveDraftRequest({ id: page.id, baseRevision: revision.current, content: content.current }).catch(() => undefined);
+    };
+  }, [page.id]);
+
+  /**
+   * Is this the version that is really there? Back and Forward restore the editor
+   * from the router cache, as it was rendered on the last visit — possibly before
+   * the saves made since. Ask once on open; if the page has moved on, reload it
+   * (the screen is keyed by revision, so that mounts a fresh editor).
+   */
+  React.useEffect(() => {
+    let cancelled = false;
+    draftRevisionRequest(page.id)
+      .then(({ revision }) => {
+        if (!cancelled && revision !== initial.revision) router.refresh();
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [page.id, initial.revision, router]);
+
   // Autosave: a pause after the last change. A conflict stops it — saving over
   // someone else's newer draft is exactly what the conflict is there to prevent.
   React.useEffect(() => {
@@ -181,6 +273,27 @@ export function PageBuilder({ page, initial, collections, publicPath }: PageBuil
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty, saveState]);
+
+  /**
+   * Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z (or Ctrl+Y) — except while typing in a field,
+   * where the browser's own undo for that field is what the operator means.
+   */
+  React.useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
+      const key = event.key.toLowerCase();
+      const redo = (key === "z" && event.shiftKey) || key === "y";
+      if (key !== "z" && !redo) return;
+
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      if (target?.closest("input, textarea, select, [contenteditable='true'], [role='textbox']")) return;
+
+      event.preventDefault();
+      step(redo ? "redo" : "undo");
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [step]);
 
   /* ---- preview ---- */
 
@@ -204,8 +317,8 @@ export function PageBuilder({ page, initial, collections, publicPath }: PageBuil
 
   /* ---- section actions ---- */
 
-  const addSection = (type: SectionType) => {
-    const section = createSection(type);
+  const addSection = (preset: SectionPreset) => {
+    const section = sectionFromPreset(preset);
     dispatch({ kind: "insert", section, index: insertionIndex(content, selectedId) });
     setPanel({ kind: "section", id: section.id });
   };
@@ -256,12 +369,20 @@ export function PageBuilder({ page, initial, collections, publicPath }: PageBuil
       revisionRef.current = result.revision;
 
       setCanRollback(hasPublished);
+      // Only a FIRST publish makes a page visible — the server does the same. After
+      // that, visibility is the page's Settings, and publishing content leaves it be.
+      if (!hasPublished) setIsLive(true);
       setHasPublished(true);
       setHasUnpublished(false);
-      setIsLive(true);
       // Shopify takes up to about half a minute to serve a change. Saying so stops
-      // someone reloading at once and concluding the publish failed.
-      toast.success("Published", { description: `${publicPath} shows it within about half a minute.` });
+      // someone reloading at once and concluding the publish failed. A page published
+      // for the first time is in no menu yet — say that too, with the way there.
+      toast.success("Published", {
+        description: hasPublished
+          ? `${publicPath} shows it within about half a minute.`
+          : `${publicPath} is live within about half a minute. Add it to the site’s navigation under Menus.`,
+        ...(hasPublished ? {} : { action: { label: "Menus", onClick: () => router.push("/admin/menus") } }),
+      });
     } catch (error) {
       if (error instanceof RequestError && Array.isArray(error.detail.problems)) {
         const found = error.detail.problems as PublishProblem[];
@@ -285,19 +406,12 @@ export function PageBuilder({ page, initial, collections, publicPath }: PageBuil
     setBusy(action);
 
     try {
-      if (action === "delete") {
-        await deletePageRequest(page.id);
-        toast.success("Page deleted");
-        router.push("/admin/pages");
-        return;
-      }
-
       await builderActionRequest(action === "discard" ? "builderDiscard" : "builderRollback", {
         id: page.id,
         baseRevision: revisionRef.current,
       });
-      toast.success(action === "discard" ? "Changes discarded" : "Previous version restored", {
-        description: action === "rollback" ? "Visitors see it within about half a minute." : undefined,
+      toast.success(action === "discard" ? "Changes discarded" : "Previous version loaded", {
+        description: action === "rollback" ? "It is your draft now. Check it, then publish to put it back on the site." : undefined,
       });
       router.refresh();
     } catch (error) {
@@ -328,268 +442,297 @@ export function PageBuilder({ page, initial, collections, publicPath }: PageBuil
   const canPublish = busy === null && saveState !== "conflict" && (dirty || hasUnpublished || !hasPublished);
 
   return (
-    <div className="-m-4 flex h-[calc(100svh-3.5rem)] flex-col md:-m-6">
-      {/* ---------------- top bar ---------------- */}
-      <div className="bg-background flex flex-wrap items-center gap-2 border-b px-3 py-2">
-        <Button asChild variant="ghost" size="icon-sm" aria-label="Back to page">
-          <AppLink href={`/admin/pages/${page.param}`}>
-            <ArrowLeftIcon />
-          </AppLink>
-        </Button>
-
-        <div className="min-w-0">
-          <h1 className="truncate text-sm font-semibold">{page.title}</h1>
-          <p className="text-muted-foreground truncate font-mono text-[11px]">{publicPath}</p>
-        </div>
-
-        <div className="flex items-center gap-1.5">
-          {isLive ? <Badge variant="secondary">Live</Badge> : <Badge variant="outline">Hidden</Badge>}
-          {!hasPublished ? (
-            <Badge variant="outline">Never published</Badge>
-          ) : hasUnpublished || dirty ? (
-            <Badge variant="outline">Unpublished changes</Badge>
-          ) : null}
-        </div>
-
-        <div className="ms-auto flex items-center gap-1.5">
-          <span
-            className={cn(
-              "text-muted-foreground hidden items-center gap-1 text-xs sm:inline-flex",
-              (saveState === "error" || saveState === "conflict") && "text-destructive",
-            )}
-            aria-live="polite"
-            title={saveError ?? undefined}
+    <EditorLookupsContext.Provider value={lookups}>
+      <div className="-m-4 flex h-[calc(100svh-3.5rem)] flex-col md:-m-6">
+        {/* ---------------- top bar ---------------- */}
+        <div className="bg-background flex flex-wrap items-center gap-2 border-b px-3 py-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Back to pages"
+            onClick={async () => {
+              if (await leave()) router.push("/admin/pages");
+            }}
           >
-            {saveState === "saving" && <Loader2Icon className="size-3 animate-spin" />}
-            {status}
-          </span>
+            <ArrowLeftIcon />
+          </Button>
 
-          <div className="bg-muted hidden rounded-md p-0.5 lg:flex" role="group" aria-label="Preview width">
-            <Button
-              type="button"
-              variant={viewport === "desktop" ? "outline" : "ghost"}
-              size="icon-xs"
-              aria-label="Desktop preview"
-              aria-pressed={viewport === "desktop"}
-              onClick={() => setViewport("desktop")}
-            >
-              <MonitorIcon />
-            </Button>
-            <Button
-              type="button"
-              variant={viewport === "mobile" ? "outline" : "ghost"}
-              size="icon-xs"
-              aria-label="Mobile preview"
-              aria-pressed={viewport === "mobile"}
-              onClick={() => setViewport("mobile")}
-            >
-              <SmartphoneIcon />
-            </Button>
+          <div className="min-w-0">
+            <h1 className="truncate text-sm font-semibold">{page.title}</h1>
+            <p className="text-muted-foreground truncate font-mono text-[11px]">{publicPath}</p>
           </div>
 
-          <Button asChild variant="outline" size="sm">
-            <a href={previewSrc} target="_blank" rel="noopener noreferrer">
-              <ExternalLinkIcon />
-              Preview
-            </a>
-          </Button>
+          <PageTabs param={page.param} active="content" beforeLeave={leave} />
 
-          <Button type="button" size="sm" disabled={!canPublish} onClick={() => void publishNow()}>
-            {busy === "publish" ? <Loader2Icon className="animate-spin" /> : <SendIcon />}
-            Publish
-          </Button>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button type="button" variant="ghost" size="icon-sm" aria-label="More page actions">
-                <EllipsisVerticalIcon />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-60">
-              <DropdownMenuItem asChild>
-                <AppLink href={`/admin/pages/${page.param}`}>
-                  <SettingsIcon />
-                  Title, handle and visibility
-                </AppLink>
-              </DropdownMenuItem>
-              {isLive && hasPublished && (
-                <DropdownMenuItem asChild>
-                  <a href={publicPath} target="_blank" rel="noopener noreferrer">
-                    <ExternalLinkIcon />
-                    View live page
-                  </a>
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                disabled={!hasPublished || (!hasUnpublished && !dirty) || busy !== null}
-                onSelect={() => setConfirm("discard")}
-              >
-                <RotateCcwIcon />
-                Discard unpublished changes
-              </DropdownMenuItem>
-              <DropdownMenuItem disabled={!canRollback || busy !== null} onSelect={() => setConfirm("rollback")}>
-                <HistoryIcon />
-                Restore previous version
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" disabled={busy !== null} onSelect={() => setConfirm("delete")}>
-                <Trash2Icon />
-                Delete page
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-
-      {/* ---------------- notices ---------------- */}
-      {(saveState === "conflict" || saveState === "error" || initial.dropped > 0 || initial.publishedInvalid) && (
-        <div className="space-y-1 border-b px-3 py-2 text-xs">
-          {saveState === "conflict" && (
-            <p className="text-destructive flex items-center gap-2">
-              <TriangleAlertIcon className="size-3.5 shrink-0" />
-              This page was saved somewhere else since you opened it. Your last changes were not saved.
-              <Button type="button" size="xs" variant="outline" onClick={() => router.refresh()}>
-                Load latest
-              </Button>
-            </p>
-          )}
-          {saveState === "error" && (
-            <p className="text-destructive flex items-center gap-2">
-              <TriangleAlertIcon className="size-3.5 shrink-0" />
-              {saveError ?? "Could not save."}
-              <Button type="button" size="xs" variant="outline" onClick={() => void flush()}>
-                Try again
-              </Button>
-            </p>
-          )}
-          {initial.dropped > 0 && (
-            <p className="flex items-center gap-2 text-amber-700 dark:text-amber-500">
-              <TriangleAlertIcon className="size-3.5 shrink-0" />
-              {initial.dropped} section{initial.dropped === 1 ? "" : "s"} in the saved draft could not be read and
-              {initial.dropped === 1 ? " was" : " were"} left out. Saving will remove {initial.dropped === 1 ? "it" : "them"} for good.
-            </p>
-          )}
-          {initial.publishedInvalid && (
-            <p className="flex items-center gap-2 text-amber-700 dark:text-amber-500">
-              <TriangleAlertIcon className="size-3.5 shrink-0" />
-              The live version of this page cannot be read, so visitors see its plain title and body. Publishing fixes it.
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* ---------------- editor + preview ---------------- */}
-      <div className="grid min-h-0 flex-1 lg:grid-cols-[22rem_1fr]">
-        <aside className="bg-background flex min-h-0 flex-col border-r">
-          {problems.length > 0 && (
-            <div className="border-b px-3 py-2 text-xs">
-              <p className="font-medium text-amber-700 dark:text-amber-500">Not published — these need content first:</p>
-              <ul className="mt-1 space-y-0.5">
-                {problems.map((problem) => (
-                  <li key={problem.sectionId}>
-                    <button
-                      type="button"
-                      className="underline-offset-2 hover:underline"
-                      onClick={() => setPanel({ kind: "section", id: problem.sectionId })}
-                    >
-                      {problem.section}: {problem.fields.join(", ")}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <div className="min-h-0 flex-1">
-            {panel.kind === "page" ? (
-              <PageSettingsEditor
-                settings={content.page}
-                pageTitle={page.title}
-                onBack={() => setPanel({ kind: "list" })}
-                onChange={(key, value) => dispatch({ kind: "page", key, value })}
-              />
-            ) : selectedSection ? (
-              <SectionEditor
-                // Keyed so the rich text editor and pickers start fresh per section.
-                key={selectedSection.id}
-                section={selectedSection}
-                collections={collections}
-                onBack={() => setPanel({ kind: "list" })}
-                onChange={(key, value) => dispatch({ kind: "setting", id: selectedSection.id, key, value })}
-                onToggle={() => dispatch({ kind: "toggle", id: selectedSection.id })}
-                onDuplicate={() => duplicate(selectedSection.id)}
-                onRemove={() => remove(selectedSection.id)}
-              />
+          {/* Two questions, two badges: can visitors reach the page (set in Settings),
+              and is the content they see the latest. */}
+          <div className="flex items-center gap-1.5">
+            {isLive ? <Badge variant="secondary">Visible</Badge> : <Badge variant="outline">Hidden</Badge>}
+            {!hasPublished ? (
+              <Badge variant="outline">Draft</Badge>
+            ) : hasUnpublished || dirty ? (
+              <Badge variant="outline">Unpublished changes</Badge>
             ) : (
-              <SectionList
-                sections={content.sections}
-                selectedId={selectedId}
-                incompleteIds={incompleteIds}
-                onAdd={addSection}
-                onOpenPageSettings={() => setPanel({ kind: "page" })}
-                handlers={{
-                  onSelect: (id) => setPanel({ kind: "section", id }),
-                  onMove: (from, to) => dispatch({ kind: "move", from, to }),
-                  onToggle: (id) => dispatch({ kind: "toggle", id }),
-                  onDuplicate: duplicate,
-                  onRemove: remove,
-                }}
-              />
+              <Badge variant="secondary">Published</Badge>
             )}
           </div>
-        </aside>
 
-        {/* The preview is the real page. Below `lg` there is no room for it beside
-            the editor; the Preview button opens it in a tab instead. */}
-        <div className="bg-muted/40 hidden min-h-0 lg:flex lg:justify-center">
-          <iframe
-            ref={iframeRef}
-            src={previewSrc}
-            title={`Preview of ${page.title}`}
-            onLoad={() => post({ type: PREVIEW_MESSAGE.select, id: selectedId })}
-            className={cn(
-              "h-full border-0 bg-white transition-[width] duration-200",
-              viewport === "mobile" ? "my-4 h-[calc(100%-2rem)] w-[390px] rounded-lg border shadow-sm" : "w-full",
-            )}
-          />
-        </div>
-      </div>
-
-      {/* ---------------- confirmations ---------------- */}
-      <AlertDialog open={confirm !== null} onOpenChange={(open) => !open && setConfirm(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {confirm === "delete"
-                ? "Delete this page?"
-                : confirm === "rollback"
-                  ? "Restore the previous version?"
-                  : "Discard unpublished changes?"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirm === "delete"
-                ? `“${page.title}” and ${publicPath} will be gone. This cannot be undone.`
-                : confirm === "rollback"
-                  ? "The version published before the current one goes live again straight away, and becomes your draft."
-                  : "Your draft goes back to what is live now. Changes since the last publish are lost."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              // As in delete-entry-action.tsx: the destructive button is styled as
-              // such, and Cancel keeps the focus so a reflexive Enter cancels.
+          <div className="ms-auto flex items-center gap-1.5">
+            <span
               className={cn(
-                confirm === "delete" && "bg-destructive hover:bg-destructive/90 focus-visible:ring-destructive/30 text-white",
+                "text-muted-foreground hidden items-center gap-1 text-xs sm:inline-flex",
+                (saveState === "error" || saveState === "conflict") && "text-destructive",
               )}
-              onClick={() => confirm && void runConfirmed(confirm)}
+              aria-live="polite"
+              title={saveError ?? undefined}
             >
-              {confirm === "delete" ? "Delete page" : confirm === "rollback" ? "Restore" : "Discard"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+              {saveState === "saving" && <Loader2Icon className="size-3 animate-spin" />}
+              {status}
+            </span>
+
+            <div className="flex items-center" role="group" aria-label="History">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Undo"
+                title="Undo (Ctrl+Z)"
+                disabled={!canUndo}
+                onClick={() => step("undo")}
+              >
+                <Undo2Icon />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Redo"
+                title="Redo (Ctrl+Shift+Z)"
+                disabled={!canRedo}
+                onClick={() => step("redo")}
+              >
+                <Redo2Icon />
+              </Button>
+            </div>
+
+            <div className="bg-muted hidden rounded-md p-0.5 lg:flex" role="group" aria-label="Preview width">
+              <Button
+                type="button"
+                variant={viewport === "desktop" ? "outline" : "ghost"}
+                size="icon-xs"
+                aria-label="Desktop preview"
+                aria-pressed={viewport === "desktop"}
+                onClick={() => setViewport("desktop")}
+              >
+                <MonitorIcon />
+              </Button>
+              <Button
+                type="button"
+                variant={viewport === "mobile" ? "outline" : "ghost"}
+                size="icon-xs"
+                aria-label="Mobile preview"
+                aria-pressed={viewport === "mobile"}
+                onClick={() => setViewport("mobile")}
+              >
+                <SmartphoneIcon />
+              </Button>
+            </div>
+
+            <Button asChild variant="outline" size="sm">
+              <a href={previewSrc} target="_blank" rel="noopener noreferrer">
+                <ExternalLinkIcon />
+                Preview
+              </a>
+            </Button>
+
+            <Button type="button" size="sm" disabled={!canPublish} onClick={() => void publishNow()}>
+              {busy === "publish" ? <Loader2Icon className="animate-spin" /> : <SendIcon />}
+              Publish
+            </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button type="button" variant="ghost" size="icon-sm" aria-label="More page actions">
+                  <EllipsisVerticalIcon />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-60">
+                {isLive && hasPublished && (
+                  <DropdownMenuItem asChild>
+                    <a href={publicPath} target="_blank" rel="noopener noreferrer">
+                      <ExternalLinkIcon />
+                      View live page
+                    </a>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem disabled={busy !== null || saveState === "conflict"} onSelect={() => setDuplicating(true)}>
+                  <CopyPlusIcon />
+                  Duplicate page
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  disabled={!hasPublished || (!hasUnpublished && !dirty) || busy !== null}
+                  onSelect={() => setConfirm("discard")}
+                >
+                  <RotateCcwIcon />
+                  Discard unpublished changes
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled={!canRollback || busy !== null} onSelect={() => setConfirm("rollback")}>
+                  <HistoryIcon />
+                  Load previously published version
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        {/* ---------------- notices ---------------- */}
+        {(saveState === "conflict" || saveState === "error" || initial.dropped > 0 || initial.publishedInvalid) && (
+          <div className="space-y-1 border-b px-3 py-2 text-xs">
+            {saveState === "conflict" && (
+              <p className="text-destructive flex items-center gap-2">
+                <TriangleAlertIcon className="size-3.5 shrink-0" />
+                This page was saved somewhere else since you opened it. Your last changes were not saved.
+                <Button type="button" size="xs" variant="outline" onClick={() => router.refresh()}>
+                  Load latest
+                </Button>
+              </p>
+            )}
+            {saveState === "error" && (
+              <p className="text-destructive flex items-center gap-2">
+                <TriangleAlertIcon className="size-3.5 shrink-0" />
+                {saveError ?? "Could not save."}
+                <Button type="button" size="xs" variant="outline" onClick={() => void flush()}>
+                  Try again
+                </Button>
+              </p>
+            )}
+            {initial.dropped > 0 && (
+              <p className="flex items-center gap-2 text-amber-700 dark:text-amber-500">
+                <TriangleAlertIcon className="size-3.5 shrink-0" />
+                {initial.dropped} section{initial.dropped === 1 ? "" : "s"} in the saved draft could not be read and
+                {initial.dropped === 1 ? " was" : " were"} left out. Saving will remove {initial.dropped === 1 ? "it" : "them"} for good.
+              </p>
+            )}
+            {initial.publishedInvalid && (
+              <p className="flex items-center gap-2 text-amber-700 dark:text-amber-500">
+                <TriangleAlertIcon className="size-3.5 shrink-0" />
+                The live version of this page cannot be read, so visitors see its plain title and body. Publishing fixes it.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* ---------------- editor + preview ---------------- */}
+        <div className="grid min-h-0 flex-1 lg:grid-cols-[22rem_1fr]">
+          <aside className="bg-background flex min-h-0 flex-col border-r">
+            {problems.length > 0 && (
+              <div className="border-b px-3 py-2 text-xs">
+                <p className="font-medium text-amber-700 dark:text-amber-500">Not published — these need content first:</p>
+                <ul className="mt-1 space-y-0.5">
+                  {problems.map((problem) => (
+                    <li key={problem.sectionId}>
+                      <button
+                        type="button"
+                        className="underline-offset-2 hover:underline"
+                        onClick={() => setPanel({ kind: "section", id: problem.sectionId })}
+                      >
+                        {problem.section}: {problem.fields.join(", ")}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="min-h-0 flex-1">
+              {panel.kind === "page" ? (
+                <PageSettingsEditor
+                  settings={content.page}
+                  onBack={() => setPanel({ kind: "list" })}
+                  onChange={(key, value) => dispatch({ kind: "page", key, value })}
+                />
+              ) : selectedSection ? (
+                <SectionEditor
+                  // Keyed so the rich text editor and pickers start fresh per section,
+                  // and again after an undo or redo — see `epoch`.
+                  key={`${selectedSection.id}:${epoch}`}
+                  section={selectedSection}
+                  previousType={content.sections[content.sections.findIndex((item) => item.id === selectedSection.id) - 1]?.type ?? null}
+                  collections={collections}
+                  onBack={() => setPanel({ kind: "list" })}
+                  onChange={(key, value) => dispatch({ kind: "setting", id: selectedSection.id, key, value })}
+                  onToggle={() => dispatch({ kind: "toggle", id: selectedSection.id })}
+                  onDuplicate={() => duplicate(selectedSection.id)}
+                  onRemove={() => remove(selectedSection.id)}
+                />
+              ) : (
+                <SectionList
+                  sections={content.sections}
+                  selectedId={selectedId}
+                  incompleteIds={incompleteIds}
+                  onAdd={addSection}
+                  onOpenPageSettings={() => setPanel({ kind: "page" })}
+                  handlers={{
+                    onSelect: (id) => setPanel({ kind: "section", id }),
+                    onMove: (from, to) => dispatch({ kind: "move", from, to }),
+                    onToggle: (id) => dispatch({ kind: "toggle", id }),
+                    onDuplicate: duplicate,
+                    onRemove: remove,
+                  }}
+                />
+              )}
+            </div>
+          </aside>
+
+          {/* The preview is the real page. Below `lg` there is no room for it beside
+              the editor; the Preview button opens it in a tab instead. */}
+          <div className="bg-muted/40 hidden min-h-0 lg:flex lg:justify-center">
+            <iframe
+              ref={iframeRef}
+              src={previewSrc}
+              title={`Preview of ${page.title}`}
+              onLoad={() => post({ type: PREVIEW_MESSAGE.select, id: selectedId })}
+              className={cn(
+                "h-full border-0 bg-white transition-[width] duration-200",
+                viewport === "mobile" ? "my-4 h-[calc(100%-2rem)] w-[390px] rounded-lg border shadow-sm" : "w-full",
+              )}
+            />
+          </div>
+        </div>
+
+        {/* The copy is of what is on screen: anything typed but not yet autosaved is
+            saved first. */}
+        <DuplicatePageDialog
+          duplicateOf={{ id: page.id, title: page.title }}
+          open={duplicating}
+          onOpenChange={setDuplicating}
+          beforeCreate={() => (dirty || inflightRef.current ? flush() : Promise.resolve(true))}
+        />
+
+        {/* ---------------- confirmations ---------------- */}
+        <AlertDialog open={confirm !== null} onOpenChange={(open) => !open && setConfirm(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {confirm === "rollback" ? "Load the previously published version?" : "Discard unpublished changes?"}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {confirm === "rollback"
+                  ? "Your draft is replaced by the version that was live before the last publish. Nothing changes on the site until you publish."
+                  : "Your draft goes back to what is live now. Changes since the last publish are lost."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={() => confirm && void runConfirmed(confirm)}>
+                {confirm === "rollback" ? "Load it" : "Discard"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </EditorLookupsContext.Provider>
   );
 }

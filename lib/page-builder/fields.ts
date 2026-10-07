@@ -47,7 +47,12 @@ export type CaptionedImageValue = { image: ImageRef; caption: string };
  * Field definitions
  * -------------------------------------------------------------------------- */
 
-export type FieldGroup = "content" | "layout";
+/**
+ * Where a field sits in the form. `advanced` is folded away by default: the fine
+ * adjustments some pages need to look exactly as designed, which most edits never
+ * touch.
+ */
+export type FieldGroup = "content" | "layout" | "advanced";
 
 /**
  * `when` shows a field only while another field holds one of the listed values —
@@ -61,9 +66,22 @@ type Base<K extends string> = {
   required?: boolean;
   group?: FieldGroup;
   when?: { field: string; is: readonly (string | boolean)[] };
+  /**
+   * A text field whose sensible values already exist elsewhere — offered as a
+   * pick-list of them, so a typo cannot quietly match nothing.
+   */
+  suggest?: "faqCategories";
 };
 
 export type SelectOption = { value: string; label: string };
+
+/**
+ * How the form draws a select. `position` is a 3 × 3 grid for "where does the
+ * text sit on the image" (values `top-left` … `bottom-right`); `icons` is a grid
+ * of the icons `components/sections/section-icon.tsx` draws; `buttons` keeps a
+ * row of buttons even past three short options (1 2 3 4 5 columns).
+ */
+export type SelectDisplay = "position" | "icons" | "buttons";
 
 /** Every kind a block's own fields may use — anything except `blocks` itself. */
 export type LeafFieldDef<K extends string = string> =
@@ -74,7 +92,8 @@ export type LeafFieldDef<K extends string = string> =
   | (Base<K> & { kind: "imageList"; max: number; captions: boolean })
   | (Base<K> & { kind: "link" })
   | (Base<K> & { kind: "url"; default: string })
-  | (Base<K> & { kind: "select"; options: readonly SelectOption[]; default: string })
+  | (Base<K> & { kind: "video" })
+  | (Base<K> & { kind: "select"; options: readonly SelectOption[]; default: string; display?: SelectDisplay })
   | (Base<K> & { kind: "toggle"; default: boolean })
   | (Base<K> & { kind: "number"; min: number; max: number; default: number })
   | (Base<K> & { kind: "product" })
@@ -123,6 +142,7 @@ type ValueByKind = {
   imageList: CaptionedImageValue[];
   link: LinkValue | null;
   url: string;
+  video: string;
   select: string;
   toggle: boolean;
   number: number;
@@ -207,7 +227,7 @@ export const select = <K extends string, const V extends string>(
   key: K,
   label: string,
   options: readonly { value: V; label: string }[],
-  opts: Opts & { default?: NoInfer<V> } = {},
+  opts: Opts & { default?: NoInfer<V>; display?: SelectDisplay } = {},
 ) => ({
   ...opts,
   key,
@@ -215,6 +235,14 @@ export const select = <K extends string, const V extends string>(
   kind: "select" as const,
   options,
   default: opts.default ?? options[0]!.value,
+});
+
+/** A YouTube or Vimeo address — see `parseVideoUrl`. Nothing else is embeddable. */
+export const video = <K extends string>(key: K, label: string, opts: Opts = {}) => ({
+  ...opts,
+  key,
+  label,
+  kind: "video" as const,
 });
 
 export const toggle = <K extends string>(key: K, label: string, opts: Opts & { default?: boolean } = {}) => ({
@@ -309,6 +337,40 @@ export function isSafeHref(href: string): boolean {
   if (href.startsWith("/")) return !href.startsWith("//");
   if (href.startsWith("#")) return true;
   return /^(https:\/\/[^/]|mailto:|tel:)/i.test(href);
+}
+
+/**
+ * The two video hosts a Video section may embed, reduced to provider and id —
+ * the embed URL is built from those alone, never from what was typed, so the
+ * address field cannot smuggle a different host or parameters into the iframe.
+ */
+export type VideoRef = { provider: "youtube" | "vimeo"; id: string };
+
+export function parseVideoUrl(value: string): VideoRef | null {
+  let url: URL;
+  try {
+    url = new URL(value.trim());
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:") return null;
+  const host = url.hostname.replace(/^www\./, "").replace(/^m\./, "");
+  const youtubeId = /^[A-Za-z0-9_-]{11}$/;
+
+  if (host === "youtu.be") {
+    const id = url.pathname.slice(1);
+    return youtubeId.test(id) ? { provider: "youtube", id } : null;
+  }
+  if (host === "youtube.com" || host === "youtube-nocookie.com") {
+    const id =
+      url.searchParams.get("v") ?? url.pathname.match(/^\/(?:embed|shorts|live)\/([^/]+)/)?.[1] ?? "";
+    return youtubeId.test(id) ? { provider: "youtube", id } : null;
+  }
+  if (host === "vimeo.com" || host === "player.vimeo.com") {
+    const id = url.pathname.match(/^\/(?:video\/)?(\d{6,12})(?:\/|$)/)?.[1];
+    return id ? { provider: "vimeo", id } : null;
+  }
+  return null;
 }
 
 /**
@@ -464,6 +526,11 @@ export function fieldSchema(field: FieldDef): z.ZodType {
         .string()
         .max(2048)
         .refine((value) => value === "" || isSafeHref(value), "Use a path like /shop, or an https:// address.");
+    case "video":
+      return z
+        .string()
+        .max(512)
+        .refine((value) => value === "" || parseVideoUrl(value) !== null, "Paste a YouTube or Vimeo address.");
     case "select":
       return z.enum(field.options.map((option) => option.value) as [string, ...string[]]);
     case "toggle":
@@ -493,6 +560,7 @@ export function fieldDefault(field: FieldDef): unknown {
     case "number":
       return field.default;
     case "richText":
+    case "video":
       return "";
     case "image":
     case "link":
@@ -523,6 +591,7 @@ export function isFieldFilled(field: FieldDef, value: unknown): boolean {
     case "text":
     case "textarea":
     case "url":
+    case "video":
       return typeof value === "string" && value.trim() !== "";
     case "richText":
       return typeof value === "string" && value !== "" && /"value":"\s*\S/.test(value);

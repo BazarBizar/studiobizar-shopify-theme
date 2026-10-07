@@ -48,6 +48,9 @@ function adminCsp(nonce: string, { preview = false }: { preview?: boolean } = {}
     "media-src 'self' https://cdn.shopify.com",
     "font-src 'self' data:",
     "connect-src 'self'",
+    // The builder frames its own preview; the preview's Video section frames the
+    // two players `parseVideoUrl` allows — and only after play is pressed.
+    `frame-src 'self'${preview ? " https://www.youtube-nocookie.com https://player.vimeo.com" : ""}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

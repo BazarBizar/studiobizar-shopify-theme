@@ -4,7 +4,8 @@ import { useState } from "react";
 
 type Status = "idle" | "sending" | "done" | "error";
 
-export function NewsletterForm() {
+/** `inputId` lets a second sign-up on the page (the Newsletter section) keep ids unique. */
+export function NewsletterForm({ inputId = "newsletter-email", className }: { inputId?: string; className?: string } = {}) {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
@@ -33,13 +34,13 @@ export function NewsletterForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="max-w-[26.25rem]">
+    <form onSubmit={onSubmit} className={className ?? "max-w-[26.25rem]"}>
       <div className="flex items-center gap-4 border-b border-current pb-2">
-        <label htmlFor="newsletter-email" className="sr-only">
+        <label htmlFor={inputId} className="sr-only">
           Your email address
         </label>
         <input
-          id="newsletter-email"
+          id={inputId}
           type="email"
           required
           value={email}

@@ -4,6 +4,7 @@ import {
   collectionCarousel,
   collectionGrid,
   contactCta,
+  contactDetails,
   contactForm,
   designerGrid,
   faq,
@@ -23,6 +24,24 @@ import {
   richTextSection,
   textBlock,
 } from "./sections";
+import {
+  collage,
+  collapsible,
+  ctaBanner,
+  featuredProduct,
+  imageBanner,
+  logoList,
+  marquee,
+  multicolumn,
+  newsletter,
+  slideshow,
+  spacer,
+  stats,
+  steps,
+  tabs,
+  testimonials,
+  videoSection,
+} from "./sections-landing";
 
 /**
  * THE list of sections the builder offers. The panel's Add section menu, the
@@ -52,9 +71,27 @@ export const SECTIONS = {
   [designerGrid.type]: designerGrid,
   [locations.type]: locations,
   [instagram.type]: instagram,
+  [contactDetails.type]: contactDetails,
   [contactForm.type]: contactForm,
   [contactCta.type]: contactCta,
   [goBack.type]: goBack,
+  // Landing sections — see sections-landing.ts.
+  [imageBanner.type]: imageBanner,
+  [slideshow.type]: slideshow,
+  [ctaBanner.type]: ctaBanner,
+  [multicolumn.type]: multicolumn,
+  [stats.type]: stats,
+  [steps.type]: steps,
+  [tabs.type]: tabs,
+  [collapsible.type]: collapsible,
+  [videoSection.type]: videoSection,
+  [marquee.type]: marquee,
+  [collage.type]: collage,
+  [testimonials.type]: testimonials,
+  [logoList.type]: logoList,
+  [featuredProduct.type]: featuredProduct,
+  [spacer.type]: spacer,
+  [newsletter.type]: newsletter,
 } as const;
 
 export type SectionType = keyof typeof SECTIONS;
@@ -63,10 +100,13 @@ export type SettingsFor<T extends SectionType> = ReturnType<(typeof SECTIONS)[T]
 
 /** The order categories appear in Add section. */
 export const SECTION_CATEGORIES: readonly SectionCategory[] = [
+  "Banners",
   "Intro",
   "Text & media",
   "Images",
+  "Social proof",
   "Catalogue",
+  "Layout",
   "Site",
 ];
 

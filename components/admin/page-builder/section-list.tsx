@@ -25,7 +25,6 @@ import {
   EyeIcon,
   EyeOffIcon,
   GripVerticalIcon,
-  PlusIcon,
   Settings2Icon,
   Trash2Icon,
   TriangleAlertIcon,
@@ -34,24 +33,18 @@ import * as React from "react";
 
 import { Button } from "@/components/admin/ui/button";
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/admin/ui/command";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/admin/ui/dropdown-menu";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/admin/ui/popover";
 import { MAX_SECTIONS, type SectionInstance } from "@/lib/page-builder/document";
-import { SECTION_CATEGORIES, SECTIONS, SECTION_TYPES, sectionDefinition, type SectionType } from "@/lib/page-builder/registry";
+import type { SectionPreset } from "@/lib/page-builder/presets";
+import { sectionDefinition } from "@/lib/page-builder/registry";
 import { cn } from "@/lib/utils/cn";
+
+import { AddSectionDialog } from "./add-section-dialog";
 
 /**
  * The page's sections, top to bottom, as the left-hand column of the builder.
@@ -76,6 +69,7 @@ function Row({
   count,
   selected,
   incomplete,
+  joined,
   handlers,
 }: {
   section: SectionInstance;
@@ -83,6 +77,8 @@ function Row({
   count: number;
   selected: boolean;
   incomplete: boolean;
+  /** Drawn inside the page heading's band, directly above. */
+  joined: boolean;
   handlers: SectionListHandlers;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id });
@@ -123,7 +119,11 @@ function Row({
         className="min-w-0 flex-1 rounded px-1 py-1 text-left"
       >
         <span className="block truncate text-sm">{label}</span>
-        {summary && <span className="text-muted-foreground block truncate text-xs">{summary}</span>}
+        {(summary || joined) && (
+          <span className="text-muted-foreground block truncate text-xs">
+            {joined ? "In the heading’s band" : summary}
+          </span>
+        )}
       </button>
 
       {incomplete && (
@@ -186,9 +186,12 @@ export function SectionList({
   selectedId: string | null;
   incompleteIds: Set<string>;
   handlers: SectionListHandlers;
-  onAdd: (type: SectionType) => void;
+  onAdd: (preset: SectionPreset) => void;
   onOpenPageSettings: () => void;
 }) {
+  // dnd-kit numbers its screen-reader ids from a module counter, which the server and the
+  // browser count differently — a hydration mismatch on every drag handle. A stable id fixes it.
+  const dndId = React.useId();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -215,6 +218,7 @@ export function SectionList({
           </p>
         ) : (
           <DndContext
+            id={dndId}
             sensors={sensors}
             collisionDetection={closestCenter}
             modifiers={[restrictToVerticalAxis, restrictToParentElement]}
@@ -230,6 +234,11 @@ export function SectionList({
                     count={sections.length}
                     selected={section.id === selectedId}
                     incomplete={incompleteIds.has(section.id)}
+                    joined={
+                      index > 0 &&
+                      sections[index - 1]!.type === "page_heading" &&
+                      (section.settings as { placement?: unknown }).placement === "heading"
+                    }
                     handlers={handlers}
                   />
                 ))}
@@ -238,65 +247,15 @@ export function SectionList({
           </DndContext>
         )}
 
-        <AddSection onAdd={onAdd} disabled={sections.length >= MAX_SECTIONS} />
+        <AddSectionDialog onAdd={onAdd} disabled={sections.length >= MAX_SECTIONS} />
       </div>
 
       <div className="border-t p-2">
         <Button type="button" variant="ghost" size="sm" className="w-full justify-start" onClick={onOpenPageSettings}>
           <Settings2Icon />
-          Page settings
+          Page colours
         </Button>
       </div>
     </div>
-  );
-}
-
-/**
- * The approved sections, grouped, each with one line saying what it is for — an
- * operator should be able to choose without having seen it before.
- */
-function AddSection({ onAdd, disabled }: { onAdd: (type: SectionType) => void; disabled: boolean }) {
-  const [open, setOpen] = React.useState(false);
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button type="button" variant="outline" size="sm" className="w-full" disabled={disabled}>
-          <PlusIcon />
-          Add section
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="start" side="right">
-        <Command>
-          <CommandInput placeholder="Search sections" />
-          <CommandList className="max-h-[60svh]">
-            <CommandEmpty>No section matches.</CommandEmpty>
-            {SECTION_CATEGORIES.map((category) => {
-              const types = SECTION_TYPES.filter((type) => SECTIONS[type].category === category);
-              if (types.length === 0) return null;
-
-              return (
-                <CommandGroup key={category} heading={category}>
-                  {types.map((type) => (
-                    <CommandItem
-                      key={type}
-                      value={`${SECTIONS[type].label} ${SECTIONS[type].description}`}
-                      onSelect={() => {
-                        onAdd(type);
-                        setOpen(false);
-                      }}
-                      className="flex-col items-start gap-0.5"
-                    >
-                      <span className="text-sm">{SECTIONS[type].label}</span>
-                      <span className="text-muted-foreground text-xs">{SECTIONS[type].description}</span>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              );
-            })}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
   );
 }

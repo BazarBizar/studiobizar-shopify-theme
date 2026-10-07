@@ -69,6 +69,75 @@ export function builderReducer(state: DocumentContent, action: BuilderAction): D
   }
 }
 
+/* -------------------------------------------------------------------------- *
+ * Undo / redo
+ * -------------------------------------------------------------------------- */
+
+/**
+ * The document with its past and future, for undo and redo.
+ *
+ * CONSECUTIVE EDITS TO ONE FIELD ARE ONE STEP. Typing a heading dispatches a
+ * `setting` per keystroke; recording each would make Undo remove one letter at a
+ * time. So a change to the same field as the change before it replaces the last
+ * step instead of adding one — still pure, no clock involved. Moving to another
+ * field, or any structural change, starts a new step.
+ */
+export type BuilderHistory = {
+  past: DocumentContent[];
+  present: DocumentContent;
+  future: DocumentContent[];
+  /** Identifies the field the last step edited, for coalescing. */
+  lastField: string | null;
+};
+
+export type HistoryAction = BuilderAction | { kind: "undo" } | { kind: "redo" };
+
+/** Enough for an afternoon's work; a bound so a long session cannot grow without limit. */
+const HISTORY_LIMIT = 100;
+
+export function initialHistory(content: DocumentContent): BuilderHistory {
+  return { past: [], present: content, future: [], lastField: null };
+}
+
+function fieldOf(action: BuilderAction): string | null {
+  if (action.kind === "setting") return `${action.id}:${action.key}`;
+  if (action.kind === "page") return `page:${action.key}`;
+  return null;
+}
+
+export function historyReducer(state: BuilderHistory, action: HistoryAction): BuilderHistory {
+  if (action.kind === "undo") {
+    const previous = state.past.at(-1);
+    if (!previous) return state;
+    return { past: state.past.slice(0, -1), present: previous, future: [state.present, ...state.future], lastField: null };
+  }
+
+  if (action.kind === "redo") {
+    const next = state.future[0];
+    if (!next) return state;
+    return { past: [...state.past, state.present], present: next, future: state.future.slice(1), lastField: null };
+  }
+
+  // A replace is a new document from the server, not an edit — it starts history afresh.
+  if (action.kind === "replace") return initialHistory(action.content);
+
+  const present = builderReducer(state.present, action);
+  if (present === state.present) return state;
+
+  const field = fieldOf(action);
+  if (field && field === state.lastField) {
+    // Same field as the step before: amend that step rather than adding one.
+    return { ...state, present, future: [] };
+  }
+
+  return {
+    past: [...state.past, state.present].slice(-HISTORY_LIMIT),
+    present,
+    future: [],
+    lastField: field,
+  };
+}
+
 /** The index a newly added section goes to: after the selected one, or at the end. */
 export function insertionIndex(state: DocumentContent, selectedId: string | null): number {
   const index = selectedId ? state.sections.findIndex((section) => section.id === selectedId) : -1;

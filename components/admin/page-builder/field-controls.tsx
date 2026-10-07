@@ -15,6 +15,7 @@ import * as React from "react";
 import { toast } from "sonner";
 
 import { MediaPicker } from "@/components/admin/media/media-picker";
+import { SectionIcon } from "@/components/sections/section-icon";
 import { RichTextEditor } from "@/components/admin/rich-text-editor";
 import { Button } from "@/components/admin/ui/button";
 import {
@@ -51,6 +52,7 @@ import {
   isFieldFilled,
   isSafeHref,
   newBlockId,
+  parseVideoUrl,
   type BlockDef,
   type BlocksFieldDef,
   type BlockValue,
@@ -59,6 +61,7 @@ import {
   type ImageRef,
   type LinkValue,
   type ResourceRef,
+  type SelectDisplay,
 } from "@/lib/page-builder/fields";
 import { cdnImage } from "@/lib/shopify/transforms";
 import { cn } from "@/lib/utils/cn";
@@ -71,6 +74,17 @@ import { cn } from "@/lib/utils/cn";
 
 export type CollectionOption = ResourceRef & { thumbnail: string | null };
 
+/** A place on the site a button can point at, offered by the link picker. */
+export type LinkTarget = { label: string; href: string; group: "Pages" | "Collections" | "Site" };
+
+/**
+ * What the form offers to pick from, loaded once for the whole editor rather than
+ * threaded through every field: link destinations and the FAQ categories in use.
+ */
+export type EditorLookups = { linkTargets: LinkTarget[]; faqCategories: string[] };
+
+export const EditorLookupsContext = React.createContext<EditorLookups>({ linkTargets: [], faqCategories: [] });
+
 type ControlProps = {
   field: FieldDef;
   value: unknown;
@@ -82,6 +96,9 @@ type ControlProps = {
 export function FieldControl({ field, value, onChange, inputId, collections }: ControlProps) {
   switch (field.kind) {
     case "text":
+      if (field.suggest) {
+        return <SuggestField inputId={inputId} value={(value as string) ?? ""} kind={field.suggest} onChange={onChange} />;
+      }
       return (
         <Input
           id={inputId}
@@ -151,6 +168,34 @@ export function FieldControl({ field, value, onChange, inputId, collections }: C
       );
     }
 
+    case "video": {
+      const address = (value as string) ?? "";
+      const parsed = address ? parseVideoUrl(address) : null;
+      return (
+        <div className="space-y-1">
+          <Input
+            id={inputId}
+            value={address}
+            maxLength={512}
+            placeholder="https://www.youtube.com/watch?v=…"
+            aria-invalid={address !== "" && !parsed}
+            onChange={(event) => onChange(event.target.value.trim())}
+            className="font-mono text-xs"
+          />
+          {address !== "" &&
+            (parsed ? (
+              <p className="text-muted-foreground text-xs">
+                {parsed.provider === "youtube" ? "YouTube" : "Vimeo"} video {parsed.id}
+              </p>
+            ) : (
+              <p className="text-destructive text-xs" role="alert">
+                Not a YouTube or Vimeo video address.
+              </p>
+            ))}
+        </div>
+      );
+    }
+
     case "blocks":
       return (
         <BlocksField
@@ -167,6 +212,7 @@ export function FieldControl({ field, value, onChange, inputId, collections }: C
           inputId={inputId}
           value={value as string}
           options={field.options}
+          display={field.display}
           onChange={onChange}
         />
       );
@@ -271,6 +317,33 @@ function Thumb({ image, className }: { image: ImageRef | null; className?: strin
   );
 }
 
+/**
+ * The image's alt text FOR THIS USE. It starts as the file's own alt text from
+ * Shopify; changing it here changes this page only, never the file. Empty means
+ * the image is decorative, and the components fall back to the caption if there
+ * is one.
+ */
+function AltInput({
+  image,
+  label,
+  onChange,
+}: {
+  image: ImageRef;
+  label: string;
+  onChange: (image: ImageRef) => void;
+}) {
+  return (
+    <Input
+      value={image.altText ?? ""}
+      maxLength={512}
+      placeholder="Alt text — describes the photo for screen readers"
+      aria-label={`${label} alt text`}
+      onChange={(event) => onChange({ ...image, altText: event.target.value || null })}
+      className="h-7 text-xs"
+    />
+  );
+}
+
 function ImageField({
   value,
   onChange,
@@ -285,16 +358,19 @@ function ImageField({
   return (
     <div className="flex items-start gap-3">
       <Thumb image={value} className="size-20" />
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" size="sm" onClick={() => picker.setOpen(true)}>
-          {value ? "Replace" : "Choose image"}
-        </Button>
-        {value && (
-          <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={() => onChange(null)}>
-            <XIcon className="size-3.5" />
-            Remove
+      <div className="min-w-0 flex-1 space-y-2">
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={() => picker.setOpen(true)}>
+            {value ? "Replace" : "Choose image"}
           </Button>
-        )}
+          {value && (
+            <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={() => onChange(null)}>
+              <XIcon className="size-3.5" />
+              Remove
+            </Button>
+          )}
+        </div>
+        {value && <AltInput image={value} label={label} onChange={onChange} />}
       </div>
       <MediaPicker
         open={picker.open}
@@ -344,12 +420,12 @@ function ImageListField({
             <li key={`${item.image.id}-${index}`} className="flex items-start gap-2 rounded-md border p-2">
               <Thumb image={item.image} className="size-14" />
 
-              <div className="min-w-0 flex-1">
-                {captions ? (
+              <div className="min-w-0 flex-1 space-y-1">
+                {captions && (
                   <Input
                     value={item.caption}
                     maxLength={200}
-                    placeholder="Caption (optional)"
+                    placeholder="Caption — shown under the photo (optional)"
                     aria-label={`${label} ${index + 1} caption`}
                     onChange={(event) => {
                       const next = [...value];
@@ -358,9 +434,16 @@ function ImageListField({
                     }}
                     className="h-7 text-xs"
                   />
-                ) : (
-                  <p className="text-muted-foreground truncate pt-1 text-xs">{item.image.altText || "No alt text"}</p>
                 )}
+                <AltInput
+                  image={item.image}
+                  label={`${label} ${index + 1}`}
+                  onChange={(image) => {
+                    const next = [...value];
+                    next[index] = { ...item, image };
+                    onChange(next);
+                  }}
+                />
               </div>
 
               <div className="flex shrink-0 items-center">
@@ -458,15 +541,18 @@ function LinkField({
         placeholder="Button text, e.g. shop the collection"
         onChange={(event) => update({ label: event.target.value })}
       />
-      <Input
-        value={href}
-        maxLength={2048}
-        placeholder="/collections/arc-teak or https://…"
-        aria-label="Button link"
-        aria-invalid={unsafe}
-        onChange={(event) => update({ href: event.target.value.trim() })}
-        className="font-mono text-xs"
-      />
+      <div className="flex gap-2">
+        <Input
+          value={href}
+          maxLength={2048}
+          placeholder="Choose a page, or paste https://…"
+          aria-label="Button link"
+          aria-invalid={unsafe}
+          onChange={(event) => update({ href: event.target.value.trim() })}
+          className="min-w-0 flex-1 font-mono text-xs"
+        />
+        <LinkPicker onPick={(target) => update({ href: target.href, label: label || target.label.toLowerCase() })} />
+      </div>
       {unsafe && (
         <p className="text-destructive text-xs" role="alert">
           Use a path on this site like /shop, or an address starting with https://.
@@ -484,14 +570,71 @@ function ChoiceField({
   inputId,
   value,
   options,
+  display,
   onChange,
 }: {
   inputId: string;
   value: string;
   options: readonly { value: string; label: string }[];
+  display?: SelectDisplay;
   onChange: (value: string) => void;
 }) {
-  if (options.length <= 3) {
+  if (display === "position") {
+    // A 3 × 3 grid standing for the image — the cell picked is where the copy sits.
+    return (
+      <div
+        id={inputId}
+        role="radiogroup"
+        className="bg-muted grid aspect-[16/10] w-36 grid-cols-3 grid-rows-3 gap-1 rounded-lg border p-1.5"
+      >
+        {options.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={value === option.value}
+            aria-label={option.label}
+            title={option.label}
+            onClick={() => onChange(option.value)}
+            className={cn(
+              "flex items-center justify-center rounded transition-colors",
+              value === option.value ? "bg-primary" : "bg-background hover:bg-primary/20",
+            )}
+          >
+            <span
+              className={cn("block h-1 w-4 rounded-full", value === option.value ? "bg-primary-foreground" : "bg-muted-foreground/40")}
+            />
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  if (display === "icons") {
+    return (
+      <div id={inputId} role="radiogroup" className="grid grid-cols-8 gap-1">
+        {options.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={value === option.value}
+            aria-label={option.label}
+            title={option.label}
+            onClick={() => onChange(option.value)}
+            className={cn(
+              "flex aspect-square items-center justify-center rounded-md border transition-colors",
+              value === option.value ? "border-primary bg-primary/10 text-foreground" : "text-muted-foreground hover:bg-muted",
+            )}
+          >
+            {option.value === "none" ? <XIcon className="size-3.5" /> : <SectionIcon name={option.value} className="size-4" />}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  if (options.length <= 3 || display === "buttons") {
     return (
       <div id={inputId} role="radiogroup" className="bg-muted inline-flex flex-wrap gap-1 rounded-lg p-1">
         {options.map((option) => (
@@ -920,5 +1063,99 @@ function BlocksField({
         </span>
       </div>
     </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- *
+ * Pick-lists
+ * -------------------------------------------------------------------------- */
+
+/**
+ * The site's pages and collections, to point a button at without knowing the
+ * address. Pasting a URL still works for anything else.
+ */
+function LinkPicker({ onPick }: { onPick: (target: LinkTarget) => void }) {
+  const { linkTargets } = React.useContext(EditorLookupsContext);
+  const [open, setOpen] = React.useState(false);
+  const groups = (["Pages", "Collections", "Site"] as const).filter((group) =>
+    linkTargets.some((target) => target.group === group),
+  );
+
+  if (linkTargets.length === 0) return null;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button type="button" variant="outline" size="sm" className="shrink-0">
+          Choose
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-72 p-0" align="end">
+        <Command>
+          <CommandInput placeholder="Search pages and collections" />
+          <CommandList>
+            <CommandEmpty>Nothing found.</CommandEmpty>
+            {groups.map((group) => (
+              <CommandGroup key={group} heading={group}>
+                {linkTargets
+                  .filter((target) => target.group === group)
+                  .map((target) => (
+                    <CommandItem
+                      key={`${group}-${target.href}`}
+                      value={`${target.label} ${target.href}`}
+                      onSelect={() => {
+                        onPick(target);
+                        setOpen(false);
+                      }}
+                    >
+                      <span className="min-w-0 flex-1 truncate">{target.label}</span>
+                      <span className="text-muted-foreground shrink-0 font-mono text-[11px]">{target.href}</span>
+                    </CommandItem>
+                  ))}
+              </CommandGroup>
+            ))}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/** A text value chosen from the ones already in use — the FAQ categories. */
+function SuggestField({
+  inputId,
+  value,
+  kind,
+  onChange,
+}: {
+  inputId: string;
+  value: string;
+  kind: "faqCategories";
+  onChange: (value: string) => void;
+}) {
+  const lookups = React.useContext(EditorLookupsContext);
+  const known = kind === "faqCategories" ? lookups.faqCategories : [];
+  // A stored value no longer in use stays selectable, so opening the form never
+  // silently changes it.
+  const options = value && !known.includes(value) ? [value, ...known] : known;
+
+  if (options.length === 0) {
+    return <Input id={inputId} value={value} onChange={(event) => onChange(event.target.value)} />;
+  }
+
+  return (
+    <Select value={value || undefined} onValueChange={onChange}>
+      <SelectTrigger id={inputId} className="w-full">
+        <SelectValue placeholder="Choose a category" />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((option) => (
+          <SelectItem key={option} value={option}>
+            {option}
+            {!known.includes(option) ? " (no longer used)" : ""}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
