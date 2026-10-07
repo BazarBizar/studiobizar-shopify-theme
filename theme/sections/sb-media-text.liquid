@@ -33,7 +33,10 @@
     rhythm: s.rhythm,
     link_label: s.link_label,
     link_url: s.link_url,
-    link_style: s.link_style
+    link_style: s.link_style,
+    eyebrow: s.eyebrow,
+    image_width: s.image_width,
+    vertical_align: s.vertical_align
   -%}
 </section>
 
@@ -74,6 +77,12 @@
     {
       "type": "header",
       "content": "Copy"
+    },
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Small label",
+      "info": "Optional, above the heading."
     },
     {
       "type": "text",
@@ -152,6 +161,28 @@
         { "value": "wide", "label": "Wide — as The Idea band" }
       ],
       "default": "normal"
+    },
+    {
+      "type": "select",
+      "id": "image_width",
+      "label": "Image width",
+      "options": [
+        { "value": "half", "label": "Half" },
+        { "value": "narrow", "label": "Smaller" },
+        { "value": "wide", "label": "Larger" }
+      ],
+      "default": "half"
+    },
+    {
+      "type": "select",
+      "id": "vertical_align",
+      "label": "Text beside the image",
+      "options": [
+        { "value": "center", "label": "Middle" },
+        { "value": "top", "label": "Top" },
+        { "value": "bottom", "label": "Bottom" }
+      ],
+      "default": "center"
     }
   ],
   "presets": [

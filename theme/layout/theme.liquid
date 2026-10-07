@@ -67,6 +67,12 @@
     <script src="{{ 'sb-nav.js' | asset_url }}" defer></script>
     <script src="{{ 'sb-inquiry-cart.js' | asset_url }}" defer></script>
     {%- comment -%}
+      The landing sections (slideshow, tabs, video) can be added to any template
+      in the theme editor, so their script loads everywhere. It is small, and does
+      nothing on a page without one of them.
+    {%- endcomment -%}
+    <script src="{{ 'sb-sections.js' | asset_url }}" defer></script>
+    {%- comment -%}
       Only where there is a grid to drive. The other three are shell-wide: the
       nav and the inquiry badge are in the header on every page.
     {%- endcomment -%}
@@ -87,7 +93,7 @@
       The carousel is on the landing page and can be added to any page, so it
       loads on both. It does nothing when there is no track on the page.
     {%- endcomment -%}
-    {%- if template.name == 'index' or template.name == 'page' -%}
+    {%- if template.name == 'index' or template.name == 'page' or template.name == 'product' or template.name == 'collection' -%}
       <script src="{{ 'sb-carousel.js' | asset_url }}" defer></script>
     {%- endif -%}
 

@@ -16,6 +16,11 @@
     surface  — a ground, or `inherit` to take the surrounding one
     rhythm   — xs | sm | md | lg | xl | theme
     link_label / link_url / link_style — optional button
+    eyebrow        — small label above the heading
+    image_width    — half | narrow | wide: the image column on desktop (default half)
+    vertical_align — center | top | bottom: the copy beside the image (default center)
+    Mirrors the builder's media_text (components/sections/media-text.tsx). With the
+    three left out, the markup is what it always was.
 {% endcomment %}
 
 {%- liquid
@@ -44,11 +49,41 @@
   endif
 
   assign button_variant = link_style | default: 'outline'
+
+  case vertical_align
+    when 'top'
+      assign items_class = 'items-start'
+    when 'bottom'
+      assign items_class = 'items-end'
+    else
+      assign items_class = 'items-center'
+  endcase
+
+  comment
+    The image column's share of the row. On the right the image is the SECOND
+    column, so the fractions swap.
+  endcomment
+  case image_width
+    when 'narrow'
+      if align == 'right'
+        assign columns_class = 'lg:grid-cols-[3fr_2fr]'
+      else
+        assign columns_class = 'lg:grid-cols-[2fr_3fr]'
+      endif
+    when 'wide'
+      if align == 'right'
+        assign columns_class = 'lg:grid-cols-[2fr_3fr]'
+      else
+        assign columns_class = 'lg:grid-cols-[3fr_2fr]'
+      endif
+    else
+      assign columns_class = 'lg:grid-cols-2'
+  endcase
 -%}
 
 <div {% if paints_ground %}data-surface="{{ surface }}" class="bg-background text-foreground"{% endif %}>
   <div class="py-section {{ rhythm_class }} {{ padding_class }}">
-    <div class="grid items-center gap-10 lg:grid-cols-2 lg:gap-20">
+    <div class="grid {{ items_class }} gap-10 {{ columns_class }} lg:gap-20">
       {%- if image != blank -%}
         <figure class="relative w-full overflow-hidden bg-foreground/5 {% if align == 'right' %}lg:order-2{% endif %}">
           {%- render 'sb-image',
@@ -62,6 +97,9 @@
       {%- endif -%}
 
       <div class="max-w-[34rem]">
+        {%- if eyebrow != blank -%}
+          <p class="text-tertiary text-muted mb-3 uppercase">{{ eyebrow }}</p>
+        {%- endif -%}
         {%- if heading != blank -%}
           <h2 class="text-h2">{{ heading }}</h2>
         {%- endif -%}

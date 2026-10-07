@@ -1,0 +1,278 @@
+{% comment %}
+  Collapsible content — the page builder's `collapsible`
+  (components/sections/landing/collapsible.tsx). Rows that open on click, beside
+  an optional image. Native <details>: no script, keyboard and screen readers
+  handled by the browser, content in the HTML for search engines.
+
+  The schema below is GENERATED from lib/page-builder/sections-landing.ts by
+  `yarn liquid:schemas`; change the section there, not here.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+
+  capture rhythm_class
+    render 'sb-section-classes', rhythm: s.rhythm, pad: 'none'
+  endcapture
+  capture hide_class
+    render 'sb-hide-on', hide_on: s.hide_on
+  endcapture
+
+  assign count = 0
+  for block in section.blocks
+    if block.settings.heading != blank
+      assign count = count | plus: 1
+    endif
+  endfor
+
+  assign with_image = false
+  if s.image != blank or request.design_mode
+    assign with_image = true
+  endif
+-%}
+
+<div
+  {% if s.surface != 'inherit' %}data-surface="{{ s.surface }}"{% endif %}
+  class="{% if s.surface != 'inherit' %}flow-root bg-background text-foreground {% endif %}{{ rhythm_class }} {{ hide_class }}"
+  {{ section.shopify_attributes }}
+>
+  {%- if count > 0 -%}
+    {%- capture rows -%}
+      <div class="border-border border-t">
+        {%- assign n = 0 -%}
+        {%- for block in section.blocks -%}
+          {%- assign b = block.settings -%}
+          {%- if b.heading == blank -%}{%- continue -%}{%- endif -%}
+          {%- assign n = n | plus: 1 -%}
+          <details class="group border-border border-b"{% if s.open_first and n == 1 %} open{% endif %} {{ block.shopify_attributes }}>
+            <summary class="text-h4 flex cursor-pointer list-none items-center justify-between gap-6 py-5 font-medium [&::-webkit-details-marker]:hidden">
+              {{ b.heading }}
+              {%- render 'sb-icon', icon: 'plus', class: 'size-4 shrink-0 transition-transform group-open:rotate-45' -%}
+            </summary>
+            {%- if b.body != blank -%}
+              <div class="sb-prose max-w-[44rem] pb-6" style="font-size: var(--fs-secondary);">{{ b.body }}</div>
+            {%- endif -%}
+          </details>
+        {%- endfor -%}
+      </div>
+    {%- endcapture -%}
+
+    <div class="sb-container py-section">
+      {%- render 'sb-section-header', heading: s.title, intro: s.intro, align: s.heading_align -%}
+      {%- if with_image -%}
+        <div class="grid gap-10 lg:grid-cols-2 lg:gap-20{% if s.image_side == 'right' %} lg:[&>*:first-child]:order-2{% endif %}">
+          {%- render 'sb-picture', image: s.image, ratio: 'portrait', sizes: '(max-width: 1023px) 100vw, 45vw' -%}
+          <div class="lg:pt-2">{{ rows }}</div>
+        </div>
+      {%- else -%}
+        <div class="max-w-[56rem]">{{ rows }}</div>
+      {%- endif -%}
+    </div>
+  {%- endif -%}
+</div>
+
+{% schema %}
+{
+  "name": "Collapsible content",
+  "tag": "section",
+  "class": "sb-section-collapsible",
+  "settings": [
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Heading"
+    },
+    {
+      "type": "textarea",
+      "id": "intro",
+      "label": "Intro"
+    },
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "Image"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "heading_align",
+      "label": "Heading alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Centred"
+        }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "select",
+      "id": "image_side",
+      "label": "Image side",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "checkbox",
+      "id": "open_first",
+      "label": "First row open",
+      "default": false
+    },
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Background",
+      "options": [
+        {
+          "value": "inherit",
+          "label": "Same as page"
+        },
+        {
+          "value": "light",
+          "label": "Earth"
+        },
+        {
+          "value": "dark",
+          "label": "Dark wood"
+        },
+        {
+          "value": "olive",
+          "label": "Black olive"
+        },
+        {
+          "value": "blue",
+          "label": "Charcoal blue"
+        },
+        {
+          "value": "mocha",
+          "label": "Deep mocha"
+        },
+        {
+          "value": "black",
+          "label": "Off-black"
+        }
+      ],
+      "default": "inherit"
+    },
+    {
+      "type": "select",
+      "id": "rhythm",
+      "label": "Vertical spacing",
+      "options": [
+        {
+          "value": "theme",
+          "label": "Standard"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "select",
+      "id": "hide_on",
+      "label": "Show on",
+      "options": [
+        {
+          "value": "none",
+          "label": "All devices"
+        },
+        {
+          "value": "mobile",
+          "label": "Desktop only"
+        },
+        {
+          "value": "desktop",
+          "label": "Mobile only"
+        }
+      ],
+      "default": "none"
+    }
+  ],
+  "max_blocks": 20,
+  "blocks": [
+    {
+      "type": "row",
+      "name": "Row",
+      "settings": [
+        {
+          "type": "text",
+          "id": "heading",
+          "label": "Heading"
+        },
+        {
+          "type": "richtext",
+          "id": "body",
+          "label": "Content"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Collapsible content",
+      "settings": {
+        "title": "Good to know",
+        "open_first": true
+      },
+      "blocks": [
+        {
+          "type": "row",
+          "settings": {
+            "heading": "Delivery",
+            "body": "<p>How and when a piece is delivered.</p>"
+          }
+        },
+        {
+          "type": "row",
+          "settings": {
+            "heading": "Care",
+            "body": "<p>How to look after the materials.</p>"
+          }
+        },
+        {
+          "type": "row",
+          "settings": {
+            "heading": "Returns",
+            "body": "<p>What happens if a piece is not right.</p>"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

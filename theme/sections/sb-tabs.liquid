@@ -1,0 +1,342 @@
+{% comment %}
+  Tabs — the page builder's `tabs` (components/sections/landing/tabs.tsx).
+  Topics behind tabs, following the WAI-ARIA tabs pattern; keyboard handling in
+  assets/sb-sections.js (`[data-sb-tabs]`).
+
+  Every panel is in the HTML. Without JavaScript all panels show, one under the
+  other, each with its tab name as a heading — nothing is unreachable.
+
+  The schema below is GENERATED from lib/page-builder/sections-landing.ts by
+  `yarn liquid:schemas`; change the section there, not here.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+
+  capture rhythm_class
+    render 'sb-section-classes', rhythm: s.rhythm, pad: 'none'
+  endcapture
+  capture hide_class
+    render 'sb-hide-on', hide_on: s.hide_on
+  endcapture
+
+  assign count = 0
+  for block in section.blocks
+    if block.settings.label != blank
+      assign count = count | plus: 1
+    endif
+  endfor
+
+  assign topics_label = s.title | default: 'Topics'
+-%}
+
+<div
+  {% if s.surface != 'inherit' %}data-surface="{{ s.surface }}"{% endif %}
+  class="{% if s.surface != 'inherit' %}flow-root bg-background text-foreground {% endif %}{{ rhythm_class }} {{ hide_class }}"
+  {{ section.shopify_attributes }}
+>
+  {%- if count > 0 -%}
+    <div class="sb-container py-section" data-sb-tabs>
+      {%- render 'sb-section-header', heading: s.title, intro: s.intro, align: s.heading_align -%}
+
+      <div
+        role="tablist"
+        aria-label="{{ topics_label | escape }}"
+        hidden
+        data-sb-tablist
+        class="-mx-[var(--sb-gutter)] flex gap-2 overflow-x-auto px-[var(--sb-gutter)] sm:mx-0 sm:px-0{% if s.heading_align == 'center' %} sm:justify-center{% endif %}{% if s.tab_style == 'underline' %} border-border gap-8 border-b{% endif %}"
+      >
+        {%- assign n = 0 -%}
+        {%- for block in section.blocks -%}
+          {%- if block.settings.label == blank -%}{%- continue -%}{%- endif -%}
+          {%- assign n = n | plus: 1 -%}
+          <button
+            type="button"
+            role="tab"
+            id="Tab-{{ section.id }}-{{ block.id }}"
+            aria-controls="Panel-{{ section.id }}-{{ block.id }}"
+            aria-selected="{% if n == 1 %}true{% else %}false{% endif %}"
+            tabindex="{% if n == 1 %}0{% else %}-1{% endif %}"
+            data-sb-tab
+            class="text-button shrink-0 whitespace-nowrap uppercase transition-colors {% if s.tab_style == 'underline' %}-mb-px border-b py-3 aria-selected:border-foreground aria-[selected=false]:text-muted aria-[selected=false]:border-transparent hover:text-foreground{% else %}border px-5 py-2 aria-selected:bg-foreground aria-selected:text-background aria-selected:border-foreground aria-[selected=false]:border-border hover:border-foreground{% endif %}"
+          >
+            {{ block.settings.label }}
+          </button>
+        {%- endfor -%}
+      </div>
+
+      {%- assign n = 0 -%}
+      {%- for block in section.blocks -%}
+        {%- assign b = block.settings -%}
+        {%- if b.label == blank -%}{%- continue -%}{%- endif -%}
+        {%- liquid
+          assign n = n | plus: 1
+          assign has_image = false
+          if b.image != blank or request.design_mode
+            assign has_image = true
+          endif
+        -%}
+        <div
+          role="tabpanel"
+          id="Panel-{{ section.id }}-{{ block.id }}"
+          aria-labelledby="Tab-{{ section.id }}-{{ block.id }}"
+          tabindex="0"
+          data-sb-tabpanel
+          class="pt-10 sm:pt-14"
+          {{ block.shopify_attributes }}
+        >
+          <p class="text-button mb-4 uppercase" data-sb-tab-fallback>{{ b.label }}</p>
+          <div class="grid gap-10 lg:items-center lg:gap-20{% if has_image %} lg:grid-cols-2{% endif %}{% if s.image_side == 'left' %} lg:[&>*:last-child]:-order-1{% endif %}">
+            <div class="max-w-[40rem]">
+              {%- if b.title != blank -%}
+                <h3 class="text-h2">{{ b.title }}</h3>
+              {%- endif -%}
+              {%- if b.body != blank -%}
+                <div class="sb-prose{% if b.title != blank %} mt-5{% endif %}">{{ b.body }}</div>
+              {%- endif -%}
+              {%- if b.link_label != blank and b.link_url != blank -%}
+                {%- render 'sb-button', label: b.link_label, href: b.link_url, variant: 'outline', class: 'mt-8' -%}
+              {%- endif -%}
+            </div>
+            {%- if has_image -%}
+              {%- render 'sb-picture', image: b.image, ratio: 'landscape', sizes: '(max-width: 1023px) 100vw, 45vw' -%}
+            {%- endif -%}
+          </div>
+        </div>
+      {%- endfor -%}
+    </div>
+  {%- endif -%}
+</div>
+
+{% schema %}
+{
+  "name": "Tabs",
+  "tag": "section",
+  "class": "sb-section-tabs",
+  "settings": [
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Heading"
+    },
+    {
+      "type": "textarea",
+      "id": "intro",
+      "label": "Intro"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "heading_align",
+      "label": "Heading alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Centred"
+        }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "select",
+      "id": "image_side",
+      "label": "Image",
+      "options": [
+        {
+          "value": "right",
+          "label": "Right"
+        },
+        {
+          "value": "left",
+          "label": "Left"
+        }
+      ],
+      "default": "right"
+    },
+    {
+      "type": "select",
+      "id": "tab_style",
+      "label": "Tab style",
+      "options": [
+        {
+          "value": "underline",
+          "label": "Underlined"
+        },
+        {
+          "value": "pills",
+          "label": "Buttons"
+        }
+      ],
+      "default": "underline"
+    },
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Background",
+      "options": [
+        {
+          "value": "inherit",
+          "label": "Same as page"
+        },
+        {
+          "value": "light",
+          "label": "Earth"
+        },
+        {
+          "value": "dark",
+          "label": "Dark wood"
+        },
+        {
+          "value": "olive",
+          "label": "Black olive"
+        },
+        {
+          "value": "blue",
+          "label": "Charcoal blue"
+        },
+        {
+          "value": "mocha",
+          "label": "Deep mocha"
+        },
+        {
+          "value": "black",
+          "label": "Off-black"
+        }
+      ],
+      "default": "inherit"
+    },
+    {
+      "type": "select",
+      "id": "rhythm",
+      "label": "Vertical spacing",
+      "options": [
+        {
+          "value": "theme",
+          "label": "Standard"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "select",
+      "id": "hide_on",
+      "label": "Show on",
+      "options": [
+        {
+          "value": "none",
+          "label": "All devices"
+        },
+        {
+          "value": "mobile",
+          "label": "Desktop only"
+        },
+        {
+          "value": "desktop",
+          "label": "Mobile only"
+        }
+      ],
+      "default": "none"
+    }
+  ],
+  "max_blocks": 8,
+  "blocks": [
+    {
+      "type": "tab",
+      "name": "Tab",
+      "settings": [
+        {
+          "type": "text",
+          "id": "label",
+          "label": "Tab name"
+        },
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Heading"
+        },
+        {
+          "type": "richtext",
+          "id": "body",
+          "label": "Text"
+        },
+        {
+          "type": "image_picker",
+          "id": "image",
+          "label": "Image"
+        },
+        {
+          "type": "text",
+          "id": "link_label",
+          "label": "Button text"
+        },
+        {
+          "type": "url",
+          "id": "link_url",
+          "label": "Button link"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Tabs",
+      "settings": {
+        "title": "Materials"
+      },
+      "blocks": [
+        {
+          "type": "tab",
+          "settings": {
+            "label": "Wood",
+            "title": "Solid oak and walnut",
+            "body": "<p>Describe the material, where it comes from and how it ages.</p>"
+          }
+        },
+        {
+          "type": "tab",
+          "settings": {
+            "label": "Textile",
+            "title": "Linen, wool and bouclé",
+            "body": "<p>Describe the material, where it comes from and how it ages.</p>"
+          }
+        },
+        {
+          "type": "tab",
+          "settings": {
+            "label": "Stone",
+            "title": "Travertine and marble",
+            "body": "<p>Describe the material, where it comes from and how it ages.</p>"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

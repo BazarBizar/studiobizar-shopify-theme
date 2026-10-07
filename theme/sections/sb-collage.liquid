@@ -1,0 +1,362 @@
+{% comment %}
+  Collage — the page builder's `collage` (components/sections/landing/collage.tsx).
+  Photographs in an editorial arrangement: the first tile takes a full column
+  and the rest share the other (their heights split the row so both columns end
+  on one line), or an even grid.
+
+  The schema below is GENERATED from lib/page-builder/sections-landing.ts by
+  `yarn liquid:schemas`; change the section there, not here.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+
+  capture rhythm_class
+    render 'sb-section-classes', rhythm: s.rhythm, pad: 'none'
+  endcapture
+  capture hide_class
+    render 'sb-hide-on', hide_on: s.hide_on
+  endcapture
+
+  assign count = 0
+  for block in section.blocks
+    if block.settings.image != blank or request.design_mode
+      assign count = count | plus: 1
+    endif
+  endfor
+
+  assign feature = false
+  if s.layout != 'even' and count > 1
+    assign feature = true
+  endif
+-%}
+
+{%- comment -%}
+  Each tile is built whole, then placed: the feature tile alone in its column,
+  the others together in theirs (or all of them in the even grid).
+{%- endcomment -%}
+{%- liquid
+  assign n = 0
+  assign first_tile = ''
+  assign other_tiles = ''
+  assign rest = count | minus: 1
+-%}
+  {%- for block in section.blocks -%}
+    {%- assign b = block.settings -%}
+    {%- unless b.image != blank or request.design_mode -%}{%- continue -%}{%- endunless -%}
+    {%- liquid
+      assign n = n | plus: 1
+      assign large = false
+      if feature and n == 1
+        assign large = true
+      endif
+      assign fill = false
+      if feature and n > 1
+        assign fill = true
+      endif
+      if large
+        assign ratio = 'portrait'
+        assign sizes = '(max-width: 749px) 100vw, 50vw'
+        assign picture_class = '[&_img]:transition-transform [&_img]:duration-700 group-hover:[&_img]:scale-[1.03]'
+      else
+        assign ratio = 'landscape'
+        assign sizes = '(max-width: 749px) 100vw, 25vw'
+        if fill
+          assign picture_class = 'sm:aspect-auto sm:min-h-0 sm:flex-1 [&_img]:transition-transform [&_img]:duration-700 group-hover:[&_img]:scale-[1.03]'
+        else
+          assign picture_class = '[&_img]:transition-transform [&_img]:duration-700 group-hover:[&_img]:scale-[1.03]'
+        endif
+      endif
+    -%}
+    {%- capture tile_body -%}
+      {%- render 'sb-picture', image: b.image, ratio: ratio, sizes: sizes, class: picture_class -%}
+      {%- if b.title != blank -%}
+        {%- if s.captions == 'overlay' -%}
+          <span data-surface="black" class="text-foreground absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/50 to-transparent p-5 pt-16">
+            <span class="text-h4 font-medium">{{ b.title }}</span>
+          </span>
+        {%- else -%}
+          <span class="text-secondary mt-3 block">{{ b.title }}</span>
+        {%- endif -%}
+      {%- endif -%}
+    {%- endcapture -%}
+    {%- capture tile -%}
+      {%- if b.href != blank -%}
+        <a href="{{ b.href }}" class="group relative flex min-w-0 flex-col{% if fill %} sm:h-full{% endif %}" {{ block.shopify_attributes }}>{{ tile_body }}</a>
+      {%- else -%}
+        <div class="group relative flex min-w-0 flex-col{% if fill %} sm:h-full{% endif %}" {{ block.shopify_attributes }}>{{ tile_body }}</div>
+      {%- endif -%}
+    {%- endcapture -%}
+    {%- if large -%}
+      {%- assign first_tile = tile -%}
+    {%- else -%}
+      {%- assign other_tiles = other_tiles | append: tile -%}
+    {%- endif -%}
+  {%- endfor -%}
+
+<div
+  {% if s.surface != 'inherit' %}data-surface="{{ s.surface }}"{% endif %}
+  class="{% if s.surface != 'inherit' %}flow-root bg-background text-foreground {% endif %}{{ rhythm_class }} {{ hide_class }}"
+  {{ section.shopify_attributes }}
+>
+  {%- if count > 0 -%}
+    <div class="sb-container py-section">
+      {%- render 'sb-section-header', heading: s.title, intro: s.intro, align: s.heading_align -%}
+      {%- if feature -%}
+        <div class="grid grid-cols-1 gap-[var(--sb-grid-gap)] sm:grid-cols-2{% if s.layout == 'large-right' %} sm:[&>*:first-child]:order-2{% endif %}">
+          {{ first_tile }}
+          <div class="grid min-w-0 grid-cols-1 gap-[var(--sb-grid-gap)] sm:auto-rows-fr{% if rest > 2 %} grid-cols-2{% endif %}">
+            {{ other_tiles }}
+          </div>
+        </div>
+      {%- else -%}
+        <div class="grid grid-cols-1 gap-[var(--sb-grid-gap)] sm:grid-cols-2{% if count >= 3 %} lg:grid-cols-3{% endif %}">
+          {{ other_tiles }}
+        </div>
+      {%- endif -%}
+    </div>
+  {%- endif -%}
+</div>
+
+{% schema %}
+{
+  "name": "Collage",
+  "tag": "section",
+  "class": "sb-section-collage",
+  "settings": [
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Heading"
+    },
+    {
+      "type": "textarea",
+      "id": "intro",
+      "label": "Intro"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "heading_align",
+      "label": "Heading alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Centred"
+        }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "select",
+      "id": "layout",
+      "label": "Arrangement",
+      "options": [
+        {
+          "value": "large-left",
+          "label": "Large image left"
+        },
+        {
+          "value": "large-right",
+          "label": "Large image right"
+        },
+        {
+          "value": "even",
+          "label": "Even grid"
+        }
+      ],
+      "default": "large-left"
+    },
+    {
+      "type": "select",
+      "id": "captions",
+      "label": "Titles",
+      "options": [
+        {
+          "value": "below",
+          "label": "Under the image"
+        },
+        {
+          "value": "overlay",
+          "label": "On the image"
+        }
+      ],
+      "default": "below"
+    },
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Background",
+      "options": [
+        {
+          "value": "inherit",
+          "label": "Same as page"
+        },
+        {
+          "value": "light",
+          "label": "Earth"
+        },
+        {
+          "value": "dark",
+          "label": "Dark wood"
+        },
+        {
+          "value": "olive",
+          "label": "Black olive"
+        },
+        {
+          "value": "blue",
+          "label": "Charcoal blue"
+        },
+        {
+          "value": "mocha",
+          "label": "Deep mocha"
+        },
+        {
+          "value": "black",
+          "label": "Off-black"
+        }
+      ],
+      "default": "inherit"
+    },
+    {
+      "type": "select",
+      "id": "rhythm",
+      "label": "Vertical spacing",
+      "options": [
+        {
+          "value": "theme",
+          "label": "Standard"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "select",
+      "id": "hide_on",
+      "label": "Show on",
+      "options": [
+        {
+          "value": "none",
+          "label": "All devices"
+        },
+        {
+          "value": "mobile",
+          "label": "Desktop only"
+        },
+        {
+          "value": "desktop",
+          "label": "Mobile only"
+        }
+      ],
+      "default": "none"
+    }
+  ],
+  "max_blocks": 5,
+  "blocks": [
+    {
+      "type": "tile",
+      "name": "Image",
+      "settings": [
+        {
+          "type": "image_picker",
+          "id": "image",
+          "label": "Image"
+        },
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Title"
+        },
+        {
+          "type": "url",
+          "id": "href",
+          "label": "Link to"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Collage",
+      "blocks": [
+        {
+          "type": "tile",
+          "settings": {
+            "title": "Living",
+            "href": "/shop"
+          }
+        },
+        {
+          "type": "tile",
+          "settings": {
+            "title": "Dining",
+            "href": "/shop"
+          }
+        },
+        {
+          "type": "tile",
+          "settings": {
+            "title": "Lighting",
+            "href": "/shop"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Image grid with titles",
+      "settings": {
+        "layout": "even",
+        "captions": "overlay"
+      },
+      "blocks": [
+        {
+          "type": "tile",
+          "settings": {
+            "title": "Living"
+          }
+        },
+        {
+          "type": "tile",
+          "settings": {
+            "title": "Dining"
+          }
+        },
+        {
+          "type": "tile",
+          "settings": {
+            "title": "Bedroom"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,355 @@
+{% comment %}
+  Testimonials — the page builder's `testimonials`
+  (components/sections/landing/testimonials.tsx). Quotes as a grid, a row to
+  scroll, or one at a time in large type. The two scrolling layouts are the
+  theme's scroll-snap carousel (`sb-track` + assets/sb-carousel.js).
+
+  The schema below is GENERATED from lib/page-builder/sections-landing.ts by
+  `yarn liquid:schemas`; change the section there, not here.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+
+  capture rhythm_class
+    render 'sb-section-classes', rhythm: s.rhythm, pad: 'none'
+  endcapture
+  capture hide_class
+    render 'sb-hide-on', hide_on: s.hide_on
+  endcapture
+
+  assign count = 0
+  for block in section.blocks
+    if block.settings.quote != blank
+      assign count = count | plus: 1
+    endif
+  endfor
+
+  if s.columns == '2'
+    assign grid_class = 'sm:grid-cols-2'
+    assign slide_class = 'basis-[86%]! sm:basis-[calc(50%-0.3125rem)]!'
+  else
+    assign grid_class = 'sm:grid-cols-2 lg:grid-cols-3'
+    assign slide_class = 'basis-[86%]! sm:basis-[46%]! lg:basis-[calc(33.333%-0.42rem)]!'
+  endif
+
+  assign header_align = s.heading_align
+  if s.layout == 'single'
+    assign header_align = 'center'
+  endif
+
+  assign large = false
+  if s.layout == 'single'
+    assign large = true
+  endif
+
+  assign label_previous = 'sections.slideshow.previous' | t
+  assign label_next = 'sections.slideshow.next' | t
+  assign region_label = s.title | default: 'Testimonials'
+-%}
+
+{%- capture figures -%}
+  {%- for block in section.blocks -%}
+    {%- assign b = block.settings -%}
+    {%- if b.quote == blank -%}{%- continue -%}{%- endif -%}
+    {%- capture item_class -%}
+      {%- if s.layout == 'grid' -%}h-full{%- elsif s.layout == 'carousel' -%}{{ slide_class }}{%- endif -%}
+    {%- endcapture -%}
+    <div class="{{ item_class }}" {{ block.shopify_attributes }}>
+      <figure class="flex h-full flex-col {% if large %}items-center text-center{% else %}bg-foreground/[0.04] p-8{% endif %}">
+        <blockquote class="{% if large %}text-h1 max-w-[56rem]{% else %}text-body{% endif %} whitespace-pre-line">
+          {%- if s.marks -%}“{{ b.quote | strip | escape }}”{%- else -%}{{ b.quote | escape }}{%- endif -%}
+        </blockquote>
+        {%- if b.author != blank or b.role != blank or b.image != blank -%}
+          <figcaption class="flex items-center gap-4 {% if large %}mt-10 flex-col gap-3{% else %}mt-auto pt-8{% endif %}">
+            {%- if b.image != blank -%}
+              <span class="bg-foreground/5 relative size-12 shrink-0 overflow-hidden rounded-full">
+                {%- render 'sb-image', image: b.image, alt: '', sizes: '48px', widths: '96, 144', class: 'absolute inset-0 h-full w-full object-cover' -%}
+              </span>
+            {%- endif -%}
+            <span>
+              {%- if b.author != blank -%}<span class="text-secondary block font-medium">{{ b.author }}</span>{%- endif -%}
+              {%- if b.role != blank -%}<span class="text-tertiary text-muted block">{{ b.role }}</span>{%- endif -%}
+            </span>
+          </figcaption>
+        {%- endif -%}
+      </figure>
+    </div>
+  {%- endfor -%}
+{%- endcapture -%}
+
+<div
+  {% if s.surface != 'inherit' %}data-surface="{{ s.surface }}"{% endif %}
+  class="{% if s.surface != 'inherit' %}flow-root bg-background text-foreground {% endif %}{{ rhythm_class }} {{ hide_class }}"
+  {{ section.shopify_attributes }}
+>
+  {%- if count > 0 -%}
+    <div class="sb-container py-section">
+      {%- render 'sb-section-header', heading: s.title, intro: s.intro, align: header_align -%}
+      {%- if s.layout == 'grid' or count == 1 -%}
+        <div class="grid gap-[var(--sb-grid-gap)]{% if s.layout == 'grid' %} {{ grid_class }}{% endif %}">{{ figures }}</div>
+      {%- else -%}
+        <div data-sb-carousel role="region" aria-roledescription="carousel" aria-label="{{ region_label | escape }}">
+          <div class="sb-track gap-[var(--sb-grid-gap)]" data-sb-carousel-track>{{ figures }}</div>
+          <div data-sb-carousel-controls hidden class="mt-6 flex justify-end gap-1">
+            <button type="button" data-sb-carousel-prev aria-label="{{ label_previous }}" class="flex size-9 items-center justify-center opacity-80 hover:opacity-100">
+              {%- render 'sb-icon', icon: 'arrow-left', class: 'size-5', size: 1.25 -%}
+            </button>
+            <button type="button" data-sb-carousel-next aria-label="{{ label_next }}" class="flex size-9 items-center justify-center opacity-80 hover:opacity-100">
+              {%- render 'sb-icon', icon: 'arrow-right', class: 'size-5', size: 1.25 -%}
+            </button>
+          </div>
+        </div>
+      {%- endif -%}
+    </div>
+  {%- endif -%}
+</div>
+
+{% schema %}
+{
+  "name": "Testimonials",
+  "tag": "section",
+  "class": "sb-section-testimonials",
+  "settings": [
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Heading"
+    },
+    {
+      "type": "textarea",
+      "id": "intro",
+      "label": "Intro"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "heading_align",
+      "label": "Heading alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Centred"
+        }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "select",
+      "id": "layout",
+      "label": "Layout",
+      "options": [
+        {
+          "value": "grid",
+          "label": "Grid"
+        },
+        {
+          "value": "carousel",
+          "label": "Carousel"
+        },
+        {
+          "value": "single",
+          "label": "One large quote at a time"
+        }
+      ],
+      "default": "grid"
+    },
+    {
+      "type": "select",
+      "id": "columns",
+      "label": "Columns",
+      "options": [
+        {
+          "value": "2",
+          "label": "2"
+        },
+        {
+          "value": "3",
+          "label": "3"
+        }
+      ],
+      "default": "3"
+    },
+    {
+      "type": "checkbox",
+      "id": "marks",
+      "label": "Show quotation marks",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Background",
+      "options": [
+        {
+          "value": "inherit",
+          "label": "Same as page"
+        },
+        {
+          "value": "light",
+          "label": "Earth"
+        },
+        {
+          "value": "dark",
+          "label": "Dark wood"
+        },
+        {
+          "value": "olive",
+          "label": "Black olive"
+        },
+        {
+          "value": "blue",
+          "label": "Charcoal blue"
+        },
+        {
+          "value": "mocha",
+          "label": "Deep mocha"
+        },
+        {
+          "value": "black",
+          "label": "Off-black"
+        }
+      ],
+      "default": "inherit"
+    },
+    {
+      "type": "select",
+      "id": "rhythm",
+      "label": "Vertical spacing",
+      "options": [
+        {
+          "value": "theme",
+          "label": "Standard"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "select",
+      "id": "hide_on",
+      "label": "Show on",
+      "options": [
+        {
+          "value": "none",
+          "label": "All devices"
+        },
+        {
+          "value": "mobile",
+          "label": "Desktop only"
+        },
+        {
+          "value": "desktop",
+          "label": "Mobile only"
+        }
+      ],
+      "default": "none"
+    }
+  ],
+  "max_blocks": 12,
+  "blocks": [
+    {
+      "type": "quote",
+      "name": "Quote",
+      "settings": [
+        {
+          "type": "textarea",
+          "id": "quote",
+          "label": "Quote"
+        },
+        {
+          "type": "text",
+          "id": "author",
+          "label": "Name"
+        },
+        {
+          "type": "text",
+          "id": "role",
+          "label": "Role or place"
+        },
+        {
+          "type": "image_picker",
+          "id": "image",
+          "label": "Portrait or logo"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Testimonials",
+      "settings": {
+        "title": "What our clients say"
+      },
+      "blocks": [
+        {
+          "type": "quote",
+          "settings": {
+            "quote": "Write what the client said, in their words.",
+            "author": "Client name",
+            "role": "Antwerp"
+          }
+        },
+        {
+          "type": "quote",
+          "settings": {
+            "quote": "Write what the client said, in their words.",
+            "author": "Architect",
+            "role": "Studio name"
+          }
+        },
+        {
+          "type": "quote",
+          "settings": {
+            "quote": "Write what the client said, in their words.",
+            "author": "Magazine",
+            "role": "Issue, year"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Large quote",
+      "settings": {
+        "layout": "single"
+      },
+      "blocks": [
+        {
+          "type": "quote",
+          "settings": {
+            "quote": "A short, strong sentence someone said about the work.",
+            "author": "Name",
+            "role": "Publication"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

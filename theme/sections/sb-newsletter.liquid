@@ -1,0 +1,220 @@
+{% comment %}
+  Newsletter sign-up — the page builder's `newsletter`
+  (components/sections/landing/newsletter-band.tsx): the footer's sign-up given
+  a band of its own. Posts to Shopify's customer form, tagged `newsletter`,
+  exactly as the footer does (see sb-footer).
+
+  The schema below is GENERATED from lib/page-builder/sections-landing.ts by
+  `yarn liquid:schemas`; change the section there, not here.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+
+  capture rhythm_class
+    render 'sb-section-classes', rhythm: s.rhythm, pad: 'none'
+  endcapture
+  capture hide_class
+    render 'sb-hide-on', hide_on: s.hide_on
+  endcapture
+
+  assign form_id = 'Newsletter-' | append: section.id
+  assign input_id = 'NewsletterEmail-' | append: section.id
+-%}
+
+<div
+  {% if s.surface != 'inherit' %}data-surface="{{ s.surface }}"{% endif %}
+  class="{% if s.surface != 'inherit' %}flow-root bg-background text-foreground {% endif %}{{ rhythm_class }} {{ hide_class }}"
+  {{ section.shopify_attributes }}
+>
+  <div class="sb-container py-section">
+    <div class="flex flex-col {% if s.align == 'center' %}mx-auto items-center text-center{% else %}items-start{% endif %} {% if s.style == 'panel' %}bg-foreground/[0.04] max-w-[60rem] p-10 sm:p-16{% else %}max-w-[46rem]{% endif %}">
+      {%- if s.title != blank -%}
+        <h2 class="text-h2">{{ s.title }}</h2>
+      {%- endif -%}
+      {%- if s.body != blank -%}
+        <p class="text-body text-muted mt-4 max-w-[38rem] whitespace-pre-line">{{ s.body | escape }}</p>
+      {%- endif -%}
+
+      {%- form 'customer', id: form_id, class: 'mt-8 w-full max-w-[26.25rem] text-left' -%}
+        <input type="hidden" name="contact[tags]" value="newsletter">
+        <div class="flex items-center gap-4 border-b border-current pb-2">
+          <label for="{{ input_id }}" class="sr-only">{{ 'newsletter.email_label' | t }}</label>
+          <input
+            id="{{ input_id }}"
+            type="email"
+            name="contact[email]"
+            value="{{ form.email }}"
+            placeholder="{{ 'newsletter.placeholder' | t }}"
+            autocomplete="email"
+            required
+            class="text-secondary w-full bg-transparent placeholder:text-current placeholder:opacity-70 focus:outline-none"
+          >
+          <button type="submit" class="text-secondary shrink-0 transition-opacity hover:opacity-70">
+            {{ 'newsletter.submit' | t }}
+          </button>
+        </div>
+        {%- if form.posted_successfully? -%}
+          <p role="status" class="text-tertiary mt-2 opacity-80">{{ 'newsletter.success' | t }}</p>
+        {%- elsif form.errors -%}
+          <p role="status" class="text-tertiary mt-2 opacity-80">
+            {{ form.errors.translated_fields.email | capitalize }} {{ form.errors.messages.email }}
+          </p>
+        {%- endif -%}
+      {%- endform -%}
+    </div>
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Newsletter sign-up",
+  "tag": "section",
+  "class": "sb-section-newsletter",
+  "settings": [
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Heading"
+    },
+    {
+      "type": "textarea",
+      "id": "body",
+      "label": "Text"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "align",
+      "label": "Alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Centred"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "select",
+      "id": "style",
+      "label": "Style",
+      "options": [
+        {
+          "value": "plain",
+          "label": "Plain"
+        },
+        {
+          "value": "panel",
+          "label": "On a panel"
+        }
+      ],
+      "default": "plain"
+    },
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Background",
+      "options": [
+        {
+          "value": "inherit",
+          "label": "Same as page"
+        },
+        {
+          "value": "light",
+          "label": "Earth"
+        },
+        {
+          "value": "dark",
+          "label": "Dark wood"
+        },
+        {
+          "value": "olive",
+          "label": "Black olive"
+        },
+        {
+          "value": "blue",
+          "label": "Charcoal blue"
+        },
+        {
+          "value": "mocha",
+          "label": "Deep mocha"
+        },
+        {
+          "value": "black",
+          "label": "Off-black"
+        }
+      ],
+      "default": "inherit"
+    },
+    {
+      "type": "select",
+      "id": "rhythm",
+      "label": "Vertical spacing",
+      "options": [
+        {
+          "value": "theme",
+          "label": "Standard"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "select",
+      "id": "hide_on",
+      "label": "Show on",
+      "options": [
+        {
+          "value": "none",
+          "label": "All devices"
+        },
+        {
+          "value": "mobile",
+          "label": "Desktop only"
+        },
+        {
+          "value": "desktop",
+          "label": "Mobile only"
+        }
+      ],
+      "default": "none"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Newsletter sign-up",
+      "settings": {
+        "title": "Stay in touch",
+        "body": "Seasonal news, new pieces and invitations to our events. A few emails a year, never more."
+      }
+    }
+  ]
+}
+{% endschema %}

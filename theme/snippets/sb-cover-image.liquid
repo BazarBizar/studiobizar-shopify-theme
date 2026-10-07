@@ -1,0 +1,39 @@
+{% comment %}
+  A photograph filling its (relative) box, with an optional narrower crop for
+  phones — BannerImage in components/sections/landing/image-banner.tsx.
+
+  In the theme editor an empty image draws Shopify's placeholder, so the band
+  shows its shape before a photograph is chosen; on the live store it draws
+  nothing (the Next preview does the same with `placeholder`).
+
+  Accepts:
+    image, mobile_image — image drops
+    priority — true for the first band on the page
+{% endcomment %}
+
+{%- if image != blank -%}
+  {%- liquid
+    assign desktop_class = 'absolute inset-0 h-full w-full object-cover'
+    if mobile_image != blank
+      assign desktop_class = 'absolute inset-0 h-full w-full object-cover max-sm:hidden'
+    endif
+  -%}
+  {%- render 'sb-image',
+    image: image,
+    sizes: '100vw',
+    widths: '750, 1100, 1500, 2000, 2800',
+    class: desktop_class,
+    priority: priority
+  -%}
+  {%- if mobile_image != blank -%}
+    {%- render 'sb-image',
+      image: mobile_image,
+      sizes: '100vw',
+      widths: '400, 750, 1100',
+      class: 'absolute inset-0 h-full w-full object-cover sm:hidden',
+      priority: priority
+    -%}
+  {%- endif -%}
+{%- elsif request.design_mode -%}
+  {{ 'image' | placeholder_svg_tag: 'absolute inset-0 h-full w-full bg-foreground/10 fill-current opacity-30' }}
+{%- endif -%}

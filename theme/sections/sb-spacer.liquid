@@ -1,0 +1,170 @@
+{% comment %}
+  Spacer — the page builder's `spacer` (components/sections/landing/spacer.tsx).
+  Space between two bands from the section rhythm scale, with an optional hairline.
+
+  The schema below is GENERATED from lib/page-builder/sections-landing.ts by
+  `yarn liquid:schemas`; change the section there, not here.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+
+  capture hide_class
+    render 'sb-hide-on', hide_on: s.hide_on
+  endcapture
+
+  case s.height
+    when 'xs'
+      assign height_class = 'h-section-xs'
+    when 'md'
+      assign height_class = 'h-section-md'
+    when 'lg'
+      assign height_class = 'h-section-lg'
+    when 'xl'
+      assign height_class = 'h-section-xl'
+    else
+      assign height_class = 'h-section-sm'
+  endcase
+-%}
+
+<div
+  {% if s.surface != 'inherit' %}data-surface="{{ s.surface }}"{% endif %}
+  class="{% if s.surface != 'inherit' %}flow-root bg-background text-foreground {% endif %}{{ hide_class }}"
+  {{ section.shopify_attributes }}
+>
+  <div aria-hidden="true" class="flex items-center {{ height_class }}{% if s.line == 'contained' %} sb-container{% endif %}">
+    {%- if s.line != 'none' -%}
+      <hr class="border-border w-full border-t">
+    {%- endif -%}
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Spacer",
+  "tag": "section",
+  "class": "sb-section-spacer",
+  "settings": [
+    {
+      "type": "select",
+      "id": "height",
+      "label": "Height",
+      "options": [
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "sm"
+    },
+    {
+      "type": "select",
+      "id": "line",
+      "label": "Line",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "contained",
+          "label": "Within the margins"
+        },
+        {
+          "value": "full",
+          "label": "Edge to edge"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Background",
+      "options": [
+        {
+          "value": "inherit",
+          "label": "Same as page"
+        },
+        {
+          "value": "light",
+          "label": "Earth"
+        },
+        {
+          "value": "dark",
+          "label": "Dark wood"
+        },
+        {
+          "value": "olive",
+          "label": "Black olive"
+        },
+        {
+          "value": "blue",
+          "label": "Charcoal blue"
+        },
+        {
+          "value": "mocha",
+          "label": "Deep mocha"
+        },
+        {
+          "value": "black",
+          "label": "Off-black"
+        }
+      ],
+      "default": "inherit"
+    },
+    {
+      "type": "select",
+      "id": "hide_on",
+      "label": "Show on",
+      "options": [
+        {
+          "value": "none",
+          "label": "All devices"
+        },
+        {
+          "value": "mobile",
+          "label": "Desktop only"
+        },
+        {
+          "value": "desktop",
+          "label": "Mobile only"
+        }
+      ],
+      "default": "none"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Spacer"
+    },
+    {
+      "name": "Divider",
+      "settings": {
+        "height": "xs",
+        "line": "contained"
+      }
+    }
+  ]
+}
+{% endschema %}

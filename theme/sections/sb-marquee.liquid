@@ -1,0 +1,329 @@
+{% comment %}
+  Scrolling text — the page builder's `marquee`
+  (components/sections/landing/marquee.tsx). Pure CSS (`sb-marquee` in
+  theme-build/sb-theme.css): the strip is drawn twice and moved by half its
+  width, so the loop has no seam; the global reduced-motion rule stops it.
+
+  The moving copy is hidden from assistive technology; the phrases are read once
+  from a visually hidden list.
+
+  The schema below is GENERATED from lib/page-builder/sections-landing.ts by
+  `yarn liquid:schemas`; change the section there, not here.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+
+  capture rhythm_class
+    render 'sb-section-classes', rhythm: s.rhythm, pad: 'none'
+  endcapture
+  capture hide_class
+    render 'sb-hide-on', hide_on: s.hide_on
+  endcapture
+  capture size_class
+    render 'sb-heading-class', size: s.size
+  endcapture
+
+  case s.speed
+    when 'slow'
+      assign duration = '70s'
+    when 'fast'
+      assign duration = '25s'
+    else
+      assign duration = '45s'
+  endcase
+
+  case s.separator
+    when 'dash'
+      assign mark = '—'
+    when 'star'
+      assign mark = '✦'
+    when 'none'
+      assign mark = ''
+    else
+      assign mark = '·'
+  endcase
+
+  assign count = 0
+  for block in section.blocks
+    if block.settings.text != blank
+      assign count = count | plus: 1
+    endif
+  endfor
+
+  comment
+    Repeated so one copy is always wider than the screen, whatever the number of
+    phrases — the same arithmetic as Math.max(2, ceil(8 / phrases)).
+  endcomment
+  assign rounds = 2
+  if count > 0
+    assign rounds = 8 | plus: count | minus: 1 | divided_by: count
+    if rounds < 2
+      assign rounds = 2
+    endif
+  endif
+-%}
+
+<div
+  {% if s.surface != 'inherit' %}data-surface="{{ s.surface }}"{% endif %}
+  class="{% if s.surface != 'inherit' %}flow-root bg-background text-foreground {% endif %}{{ rhythm_class }} {{ hide_class }}"
+  {{ section.shopify_attributes }}
+>
+  {%- if count > 0 -%}
+    <div class="py-section-xs overflow-hidden{% if s.lines %} border-border border-y{% endif %}">
+      <ul class="sr-only">
+        {%- for block in section.blocks -%}
+          {%- if block.settings.text != blank -%}<li>{{ block.settings.text }}</li>{%- endif -%}
+        {%- endfor -%}
+      </ul>
+      <div
+        class="sb-marquee flex w-max {{ size_class }}{% if s.direction == 'right' %} [animation-direction:reverse]{% endif %}"
+        style="--sb-marquee-duration: {{ duration }};"
+      >
+        {%- for copy in (1..2) -%}
+          <ul aria-hidden="true" class="flex shrink-0 items-center">
+            {%- for round in (1..rounds) -%}
+              {%- for block in section.blocks -%}
+                {%- if block.settings.text == blank -%}{%- continue -%}{%- endif -%}
+                <li class="flex items-center whitespace-nowrap" {% if copy == 1 and round == 1 %}{{ block.shopify_attributes }}{% endif %}>
+                  <span class="px-6 sm:px-10">{{ block.settings.text }}</span>
+                  {%- if mark != '' -%}<span class="opacity-50">{{ mark }}</span>{%- endif -%}
+                </li>
+              {%- endfor -%}
+            {%- endfor -%}
+          </ul>
+        {%- endfor -%}
+      </div>
+    </div>
+  {%- endif -%}
+</div>
+
+{% schema %}
+{
+  "name": "Scrolling text",
+  "tag": "section",
+  "class": "sb-section-marquee",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "size",
+      "label": "Size",
+      "options": [
+        {
+          "value": "h2",
+          "label": "Standard"
+        },
+        {
+          "value": "h1",
+          "label": "Large"
+        },
+        {
+          "value": "display",
+          "label": "Extra large"
+        }
+      ],
+      "default": "h1"
+    },
+    {
+      "type": "select",
+      "id": "speed",
+      "label": "Speed",
+      "options": [
+        {
+          "value": "slow",
+          "label": "Slow"
+        },
+        {
+          "value": "normal",
+          "label": "Normal"
+        },
+        {
+          "value": "fast",
+          "label": "Fast"
+        }
+      ],
+      "default": "normal"
+    },
+    {
+      "type": "select",
+      "id": "direction",
+      "label": "Direction",
+      "options": [
+        {
+          "value": "left",
+          "label": "To the left"
+        },
+        {
+          "value": "right",
+          "label": "To the right"
+        }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "select",
+      "id": "separator",
+      "label": "Between phrases",
+      "options": [
+        {
+          "value": "dot",
+          "label": "·"
+        },
+        {
+          "value": "dash",
+          "label": "—"
+        },
+        {
+          "value": "star",
+          "label": "✦"
+        },
+        {
+          "value": "none",
+          "label": "Nothing"
+        }
+      ],
+      "default": "dot"
+    },
+    {
+      "type": "checkbox",
+      "id": "lines",
+      "label": "Lines above and below",
+      "default": false
+    },
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Background",
+      "options": [
+        {
+          "value": "inherit",
+          "label": "Same as page"
+        },
+        {
+          "value": "light",
+          "label": "Earth"
+        },
+        {
+          "value": "dark",
+          "label": "Dark wood"
+        },
+        {
+          "value": "olive",
+          "label": "Black olive"
+        },
+        {
+          "value": "blue",
+          "label": "Charcoal blue"
+        },
+        {
+          "value": "mocha",
+          "label": "Deep mocha"
+        },
+        {
+          "value": "black",
+          "label": "Off-black"
+        }
+      ],
+      "default": "inherit"
+    },
+    {
+      "type": "select",
+      "id": "rhythm",
+      "label": "Vertical spacing",
+      "options": [
+        {
+          "value": "theme",
+          "label": "Standard"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "select",
+      "id": "hide_on",
+      "label": "Show on",
+      "options": [
+        {
+          "value": "none",
+          "label": "All devices"
+        },
+        {
+          "value": "mobile",
+          "label": "Desktop only"
+        },
+        {
+          "value": "desktop",
+          "label": "Mobile only"
+        }
+      ],
+      "default": "none"
+    }
+  ],
+  "max_blocks": 12,
+  "blocks": [
+    {
+      "type": "item",
+      "name": "Phrase",
+      "settings": [
+        {
+          "type": "text",
+          "id": "text",
+          "label": "Text"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Scrolling text",
+      "settings": {
+        "lines": true
+      },
+      "blocks": [
+        {
+          "type": "item",
+          "settings": {
+            "text": "Designed for life"
+          }
+        },
+        {
+          "type": "item",
+          "settings": {
+            "text": "Inspired by the world"
+          }
+        },
+        {
+          "type": "item",
+          "settings": {
+            "text": "Made by hand"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

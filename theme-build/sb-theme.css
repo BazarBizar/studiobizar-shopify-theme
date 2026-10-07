@@ -505,6 +505,25 @@
 }
 
 /**
+ * Scrolling text — sections/sb-marquee.liquid, and the builder's marquee
+ * (app/globals.css carries the same rule). The strip is drawn twice; moving it by
+ * half its width loops without a seam. The reduced-motion rule above ends it
+ * after one 0.01ms run, at rest.
+ */
+@keyframes sb-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@utility sb-marquee {
+  animation: sb-marquee var(--sb-marquee-duration, 45s) linear infinite;
+}
+
+/**
  * A scroll-snap track. This is what replaces embla-carousel: the browser does
  * the snapping, the momentum and the touch handling, and without JavaScript the
  * track is still a scrollable strip rather than a dead stack of slides.

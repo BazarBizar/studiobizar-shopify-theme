@@ -1,0 +1,640 @@
+{% comment %}
+  Columns — the page builder's `multicolumn`
+  (components/sections/landing/multicolumn.tsx). Two to five columns, each an
+  image or an icon, a heading, text and a link. On phones they stack, pair up,
+  or become a native scroll-snap row (`scroll`) — no script.
+
+  The schema below is GENERATED from lib/page-builder/sections-landing.ts by
+  `yarn liquid:schemas`; change the section there, not here.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+
+  capture rhythm_class
+    render 'sb-section-classes', rhythm: s.rhythm, pad: 'none'
+  endcapture
+  capture hide_class
+    render 'sb-hide-on', hide_on: s.hide_on
+  endcapture
+
+  case s.columns_desktop
+    when '2'
+      assign desktop_class = 'sm:grid-cols-2'
+    when '4'
+      assign desktop_class = 'sm:grid-cols-2 lg:grid-cols-4'
+    when '5'
+      assign desktop_class = 'sm:grid-cols-3 lg:grid-cols-5'
+    else
+      assign desktop_class = 'sm:grid-cols-2 lg:grid-cols-3'
+  endcase
+
+  case s.columns_mobile
+    when '2'
+      assign mobile_class = 'grid-cols-2'
+    when 'scroll'
+      assign mobile_class = 'grid-cols-1 max-sm:-mx-[var(--sb-gutter)] max-sm:flex max-sm:snap-x max-sm:snap-mandatory max-sm:gap-[var(--sb-grid-gap)] max-sm:overflow-x-auto max-sm:px-[var(--sb-gutter)]'
+    else
+      assign mobile_class = 'grid-cols-1'
+  endcase
+
+  case s.style
+    when 'cards'
+      assign list_style = 'gap-y-[var(--sb-grid-gap)]'
+    when 'lines'
+      assign list_style = 'sm:gap-x-0'
+    else
+      assign list_style = ''
+  endcase
+
+  if s.align == 'center'
+    assign item_align = 'items-center text-center'
+  else
+    assign item_align = 'items-start text-left'
+  endif
+-%}
+
+<div
+  {% if s.surface != 'inherit' %}data-surface="{{ s.surface }}"{% endif %}
+  class="{% if s.surface != 'inherit' %}flow-root bg-background text-foreground {% endif %}{{ rhythm_class }} {{ hide_class }}"
+  {{ section.shopify_attributes }}
+>
+  {%- if section.blocks.size > 0 -%}
+    <div class="sb-container py-section">
+      {%- render 'sb-section-header', heading: s.title, intro: s.intro, align: s.heading_align -%}
+      <ul class="grid gap-x-[var(--sb-grid-gap)] gap-y-12 {{ mobile_class }} {{ desktop_class }} {{ list_style }}">
+        {%- for block in section.blocks -%}
+          {%- assign b = block.settings -%}
+          <li
+            class="flex flex-col {{ item_align }}{% if s.columns_mobile == 'scroll' %} max-sm:w-[78%] max-sm:shrink-0 max-sm:snap-start{% endif %}{% if s.style == 'cards' %} bg-foreground/[0.04] p-6 sm:p-8{% endif %}{% if s.style == 'lines' %} sm:px-8 sm:first:pl-0{% unless forloop.first %} border-border sm:border-l{% endunless %}{% endif %}"
+            {{ block.shopify_attributes }}
+          >
+            {%- if s.media == 'image' -%}
+              {%- render 'sb-picture', image: b.image, ratio: s.ratio, sizes: '(max-width: 749px) 80vw, 30vw', class: 'mb-6' -%}
+            {%- elsif s.media == 'icon' and b.icon != 'none' -%}
+              {%- render 'sb-section-icon', icon: b.icon, class: 'mb-5 size-9' -%}
+            {%- endif -%}
+            {%- if b.title != blank -%}
+              <h3 class="text-h3">{{ b.title }}</h3>
+            {%- endif -%}
+            {%- if b.body != blank -%}
+              <div class="sb-prose mt-3" style="font-size: var(--fs-secondary);">{{ b.body }}</div>
+            {%- endif -%}
+            {%- if b.link_label != blank and b.link_url != blank -%}
+              <a href="{{ b.link_url }}" class="sb-underline text-button mt-5 uppercase">{{ b.link_label }}</a>
+            {%- endif -%}
+          </li>
+        {%- endfor -%}
+      </ul>
+      {%- if s.button_label != blank and s.button_url != blank -%}
+        <div class="mt-12 flex{% if s.heading_align == 'center' %} justify-center{% endif %}">
+          {%- render 'sb-button', label: s.button_label, href: s.button_url, variant: 'outline' -%}
+        </div>
+      {%- endif -%}
+    </div>
+  {%- endif -%}
+</div>
+
+{% schema %}
+{
+  "name": "Columns",
+  "tag": "section",
+  "class": "sb-section-multicolumn",
+  "settings": [
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Heading"
+    },
+    {
+      "type": "textarea",
+      "id": "intro",
+      "label": "Intro"
+    },
+    {
+      "type": "text",
+      "id": "button_label",
+      "label": "Button under the columns text"
+    },
+    {
+      "type": "url",
+      "id": "button_url",
+      "label": "Button under the columns link"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "heading_align",
+      "label": "Heading alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Centred"
+        }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "select",
+      "id": "media",
+      "label": "Media",
+      "options": [
+        {
+          "value": "image",
+          "label": "Images"
+        },
+        {
+          "value": "icon",
+          "label": "Icons"
+        },
+        {
+          "value": "none",
+          "label": "None"
+        }
+      ],
+      "default": "image"
+    },
+    {
+      "type": "select",
+      "id": "ratio",
+      "label": "Image shape",
+      "options": [
+        {
+          "value": "portrait",
+          "label": "Portrait"
+        },
+        {
+          "value": "square",
+          "label": "Square"
+        },
+        {
+          "value": "landscape",
+          "label": "Landscape"
+        },
+        {
+          "value": "adapt",
+          "label": "Original"
+        }
+      ],
+      "default": "portrait"
+    },
+    {
+      "type": "select",
+      "id": "columns_desktop",
+      "label": "Columns on desktop",
+      "options": [
+        {
+          "value": "2",
+          "label": "2"
+        },
+        {
+          "value": "3",
+          "label": "3"
+        },
+        {
+          "value": "4",
+          "label": "4"
+        },
+        {
+          "value": "5",
+          "label": "5"
+        }
+      ],
+      "default": "3"
+    },
+    {
+      "type": "select",
+      "id": "columns_mobile",
+      "label": "On phones",
+      "options": [
+        {
+          "value": "1",
+          "label": "One per row"
+        },
+        {
+          "value": "2",
+          "label": "Two per row"
+        },
+        {
+          "value": "scroll",
+          "label": "Swipe"
+        }
+      ],
+      "default": "1"
+    },
+    {
+      "type": "select",
+      "id": "align",
+      "label": "Text alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Centred"
+        }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "select",
+      "id": "style",
+      "label": "Style",
+      "options": [
+        {
+          "value": "plain",
+          "label": "Plain"
+        },
+        {
+          "value": "cards",
+          "label": "Cards"
+        },
+        {
+          "value": "lines",
+          "label": "Divided by lines"
+        }
+      ],
+      "default": "plain"
+    },
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Background",
+      "options": [
+        {
+          "value": "inherit",
+          "label": "Same as page"
+        },
+        {
+          "value": "light",
+          "label": "Earth"
+        },
+        {
+          "value": "dark",
+          "label": "Dark wood"
+        },
+        {
+          "value": "olive",
+          "label": "Black olive"
+        },
+        {
+          "value": "blue",
+          "label": "Charcoal blue"
+        },
+        {
+          "value": "mocha",
+          "label": "Deep mocha"
+        },
+        {
+          "value": "black",
+          "label": "Off-black"
+        }
+      ],
+      "default": "inherit"
+    },
+    {
+      "type": "select",
+      "id": "rhythm",
+      "label": "Vertical spacing",
+      "options": [
+        {
+          "value": "theme",
+          "label": "Standard"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "select",
+      "id": "hide_on",
+      "label": "Show on",
+      "options": [
+        {
+          "value": "none",
+          "label": "All devices"
+        },
+        {
+          "value": "mobile",
+          "label": "Desktop only"
+        },
+        {
+          "value": "desktop",
+          "label": "Mobile only"
+        }
+      ],
+      "default": "none"
+    }
+  ],
+  "max_blocks": 12,
+  "blocks": [
+    {
+      "type": "column",
+      "name": "Column",
+      "settings": [
+        {
+          "type": "image_picker",
+          "id": "image",
+          "label": "Image",
+          "info": "Shown when the section's media is set to images."
+        },
+        {
+          "type": "select",
+          "id": "icon",
+          "label": "Icon",
+          "options": [
+            {
+              "value": "none",
+              "label": "No icon"
+            },
+            {
+              "value": "leaf",
+              "label": "Leaf"
+            },
+            {
+              "value": "sparkles",
+              "label": "Sparkles"
+            },
+            {
+              "value": "gem",
+              "label": "Gem"
+            },
+            {
+              "value": "award",
+              "label": "Award"
+            },
+            {
+              "value": "star",
+              "label": "Star"
+            },
+            {
+              "value": "heart",
+              "label": "Heart"
+            },
+            {
+              "value": "hammer",
+              "label": "Craft"
+            },
+            {
+              "value": "ruler",
+              "label": "Measure"
+            },
+            {
+              "value": "palette",
+              "label": "Palette"
+            },
+            {
+              "value": "sofa",
+              "label": "Sofa"
+            },
+            {
+              "value": "lamp",
+              "label": "Lamp"
+            },
+            {
+              "value": "truck",
+              "label": "Delivery"
+            },
+            {
+              "value": "package",
+              "label": "Package"
+            },
+            {
+              "value": "shield",
+              "label": "Guarantee"
+            },
+            {
+              "value": "recycle",
+              "label": "Recycle"
+            },
+            {
+              "value": "globe",
+              "label": "Globe"
+            },
+            {
+              "value": "map-pin",
+              "label": "Location"
+            },
+            {
+              "value": "clock",
+              "label": "Time"
+            },
+            {
+              "value": "calendar",
+              "label": "Calendar"
+            },
+            {
+              "value": "phone",
+              "label": "Phone"
+            },
+            {
+              "value": "mail",
+              "label": "Mail"
+            },
+            {
+              "value": "message",
+              "label": "Message"
+            },
+            {
+              "value": "check",
+              "label": "Check"
+            }
+          ],
+          "default": "none",
+          "info": "Shown when the section's media is set to icons."
+        },
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Heading"
+        },
+        {
+          "type": "richtext",
+          "id": "body",
+          "label": "Text"
+        },
+        {
+          "type": "text",
+          "id": "link_label",
+          "label": "Link text"
+        },
+        {
+          "type": "url",
+          "id": "link_url",
+          "label": "Link link"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Columns with images",
+      "settings": {
+        "title": "Ways to work with us"
+      },
+      "blocks": [
+        {
+          "type": "column",
+          "settings": {
+            "title": "Shop the collection",
+            "body": "<p>Pieces in stock, ready to deliver.</p>",
+            "link_label": "shop",
+            "link_url": "/shop"
+          }
+        },
+        {
+          "type": "column",
+          "settings": {
+            "title": "Made to order",
+            "body": "<p>Your size, your material, built for you.</p>",
+            "link_label": "enquire",
+            "link_url": "/contact"
+          }
+        },
+        {
+          "type": "column",
+          "settings": {
+            "title": "Interior projects",
+            "body": "<p>Complete rooms, from plan to placement.</p>",
+            "link_label": "see projects",
+            "link_url": "/projects"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Icon features",
+      "settings": {
+        "media": "icon",
+        "columns_desktop": "4",
+        "columns_mobile": "2",
+        "align": "center",
+        "heading_align": "center"
+      },
+      "blocks": [
+        {
+          "type": "column",
+          "settings": {
+            "icon": "truck",
+            "title": "White-glove delivery",
+            "body": "<p>Placed in the room, packaging taken away.</p>"
+          }
+        },
+        {
+          "type": "column",
+          "settings": {
+            "icon": "hammer",
+            "title": "Made by hand",
+            "body": "<p>By the workshops that design them.</p>"
+          }
+        },
+        {
+          "type": "column",
+          "settings": {
+            "icon": "shield",
+            "title": "Five-year guarantee",
+            "body": "<p>On every frame and every joint.</p>"
+          }
+        },
+        {
+          "type": "column",
+          "settings": {
+            "icon": "message",
+            "title": "Personal advice",
+            "body": "<p>In the showroom or at your home.</p>"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cards",
+      "settings": {
+        "title": "What is included",
+        "media": "none",
+        "style": "cards"
+      },
+      "blocks": [
+        {
+          "type": "column",
+          "settings": {
+            "title": "Measured visit",
+            "body": "<p>A sentence or two on what this means for the client.</p>"
+          }
+        },
+        {
+          "type": "column",
+          "settings": {
+            "title": "Material samples",
+            "body": "<p>A sentence or two on what this means for the client.</p>"
+          }
+        },
+        {
+          "type": "column",
+          "settings": {
+            "title": "Installation",
+            "body": "<p>A sentence or two on what this means for the client.</p>"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Text columns",
+      "settings": {
+        "media": "none",
+        "style": "lines"
+      },
+      "blocks": [
+        {
+          "type": "column",
+          "settings": {
+            "title": "Honest materials",
+            "body": "<p>A few lines on what this means in practice.</p>"
+          }
+        },
+        {
+          "type": "column",
+          "settings": {
+            "title": "Slow design",
+            "body": "<p>A few lines on what this means in practice.</p>"
+          }
+        },
+        {
+          "type": "column",
+          "settings": {
+            "title": "Made to last",
+            "body": "<p>A few lines on what this means in practice.</p>"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

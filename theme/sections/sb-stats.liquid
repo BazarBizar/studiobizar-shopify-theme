@@ -1,0 +1,292 @@
+{% comment %}
+  Numbers — the page builder's `stats` (components/sections/landing/stats.tsx).
+  Key figures in large type, each with a label. Up to four sit in one row.
+
+  The schema below is GENERATED from lib/page-builder/sections-landing.ts by
+  `yarn liquid:schemas`; change the section there, not here.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+
+  capture rhythm_class
+    render 'sb-section-classes', rhythm: s.rhythm, pad: 'none'
+  endcapture
+  capture hide_class
+    render 'sb-hide-on', hide_on: s.hide_on
+  endcapture
+
+  assign count = 0
+  for block in section.blocks
+    if block.settings.value != blank
+      assign count = count | plus: 1
+    endif
+  endfor
+
+  case count
+    when 1
+      assign columns_class = 'sm:grid-cols-1'
+    when 2
+      assign columns_class = 'sm:grid-cols-2'
+    when 3
+      assign columns_class = 'sm:grid-cols-3'
+    else
+      assign columns_class = 'sm:grid-cols-2 lg:grid-cols-4'
+  endcase
+
+  if s.size == 'h1'
+    assign figure_class = 'text-h1'
+  else
+    assign figure_class = 'text-display leading-[1.05]'
+  endif
+-%}
+
+<div
+  {% if s.surface != 'inherit' %}data-surface="{{ s.surface }}"{% endif %}
+  class="{% if s.surface != 'inherit' %}flow-root bg-background text-foreground {% endif %}{{ rhythm_class }} {{ hide_class }}"
+  {{ section.shopify_attributes }}
+>
+  {%- if count > 0 -%}
+    <div class="sb-container py-section">
+      {%- render 'sb-section-header', heading: s.title, intro: s.intro, align: s.heading_align -%}
+      <dl class="grid grid-cols-2 gap-y-10 {{ columns_class }}">
+        {%- for block in section.blocks -%}
+          {%- assign b = block.settings -%}
+          {%- if b.value == blank -%}{%- continue -%}{%- endif -%}
+          <div
+            class="flex flex-col px-4 first:pl-0 sm:px-8{% if s.align == 'center' %} items-center px-4 text-center first:pl-4{% endif %}{% if s.lines %} border-border border-l first:border-l-0 max-sm:[&:nth-child(odd)]:border-l-0 max-sm:[&:nth-child(odd)]:pl-0{% endif %}"
+            {{ block.shopify_attributes }}
+          >
+            <dt class="sr-only">{{ b.label | default: b.value }}</dt>
+            <dd class="{{ figure_class }} tabular-nums">{{ b.value }}</dd>
+            {%- if b.label != blank -%}
+              <dd class="text-secondary mt-2 uppercase">{{ b.label }}</dd>
+            {%- endif -%}
+            {%- if b.body != blank -%}
+              <dd class="text-secondary text-muted mt-3 max-w-[22rem] whitespace-pre-line">{{ b.body | escape }}</dd>
+            {%- endif -%}
+          </div>
+        {%- endfor -%}
+      </dl>
+    </div>
+  {%- endif -%}
+</div>
+
+{% schema %}
+{
+  "name": "Numbers",
+  "tag": "section",
+  "class": "sb-section-stats",
+  "settings": [
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Heading"
+    },
+    {
+      "type": "textarea",
+      "id": "intro",
+      "label": "Intro"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "heading_align",
+      "label": "Heading alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Centred"
+        }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "select",
+      "id": "size",
+      "label": "Figure size",
+      "options": [
+        {
+          "value": "h1",
+          "label": "Large"
+        },
+        {
+          "value": "display",
+          "label": "Extra large"
+        }
+      ],
+      "default": "display"
+    },
+    {
+      "type": "select",
+      "id": "align",
+      "label": "Alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Centred"
+        }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "checkbox",
+      "id": "lines",
+      "label": "Lines between figures",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Background",
+      "options": [
+        {
+          "value": "inherit",
+          "label": "Same as page"
+        },
+        {
+          "value": "light",
+          "label": "Earth"
+        },
+        {
+          "value": "dark",
+          "label": "Dark wood"
+        },
+        {
+          "value": "olive",
+          "label": "Black olive"
+        },
+        {
+          "value": "blue",
+          "label": "Charcoal blue"
+        },
+        {
+          "value": "mocha",
+          "label": "Deep mocha"
+        },
+        {
+          "value": "black",
+          "label": "Off-black"
+        }
+      ],
+      "default": "inherit"
+    },
+    {
+      "type": "select",
+      "id": "rhythm",
+      "label": "Vertical spacing",
+      "options": [
+        {
+          "value": "theme",
+          "label": "Standard"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "select",
+      "id": "hide_on",
+      "label": "Show on",
+      "options": [
+        {
+          "value": "none",
+          "label": "All devices"
+        },
+        {
+          "value": "mobile",
+          "label": "Desktop only"
+        },
+        {
+          "value": "desktop",
+          "label": "Mobile only"
+        }
+      ],
+      "default": "none"
+    }
+  ],
+  "max_blocks": 8,
+  "blocks": [
+    {
+      "type": "stat",
+      "name": "Figure",
+      "settings": [
+        {
+          "type": "text",
+          "id": "value",
+          "label": "Figure",
+          "info": "As it should read — “25+”, “1998”, “12 000”."
+        },
+        {
+          "type": "text",
+          "id": "label",
+          "label": "Label"
+        },
+        {
+          "type": "textarea",
+          "id": "body",
+          "label": "Text"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Numbers",
+      "blocks": [
+        {
+          "type": "stat",
+          "settings": {
+            "value": "25+",
+            "label": "Years of design"
+          }
+        },
+        {
+          "type": "stat",
+          "settings": {
+            "value": "40",
+            "label": "Workshops in Europe"
+          }
+        },
+        {
+          "type": "stat",
+          "settings": {
+            "value": "1 200",
+            "label": "Interiors furnished"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

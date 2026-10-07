@@ -1,0 +1,286 @@
+{% comment %}
+  Featured product — the page builder's `featured_product`
+  (components/sections/landing/featured-product.tsx). One product given a band
+  of its own: one photograph alone, two side by side, three as one large over
+  two; its story and a link. No price — the storefront shows none anywhere.
+
+  The schema below is GENERATED from lib/page-builder/sections-landing.ts by
+  `yarn liquid:schemas`; change the section there, not here.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+  assign product = s.product
+
+  capture rhythm_class
+    render 'sb-section-classes', rhythm: s.rhythm, pad: 'none'
+  endcapture
+  capture hide_class
+    render 'sb-hide-on', hide_on: s.hide_on
+  endcapture
+
+  assign shown = s.images | plus: 0
+  assign total = product.images.size
+  if total > shown
+    assign total = shown
+  endif
+
+  assign heading = s.title | default: product.title
+  assign body = s.body | default: product.description
+-%}
+
+<div
+  {% if s.surface != 'inherit' %}data-surface="{{ s.surface }}"{% endif %}
+  class="{% if s.surface != 'inherit' %}flow-root bg-background text-foreground {% endif %}{{ rhythm_class }} {{ hide_class }}"
+  {{ section.shopify_attributes }}
+>
+  {%- if product != blank or request.design_mode -%}
+    <div class="sb-container py-section">
+      <div class="grid gap-10 lg:grid-cols-2 lg:items-center lg:gap-20{% if s.image_side == 'right' %} lg:[&>*:first-child]:order-2{% endif %}">
+        <div class="grid gap-[var(--sb-grid-gap)]{% if total > 1 %} grid-cols-2{% endif %}">
+          {%- if total > 0 -%}
+            {%- for image in product.images limit: total -%}
+              {%- liquid
+                if forloop.first
+                  if total == 2
+                    assign ratio = 'portrait'
+                    assign sizes = '(max-width: 1023px) 50vw, 25vw'
+                    assign box = ''
+                  else
+                    assign ratio = 'portrait'
+                    assign sizes = '(max-width: 1023px) 100vw, 50vw'
+                    if total > 2
+                      assign box = 'col-span-2'
+                    else
+                      assign box = ''
+                    endif
+                  endif
+                else
+                  if total == 2
+                    assign ratio = 'portrait'
+                  else
+                    assign ratio = 'square'
+                  endif
+                  assign sizes = '(max-width: 1023px) 50vw, 25vw'
+                  assign box = ''
+                endif
+              -%}
+              {%- render 'sb-picture', image: image, ratio: ratio, sizes: sizes, class: box -%}
+            {%- endfor -%}
+          {%- else -%}
+            <div class="relative aspect-[4/5]">
+              {{ 'product-1' | placeholder_svg_tag: 'absolute inset-0 h-full w-full bg-foreground/10 fill-current opacity-30' }}
+            </div>
+          {%- endif -%}
+        </div>
+
+        <div class="max-w-[34rem]">
+          {%- if s.eyebrow != blank -%}
+            <p class="text-tertiary mb-3 uppercase tracking-[0.08em] opacity-80">{{ s.eyebrow }}</p>
+          {%- endif -%}
+          <h2 class="text-h1">{{ heading | default: 'Choose a product' }}</h2>
+          {%- if body != blank -%}
+            <div class="sb-prose mt-6">{{ body }}</div>
+          {%- endif -%}
+          {%- if product != blank and s.button_label != blank -%}
+            {%- render 'sb-button', label: s.button_label, href: product.url, variant: s.button_style, class: 'mt-8' -%}
+          {%- endif -%}
+        </div>
+      </div>
+    </div>
+  {%- endif -%}
+</div>
+
+{% schema %}
+{
+  "name": "Featured product",
+  "tag": "section",
+  "class": "sb-section-featured-product",
+  "settings": [
+    {
+      "type": "product",
+      "id": "product",
+      "label": "Product"
+    },
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Small label"
+    },
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Heading",
+      "info": "Leave empty to use the product's name."
+    },
+    {
+      "type": "richtext",
+      "id": "body",
+      "label": "Text",
+      "info": "Leave empty to use the product's description."
+    },
+    {
+      "type": "text",
+      "id": "button_label",
+      "label": "Button text",
+      "default": "discover"
+    },
+    {
+      "type": "select",
+      "id": "button_style",
+      "label": "Button style",
+      "options": [
+        {
+          "value": "solid",
+          "label": "Filled"
+        },
+        {
+          "value": "outline",
+          "label": "Outlined"
+        },
+        {
+          "value": "text",
+          "label": "Underlined text"
+        }
+      ],
+      "default": "solid"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "image_side",
+      "label": "Images",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "select",
+      "id": "images",
+      "label": "Photographs shown",
+      "options": [
+        {
+          "value": "1",
+          "label": "1"
+        },
+        {
+          "value": "2",
+          "label": "2"
+        },
+        {
+          "value": "3",
+          "label": "3"
+        }
+      ],
+      "default": "2"
+    },
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Background",
+      "options": [
+        {
+          "value": "inherit",
+          "label": "Same as page"
+        },
+        {
+          "value": "light",
+          "label": "Earth"
+        },
+        {
+          "value": "dark",
+          "label": "Dark wood"
+        },
+        {
+          "value": "olive",
+          "label": "Black olive"
+        },
+        {
+          "value": "blue",
+          "label": "Charcoal blue"
+        },
+        {
+          "value": "mocha",
+          "label": "Deep mocha"
+        },
+        {
+          "value": "black",
+          "label": "Off-black"
+        }
+      ],
+      "default": "inherit"
+    },
+    {
+      "type": "select",
+      "id": "rhythm",
+      "label": "Vertical spacing",
+      "options": [
+        {
+          "value": "theme",
+          "label": "Standard"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "select",
+      "id": "hide_on",
+      "label": "Show on",
+      "options": [
+        {
+          "value": "none",
+          "label": "All devices"
+        },
+        {
+          "value": "mobile",
+          "label": "Desktop only"
+        },
+        {
+          "value": "desktop",
+          "label": "Mobile only"
+        }
+      ],
+      "default": "none"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Featured product",
+      "settings": {
+        "eyebrow": "Featured"
+      }
+    }
+  ]
+}
+{% endschema %}

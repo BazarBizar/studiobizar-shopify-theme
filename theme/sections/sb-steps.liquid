@@ -1,0 +1,344 @@
+{% comment %}
+  Steps — the page builder's `steps` (components/sections/landing/steps.tsx).
+  A process, numbered: in a row, or as a timeline running down a rule.
+
+  The schema below is GENERATED from lib/page-builder/sections-landing.ts by
+  `yarn liquid:schemas`; change the section there, not here.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+
+  capture rhythm_class
+    render 'sb-section-classes', rhythm: s.rhythm, pad: 'none'
+  endcapture
+  capture hide_class
+    render 'sb-hide-on', hide_on: s.hide_on
+  endcapture
+
+  assign count = 0
+  for block in section.blocks
+    if block.settings.title != blank
+      assign count = count | plus: 1
+    endif
+  endfor
+
+  case count
+    when 1
+      assign row_class = ''
+    when 2
+      assign row_class = 'sm:grid-cols-2'
+    when 3
+      assign row_class = 'sm:grid-cols-3'
+    else
+      assign row_class = 'sm:grid-cols-2 lg:grid-cols-4'
+  endcase
+-%}
+
+<div
+  {% if s.surface != 'inherit' %}data-surface="{{ s.surface }}"{% endif %}
+  class="{% if s.surface != 'inherit' %}flow-root bg-background text-foreground {% endif %}{{ rhythm_class }} {{ hide_class }}"
+  {{ section.shopify_attributes }}
+>
+  {%- if count > 0 -%}
+    <div class="sb-container py-section">
+      {%- render 'sb-section-header', heading: s.title, intro: s.intro, align: s.heading_align -%}
+
+      {%- if s.layout == 'timeline' -%}
+        <ol class="border-border max-w-[56rem] border-l{% if s.heading_align == 'center' %} mx-auto{% endif %}">
+          {%- assign n = 0 -%}
+          {%- for block in section.blocks -%}
+            {%- assign b = block.settings -%}
+            {%- if b.title == blank -%}{%- continue -%}{%- endif -%}
+            {%- assign n = n | plus: 1 -%}
+            <li class="relative grid gap-6 pb-14 pl-8 last:pb-0 sm:grid-cols-[1fr_16rem] sm:pl-14" {{ block.shopify_attributes }}>
+              <span aria-hidden="true" class="bg-foreground absolute top-2 -left-[5px] size-[9px] rounded-full"></span>
+              <div>
+                {%- if s.numbered -%}
+                  <p class="text-tertiary text-muted mb-2 tabular-nums">{% if n < 10 %}0{% endif %}{{ n }}</p>
+                {%- endif -%}
+                <h3 class="text-h3">{{ b.title }}</h3>
+                {%- if b.body != blank -%}
+                  <div class="sb-prose mt-3" style="font-size: var(--fs-secondary);">{{ b.body }}</div>
+                {%- endif -%}
+              </div>
+              {%- if s.show_images -%}
+                {%- render 'sb-picture', image: b.image, ratio: 'landscape', sizes: '(max-width: 749px) 90vw, 16rem' -%}
+              {%- endif -%}
+            </li>
+          {%- endfor -%}
+        </ol>
+      {%- else -%}
+        <ol class="grid gap-x-[var(--sb-grid-gap)] gap-y-12 {{ row_class }}">
+          {%- assign n = 0 -%}
+          {%- for block in section.blocks -%}
+            {%- assign b = block.settings -%}
+            {%- if b.title == blank -%}{%- continue -%}{%- endif -%}
+            {%- assign n = n | plus: 1 -%}
+            <li class="border-foreground flex flex-col border-t pt-5" {{ block.shopify_attributes }}>
+              {%- if s.show_images -%}
+                {%- render 'sb-picture', image: b.image, ratio: 'landscape', sizes: '(max-width: 749px) 90vw, 25vw', class: 'mb-6' -%}
+              {%- endif -%}
+              {%- if s.numbered -%}
+                <p class="text-h2 mb-4 tabular-nums">{% if n < 10 %}0{% endif %}{{ n }}</p>
+              {%- endif -%}
+              <h3 class="text-h3">{{ b.title }}</h3>
+              {%- if b.body != blank -%}
+                <div class="sb-prose mt-3" style="font-size: var(--fs-secondary);">{{ b.body }}</div>
+              {%- endif -%}
+            </li>
+          {%- endfor -%}
+        </ol>
+      {%- endif -%}
+    </div>
+  {%- endif -%}
+</div>
+
+{% schema %}
+{
+  "name": "Steps",
+  "tag": "section",
+  "class": "sb-section-steps",
+  "settings": [
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Heading"
+    },
+    {
+      "type": "textarea",
+      "id": "intro",
+      "label": "Intro"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "heading_align",
+      "label": "Heading alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Centred"
+        }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "select",
+      "id": "layout",
+      "label": "Layout",
+      "options": [
+        {
+          "value": "row",
+          "label": "In a row"
+        },
+        {
+          "value": "timeline",
+          "label": "Timeline, top to bottom"
+        }
+      ],
+      "default": "row"
+    },
+    {
+      "type": "checkbox",
+      "id": "numbered",
+      "label": "Number the steps",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_images",
+      "label": "Show images",
+      "default": false
+    },
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Background",
+      "options": [
+        {
+          "value": "inherit",
+          "label": "Same as page"
+        },
+        {
+          "value": "light",
+          "label": "Earth"
+        },
+        {
+          "value": "dark",
+          "label": "Dark wood"
+        },
+        {
+          "value": "olive",
+          "label": "Black olive"
+        },
+        {
+          "value": "blue",
+          "label": "Charcoal blue"
+        },
+        {
+          "value": "mocha",
+          "label": "Deep mocha"
+        },
+        {
+          "value": "black",
+          "label": "Off-black"
+        }
+      ],
+      "default": "inherit"
+    },
+    {
+      "type": "select",
+      "id": "rhythm",
+      "label": "Vertical spacing",
+      "options": [
+        {
+          "value": "theme",
+          "label": "Standard"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "select",
+      "id": "hide_on",
+      "label": "Show on",
+      "options": [
+        {
+          "value": "none",
+          "label": "All devices"
+        },
+        {
+          "value": "mobile",
+          "label": "Desktop only"
+        },
+        {
+          "value": "desktop",
+          "label": "Mobile only"
+        }
+      ],
+      "default": "none"
+    }
+  ],
+  "max_blocks": 10,
+  "blocks": [
+    {
+      "type": "step",
+      "name": "Step",
+      "settings": [
+        {
+          "type": "image_picker",
+          "id": "image",
+          "label": "Image"
+        },
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Heading"
+        },
+        {
+          "type": "richtext",
+          "id": "body",
+          "label": "Text"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Steps",
+      "settings": {
+        "title": "How a commission works"
+      },
+      "blocks": [
+        {
+          "type": "step",
+          "settings": {
+            "title": "Conversation",
+            "body": "<p>We listen to what the room and the people in it need.</p>"
+          }
+        },
+        {
+          "type": "step",
+          "settings": {
+            "title": "Proposal",
+            "body": "<p>Drawings, materials and a price, within two weeks.</p>"
+          }
+        },
+        {
+          "type": "step",
+          "settings": {
+            "title": "Making",
+            "body": "<p>The workshop builds the piece by hand.</p>"
+          }
+        },
+        {
+          "type": "step",
+          "settings": {
+            "title": "Placing",
+            "body": "<p>We deliver, place and finish it in your home.</p>"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Timeline",
+      "settings": {
+        "title": "Our story",
+        "layout": "timeline",
+        "numbered": false
+      },
+      "blocks": [
+        {
+          "type": "step",
+          "settings": {
+            "title": "1998 — The first workshop",
+            "body": "<p>A short paragraph about this moment.</p>"
+          }
+        },
+        {
+          "type": "step",
+          "settings": {
+            "title": "2010 — The showroom opens",
+            "body": "<p>A short paragraph about this moment.</p>"
+          }
+        },
+        {
+          "type": "step",
+          "settings": {
+            "title": "Today",
+            "body": "<p>A short paragraph about this moment.</p>"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,413 @@
+{% comment %}
+  Image banner with copy — the page builder's `image_banner`
+  (components/sections/landing/image-banner.tsx). A full-width photograph with a
+  label, heading, text and up to two buttons placed on it.
+
+  Not to be confused with `sb-image-banner`, which is the full-bleed image with
+  no copy (the builder's `full_image`).
+
+  The copy takes the tokens of the off-black or the earth surface (`tone`), so a
+  button on it is the site's own button, inverted correctly — never a colour
+  typed in. The schema below is GENERATED from lib/page-builder/sections-landing.ts
+  by `yarn liquid:schemas`; change the section there, not here.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+
+  capture hide_class
+    render 'sb-hide-on', hide_on: s.hide_on
+  endcapture
+
+  case s.height
+    when 'small'
+      assign height_class = 'min-h-[24rem] sm:min-h-[45svh]'
+    when 'medium'
+      assign height_class = 'min-h-[30rem] sm:min-h-[65svh]'
+    when 'screen'
+      assign height_class = 'min-h-svh'
+    when 'adapt'
+      assign height_class = ''
+      if s.image == blank
+        assign height_class = 'min-h-[36rem] sm:min-h-[85svh]'
+      endif
+    else
+      assign height_class = 'min-h-[36rem] sm:min-h-[85svh]'
+  endcase
+
+  capture position_class
+    render 'sb-position-classes', position: s.position
+  endcapture
+
+  if s.tone == 'dark'
+    assign tone_surface = 'light'
+  else
+    assign tone_surface = 'black'
+  endif
+
+  assign panel_class = ''
+  if s.panel
+    assign panel_class = 'bg-background max-w-[40rem] p-8 sm:p-12'
+  endif
+
+  assign first_band = false
+  if section.index == 1
+    assign first_band = true
+  endif
+-%}
+
+<div
+  class="bg-off-black relative isolate flex overflow-hidden {{ height_class }} {{ hide_class }}"
+  {%- if s.height == 'adapt' and s.image != blank %} style="aspect-ratio: {{ s.image.aspect_ratio }};"{% endif %}
+  {{ section.shopify_attributes }}
+>
+  {%- render 'sb-cover-image', image: s.image, mobile_image: s.mobile_image, priority: first_band -%}
+  {%- if s.image != blank and s.overlay > 0 -%}
+    <div aria-hidden="true" class="bg-off-black absolute inset-0" style="opacity: {{ s.overlay | divided_by: 100.0 }};"></div>
+  {%- endif -%}
+
+  <div
+    data-surface="{{ tone_surface }}"
+    class="sb-container py-section text-foreground relative flex w-full flex-col {% if s.height == 'adapt' %}max-sm:min-h-[30rem] {% endif %}{{ position_class }}"
+  >
+    {%- render 'sb-landing-copy',
+      eyebrow: s.eyebrow,
+      heading: s.title,
+      body: s.body,
+      heading_size: s.heading_size,
+      primary_label: s.primary_label,
+      primary_url: s.primary_url,
+      primary_style: s.primary_style,
+      secondary_label: s.secondary_label,
+      secondary_url: s.secondary_url,
+      secondary_style: s.secondary_style,
+      align: s.align,
+      class: panel_class
+    -%}
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Image banner",
+  "tag": "section",
+  "class": "sb-section-image-banner",
+  "settings": [
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "Image"
+    },
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Small label",
+      "info": "Optional, above the heading — e.g. “New season”."
+    },
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Heading"
+    },
+    {
+      "type": "textarea",
+      "id": "body",
+      "label": "Text"
+    },
+    {
+      "type": "select",
+      "id": "heading_size",
+      "label": "Heading size",
+      "options": [
+        {
+          "value": "h2",
+          "label": "Standard"
+        },
+        {
+          "value": "h1",
+          "label": "Large"
+        },
+        {
+          "value": "display",
+          "label": "Extra large"
+        }
+      ],
+      "default": "h1"
+    },
+    {
+      "type": "text",
+      "id": "primary_label",
+      "label": "First button text"
+    },
+    {
+      "type": "url",
+      "id": "primary_url",
+      "label": "First button link"
+    },
+    {
+      "type": "select",
+      "id": "primary_style",
+      "label": "First button style",
+      "options": [
+        {
+          "value": "solid",
+          "label": "Filled"
+        },
+        {
+          "value": "outline",
+          "label": "Outlined"
+        },
+        {
+          "value": "text",
+          "label": "Underlined text"
+        }
+      ],
+      "default": "solid"
+    },
+    {
+      "type": "text",
+      "id": "secondary_label",
+      "label": "Second button text"
+    },
+    {
+      "type": "url",
+      "id": "secondary_url",
+      "label": "Second button link"
+    },
+    {
+      "type": "select",
+      "id": "secondary_style",
+      "label": "Second button style",
+      "options": [
+        {
+          "value": "solid",
+          "label": "Filled"
+        },
+        {
+          "value": "outline",
+          "label": "Outlined"
+        },
+        {
+          "value": "text",
+          "label": "Underlined text"
+        }
+      ],
+      "default": "outline"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "height",
+      "label": "Height",
+      "options": [
+        {
+          "value": "small",
+          "label": "Small"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "large",
+          "label": "Large"
+        },
+        {
+          "value": "screen",
+          "label": "Full screen"
+        },
+        {
+          "value": "adapt",
+          "label": "Fit the image"
+        }
+      ],
+      "default": "large"
+    },
+    {
+      "type": "select",
+      "id": "position",
+      "label": "Text position",
+      "options": [
+        {
+          "value": "top-left",
+          "label": "Top left"
+        },
+        {
+          "value": "top-center",
+          "label": "Top centre"
+        },
+        {
+          "value": "top-right",
+          "label": "Top right"
+        },
+        {
+          "value": "middle-left",
+          "label": "Middle left"
+        },
+        {
+          "value": "middle-center",
+          "label": "Centre"
+        },
+        {
+          "value": "middle-right",
+          "label": "Middle right"
+        },
+        {
+          "value": "bottom-left",
+          "label": "Bottom left"
+        },
+        {
+          "value": "bottom-center",
+          "label": "Bottom centre"
+        },
+        {
+          "value": "bottom-right",
+          "label": "Bottom right"
+        }
+      ],
+      "default": "middle-center"
+    },
+    {
+      "type": "select",
+      "id": "align",
+      "label": "Text alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Centred"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "select",
+      "id": "tone",
+      "label": "Text colour",
+      "options": [
+        {
+          "value": "light",
+          "label": "Light text"
+        },
+        {
+          "value": "dark",
+          "label": "Dark text"
+        }
+      ],
+      "default": "light"
+    },
+    {
+      "type": "range",
+      "id": "overlay",
+      "label": "Image darkening",
+      "min": 0,
+      "max": 80,
+      "step": 1,
+      "unit": "%",
+      "default": 30,
+      "info": "Darkens the photograph so the text stays readable. 0 shows it as it is."
+    },
+    {
+      "type": "checkbox",
+      "id": "panel",
+      "label": "Put the text on a panel",
+      "default": false,
+      "info": "A solid block behind the copy — earth under dark text, off-black under light text."
+    },
+    {
+      "type": "select",
+      "id": "hide_on",
+      "label": "Show on",
+      "options": [
+        {
+          "value": "none",
+          "label": "All devices"
+        },
+        {
+          "value": "mobile",
+          "label": "Desktop only"
+        },
+        {
+          "value": "desktop",
+          "label": "Mobile only"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "header",
+      "content": "Advanced"
+    },
+    {
+      "type": "image_picker",
+      "id": "mobile_image",
+      "label": "Image on phones",
+      "info": "Optional. A taller crop for narrow screens; the main image is used if empty."
+    }
+  ],
+  "presets": [
+    {
+      "name": "Image banner",
+      "settings": {
+        "eyebrow": "New collection",
+        "title": "Designed for life, inspired by the world",
+        "body": "Pieces made to be lived with, by the makers who design them.",
+        "primary_label": "discover",
+        "primary_url": "/shop",
+        "secondary_label": "our story",
+        "secondary_url": "/our-story"
+      }
+    },
+    {
+      "name": "Banner — text in the corner",
+      "settings": {
+        "title": "The quiet room",
+        "heading_size": "display",
+        "position": "bottom-left",
+        "align": "left",
+        "height": "screen",
+        "overlay": 20,
+        "primary_label": "explore",
+        "primary_url": "/shop",
+        "primary_style": "text"
+      }
+    },
+    {
+      "name": "Banner with text panel",
+      "settings": {
+        "eyebrow": "Atelier",
+        "title": "Made to order, made to last",
+        "body": "Every piece is built by hand once it is ordered, in the material and the size you choose.",
+        "position": "middle-left",
+        "align": "left",
+        "tone": "dark",
+        "overlay": 0,
+        "panel": true,
+        "heading_size": "h2",
+        "primary_label": "start a commission",
+        "primary_url": "/contact",
+        "primary_style": "outline"
+      }
+    },
+    {
+      "name": "Short banner",
+      "settings": {
+        "title": "Projects",
+        "height": "small",
+        "heading_size": "h1",
+        "overlay": 35
+      }
+    }
+  ]
+}
+{% endschema %}

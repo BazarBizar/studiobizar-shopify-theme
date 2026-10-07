@@ -1,0 +1,419 @@
+{% comment %}
+  Call to action — the page builder's `cta_banner`
+  (components/sections/landing/cta-banner.tsx). One message and its buttons:
+  centred or split on the band's own surface, or on a photograph.
+
+  The schema below is GENERATED from lib/page-builder/sections-landing.ts by
+  `yarn liquid:schemas`; change the section there, not here.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+
+  capture rhythm_class
+    render 'sb-section-classes', rhythm: s.rhythm, pad: 'none'
+  endcapture
+  capture hide_class
+    render 'sb-hide-on', hide_on: s.hide_on
+  endcapture
+
+  case s.width
+    when 'narrow'
+      assign width_class = 'max-w-[36rem]'
+    when 'full'
+      assign width_class = 'max-w-none'
+    else
+      assign width_class = 'max-w-[52rem]'
+  endcase
+
+  if s.tone == 'dark'
+    assign tone_surface = 'light'
+  else
+    assign tone_surface = 'black'
+  endif
+
+  capture heading_class
+    render 'sb-heading-class', size: s.heading_size
+  endcapture
+-%}
+
+<div
+  {% if s.surface != 'inherit' %}data-surface="{{ s.surface }}"{% endif %}
+  class="{% if s.surface != 'inherit' %}flow-root bg-background text-foreground {% endif %}{{ rhythm_class }} {{ hide_class }}"
+  {{ section.shopify_attributes }}
+>
+  {%- case s.layout -%}
+    {%- when 'split' -%}
+      <div class="sb-container py-section">
+        <div class="border-border grid gap-8 border-t pt-10 lg:grid-cols-[3fr_2fr] lg:items-end lg:gap-16">
+          <div class="{{ width_class }}">
+            {%- if s.eyebrow != blank -%}
+              <p class="text-tertiary mb-3 uppercase tracking-[0.08em] opacity-80">{{ s.eyebrow }}</p>
+            {%- endif -%}
+            {%- if s.title != blank -%}
+              <h2 class="{{ heading_class }}">{{ s.title }}</h2>
+            {%- endif -%}
+            {%- if s.body != blank -%}
+              <p class="text-body text-muted mt-5 whitespace-pre-line">{{ s.body | escape }}</p>
+            {%- endif -%}
+          </div>
+          <div class="flex flex-wrap gap-3 lg:justify-end">
+            {%- if s.primary_label != blank and s.primary_url != blank -%}
+              {%- render 'sb-button', label: s.primary_label, href: s.primary_url, variant: s.primary_style -%}
+            {%- endif -%}
+            {%- if s.secondary_label != blank and s.secondary_url != blank -%}
+              {%- render 'sb-button', label: s.secondary_label, href: s.secondary_url, variant: s.secondary_style -%}
+            {%- endif -%}
+          </div>
+        </div>
+      </div>
+
+    {%- when 'image' -%}
+      <div class="bg-off-black relative isolate overflow-hidden">
+        {%- render 'sb-cover-image', image: s.image -%}
+        {%- if s.image != blank and s.overlay > 0 -%}
+          <div aria-hidden="true" class="bg-off-black absolute inset-0" style="opacity: {{ s.overlay | divided_by: 100.0 }};"></div>
+        {%- endif -%}
+        <div data-surface="{{ tone_surface }}" class="sb-container py-section-lg text-foreground relative flex justify-center">
+          {%- render 'sb-landing-copy',
+            eyebrow: s.eyebrow,
+            heading: s.title,
+            body: s.body,
+            heading_size: s.heading_size,
+            primary_label: s.primary_label,
+            primary_url: s.primary_url,
+            primary_style: s.primary_style,
+            secondary_label: s.secondary_label,
+            secondary_url: s.secondary_url,
+            secondary_style: s.secondary_style,
+            align: 'center',
+            class: width_class
+          -%}
+        </div>
+      </div>
+
+    {%- else -%}
+      <div class="sb-container py-section flex justify-center">
+        {%- render 'sb-landing-copy',
+          eyebrow: s.eyebrow,
+          heading: s.title,
+          body: s.body,
+          heading_size: s.heading_size,
+          primary_label: s.primary_label,
+          primary_url: s.primary_url,
+          primary_style: s.primary_style,
+          secondary_label: s.secondary_label,
+          secondary_url: s.secondary_url,
+          secondary_style: s.secondary_style,
+          align: 'center',
+          class: width_class
+        -%}
+      </div>
+  {%- endcase -%}
+</div>
+
+{% schema %}
+{
+  "name": "Call to action",
+  "tag": "section",
+  "class": "sb-section-cta-banner",
+  "settings": [
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Small label",
+      "info": "Optional, above the heading — e.g. “New season”."
+    },
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Heading"
+    },
+    {
+      "type": "textarea",
+      "id": "body",
+      "label": "Text"
+    },
+    {
+      "type": "select",
+      "id": "heading_size",
+      "label": "Heading size",
+      "options": [
+        {
+          "value": "h2",
+          "label": "Standard"
+        },
+        {
+          "value": "h1",
+          "label": "Large"
+        },
+        {
+          "value": "display",
+          "label": "Extra large"
+        }
+      ],
+      "default": "h1"
+    },
+    {
+      "type": "text",
+      "id": "primary_label",
+      "label": "First button text"
+    },
+    {
+      "type": "url",
+      "id": "primary_url",
+      "label": "First button link"
+    },
+    {
+      "type": "select",
+      "id": "primary_style",
+      "label": "First button style",
+      "options": [
+        {
+          "value": "solid",
+          "label": "Filled"
+        },
+        {
+          "value": "outline",
+          "label": "Outlined"
+        },
+        {
+          "value": "text",
+          "label": "Underlined text"
+        }
+      ],
+      "default": "solid"
+    },
+    {
+      "type": "text",
+      "id": "secondary_label",
+      "label": "Second button text"
+    },
+    {
+      "type": "url",
+      "id": "secondary_url",
+      "label": "Second button link"
+    },
+    {
+      "type": "select",
+      "id": "secondary_style",
+      "label": "Second button style",
+      "options": [
+        {
+          "value": "solid",
+          "label": "Filled"
+        },
+        {
+          "value": "outline",
+          "label": "Outlined"
+        },
+        {
+          "value": "text",
+          "label": "Underlined text"
+        }
+      ],
+      "default": "outline"
+    },
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "Background image"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "layout",
+      "label": "Layout",
+      "options": [
+        {
+          "value": "center",
+          "label": "Centred"
+        },
+        {
+          "value": "split",
+          "label": "Text left, buttons right"
+        },
+        {
+          "value": "image",
+          "label": "On a photograph"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "select",
+      "id": "tone",
+      "label": "Text colour",
+      "options": [
+        {
+          "value": "light",
+          "label": "Light text"
+        },
+        {
+          "value": "dark",
+          "label": "Dark text"
+        }
+      ],
+      "default": "light"
+    },
+    {
+      "type": "range",
+      "id": "overlay",
+      "label": "Image darkening",
+      "min": 0,
+      "max": 80,
+      "step": 1,
+      "unit": "%",
+      "default": 30,
+      "info": "Darkens the photograph so the text stays readable. 0 shows it as it is."
+    },
+    {
+      "type": "select",
+      "id": "width",
+      "label": "Content width",
+      "options": [
+        {
+          "value": "narrow",
+          "label": "Narrow"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "full",
+          "label": "Full width"
+        }
+      ],
+      "default": "medium"
+    },
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Background",
+      "options": [
+        {
+          "value": "inherit",
+          "label": "Same as page"
+        },
+        {
+          "value": "light",
+          "label": "Earth"
+        },
+        {
+          "value": "dark",
+          "label": "Dark wood"
+        },
+        {
+          "value": "olive",
+          "label": "Black olive"
+        },
+        {
+          "value": "blue",
+          "label": "Charcoal blue"
+        },
+        {
+          "value": "mocha",
+          "label": "Deep mocha"
+        },
+        {
+          "value": "black",
+          "label": "Off-black"
+        }
+      ],
+      "default": "inherit"
+    },
+    {
+      "type": "select",
+      "id": "rhythm",
+      "label": "Vertical spacing",
+      "options": [
+        {
+          "value": "theme",
+          "label": "Standard"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "select",
+      "id": "hide_on",
+      "label": "Show on",
+      "options": [
+        {
+          "value": "none",
+          "label": "All devices"
+        },
+        {
+          "value": "mobile",
+          "label": "Desktop only"
+        },
+        {
+          "value": "desktop",
+          "label": "Mobile only"
+        }
+      ],
+      "default": "none"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Call to action",
+      "settings": {
+        "title": "Let us furnish your next project",
+        "body": "Tell us about the space, the timing and the feeling you are after. We answer within two working days.",
+        "primary_label": "get in touch",
+        "primary_url": "/contact",
+        "secondary_label": "see projects",
+        "secondary_url": "/projects",
+        "surface": "dark"
+      }
+    },
+    {
+      "name": "Call to action — split",
+      "settings": {
+        "layout": "split",
+        "title": "Visit the showroom",
+        "body": "See, touch and sit on the pieces before you choose.",
+        "heading_size": "h2",
+        "primary_label": "plan a visit",
+        "primary_url": "/our-locations"
+      }
+    },
+    {
+      "name": "Call to action on a photograph",
+      "settings": {
+        "layout": "image",
+        "title": "Designed for life",
+        "body": "Furniture and objects from the designers we believe in.",
+        "primary_label": "shop now",
+        "primary_url": "/shop",
+        "overlay": 40
+      }
+    }
+  ]
+}
+{% endschema %}

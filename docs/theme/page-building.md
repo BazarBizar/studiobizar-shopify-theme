@@ -94,7 +94,48 @@ literals in a `case`.
 |---|---|---|
 | `sb-page-content` | Page content | The title and body typed in admin |
 | `sb-rich-text` | Text · Contact call to action | A band of copy with a button |
-| `sb-media-text` | Media and text | Image beside copy, either side |
+| `sb-media-text` | Media and text | Image beside copy, either side — shape, width, alignment, small label |
+
+### The landing sections (page builder parity)
+
+These sixteen are the Liquid halves of the Next page builder's landing sections
+(`lib/page-builder/sections-landing.ts`). Same settings, same presets with the same
+demo copy, same drawing — one band, two renderers.
+
+| Section | Builder type | Presets |
+|---|---|---|
+| `sb-banner` | `image_banner` | Image banner · text in the corner · with text panel · short |
+| `sb-slideshow` | `slideshow` | Slideshow |
+| `sb-cta-banner` | `cta_banner` | Call to action · split · on a photograph |
+| `sb-multicolumn` | `multicolumn` | Columns with images · Icon features · Cards · Text columns |
+| `sb-stats` | `stats` | Numbers |
+| `sb-steps` | `steps` | Steps · Timeline |
+| `sb-tabs` | `tabs` | Tabs |
+| `sb-collapsible` | `collapsible` | Collapsible content |
+| `sb-video` | `video` | Video (nothing loads from YouTube/Vimeo before play) |
+| `sb-marquee` | `marquee` | Scrolling text |
+| `sb-collage` | `collage` | Collage · Image grid with titles |
+| `sb-testimonials` | `testimonials` | Testimonials · Large quote |
+| `sb-logo-list` | `logo_list` | Logo list |
+| `sb-featured-product` | `featured_product` | Featured product |
+| `sb-spacer` | `spacer` | Spacer · Divider |
+| `sb-newsletter` | `newsletter` | Newsletter sign-up |
+
+`sb-banner` is the banner WITH copy; `sb-image-banner` stays the full-bleed image
+alone (the builder's `full_image`).
+
+**Their `{% schema %}` is generated, not written.** `yarn liquid:schemas` derives
+each one from the Next definition and its presets (`scripts/lib/liquid.ts`); only
+the markup above it is hand-written. Behaviour is in `assets/sb-sections.js`
+(slideshow, tabs, video) and the icons in `snippets/sb-section-icon.liquid`,
+generated from lucide by `yarn liquid:icons`.
+
+**Keeping the two in step.** `yarn check:liquid` fails when a theme section is
+missing, its schema is stale, a setting has different options, defaults or
+ranges, a preset is missing, a block type differs, the markup never reads a
+setting it offers, or the icon snippet is out of date. After changing a builder
+section: `yarn liquid:schemas`, update the markup, `yarn theme:build`,
+`yarn check:liquid`.
 
 `sb-rich-text` replaced three hard-coded Next components that differed only in
 their words: `IntroBlock` on the landing page, `ContactCta`, and the lede on half

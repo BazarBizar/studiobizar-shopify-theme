@@ -1,0 +1,310 @@
+{% comment %}
+  Logo list — the page builder's `logo_list`
+  (components/sections/landing/logo-list.tsx). Logos scaled to one height, in a
+  wrapping centred row so a short last row sits in the middle. Softened logos
+  are grey until hovered.
+
+  The schema below is GENERATED from lib/page-builder/sections-landing.ts by
+  `yarn liquid:schemas`; change the section there, not here.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+
+  capture rhythm_class
+    render 'sb-section-classes', rhythm: s.rhythm, pad: 'none'
+  endcapture
+  capture hide_class
+    render 'sb-hide-on', hide_on: s.hide_on
+  endcapture
+
+  case s.columns
+    when '3'
+      assign basis_class = 'basis-1/2 sm:basis-1/3'
+    when '4'
+      assign basis_class = 'basis-1/2 sm:basis-1/4'
+    when '6'
+      assign basis_class = 'basis-1/3 sm:basis-1/6'
+    else
+      assign basis_class = 'basis-1/3 sm:basis-1/5'
+  endcase
+
+  case s.size
+    when 'small'
+      assign height_class = 'h-8 sm:h-10'
+    when 'large'
+      assign height_class = 'h-14 sm:h-20'
+    else
+      assign height_class = 'h-10 sm:h-14'
+  endcase
+
+  assign count = 0
+  for block in section.blocks
+    if block.settings.image != blank or request.design_mode
+      assign count = count | plus: 1
+    endif
+  endfor
+-%}
+
+<div
+  {% if s.surface != 'inherit' %}data-surface="{{ s.surface }}"{% endif %}
+  class="{% if s.surface != 'inherit' %}flow-root bg-background text-foreground {% endif %}{{ rhythm_class }} {{ hide_class }}"
+  {{ section.shopify_attributes }}
+>
+  {%- if count > 0 -%}
+    <div class="sb-container py-section">
+      {%- render 'sb-section-header', heading: s.title, intro: s.intro, align: s.heading_align -%}
+      <ul class="-mx-4 flex flex-wrap items-center justify-center gap-y-10">
+        {%- for block in section.blocks -%}
+          {%- assign b = block.settings -%}
+          {%- unless b.image != blank or request.design_mode -%}{%- continue -%}{%- endunless -%}
+          {%- capture mark -%}
+            {%- if b.image != blank -%}
+              <span class="relative block w-full {{ height_class }}">
+                {%- assign logo_alt = b.name | default: b.image.alt -%}
+                {%- capture logo_class -%}absolute inset-0 h-full w-full object-contain transition-[filter,opacity] duration-300{% if s.muted %} opacity-60 grayscale group-hover:opacity-100 group-hover:grayscale-0{% endif %}{%- endcapture -%}
+                {%- render 'sb-image', image: b.image, alt: logo_alt, sizes: '12rem', widths: '200, 400', class: logo_class -%}
+              </span>
+            {%- else -%}
+              <span aria-hidden="true" class="bg-foreground/10 block w-full {{ height_class }}"></span>
+            {%- endif -%}
+          {%- endcapture -%}
+          <li class="group flex justify-center px-4 sm:px-6 {{ basis_class }}" {{ block.shopify_attributes }}>
+            {%- if b.href != blank -%}
+              <a href="{{ b.href }}" class="block w-full"{% if b.href contains '://' %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ mark }}</a>
+            {%- else -%}
+              {{ mark }}
+            {%- endif -%}
+          </li>
+        {%- endfor -%}
+      </ul>
+    </div>
+  {%- endif -%}
+</div>
+
+{% schema %}
+{
+  "name": "Logo list",
+  "tag": "section",
+  "class": "sb-section-logo-list",
+  "settings": [
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Heading"
+    },
+    {
+      "type": "textarea",
+      "id": "intro",
+      "label": "Intro"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "heading_align",
+      "label": "Heading alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Centred"
+        }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "select",
+      "id": "columns",
+      "label": "Per row on desktop",
+      "options": [
+        {
+          "value": "3",
+          "label": "3"
+        },
+        {
+          "value": "4",
+          "label": "4"
+        },
+        {
+          "value": "5",
+          "label": "5"
+        },
+        {
+          "value": "6",
+          "label": "6"
+        }
+      ],
+      "default": "5"
+    },
+    {
+      "type": "select",
+      "id": "size",
+      "label": "Logo size",
+      "options": [
+        {
+          "value": "small",
+          "label": "Small"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "large",
+          "label": "Large"
+        }
+      ],
+      "default": "medium"
+    },
+    {
+      "type": "checkbox",
+      "id": "muted",
+      "label": "Soften the logos",
+      "default": true,
+      "info": "Greyed out, full colour on hover."
+    },
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Background",
+      "options": [
+        {
+          "value": "inherit",
+          "label": "Same as page"
+        },
+        {
+          "value": "light",
+          "label": "Earth"
+        },
+        {
+          "value": "dark",
+          "label": "Dark wood"
+        },
+        {
+          "value": "olive",
+          "label": "Black olive"
+        },
+        {
+          "value": "blue",
+          "label": "Charcoal blue"
+        },
+        {
+          "value": "mocha",
+          "label": "Deep mocha"
+        },
+        {
+          "value": "black",
+          "label": "Off-black"
+        }
+      ],
+      "default": "inherit"
+    },
+    {
+      "type": "select",
+      "id": "rhythm",
+      "label": "Vertical spacing",
+      "options": [
+        {
+          "value": "theme",
+          "label": "Standard"
+        },
+        {
+          "value": "xs",
+          "label": "Extra small"
+        },
+        {
+          "value": "sm",
+          "label": "Small"
+        },
+        {
+          "value": "md",
+          "label": "Medium"
+        },
+        {
+          "value": "lg",
+          "label": "Large"
+        },
+        {
+          "value": "xl",
+          "label": "Extra large"
+        }
+      ],
+      "default": "theme"
+    },
+    {
+      "type": "select",
+      "id": "hide_on",
+      "label": "Show on",
+      "options": [
+        {
+          "value": "none",
+          "label": "All devices"
+        },
+        {
+          "value": "mobile",
+          "label": "Desktop only"
+        },
+        {
+          "value": "desktop",
+          "label": "Mobile only"
+        }
+      ],
+      "default": "none"
+    }
+  ],
+  "max_blocks": 24,
+  "blocks": [
+    {
+      "type": "logo",
+      "name": "Logo",
+      "settings": [
+        {
+          "type": "image_picker",
+          "id": "image",
+          "label": "Logo"
+        },
+        {
+          "type": "text",
+          "id": "name",
+          "label": "Name",
+          "info": "Read out by screen readers; not shown."
+        },
+        {
+          "type": "url",
+          "id": "href",
+          "label": "Link to"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Logo list",
+      "settings": {
+        "title": "As seen in",
+        "heading_align": "center"
+      },
+      "blocks": [
+        {
+          "type": "logo"
+        },
+        {
+          "type": "logo"
+        },
+        {
+          "type": "logo"
+        },
+        {
+          "type": "logo"
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}
