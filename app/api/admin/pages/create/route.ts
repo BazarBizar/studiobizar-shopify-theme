@@ -3,7 +3,8 @@ import { z } from "zod";
 
 import { fail, failure, guard, readJson, validate } from "@/lib/admin/api";
 import { audit } from "@/lib/admin/audit";
-import { BuilderError, createBuilderPage } from "@/lib/admin/page-builder";
+import { BuilderError, createBuilderPage, duplicateBuilderPage } from "@/lib/admin/page-builder";
+import { PageNotFoundError } from "@/lib/admin/pages";
 import { PAGE_TEMPLATE_IDS } from "@/lib/page-builder/templates";
 
 /**
@@ -12,13 +13,21 @@ import { PAGE_TEMPLATE_IDS } from "@/lib/page-builder/templates";
  * page made here would have nowhere to render. A builder page renders at
  * `/<handle>` the moment it is published, which is what makes creating one here
  * safe.
+ *
+ * A page is made either from a template or as a copy of another builder page —
+ * exactly one of `template` and `duplicateOf`. A copy is read from the store, so
+ * `duplicateOf` naming a page that is not a builder page is refused there.
  */
-const schema = z.strictObject({
+const base = {
   operation: z.literal("pageCreate"),
   title: z.string().trim().min(1, "Give the page a title.").max(255),
   handle: z.string().max(100),
-  template: z.enum(PAGE_TEMPLATE_IDS),
-});
+};
+
+const schema = z.union([
+  z.strictObject({ ...base, template: z.enum(PAGE_TEMPLATE_IDS) }),
+  z.strictObject({ ...base, duplicateOf: z.string().regex(/^gid:\/\/shopify\/Page\/\d+$/, "not a page id") }),
+]);
 
 export async function POST(request: Request) {
   const guarded = await guard(request, { action: "page.create", limit: "write" });
@@ -44,10 +53,19 @@ export async function POST(request: Request) {
   }
 
   try {
-    const created = await createBuilderPage(parsed.data, staff.email);
+    const input = parsed.data;
+    const created =
+      "duplicateOf" in input
+        ? await duplicateBuilderPage(input.duplicateOf, { title: input.title, handle: input.handle }, staff.email)
+        : await createBuilderPage(input, staff.email);
     audit({ action: "page.create", actor: staff.email, outcome: "ok", type: "page", entryId: created.id, ip });
     return NextResponse.json(created);
   } catch (error) {
+    if (error instanceof PageNotFoundError) {
+      audit({ action: "page.create", actor: staff.email, outcome: "invalid", reason: "SOURCE_NOT_FOUND", ip });
+      return fail("BAD_REQUEST", "The page to copy no longer exists.");
+    }
+
     if (error instanceof BuilderError) {
       audit({ action: "page.create", actor: staff.email, outcome: "denied", reason: error.code, ip });
       return fail("INVALID", error.message, { issues: [{ path: "handle", message: error.message }] });

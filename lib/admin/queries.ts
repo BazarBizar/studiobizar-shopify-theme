@@ -238,6 +238,8 @@ export async function updatePageRequest(input: {
   handle?: string;
   body?: string;
   isPublished?: boolean;
+  seoTitle?: string;
+  seoDescription?: string;
   metafields?: { key: string; type: string; value: string }[];
   clearMetafields?: string[];
 }): Promise<PageWriteResult> {
@@ -302,11 +304,10 @@ export async function setFileAltRequest(input: {
 
 export type CreatedPage = { id: string; title: string; handle: string };
 
-export async function createBuilderPageRequest(input: {
-  title: string;
-  handle: string;
-  template: string;
-}): Promise<CreatedPage> {
+/** From a template, or as a copy of another builder page (`duplicateOf`). */
+export async function createBuilderPageRequest(
+  input: { title: string; handle: string } & ({ template: string } | { duplicateOf: string }),
+): Promise<CreatedPage> {
   return post<CreatedPage>("/api/admin/pages/create", { operation: "pageCreate", ...input });
 }
 
@@ -323,6 +324,16 @@ export async function saveDraftRequest(input: {
   content: unknown;
 }): Promise<BuilderSaveResult> {
   return post<BuilderSaveResult>("/api/admin/pages/builder", { operation: "builderSaveDraft", ...input });
+}
+
+/** The draft revision a page is at now — see `/api/admin/pages/revision`. */
+export async function draftRevisionRequest(id: string): Promise<{ revision: number }> {
+  return post<{ revision: number }>("/api/admin/pages/revision", { id });
+}
+
+/** MVP-2: a hand-built page's first builder draft, from its current content. */
+export async function convertToBuilderRequest(id: string): Promise<{ revision: number }> {
+  return post<{ revision: number }>("/api/admin/pages/builder", { operation: "builderConvert", id });
 }
 
 export async function builderActionRequest(

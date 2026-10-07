@@ -1,5 +1,8 @@
+import { ExternalLinkIcon, PencilIcon, PlusIcon, SettingsIcon } from "lucide-react";
+
 import { AppLink } from "@/components/admin/app-link";
 import { Badge } from "@/components/admin/ui/badge";
+import { Button } from "@/components/admin/ui/button";
 import {
   Table,
   TableBody,
@@ -8,75 +11,120 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/admin/ui/table";
-import { paramFromPageId, type PageSummary } from "@/lib/admin/pages";
+import { formatDate } from "@/lib/admin/field-values";
+import type { ContentStatus, PageRow } from "@/lib/admin/page-builder";
+import { paramFromPageId } from "@/lib/admin/pages";
 
 /**
- * A plain server-rendered table, not `DataTable`.
+ * Pages — the one list of the site's pages.
  *
- * The store has a couple of dozen pages: the ones `schema-push` provisions, one
- * per storefront route, plus whatever the page builder has made. Sorting,
- * faceting, column menus, pagination and client-side search are all answers to a
- * problem that many rows do not have, and every one of them would ship
- * JavaScript to render a list that fits on the screen.
+ * Two questions, two columns, never one word for both:
+ *  - **Visibility**: can visitors reach the page at all (Shopify's own switch).
+ *  - **Content**: is what the page shows up to date with what was last edited.
  *
- * Move this to `DataTable` once builder pages run into the hundreds.
+ * Each row offers the page's two tabs: Content (the page builder) and Settings.
+ * A page whose layout is code has Settings only.
+ *
+ * A server-rendered table, not `DataTable`: a couple of dozen rows need no
+ * client-side sorting or paging. Work still to do is sorted to the top.
  */
-export function PagesTable({
-  pages,
-  routeFor,
-}: {
-  pages: PageSummary[];
-  /** Handle -> the storefront path that renders it. */
-  routeFor: (handle: string) => string;
-}) {
+
+const CONTENT: Record<ContentStatus, { label: string; variant: "secondary" | "outline"; hint: string }> = {
+  published: { label: "Published", variant: "secondary", hint: "Visitors see the latest version of the content." },
+  changes: { label: "Unpublished changes", variant: "outline", hint: "Edited since it was last published — publish to show the changes." },
+  draft: { label: "Draft", variant: "outline", hint: "Never published. Visitors do not see this content yet." },
+  setup: { label: "Not set up", variant: "outline", hint: "Still drawn by its original layout. Open Content to move it onto the page builder." },
+  fixed: { label: "Fixed layout", variant: "outline", hint: "This page’s layout is part of the site’s code. Its text is edited in Settings." },
+};
+
+export function PagesTable({ pages, routeFor }: { pages: PageRow[]; routeFor: (handle: string) => string }) {
   return (
     <div className="rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Page</TableHead>
-            <TableHead>Handle</TableHead>
-            <TableHead>Renders at</TableHead>
-            <TableHead className="w-28">Status</TableHead>
+            <TableHead>Visibility</TableHead>
+            <TableHead>Content</TableHead>
+            <TableHead className="hidden lg:table-cell">Last edited</TableHead>
+            <TableHead className="w-0 text-right">
+              <span className="sr-only">Actions</span>
+            </TableHead>
           </TableRow>
         </TableHeader>
 
         <TableBody>
           {pages.map((page) => {
+            const param = paramFromPageId(page.id);
             const route = routeFor(page.handle);
+            const content = CONTENT[page.status];
+            const primary = page.editable ? `/admin/pages/${param}/content` : `/admin/pages/${param}`;
 
             return (
               <TableRow key={page.id}>
                 <TableCell>
-                  <div className="flex items-center gap-2">
-                    <AppLink
-                      href={`/admin/pages/${paramFromPageId(page.id)}${page.builder ? "/builder" : ""}`}
-                      className="font-medium underline-offset-4 hover:underline"
-                    >
-                      {page.title}
-                    </AppLink>
-                    {page.builder && (
-                      <Badge variant="outline" className="text-[11px] font-normal">
-                        Page builder
-                      </Badge>
+                  <AppLink href={primary} className="font-medium underline-offset-4 hover:underline">
+                    {page.title}
+                  </AppLink>
+                  <p className="text-muted-foreground mt-0.5 font-mono text-xs">
+                    {page.isPublished ? (
+                      <a
+                        href={route}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 underline-offset-2 hover:underline"
+                      >
+                        {route}
+                        <ExternalLinkIcon className="size-3" />
+                      </a>
+                    ) : (
+                      route
                     )}
-                  </div>
-                </TableCell>
-
-                <TableCell className="text-muted-foreground font-mono text-xs">
-                  {page.handle}
-                </TableCell>
-
-                <TableCell className="text-muted-foreground font-mono text-xs">
-                  {route}
+                  </p>
                 </TableCell>
 
                 <TableCell>
                   {page.isPublished ? (
-                    <Badge variant="secondary">Published</Badge>
+                    <Badge variant="secondary">Visible</Badge>
                   ) : (
                     <Badge variant="outline">Hidden</Badge>
                   )}
+                </TableCell>
+
+                <TableCell>
+                  <Badge variant={content.variant} title={content.hint}>
+                    {content.label}
+                  </Badge>
+                </TableCell>
+
+                <TableCell className="text-muted-foreground hidden text-xs lg:table-cell">
+                  {page.savedAt ? (
+                    <>
+                      {formatDate(page.savedAt, true)}
+                      {page.savedBy && <span className="block max-w-48 truncate">{page.savedBy}</span>}
+                    </>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
+
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-1">
+                    {page.editable && (
+                      <Button asChild variant="outline" size="sm">
+                        <AppLink href={`/admin/pages/${param}/content`}>
+                          {page.status === "setup" ? <PlusIcon /> : <PencilIcon />}
+                          {page.status === "setup" ? "Set up content" : "Edit content"}
+                        </AppLink>
+                      </Button>
+                    )}
+                    <Button asChild variant="ghost" size="sm">
+                      <AppLink href={`/admin/pages/${param}`} aria-label={`Settings for ${page.title}`}>
+                        <SettingsIcon />
+                        <span className="hidden sm:inline">Settings</span>
+                      </AppLink>
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             );

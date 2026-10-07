@@ -1,30 +1,38 @@
+import { PlusIcon } from "lucide-react";
+
+import { AppLink } from "@/components/admin/app-link";
 import { PageHeader } from "@/components/admin/page-header";
-import { CreatePageDialog } from "@/components/admin/page-builder/create-page-dialog";
 import { PagesTable } from "@/components/admin/pages-table/pages-table";
-import { listPages } from "@/lib/admin/pages";
+import { Button } from "@/components/admin/ui/button";
+import { listPagesWithContent } from "@/lib/admin/page-builder";
 import { routeForPageHandle } from "@/lib/routes";
 
 export const metadata = { title: "Pages" };
 
 /**
- * Online Store pages. A static segment, so it wins over `/admin/[slug]`; a
- * metaobject type named `pages` would be shadowed, and `reservedSlug()` says so in
- * the sidebar.
- *
- * Fifteen of the twenty-three public routes read one of these, and most of what
- * they render lives in the page's METAFIELDS rather than its body — the landing
- * page's hero slides, New In and Monthly Selection among them.
+ * Website → Pages. The one place a page is managed: each row opens on the page's
+ * Content tab (the page builder) or its Settings tab. A static segment, so it wins
+ * over `/admin/[slug]`; a metaobject type named `pages` would be shadowed, and
+ * `reservedSlug()` says so in the sidebar.
  */
 export default async function PagesScreen() {
-  const pages = await listPages();
+  const pages = await listPagesWithContent();
+  const waiting = pages.filter((page) => page.status === "changes" || page.status === "draft").length;
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Pages"
-        description="The copy and content behind the public pages. New pages are built from the site’s own sections with the page builder; pages with a layout of their own in code still come from schema-push."
-        meta={`${pages.length} pages`}
-        actions={<CreatePageDialog />}
+        description="Every page on the site. Content is what a page shows; Settings are its title, address, visibility and search listing."
+        meta={`${pages.length} pages${waiting ? ` · ${waiting} not published` : ""}`}
+        actions={
+          <Button asChild size="sm">
+            <AppLink href="/admin/pages/new">
+              <PlusIcon />
+              New page
+            </AppLink>
+          </Button>
+        }
       />
 
       <PagesTable pages={pages} routeFor={routeForPageHandle} />

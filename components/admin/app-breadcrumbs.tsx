@@ -31,9 +31,20 @@ export function AppBreadcrumbs({ labels }: { labels: Record<string, string> }) {
   const crumbs = rest.map((segment, index) => {
     const href = `/admin/${rest.slice(0, index + 1).join("/")}`;
 
-    // `new` is a route, not a record; an id is digits and has no useful label.
+    // `new` is a route, not a record; an id is digits and has no useful label. A
+    // page's id opens its Settings, and `content` is its Content tab.
+    const parent = rest[index - 1];
     const label =
-      labels[segment] ?? (segment === "new" ? "New" : /^\d+$/.test(segment) ? "Edit" : segment);
+      labels[segment] ??
+      (segment === "new"
+        ? "New"
+        : segment === "content"
+          ? "Content"
+          : /^\d+$/.test(segment)
+            ? parent === "pages"
+              ? "Page"
+              : "Edit"
+            : segment);
 
     return { href, label, last: index === rest.length - 1 };
   });

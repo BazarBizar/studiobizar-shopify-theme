@@ -62,6 +62,7 @@ const BY_HREF: Record<string, LucideIcon> = {
 
 /** Last resort, by group, so an unclassified new definition still gets a mark. */
 const BY_GROUP: Record<string, LucideIcon> = {
+  content: LayersIcon,
   catalogue: LayersIcon,
   pages: FileTextIcon,
   library: ImagesIcon,

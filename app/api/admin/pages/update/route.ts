@@ -44,6 +44,9 @@ const schema = z.strictObject({
     .optional(),
   body: z.string().max(512 * 1024).optional(),
   isPublished: z.boolean().optional(),
+  /** Shopify's SEO fields. "" clears one — see `updatePage`. */
+  seoTitle: z.string().max(70).optional(),
+  seoDescription: z.string().max(320).optional(),
   /** Values stay strings all the way to Shopify — see lib/admin/field-values.ts. */
   metafields: z
     .array(

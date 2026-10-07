@@ -76,6 +76,11 @@ export type PageMetafield = {
 export type PageDetail = PageSummary & {
   body: string;
   metafields: PageMetafield[];
+  /** Shopify's plain-text summary of the body — what Our Designers and Gallery print under their heading. */
+  bodySummary: string;
+  /** Shopify's own SEO fields (`global.title_tag` / `description_tag`), null when unset. */
+  seoTitle: string | null;
+  seoDescription: string | null;
 };
 
 type RawSummary = Omit<PageSummary, "builder"> & {
@@ -85,7 +90,10 @@ type RawSummary = Omit<PageSummary, "builder"> & {
 
 type RawDetail = Omit<PageSummary, "builder"> & {
   body: string | null;
+  bodySummary: string | null;
   metafields: { nodes: PageMetafield[] };
+  seoTitle: { value: string } | null;
+  seoDescription: { value: string } | null;
 };
 
 /**
@@ -129,7 +137,10 @@ export async function getPage(id: string): Promise<PageDetail> {
   return {
     ...data.page,
     body: data.page.body ?? "",
+    bodySummary: data.page.bodySummary ?? "",
     metafields,
+    seoTitle: data.page.seoTitle?.value ?? null,
+    seoDescription: data.page.seoDescription?.value ?? null,
     builder: metafields.some(
       (field) => field.key === BUILDER_METAFIELDS.published || field.key === BUILDER_METAFIELDS.draft,
     ),
@@ -141,6 +152,13 @@ export type PageWrite = {
   handle?: string;
   body?: string;
   isPublished?: boolean;
+  /**
+   * Shopify's own SEO fields (`global.title_tag` / `description_tag`) — what
+   * `page.seo` reads on the storefront and what a Liquid theme reads too. An empty
+   * string clears the field, so the page falls back to its title and summary.
+   */
+  seoTitle?: string;
+  seoDescription?: string;
   /** Only keys with a value. Clearing goes through `clearPageMetafields`. */
   metafields?: { key: string; type: string; value: string }[];
 };
@@ -161,14 +179,23 @@ export async function updatePage(id: string, fields: PageWrite) {
   if (fields.body !== undefined) page.body = fields.body;
   if (fields.isPublished !== undefined) page.isPublished = fields.isPublished;
 
-  if (fields.metafields?.length) {
-    page.metafields = fields.metafields.map((field) => ({
-      namespace: METAFIELD_NAMESPACE,
-      key: field.key,
-      type: field.type,
-      value: field.value,
-    }));
+  const metafields: { namespace: string; key: string; type: string; value: string }[] = (fields.metafields ?? []).map(
+    (field) => ({ namespace: METAFIELD_NAMESPACE, key: field.key, type: field.type, value: field.value }),
+  );
+
+  // SEO rides in the same pageUpdate when set; a cleared one is deleted after it,
+  // because an empty metafield still reads as present.
+  const clearSeo: string[] = [];
+  for (const [key, value] of [
+    ["title_tag", fields.seoTitle],
+    ["description_tag", fields.seoDescription],
+  ] as const) {
+    if (value === undefined) continue;
+    if (value.trim()) metafields.push({ namespace: "global", key, type: "single_line_text_field", value: value.trim() });
+    else clearSeo.push(key);
   }
+
+  if (metafields.length) page.metafields = metafields;
 
   const data = await adminGraphQL<{
     pageUpdate: {
@@ -179,6 +206,15 @@ export async function updatePage(id: string, fields: PageWrite) {
 
   assertNoUserErrors(data.pageUpdate.userErrors);
   if (!data.pageUpdate.page) throw new PageNotFoundError();
+
+  if (clearSeo.length) {
+    const cleared = await adminGraphQL<{
+      metafieldsDelete: { userErrors: { field?: string[] | null; message: string }[] };
+    }>("metafieldsDelete", OPERATIONS.metafieldsDelete.document, {
+      metafields: clearSeo.map((key) => ({ ownerId: id, namespace: "global", key })),
+    });
+    assertNoUserErrors(cleared.metafieldsDelete.userErrors);
+  }
 
   return data.pageUpdate.page;
 }

@@ -50,6 +50,8 @@ export const SERIES: Record<SeriesKey, Series> = {
 export const GROUP_SERIES: Record<string, SeriesKey> = {
   catalogue: "blue",
   pages: "aqua",
+  /** The same family as Website — it is what pages are filled with. */
+  content: "aqua",
   library: "orange",
   inbox: "violet",
   other: "grey",
