@@ -1,0 +1,187 @@
+{% comment %}
+  A heading and a block of rich text read from a PAGE METAFIELD.
+
+  WHY THIS EXISTS. Five content pages — /our-story, /careers, /care-maintenance,
+  /our-artisans and /services — keep their copy in `intro_body`,
+  `story_block_1` or `story_block_2`, not in the page body. `sb-page-content`
+  renders the body, so those pages rendered a title and nothing else: the copy was
+  sitting in the store, edited and approved, and never reached the screen.
+
+  One configurable section rather than five bespoke ones, because the pages differ
+  only in which metafield they read and what heading sits above it. /our-story
+  uses it twice — `story_block_1` bare, then `story_block_2` under its own
+  heading — which is exactly how the React page composed it.
+
+  The measure is capped at 44rem by default: that is the `max-w-[44rem]` the Next
+  pages used, and running copy wider than that stops being readable.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+
+  capture rhythm_class
+    render 'sb-section-classes', rhythm: s.rhythm, pad: 'none'
+  endcapture
+
+  assign paints_ground = true
+  if s.surface == 'inherit'
+    assign paints_ground = false
+  endif
+
+  comment
+    `page` is empty on the index template, so a named handle wins when it is set
+    — the same arrangement the hero and the product rows use.
+  endcomment
+  assign source_page = page
+  if s.page_handle != blank
+    assign source_page = pages[s.page_handle]
+  endif
+
+  assign body = source_page.metafields.custom[s.metafield].value
+
+  case s.width
+    when 'narrow'
+      assign width_class = 'max-w-[38rem]'
+    when 'medium'
+      assign width_class = 'max-w-[44rem]'
+    else
+      assign width_class = ''
+  endcase
+
+  comment
+    The page's own title, used when `show_title` is on and no heading is typed —
+    so /care-maintenance gets "Care & Maintenance" without anyone retyping it.
+  endcomment
+  assign heading = s.heading
+  if heading == blank and s.show_title
+    assign heading = source_page.title
+  endif
+-%}
+
+{%- if body != blank or heading != blank -%}
+  <section
+    {% if paints_ground %}data-surface="{{ s.surface }}" class="bg-background text-foreground"{% endif %}
+    {{ section.shopify_attributes }}
+  >
+    <div class="sb-container {% if s.first %}pt-12 {% endif %}pb-section {{ rhythm_class }}">
+      {%- if heading != blank -%}
+        {%- if s.first -%}
+          <h1 class="text-h1">{{ heading }}</h1>
+        {%- else -%}
+          <h2 class="text-h2">{{ heading }}</h2>
+        {%- endif -%}
+      {%- endif -%}
+
+      {%- if body != blank -%}
+        <div class="sb-prose {{ width_class }}{% if heading != blank %}{% if s.first %} mt-10{% else %} mt-6{% endif %}{% endif %}">
+          {{ body }}
+        </div>
+      {%- endif -%}
+    </div>
+  </section>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Page prose",
+  "tag": "section",
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Renders a rich-text metafield from this page. Shows nothing when the metafield is empty, so a page that has not set it gets no empty band."
+    },
+    {
+      "type": "select",
+      "id": "metafield",
+      "label": "Source metafield",
+      "options": [
+        { "value": "intro_body", "label": "intro_body" },
+        { "value": "story_block_1", "label": "story_block_1" },
+        { "value": "story_block_2", "label": "story_block_2" },
+        { "value": "projects_intro", "label": "projects_intro" }
+      ],
+      "default": "intro_body"
+    },
+    {
+      "type": "text",
+      "id": "page_handle",
+      "label": "Read the metafield from this page",
+      "info": "Leave empty to use the page being viewed. The home template has no page of its own, so it names one."
+    },
+    {
+      "type": "header",
+      "content": "Heading"
+    },
+    {
+      "type": "checkbox",
+      "id": "first",
+      "label": "This is the first band on the page",
+      "info": "Renders the heading as the page's h1 and adds the top spacing. Exactly one band per page should have this on.",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_title",
+      "label": "Fall back to the page title",
+      "info": "Used when no heading is typed below.",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "info": "Overrides the page title."
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "width",
+      "label": "Measure",
+      "info": "How wide the copy runs before it wraps.",
+      "options": [
+        { "value": "narrow", "label": "Narrow" },
+        { "value": "medium", "label": "Medium — as measured" },
+        { "value": "full", "label": "Full width" }
+      ],
+      "default": "medium"
+    },
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Ground",
+      "options": [
+        { "value": "inherit", "label": "Inherit" },
+        { "value": "light", "label": "Earth" },
+        { "value": "dark", "label": "Dark wood" },
+        { "value": "olive", "label": "Black olive" },
+        { "value": "blue", "label": "Charcoal blue" },
+        { "value": "mocha", "label": "Deep mocha" },
+        { "value": "black", "label": "Off black" }
+      ],
+      "default": "inherit"
+    },
+    {
+      "type": "select",
+      "id": "rhythm",
+      "label": "Vertical space",
+      "options": [
+        { "value": "theme", "label": "Theme default" },
+        { "value": "xs", "label": "Extra tight" },
+        { "value": "sm", "label": "Tight" },
+        { "value": "md", "label": "Medium" },
+        { "value": "lg", "label": "Loose" },
+        { "value": "xl", "label": "Extra loose" }
+      ],
+      "default": "theme"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Page prose"
+    }
+  ]
+}
+{% endschema %}

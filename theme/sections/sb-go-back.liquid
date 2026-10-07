@@ -1,0 +1,62 @@
+{% comment %}
+  The closing "go back" band. Six content pages end with it in the Next build,
+  always after the contact block.
+
+  A thin wrapper around `snippets/sb-go-back.liquid` — the snippet so a product
+  or collection page can drop the link inline later, the section so this band is
+  placed and reordered like every other.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+
+  capture rhythm_class
+    render 'sb-section-classes', rhythm: s.rhythm, pad: 'none'
+  endcapture
+-%}
+
+<section {{ section.shopify_attributes }}>
+  <div class="sb-container pb-section {{ rhythm_class }}">
+    {%- render 'sb-go-back', href: s.href, label: s.label -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Go back",
+  "tag": "section",
+  "settings": [
+    {
+      "type": "url",
+      "id": "href",
+      "label": "Destination",
+      "info": "Leave empty for the store root. A real link, not browser history — so it works with no JavaScript and for a visitor who arrived from search."
+    },
+    {
+      "type": "text",
+      "id": "label",
+      "label": "Label",
+      "info": "Leave empty for \"go back\"."
+    },
+    {
+      "type": "select",
+      "id": "rhythm",
+      "label": "Vertical space",
+      "options": [
+        { "value": "theme", "label": "Theme default" },
+        { "value": "xs", "label": "Extra tight" },
+        { "value": "sm", "label": "Tight" },
+        { "value": "md", "label": "Medium" },
+        { "value": "lg", "label": "Loose" },
+        { "value": "xl", "label": "Extra loose" }
+      ],
+      "default": "xs"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Go back"
+    }
+  ]
+}
+{% endschema %}

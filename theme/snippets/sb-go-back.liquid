@@ -1,0 +1,26 @@
+{% comment %}
+  components/ui/go-back.tsx — the "go back" link six content pages close with.
+
+  A REAL LINK, not `history.back()`. The React version was a client component
+  calling `router.back()` with a fallback href; here the fallback IS the link, so
+  it works with no JavaScript, can be opened in a new tab, and shows its
+  destination in the status bar. A visitor who arrived from search has somewhere
+  sensible to go rather than back out of the site.
+
+  Accepts:
+    href  — where it points, default the store root
+    label — overrides the default copy
+{% endcomment %}
+
+{%- liquid
+  assign destination = href | default: routes.root_url
+  assign text = label
+  if text == blank
+    assign text = 'general.go_back' | t
+  endif
+-%}
+
+<a href="{{ destination }}" class="text-button sb-underline inline-flex items-center gap-2 uppercase">
+  {%- render 'sb-icon', icon: 'arrow-left', class: 'size-4' -%}
+  {{ text }}
+</a>

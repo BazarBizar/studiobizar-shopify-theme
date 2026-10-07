@@ -1,0 +1,148 @@
+{% comment %}
+  A full-bleed image from a PAGE metafield — the `story_image` band above Our
+  Story on the landing page (band 8 of the design), and reusable on any page.
+
+  No copy and no overlay: the design puts the image alone, with the prose in the
+  band below it. That is why this is its own section rather than a variant of
+  `sb-media-text` — stacking is the layout, not a side-by-side.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+
+  capture rhythm_class
+    render 'sb-section-classes', rhythm: s.rhythm, pad: 'none'
+  endcapture
+
+  assign source_page = page
+  if s.page_handle != blank
+    assign source_page = pages[s.page_handle]
+  endif
+
+  comment
+    A `file_reference` metafield resolves straight to the image; the picker below
+    is the fallback for a page that has no metafield set.
+  endcomment
+  assign image = source_page.metafields.custom[s.metafield].value
+  if image == blank
+    assign image = s.image
+  endif
+
+  assign banner_alt = s.alt | default: image.alt
+-%}
+
+{%- if image != blank -%}
+  <section
+    data-surface="{{ s.surface }}"
+    class="bg-background text-foreground"
+    {{ section.shopify_attributes }}
+  >
+    <div class="{{ rhythm_class }}{% if s.inset %} sb-container py-section{% endif %}">
+      <div class="relative overflow-hidden" style="aspect-ratio: {{ s.ratio }};">
+        {%- render 'sb-image',
+          image: image,
+          alt: banner_alt,
+          sizes: '100vw',
+          widths: '830, 1240, 1660, 2400',
+          crop: 'center',
+          class: 'absolute inset-0 h-full w-full object-cover'
+        -%}
+      </div>
+    </div>
+  </section>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Image banner",
+  "tag": "section",
+  "settings": [
+    {
+      "type": "select",
+      "id": "metafield",
+      "label": "Source metafield",
+      "info": "Used when the page has it set. Falls back to the picker below.",
+      "options": [
+        { "value": "story_image", "label": "story_image" },
+        { "value": "idea_image", "label": "idea_image" },
+        { "value": "none", "label": "None — use the picker" }
+      ],
+      "default": "story_image"
+    },
+    {
+      "type": "text",
+      "id": "page_handle",
+      "label": "Read the metafield from this page",
+      "info": "Leave empty to use the page being viewed."
+    },
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "Image"
+    },
+    {
+      "type": "text",
+      "id": "alt",
+      "label": "Alt text",
+      "info": "Overrides the file's own. Leave empty for a decorative image."
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "ratio",
+      "label": "Height",
+      "options": [
+        { "value": "16 / 9", "label": "16:9" },
+        { "value": "2 / 1", "label": "2:1" },
+        { "value": "3 / 1", "label": "3:1 — shallow" },
+        { "value": "16 / 7", "label": "16:7 — as the hero" }
+      ],
+      "default": "2 / 1"
+    },
+    {
+      "type": "checkbox",
+      "id": "inset",
+      "label": "Inset to the page gutter",
+      "info": "Off runs the image edge to edge, which is what the design does.",
+      "default": false
+    },
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Ground",
+      "info": "Shows through while the image loads.",
+      "options": [
+        { "value": "light", "label": "Earth" },
+        { "value": "dark", "label": "Dark wood" },
+        { "value": "olive", "label": "Black olive" },
+        { "value": "blue", "label": "Charcoal blue" },
+        { "value": "mocha", "label": "Deep mocha" },
+        { "value": "black", "label": "Off black" }
+      ],
+      "default": "black"
+    },
+    {
+      "type": "select",
+      "id": "rhythm",
+      "label": "Vertical space",
+      "options": [
+        { "value": "theme", "label": "Theme default" },
+        { "value": "xs", "label": "Extra tight" },
+        { "value": "sm", "label": "Tight" },
+        { "value": "md", "label": "Medium" },
+        { "value": "lg", "label": "Loose" },
+        { "value": "xl", "label": "Extra loose" }
+      ],
+      "default": "theme"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Image banner"
+    }
+  ]
+}
+{% endschema %}

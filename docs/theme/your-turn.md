@@ -11,10 +11,21 @@ page and set its template in the sidebar:
 
 | Page | Template to choose |
 |---|---|
+| `our-story` | `page.our-story` |
+| `our-services` | `page.our-services` |
+| `our-artisans` | `page.our-artisans` |
+| `care-maintenance` | `page.care-maintenance` |
+| `careers` | `page.careers` |
 | `professionals` | `page.designers` |
 | `projects` | `page.projects` |
 | `gallery` | `page.gallery` |
-| `contact` | `page.contact` |
+
+Every one of those templates is built and verified rendering against live data —
+`/pages/our-story?view=our-story` in the dev server shows both prose blocks, six
+captioned photographs and the go-back link. Until the template is assigned, the
+page falls back to the generic `page` template and shows its title and body only,
+which is why those pages currently look half-empty: **the copy is in metafields,
+and only these templates read them.**
 
 There is no page with the handle `designers`, and there cannot be: the designer
 metaobject already owns `/pages/designers/` for its own entries. That is why the

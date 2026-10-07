@@ -1,0 +1,74 @@
+{
+  "sections": {
+    "intro": {
+      "type": "sb-page-prose",
+      "settings": {
+        "metafield": "story_block_1",
+        "first": true,
+        "show_title": true,
+        "heading": "",
+        "width": "medium",
+        "surface": "blue",
+        "rhythm": "theme"
+      }
+    },
+    "features": {
+      "type": "sb-captioned-row",
+      "settings": {
+        "metafield": "feature_images",
+        "offset": 0,
+        "surface": "inherit",
+        "rhythm": "theme"
+      }
+    },
+    "story": {
+      "type": "sb-page-prose",
+      "settings": {
+        "metafield": "story_block_2",
+        "first": false,
+        "show_title": false,
+        "heading": "Our Story",
+        "width": "medium",
+        "surface": "inherit",
+        "rhythm": "theme"
+      }
+    },
+    "gallery": {
+      "type": "sb-captioned-row",
+      "settings": {
+        "metafield": "gallery",
+        "offset": 3,
+        "surface": "inherit",
+        "rhythm": "theme"
+      }
+    },
+    "contact": {
+      "type": "sb-rich-text",
+      "settings": {
+        "scale": "lead",
+        "width": "narrow",
+        "align": "left",
+        "link_label": "contact us",
+        "link_url": "/pages/contact",
+        "link_style": "outline",
+        "surface": "inherit",
+        "rhythm": "theme",
+        "body": "<p>Whether you have a question about an order, a product, or would like more information about what we do, we’d love to hear from you.</p>"
+      }
+    },
+    "back": {
+      "type": "sb-go-back",
+      "settings": {
+        "rhythm": "xs"
+      }
+    }
+  },
+  "order": [
+    "intro",
+    "features",
+    "story",
+    "gallery",
+    "contact",
+    "back"
+  ]
+}
