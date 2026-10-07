@@ -6,6 +6,7 @@
  *   yarn check:page-builder
  */
 
+import { historyReducer, initialHistory } from "../components/admin/page-builder/reducer";
 import {
   createSection,
   documentContentSchema,
@@ -15,8 +16,10 @@ import {
   publishProblems,
   sameContent,
 } from "../lib/page-builder/document";
-import { isSafeHref } from "../lib/page-builder/fields";
-import { builderHandleProblem, handleFromTitle } from "../lib/page-builder/handles";
+import { isSafeHref, parseVideoUrl } from "../lib/page-builder/fields";
+import { SECTION_PRESETS, sectionFromPreset } from "../lib/page-builder/presets";
+import { builderHandleProblem, handleFromTitle, isBuilderEditable, isBuilderHandle } from "../lib/page-builder/handles";
+import { PAGE_MIGRATIONS, migrateToDocument } from "../lib/page-builder/migrations";
 import { SECTIONS, SECTION_TYPES } from "../lib/page-builder/registry";
 import { PAGE_TEMPLATES, documentFromTemplate } from "../lib/page-builder/templates";
 
@@ -191,6 +194,143 @@ const emptyQuestion = faqSection([question("b_aaaaaaaa", "Filled"), { id: "b_bbb
 const blockGaps = publishProblems(content([emptyQuestion]) as never).flatMap((problem) => problem.fields);
 check("an empty required field INSIDE a block blocks publishing, labelled by position", blockGaps.includes("Question 2: Question") && blockGaps.includes("Question 2: Answer"));
 check("a filled block is not reported", !blockGaps.some((label) => label.startsWith("Question 1")));
+
+/* --- undo / redo --- */
+
+{
+  let h = initialHistory(content([createSection("text_block")]) as never);
+  const id = h.present.sections[0]!.id;
+  const title = () => (h.present.sections[0]!.settings as { title: string }).title;
+  const type = (value: string) => (h = historyReducer(h, { kind: "setting", id, key: "title", value }));
+
+  check("a fresh history cannot undo", historyReducer(h, { kind: "undo" }) === h);
+
+  type("S");
+  type("Su");
+  type("Summer");
+  check("typing in one field is one undo step", h.past.length === 1);
+  h = historyReducer(h, { kind: "setting", id, key: "body", value: richLink("https://example.com") });
+  check("moving to another field starts a new step", h.past.length === 2);
+
+  h = historyReducer(h, { kind: "undo" });
+  check("undo restores the field before", title() === "Summer" && h.future.length === 1);
+  h = historyReducer(h, { kind: "undo" });
+  check("a second undo takes the whole typed word back", title() === "");
+  h = historyReducer(h, { kind: "redo" });
+  check("redo puts it back", title() === "Summer");
+
+  type("Winter");
+  check("a new edit after undo clears redo", h.future.length === 0 && title() === "Winter");
+
+  const before = h.present.sections.length;
+  h = historyReducer(h, { kind: "insert", section: createSection("contact_cta"), index: 1 });
+  h = historyReducer(h, { kind: "undo" });
+  check("adding a section can be undone", h.present.sections.length === before);
+
+  h = historyReducer(h, { kind: "remove", id });
+  h = historyReducer(h, { kind: "undo" });
+  check("deleting a section can be undone", h.present.sections.some((section) => section.id === id));
+
+  // Hide/show, because inserts stop counting at the 40-section cap.
+  const cta = createSection("contact_cta");
+  let long = initialHistory(content([cta]) as never);
+  for (let i = 0; i < 150; i++) long = historyReducer(long, { kind: "toggle", id: cta.id });
+  check("history is bounded at 100 steps", long.past.length === 100);
+  check("an edit the reducer refuses is not a step", (() => {
+    let full = initialHistory(content(Array.from({ length: 40 }, () => createSection("contact_cta"))) as never);
+    full = historyReducer(full, { kind: "insert", section: createSection("contact_cta"), index: 0 });
+    return full.past.length === 0;
+  })());
+}
+
+/* --- MVP-2 migrations --- */
+
+for (const migration of Object.values(PAGE_MIGRATIONS)) {
+  const migrated = migrateToDocument(migration, {
+    metafields: { intro_body: richLink("https://example.com") },
+    images: {},
+    bodySummary: "",
+    collections: {},
+    files: {},
+  });
+  check(`migration "${migration.handle}" produces a document the write schema accepts`, documentContentSchema.safeParse(migrated).success);
+  check(`migration "${migration.handle}" keeps the page's ground (${migration.surface})`, migrated.page.surface === migration.surface);
+  check(`"${migration.handle}" is editable in the builder but not a /<handle> page`, isBuilderEditable(migration.handle) && !isBuilderHandle(migration.handle));
+}
+{
+  const carried = migrateToDocument(PAGE_MIGRATIONS.careers!, {
+    metafields: { intro_body: richLink("https://example.com") },
+    images: {},
+    bodySummary: "",
+    collections: {},
+    files: {},
+  });
+  const heading = carried.sections[0]!.settings as { title: string; intro: string };
+  check("migration carries the intro over unchanged", heading.intro === richLink("https://example.com"));
+  check("migration leaves the heading empty so it follows the page title", heading.title === "");
+  check("migration leaves SEO to the Shopify page (not in the document)", !("seoTitle" in carried.page));
+  const empty = migrateToDocument(PAGE_MIGRATIONS.careers!, { metafields: {}, images: {}, bodySummary: "", collections: {}, files: {} });
+  check("a page with no intro migrates to a heading with no intro", (empty.sections[0]!.settings as { intro: string }).intro === "");
+}
+check("a hand-built page without a migration is not editable (legal)", !isBuilderEditable("privacy-policy"));
+{
+  const image = (n: number) => ({
+    image: { id: `gid://shopify/MediaImage/${n}`, url: `https://cdn.shopify.com/s/files/${n}.jpg`, altText: null, width: 10, height: 10 },
+    caption: `c${n}`,
+  });
+  const story = migrateToDocument(PAGE_MIGRATIONS["our-story"]!, {
+    metafields: { story_block_1: richLink("https://example.com"), story_block_2: "" },
+    images: { feature_images: [image(1), null, image(2)], gallery: [image(3), image(4), image(5), image(6), null, image(7), image(8)] },
+    bodySummary: "",
+    collections: {},
+    files: {},
+  });
+  const rows = story.sections.filter((s) => s.type === "captioned_row") as { visible: boolean; settings: { images: { caption: string }[] } }[];
+  check("our-story: entries with no image are skipped", rows[0]!.settings.images.map((i) => i.caption).join() === "c1,c2");
+  check("our-story: gallery row takes positions 4-6, as the JSX does", rows[1]!.settings.images.map((i) => i.caption).join() === "c6,c7");
+  const second = story.sections.find((s) => s.type === "text_block")!;
+  check("our-story: an empty second block becomes a hidden section", second.visible === false);
+  check("our-story: migration passes the write schema", documentContentSchema.safeParse(story).success);
+  const empty = migrateToDocument(PAGE_MIGRATIONS["our-artisans"]!, { metafields: {}, images: {}, bodySummary: "", collections: {}, files: {} });
+  check("our-artisans: no photographs → the row is there but hidden", empty.sections.some((s) => s.type === "captioned_row" && !s.visible));
+}
+
+/* --- presets: what Add section offers --- */
+
+check("every offered section type has at least one preset", SECTION_TYPES.filter((type) => !SECTIONS[type].hidden).every((type) => SECTION_PRESETS.some((preset) => preset.type === type)));
+check("preset ids are unique", new Set(SECTION_PRESETS.map((preset) => preset.id)).size === SECTION_PRESETS.length);
+check("no preset offers a retired section", SECTION_PRESETS.every((preset) => !SECTIONS[preset.type].hidden));
+for (const preset of SECTION_PRESETS) {
+  const section = sectionFromPreset(preset);
+  check(`preset "${preset.id}" passes the write schema`, accepts([section]));
+  // A preset's own values must survive the lenient read — a typo in a preset would otherwise silently become a default.
+  const kept = Object.entries(preset.settings ?? {}).every(([key, value]) => {
+    const got = (section.settings as Record<string, unknown>)[key];
+    if (Array.isArray(value)) return Array.isArray(got) && got.length === value.length;
+    return JSON.stringify(got) === JSON.stringify(value);
+  });
+  check(`preset "${preset.id}" keeps every value it sets`, kept);
+}
+const twice = [sectionFromPreset(SECTION_PRESETS.find((preset) => preset.id === "multicolumn")!), sectionFromPreset(SECTION_PRESETS.find((preset) => preset.id === "multicolumn")!)];
+check("two sections from one preset share no section or block id", twice[0]!.id !== twice[1]!.id && (twice[0]!.settings as { columns: { id: string }[] }).columns[0]!.id !== (twice[1]!.settings as { columns: { id: string }[] }).columns[0]!.id);
+
+/* --- landing sections --- */
+
+check("YouTube watch address parses", parseVideoUrl("https://www.youtube.com/watch?v=dQw4w9WgXcQ")?.id === "dQw4w9WgXcQ");
+check("youtu.be address parses", parseVideoUrl("https://youtu.be/dQw4w9WgXcQ?t=10")?.provider === "youtube");
+check("YouTube shorts address parses", parseVideoUrl("https://youtube.com/shorts/dQw4w9WgXcQ")?.id === "dQw4w9WgXcQ");
+check("Vimeo address parses", parseVideoUrl("https://vimeo.com/76979871")?.id === "76979871");
+check("http (not https) video is refused", parseVideoUrl("http://www.youtube.com/watch?v=dQw4w9WgXcQ") === null);
+check("another host is refused as a video", parseVideoUrl("https://evil.example/watch?v=dQw4w9WgXcQ") === null);
+check("a lookalike host is refused", parseVideoUrl("https://youtube.com.evil.example/watch?v=dQw4w9WgXcQ") === null);
+check("a malformed YouTube id is refused", parseVideoUrl("https://www.youtube.com/watch?v=<script>") === null);
+check("Video section refuses a non-video address on write", !accepts([withSettings("video", { url: "https://evil.example/x" })]));
+check("Video section accepts a YouTube address", accepts([withSettings("video", { url: "https://youtu.be/dQw4w9WgXcQ" })]));
+check("an icon outside the set is refused", !accepts([withSettings("multicolumn", { columns: [{ id: "b_icon0001", type: "column", settings: { ...(sectionFromPreset(SECTION_PRESETS.find((p) => p.id === "multicolumn.icons")!).settings as { columns: { settings: object }[] }).columns[0]!.settings, icon: "skull" } }] })]));
+check("overlay above 80% is refused", !accepts([withSettings("image_banner", { overlay: 95 })]));
+check("a text position outside the grid is refused", !accepts([withSettings("image_banner", { position: "far-left" })]));
+check("a javascript: link on a collage tile is refused", !accepts([withSettings("collage", { tiles: [{ id: "b_tile00001", type: "tile", settings: { image: IMAGE, title: "", href: "javascript:alert(1)" } }] })]));
+check("an image banner without its image cannot be published", publishProblems({ page: emptyDocument().page, sections: [createSection("image_banner")] }).length > 0);
 
 /* --- handles --- */
 
