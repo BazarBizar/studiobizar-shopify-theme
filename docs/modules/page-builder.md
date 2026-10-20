@@ -265,6 +265,8 @@ yarn check:page-builder-live  # needs `yarn dev`; creates one hidden pb-check-* 
                               # save, publish, load previous, SEO and a damaged document, then deletes it
 yarn check:liquid             # the Liquid theme matches the builder: schemas, options, presets,
                               # blocks, every setting read by the markup, icons
+yarn check:liquid-render      # the theme sections RENDERED locally (liquidjs + Chromium), no Shopify:
+                              # every preset, every field empty, overflow, console, tabs/video/slideshow
 yarn check:page-builder-ui    # needs `yarn dev`; the editor in a real browser (Playwright): autosave,
                               # undo, preview, leaving mid-edit, Back, publish, delete. Localhost only.
                               # First run: npx playwright install chromium

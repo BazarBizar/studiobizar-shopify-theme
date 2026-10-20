@@ -149,6 +149,31 @@ Each is already scoped as a port of its Next component; the change this
 requirement makes is that each one now also needs a preset and must work on a
 page nobody has designed.
 
+## Testing without the store
+
+`shopify theme dev` needs a login to the store, which an agent or CI does not have.
+Everything below runs locally, without Shopify:
+
+| Command | What it proves |
+|---|---|
+| `yarn check:liquid` | Each theme section matches its page-builder twin — schema, options, defaults, blocks, presets, every setting read by the markup, icons |
+| `yarn check:liquid-render` | Each section **renders**: every preset, and every field empty (live and in the editor). It runs in Chromium with the built CSS and the theme's JS, at 1440px and 390px: no overflow, no console errors, and tabs, video and slideshow working. Screenshots and an `index.html` with all of them are written to the temp folder — open it in a browser to look |
+| `yarn theme:check` | The compiled `assets/sb-theme.css` is up to date with the sections |
+| `yarn theme:lint` | Shopify Theme Check — Liquid syntax, schema validity, missing translations |
+
+`check:liquid-render` uses liquidjs with Shopify's filters and tags stubbed, and
+mock drops (a product, CDN photographs). A missing translation key fails it, as it
+would print "translation missing" on the store. `--only sb-banner,sb-tabs`
+renders just those sections.
+
+What only the store can show: the theme editor's settings panel, real drops
+(metafields, product data), and JSON templates assembled into a page. For that
+without an interactive login, install Shopify's **Theme Access** app, create a
+password for the theme, and run, e.g.
+`SHOPIFY_CLI_THEME_TOKEN=… shopify theme dev --store studio-bizar-be --path theme`.
+That serves an unpublished development theme — the live theme is untouched — and
+the password can be revoked from the app at any time.
+
 ## What does not change
 
 Content stays in the Next admin panel. Metaobjects, products, collections,

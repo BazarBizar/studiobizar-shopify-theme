@@ -4,6 +4,7 @@ import { PartToWhole } from "@/components/admin/dashboard/part-to-whole";
 import { RecentPanel } from "@/components/admin/dashboard/recent-panel";
 import { StatTile } from "@/components/admin/dashboard/stat-tile";
 import { PageHeader } from "@/components/admin/page-header";
+import { getAdminSettings } from "@/lib/admin/admin-settings";
 import { getDashboardData } from "@/lib/admin/dashboard";
 import { SERIES } from "@/lib/admin/series-colors";
 
@@ -15,14 +16,12 @@ import { SERIES } from "@/lib/admin/series-colors";
  * one genuine part-to-whole gets the single chart, and short recency lists stay lists.
  */
 export default async function AdminDashboardPage() {
-  const data = await getDashboardData();
+  // The heading's wording comes from Site-wide → Admin panel.
+  const [data, settings] = await Promise.all([getDashboardData(), getAdminSettings()]);
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Dashboard"
-        description="Everything on this store is edited here and stored in Shopify."
-      />
+      <PageHeader title={settings.dashboardTitle} description={settings.dashboardDescription} />
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatTile

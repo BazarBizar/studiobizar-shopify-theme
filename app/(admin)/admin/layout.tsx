@@ -109,7 +109,12 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
           <AppSidebar
             sections={sections}
             email={staff.email}
-            brand={{ title: settings.title, initials: settings.initials }}
+            brand={{
+              title: settings.title,
+              subtitle: settings.subtitle,
+              initials: settings.initials,
+              logoUrl: settings.logoUrl,
+            }}
             onSignOut={staffSignOut}
           />
 

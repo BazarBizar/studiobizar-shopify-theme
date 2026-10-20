@@ -39,6 +39,7 @@
     "check:page-builder-live": "tsx --conditions=react-server scripts/check-page-builder-live.ts",
     "check:page-builder-ui": "tsx --conditions=react-server scripts/check-page-builder-ui.ts",
     "check:liquid": "tsx scripts/check-liquid-parity.ts",
+    "check:liquid-render": "tsx scripts/check-liquid-render.ts",
     "liquid:icons": "tsx scripts/generate-liquid-icons.tsx",
     "liquid:schemas": "tsx scripts/generate-liquid-schemas.ts"
   },
@@ -95,6 +96,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.3",
+    "liquidjs": "10.30.0",
     "playwright": "1.63.0",
     "shadcn": "^4.16.0",
     "tailwindcss": "^4",

@@ -1,6 +1,7 @@
 /**
  * Adds the `admin_settings` singleton — branding for the admin PANEL itself (its
- * sidebar name, initials and browser-tab icon), never for the storefront. Read by
+ * sidebar name, subtitle, initials or logo, browser-tab icon and the dashboard's
+ * heading), never for the storefront. Read by
  * `lib/admin/admin-settings.ts`; edited under Site-wide → Admin panel.
  *
  *   node --env-file=.env scripts/add-admin-settings.mjs
@@ -63,6 +64,12 @@ const FIELDS = [
     description: "The name at the top of the sidebar and in the browser tab.",
   },
   {
+    key: "panel_subtitle",
+    name: "Panel subtitle",
+    type: "single_line_text_field",
+    description: "The small line under the title in the sidebar. Empty means \"Admin\".",
+  },
+  {
     key: "panel_initials",
     name: "Panel initials",
     type: "single_line_text_field",
@@ -70,11 +77,30 @@ const FIELDS = [
     validations: [{ name: "max", value: "3" }],
   },
   {
+    key: "logo",
+    name: "Logo",
+    type: "file_reference",
+    description: "Replaces the initials square in the sidebar and on the sign-in page. A square image works best.",
+    validations: [{ name: "file_type_options", value: JSON.stringify(["Image"]) }],
+  },
+  {
     key: "favicon",
     name: "Favicon",
     type: "file_reference",
     description: "The admin's browser-tab icon. A square PNG works best.",
     validations: [{ name: "file_type_options", value: JSON.stringify(["Image"]) }],
+  },
+  {
+    key: "dashboard_title",
+    name: "Dashboard title",
+    type: "single_line_text_field",
+    description: "The heading on the admin home screen. Empty means \"Dashboard\".",
+  },
+  {
+    key: "dashboard_description",
+    name: "Dashboard description",
+    type: "multi_line_text_field",
+    description: "The sentence under the dashboard heading.",
   },
 ];
 

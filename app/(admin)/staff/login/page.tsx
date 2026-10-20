@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 
 import { StaffLoginForm } from "@/components/admin/staff-login-form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/admin/ui/alert";
 import { Card, CardContent } from "@/components/admin/ui/card";
+import { getAdminSettings } from "@/lib/admin/admin-settings";
 import { adminConfigured } from "@/lib/admin/env";
 
 export const metadata: Metadata = {
@@ -24,13 +26,25 @@ export const metadata: Metadata = {
 export default async function StaffLoginPage({ searchParams }: PageProps<"/staff/login">) {
   const { from } = await searchParams;
   const configured = adminConfigured();
+  // The panel's name and logo (Site-wide → Admin panel); never throws.
+  const brand = await getAdminSettings();
 
   return (
     <div data-admin className="flex min-h-svh flex-1 items-center justify-center px-6 py-16">
       <div className="w-full max-w-sm space-y-6">
         <div className="space-y-1">
+          {brand.logoUrl ? (
+            <Image
+              src={brand.logoUrl}
+              alt=""
+              width={40}
+              height={40}
+              unoptimized
+              className="mb-3 size-10 rounded-md object-contain"
+            />
+          ) : null}
           <p className="text-muted-foreground text-xs font-medium tracking-widest uppercase">
-            Studio Bizar
+            {brand.title}
           </p>
           <h1 className="text-xl font-semibold tracking-tight">Staff sign in</h1>
         </div>

@@ -62,7 +62,7 @@ export const SITE_WIDE_SECTIONS: SiteWideSection[] = [
     label: "Admin panel",
     kind: "singleton",
     description:
-      "This panel's own name, initials and browser-tab icon. Not the storefront. Light/dark is per person, in the sidebar.",
+      "This panel's own name, logo, browser-tab icon and dashboard heading. Not the storefront. Light/dark is per person, in the sidebar.",
     setup: "node --env-file=.env scripts/add-admin-settings.mjs",
   },
 ];

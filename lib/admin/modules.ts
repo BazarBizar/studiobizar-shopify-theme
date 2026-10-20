@@ -195,7 +195,7 @@ export const MODULES: Record<string, ModuleDef> = {
 
   admin_settings: {
     label: "Admin panel",
-    columns: ["panel_title", "panel_initials", "favicon"],
+    columns: ["panel_title", "logo", "favicon"],
     /** A singleton the panel reads on every page; see `site_settings` above. */
     deletable: false,
     load: "client",

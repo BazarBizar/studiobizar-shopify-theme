@@ -31,11 +31,16 @@ enforces this on existing definitions.
 
 | Field | Type |
 |---|---|
-| `panel_title`, `panel_initials` (max 3) | `single_line_text_field` |
-| `favicon` | `file_reference` (image) |
+| `panel_title`, `panel_subtitle`, `panel_initials` (max 3) | `single_line_text_field` |
+| `logo`, `favicon` | `file_reference` (image) |
+| `dashboard_title` | `single_line_text_field` |
+| `dashboard_description` | `multi_line_text_field` |
 
-- These fields control the sidebar name, the square with the initials, the browser-tab title
-  (`%s · <title>`) and the admin favicon.
+- These fields control the sidebar name and the line under it (default "Admin"), the square beside it
+  (the logo when set, otherwise the initials), the browser-tab title (`%s · <title>`), the admin
+  favicon, and the heading and sentence on the dashboard (`/admin`).
+- The sign-in page (`/staff/login`) shows the same title and logo.
+- Empty text fields fall back to the old hardcoded wording.
 - The values are cached for 60 seconds, and saving clears the cache on the instance that handled the
   save.
 - On any failure the panel falls back to "Studio Bizar" / "SB" and the site favicon. It never throws.
