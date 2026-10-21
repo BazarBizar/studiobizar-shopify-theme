@@ -35,34 +35,34 @@ export const SITE_WIDE_SECTIONS: SiteWideSection[] = [
     label: "Site settings",
     kind: "singleton",
     description:
-      "Footer copy, contact call-to-action, social links and featured collections. Read by every storefront page.",
+      "The texts and links that appear on every page: the footer, the “Contact us” block, social media links and featured collections.",
     setup: "node --env-file=.env scripts/add-site-settings.mjs",
   },
   {
     type: "location",
     label: "Locations",
     kind: "collection",
-    description: "Showrooms and studios, shown on Our Locations and wherever a page links them.",
+    description: "Showrooms and studios, shown on the Our Locations page. Drag the rows to change their order.",
   },
   {
     type: "contact_channel",
     label: "Contact channels",
     kind: "collection",
-    description: "Email, phone and social rows on the Contact page.",
+    description: "The email addresses, phone numbers and social links listed on the Contact page.",
   },
   {
     type: "email_notification",
     label: "Email notifications",
     kind: "collection",
     description:
-      "Who receives the staff copy of each storefront email. A type without an entry uses 'default'; a disabled entry mutes its type.",
+      "Who in the team gets an email when a visitor sends the contact form or a product inquiry. Anything without its own rule goes to the “Everything else” rule.",
   },
   {
     type: "admin_settings",
-    label: "Admin panel",
+    label: "Admin appearance",
     kind: "singleton",
     description:
-      "This panel's own name, logo, browser-tab icon and dashboard heading. Not the storefront. Light/dark is per person, in the sidebar.",
+      "How this admin looks to your team: its name, logo, browser-tab icon and the dashboard heading. This does not change the website.",
     setup: "node --env-file=.env scripts/add-admin-settings.mjs",
   },
 ];

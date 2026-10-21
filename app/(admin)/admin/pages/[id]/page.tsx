@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 
-import { DetailHeader } from "@/components/admin/detail-header";
 import { DeletePageCard } from "@/components/admin/pages-table/delete-page-card";
 import { PageEditor } from "@/components/admin/pages-table/page-editor";
+import { contentStatusFor } from "@/lib/admin/page-builder";
 import { buildPageMetafieldSpecs } from "@/lib/admin/page-specs";
 import { getPage, pageIdFromParam, PageNotFoundError } from "@/lib/admin/pages";
 import { BUILDER_METAFIELDS } from "@/lib/page-builder/document";
@@ -41,17 +41,11 @@ export default async function PageDetail({ params }: PageProps<"/admin/pages/[id
   const specs = hideMetafields ? [] : await buildPageMetafieldSpecs(page.metafields);
 
   const publicPath = routeForPageHandle(page.handle);
+  const stored = (key: string) => page.metafields.find((field) => field.key === key)?.value;
+  const content = contentStatusFor(page.handle, stored(BUILDER_METAFIELDS.draft), stored(BUILDER_METAFIELDS.published));
 
   return (
     <div className="space-y-6">
-      <DetailHeader
-        backHref="/admin/pages"
-        backLabel="Pages"
-        title={page.title}
-        meta={page.handle}
-      />
-
-
       <PageEditor
         page={{
           id: page.id,
@@ -68,6 +62,7 @@ export default async function PageDetail({ params }: PageProps<"/admin/pages/[id
         }}
         specs={specs}
         publicPath={publicPath}
+        content={content}
         tabsParam={isBuilderEditable(page.handle) ? id : undefined}
         notice={
           // A site page not yet moved onto the builder still shows the content its

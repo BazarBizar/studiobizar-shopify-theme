@@ -21,7 +21,7 @@
   page renders the same band twice — The Idea and The Designer — and two copies
   would drift. This section is the theme-editor wrapper around it.
 {% endcomment %}
-<section {{ section.shopify_attributes }}>
+<section {% render 'sb-section-style', settings: s %} {{ section.shopify_attributes }}>
   {%- render 'sb-media-text-block',
     heading: s.heading,
     body: s.body,
@@ -183,7 +183,19 @@
         { "value": "bottom", "label": "Bottom" }
       ],
       "default": "center"
-    }
+    },
+    {"type":"header","content":"Style"},
+    {"type":"color","id":"bg_color","label":"Background colour","info":"Overrides the background above. Leave empty to use it."},
+    {"type":"color","id":"text_color","label":"Text colour","info":"Headings, text and buttons in this section."},
+    {"type":"checkbox","id":"custom_spacing","label":"Custom spacing","default":false,"info":"Set the space inside and around this section yourself, in pixels."},
+    {"type":"range","id":"padding_top","label":"Space inside, top","min":0,"max":200,"step":2,"unit":"px","default":64},
+    {"type":"range","id":"padding_bottom","label":"Space inside, bottom","min":0,"max":200,"step":2,"unit":"px","default":64},
+    {"type":"range","id":"margin_top","label":"Space above the section","min":0,"max":200,"step":2,"unit":"px","default":0},
+    {"type":"range","id":"margin_bottom","label":"Space below the section","min":0,"max":200,"step":2,"unit":"px","default":0},
+    {"type":"select","id":"border","label":"Line","options":[{"value":"none","label":"No line"},{"value":"all","label":"Box around"},{"value":"top","label":"Line above"},{"value":"bottom","label":"Line below"},{"value":"y","label":"Lines above and below"}],"default":"none"},
+    {"type":"range","id":"border_width","label":"Line thickness","min":1,"max":10,"step":1,"unit":"px","default":1},
+    {"type":"color","id":"border_color","label":"Line colour","info":"Leave empty for a soft line in the text colour."},
+    {"type":"range","id":"radius","label":"Rounded corners","min":0,"max":48,"step":1,"unit":"px","default":0}
   ],
   "presets": [
     {

@@ -6,6 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/admin/ui/alert
 import {
   getMenu,
   listMenuDestinations,
+  menuDisplayName,
   menuIdFromParam,
   menuUsedBy,
   MenuNotFoundError,
@@ -36,18 +37,17 @@ export default async function MenuDetail({ params }: PageProps<"/admin/menus/[id
       <DetailHeader
         backHref="/admin/menus"
         backLabel="Menus"
-        title={menu.title}
-        meta={usedBy ? `${menu.handle} · ${usedBy}` : menu.handle}
+        title={menuDisplayName(menu)}
+        meta={usedBy ?? undefined}
       />
 
       {!usedBy && (
         <Alert>
           <InfoIcon />
-          <AlertTitle>Not read by this site</AlertTitle>
+          <AlertTitle>Not shown on the site</AlertTitle>
           <AlertDescription>
-            This is one of Shopify&rsquo;s own menus. Editing it changes nothing on the
-            storefront, which reads only the five menus named in{" "}
-            <code>lib/navigation.ts</code>.
+            This is one of Shopify&rsquo;s own menus. The site does not show it, so changes
+            here will not appear anywhere. Go back to Menus to pick one that is shown.
           </AlertDescription>
         </Alert>
       )}

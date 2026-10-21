@@ -1,7 +1,6 @@
 import "server-only";
 
 import { listAllEntries, listDefinitions, type Entry } from "./metaobjects";
-import { moduleFor } from "./modules";
 import { isTrue } from "./field-values";
 
 /**
@@ -11,9 +10,8 @@ import { isTrue } from "./field-values";
  * one number. The panel's landing screen is the page opened most often, so every query
  * here is one an operator pays for on every visit.
  *
- * Definition metadata comes from the request-memoised `listDefinitions()`, which the
- * sidebar has already fetched — so the counts of types and fields cost nothing extra.
- * Entries are loaded only for the handful of types the screen actually shows, and the
+ * Definitions come from the request-memoised `listDefinitions()`, which the sidebar has
+ * already fetched. Entries are loaded only for the handful of types the screen actually shows, and the
  * derived figures (selected projects, unread inquiries) are computed from those same
  * rows rather than fetched again.
  *
@@ -34,11 +32,6 @@ export type RecentEntry = {
 };
 
 export type DashboardData = {
-  definitionCount: number;
-  fieldCount: number;
-  /** Editable content entries across every writable type. */
-  contentCount: number;
-  readOnlyCount: number;
   /** Projects by their `is_selected` flag — the one genuine part-to-whole here. */
   projectSplit: PartToWhole;
   projectTotal: number;
@@ -70,9 +63,6 @@ const byUpdatedDesc = (a: Entry, b: Entry) =>
 export async function getDashboardData(): Promise<DashboardData> {
   const definitions = await listDefinitions();
 
-  const writable = definitions.filter((definition) => !moduleFor(definition.type).readOnly);
-  const readOnly = definitions.filter((definition) => moduleFor(definition.type).readOnly);
-
   /**
    * Only the types this screen reports on. Everything else contributes its definition
    * metadata but not its rows — loading all eight collections to show two lists would be
@@ -103,13 +93,6 @@ export async function getDashboardData(): Promise<DashboardData> {
   const inquiriesNew = inquiries.filter((entry) => fieldValue(entry, "status") === "new").length;
 
   return {
-    definitionCount: definitions.length,
-    fieldCount: definitions.reduce(
-      (total, definition) => total + definition.fieldDefinitions.length,
-      0,
-    ),
-    contentCount: writable.length,
-    readOnlyCount: readOnly.length,
     projectSplit: [
       { label: "Selected", value: selected },
       { label: "Not selected", value: projects.length - selected },
@@ -127,6 +110,6 @@ export async function getDashboardData(): Promise<DashboardData> {
     recentImages: [...images]
       .sort(byUpdatedDesc)
       .slice(0, 4)
-      .map((entry) => toRecent(entry, fieldValue(entry, "credit") || "No credit")),
+      .map((entry) => toRecent(entry, fieldValue(entry, "credit") ? `Photo: ${fieldValue(entry, "credit")}` : "")),
   };
 }

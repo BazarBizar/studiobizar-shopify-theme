@@ -1,8 +1,10 @@
 import "server-only";
 
+import { fieldCopy } from "./field-copy";
 import { choicesFrom, fileKindFrom, referenceDefinitionId, type FieldSpec } from "./form-fields";
 import { listDefinitions } from "./metaobjects";
 import { OPERATIONS } from "./operations";
+import { withReferencePreviews } from "./reference-previews";
 import { adminGraphQL } from "./shopify";
 
 /**
@@ -45,13 +47,16 @@ export async function buildProductMetafieldSpecs(
     metaobjectDefinitions.map((definition) => [definition.id, definition.type]),
   );
 
-  return data.metafieldDefinitions.nodes.map((definition) => {
+  const specs = data.metafieldDefinitions.nodes.map((definition) => {
     const definitionId = referenceDefinitionId(definition.validations);
+    const copy = fieldCopy("product", definition.key);
 
     return {
       key: definition.key,
-      name: definition.name,
-      description: definition.description,
+      name: copy.label ?? definition.name,
+      description: copy.help ?? definition.description,
+      hidden: copy.hidden === true,
+      choiceLabels: copy.choiceLabels ?? {},
       // Shopify does not mark metafield definitions required in the same way; the form
       // treats them all as optional and lets Shopify be the authority on validity.
       required: false,
@@ -61,8 +66,11 @@ export async function buildProductMetafieldSpecs(
       fileKind: fileKindFrom(definition.validations),
       currentFile: null,
       currentRefs: [],
+      collectionOptions: [],
       editable: true,
       initialValue: byKey.get(definition.key)?.value ?? "",
     } satisfies FieldSpec;
   });
+
+  return withReferencePreviews(specs);
 }

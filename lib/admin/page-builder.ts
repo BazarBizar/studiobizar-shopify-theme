@@ -527,7 +527,28 @@ function stampOf(raw: string | null): string | null {
  *   setup       a site page that can move onto the builder and has not yet
  *   fixed       drawn by its route's code; no builder (the legal pages)
  */
-export type ContentStatus = "published" | "changes" | "draft" | "setup" | "fixed";
+import type { ContentStatus } from "./page-status";
+
+export type { ContentStatus };
+
+/**
+ * Where a page's content stands, from its two builder documents as stored — the
+ * Pages list and the page's Settings bar both ask this.
+ */
+export function contentStatusFor(
+  handle: string,
+  draftValue: string | null | undefined,
+  liveValue: string | null | undefined,
+): ContentStatus {
+  if (!isBuilderEditable(handle)) return "fixed";
+  const draft = parsePageDocument(draftValue);
+  const live = parsePageDocument(liveValue);
+  const draftDoc = draft.ok ? draft.doc : live.ok ? live.doc : null;
+  const liveDoc = live.ok ? live.doc : null;
+  if (!draftDoc) return pageMigration(handle) ? "setup" : "draft";
+  if (!liveDoc) return "draft";
+  return sameContent(draftDoc, liveDoc) ? "published" : "changes";
+}
 
 export type PageRow = {
   id: string;
@@ -576,20 +597,8 @@ export async function listPagesWithContent(): Promise<PageRow[]> {
       const draft = parsePageDocument(page.draft?.value);
       const live = parsePageDocument(page.live?.value);
       const draftDoc = draft.ok ? draft.doc : live.ok ? live.doc : null;
-      const liveDoc = live.ok ? live.doc : null;
       const editable = isBuilderEditable(page.handle);
-
-      const status: ContentStatus = !editable
-        ? "fixed"
-        : !draftDoc
-          ? pageMigration(page.handle)
-            ? "setup"
-            : "draft"
-          : !liveDoc
-            ? "draft"
-            : sameContent(draftDoc, liveDoc)
-              ? "published"
-              : "changes";
+      const status = contentStatusFor(page.handle, page.draft?.value, page.live?.value);
 
       return {
         id: page.id,

@@ -4,7 +4,7 @@ import { listAllEntries } from "./metaobjects";
 
 /**
  * Branding for the admin panel itself, from the `admin_settings` singleton
- * (`scripts/add-admin-settings.mjs`; Site-wide → Admin panel).
+ * (`scripts/add-admin-settings.mjs`; Site-wide → Admin appearance).
  *
  * BEST-EFFORT, NEVER THROWS. This is read by the layout on every admin page; a Shopify
  * hiccup, a missing definition or an empty field must cost the panel its custom name,
@@ -32,7 +32,7 @@ const DEFAULTS: AdminSettings = {
   logoUrl: null,
   faviconUrl: null,
   dashboardTitle: "Dashboard",
-  dashboardDescription: "Everything on this store is edited here and stored in Shopify.",
+  dashboardDescription: "Edit your website’s pages, products and content here. Changes you save go live on the site.",
 };
 
 /** Per process. An edit is also cleared immediately by `revalidateForType`. */

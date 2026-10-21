@@ -100,9 +100,6 @@ export function CollectionsTable({ rows }: { rows: CollectionRowData[] }) {
               >
                 {row.original.title}
               </AppLink>
-              <span className="text-muted-foreground block truncate font-mono text-xs">
-                {row.original.handle}
-              </span>
             </span>
           </div>
         ),

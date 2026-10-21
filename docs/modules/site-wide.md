@@ -57,6 +57,23 @@ enforces this on existing definitions.
    `deletable: false` on a singleton.
 4. If the storefront must not read the type, add it to `PRIVATE_TYPES` in
    `scripts/set-private-access.mjs`.
+5. Give each field a plain label and one line of help in `lib/admin/field-copy.ts` (see below).
+
+## Words on screen (`lib/admin/field-copy.ts`)
+
+The panel is used by people who do not know Shopify's vocabulary, so no screen shows a field key,
+a gid, JSON or a type name.
+
+- **Field labels and help** for every metaobject type and for product metafields (`product`) live in
+  `FIELD_COPY`. A field with no entry falls back to its Shopify name and description, so add one
+  whenever a field is added in Shopify.
+- **`choiceLabels`** gives a stored code a name (`product_inquiry` → "Product inquiries"), in forms
+  and in tables.
+- **`hidden`** keeps a field off the form while still sending its value. A module's `orderField` is
+  always hidden: rows are reordered by dragging in the list, which saves the new positions, and a
+  new entry goes to the end of the list.
+- A module's `singular` and `description` (`lib/admin/modules.ts`) name the "New …" button and the
+  sentence under a list's title.
 
 ## Pitfalls
 

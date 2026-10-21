@@ -75,12 +75,46 @@ Order is array order. Images are stored as `{ id, url, altText, width, height }`
 products and collections as `{ id, handle, title }` — values a Liquid theme can render from the
 same document without a Next helper.
 
+## The Style tab
+
+Every section's editor has two tabs, **Content** and **Style**, like Elementor's. Style holds the
+same controls on every section (`STYLE_FIELDS` in `define-section.ts`):
+
+| Group | Settings |
+|---|---|
+| Background & text | Background (the design's surfaces), background colour, text colour |
+| Spacing | Vertical spacing (the rhythm presets), Custom spacing → space inside top/bottom, space above/below (px) |
+| Line & corners | Line (none, box, above, below, above and below), thickness, colour, rounded corners |
+
+- Every default changes nothing, so pages made before the tab existed look the same. Stored
+  documents without the keys read them as their defaults (`lenient`).
+- Colours are `#rrggbb` only (the new `color` field kind) and rebind the same `--sb-*` tokens a
+  surface does, so headings, muted copy, lines and buttons inside follow. Picking a background
+  colour while the text colour is empty also sets a readable text colour (earth or dark wood).
+- Custom padding REPLACES the padding of the section's **band**, top and bottom, through the
+  `[data-sb-pad]` rule in `globals.css` (and `sb-theme.css`). The band is the outermost element with
+  a `*-section` padding utility, or one marked `sb-band` where a component pads with fixed values
+  (`collection-carousel`, `instagram-row`). A new component with fixed vertical padding on its band
+  needs `sb-band`, or custom spacing will be added to its padding instead of replacing it.
+- While Custom spacing is on, Vertical spacing is hidden: the numbers replace it.
+- `omitStyle: OWN_GROUND` hides the colours on sections that paint their own ground edge to edge
+  (banners, slideshow, hero, full image, collection carousel, Instagram). The marquee has no Vertical
+  spacing (it is a fixed slim band); its height is set with Custom spacing.
+- `yarn check:page-builder-style` (with `yarn dev` running) measures every section type in a real
+  browser: margin, padding, colour, line, corners, Vertical spacing, and that a section joined to the
+  page heading does not inherit the heading's spacing. It builds hidden test pages and deletes them.
+- `SectionFrame` (`frameStyle`) and `theme/snippets/sb-section-style.liquid` write the same
+  declarations. A section joined to the page heading's band takes the heading's style instead.
+- `defineSection({ style: false })` hides the tab's extra controls for a section where they would
+  do nothing.
+
 ## Files
 
 | Path | Role |
 |---|---|
 | `lib/page-builder/fields.ts` | field vocabulary, value shapes, per-field Zod, `isSafeHref` |
-| `lib/page-builder/define-section.ts` | `defineSection()` + the universal settings (surface, rhythm, hideOn) |
+| `lib/page-builder/define-section.ts` | `defineSection()` + the universal settings (surface, rhythm, hideOn) and the Style tab (`STYLE_FIELDS`) |
+| `components/page-builder/section-frame.tsx` | the wrapper every section draws in; `frameStyle` turns the Style tab into CSS |
 | `lib/page-builder/sections.ts` | the section definitions lifted from hand-built pages |
 | `lib/page-builder/sections-landing.ts` | the landing sections (banners, columns, quotes, …) |
 | `lib/page-builder/presets.ts` | what Add section offers: a type + chosen settings + demo copy |

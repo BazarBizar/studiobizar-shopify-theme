@@ -7,6 +7,7 @@ import * as React from "react";
 import { toast } from "sonner";
 
 import { MediaPicker } from "@/components/admin/media/media-picker";
+import { EmptyState } from "@/components/admin/empty-state";
 import { Button } from "@/components/admin/ui/button";
 import type { PickerFile } from "@/lib/admin/queries";
 
@@ -48,13 +49,14 @@ export function ProductMedia({
   const [pickerOpen, setPickerOpen] = React.useState(false);
   const [attaching, setAttaching] = React.useState(false);
 
-  async function attach(file: PickerFile) {
-    if (!file.url && !file.thumbnail) {
-      toast.error("That file has no source yet", {
+  async function attach(picked: PickerFile[]) {
+    const files = picked.filter((file) => file.url || file.thumbnail);
+    if (files.length < picked.length) {
+      toast.error("A file has no source yet", {
         description: "Shopify is still processing it. Try again in a moment.",
       });
-      return;
     }
+    if (files.length === 0) return;
 
     setAttaching(true);
 
@@ -66,13 +68,11 @@ export function ProductMedia({
         body: JSON.stringify({
           operation: "productUpdate",
           id: productId,
-          attachMedia: [
-            {
-              originalSource: file.url ?? file.thumbnail,
-              ...(file.alt ? { alt: file.alt } : {}),
-              mediaContentType: file.kind === "Video" ? "VIDEO" : "IMAGE",
-            },
-          ],
+          attachMedia: files.map((file) => ({
+            originalSource: file.url ?? file.thumbnail,
+            ...(file.alt ? { alt: file.alt } : {}),
+            mediaContentType: file.kind === "Video" ? "VIDEO" : "IMAGE",
+          })),
         }),
       });
 
@@ -81,14 +81,14 @@ export function ProductMedia({
         throw new Error(detail?.message ?? `Failed (${response.status})`);
       }
 
-      toast.success("Image added", {
+      toast.success(files.length > 1 ? `${files.length} photos added` : "Photo added", {
         // Said plainly, because it surprises people who expect a reference.
         description: "Shopify copies the file when it is attached, so the library now has a copy.",
       });
 
       router.refresh();
     } catch (error) {
-      toast.error("Could not add the image", {
+      toast.error("Could not add the photos", {
         description: error instanceof Error ? error.message : "Shopify refused the change.",
       });
     } finally {
@@ -99,12 +99,12 @@ export function ProductMedia({
   return (
     <CollapsibleSection
       id="media"
-      title="Media"
-      description={`${media.length} file(s). Changes here save immediately.`}
+      title="Photos"
+      description={`${media.length} ${media.length === 1 ? "photo" : "photos"}. A photo you add is saved straight away.`}
     >
       <div className="space-y-3">
         {media.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No media on this product yet.</p>
+          <EmptyState title="No photos yet" description="Add the first one with Add photos." className="py-6" />
         ) : (
           <ul className="grid grid-cols-3 gap-2 sm:grid-cols-6">
             {media.map((item) => (
@@ -125,9 +125,11 @@ export function ProductMedia({
                     <ImageIcon className="text-muted-foreground size-5" />
                   )}
                 </span>
-                <span className="text-muted-foreground block truncate px-1.5 py-1 text-[11px]">
-                  {item.alt || item.contentType.toLowerCase()}
-                </span>
+                {item.alt ? (
+                  <span className="text-muted-foreground block truncate px-1.5 py-1 text-[11px]">
+                    {item.alt}
+                  </span>
+                ) : null}
               </li>
             ))}
           </ul>
@@ -146,11 +148,11 @@ export function ProductMedia({
             ) : (
               <PlusIcon className="size-3.5" />
             )}
-            {attaching ? "Adding…" : "Add image"}
+            {attaching ? "Adding…" : "Add photos"}
           </Button>
 
           <p className="text-muted-foreground text-xs">
-            Removing and reordering media is still done in Shopify.
+            To remove or reorder photos, use “Open in Shopify” above.
           </p>
         </div>
       </div>
@@ -159,8 +161,9 @@ export function ProductMedia({
         open={pickerOpen}
         onOpenChange={setPickerOpen}
         kind="image"
-        title="product image"
-        onSelect={attach}
+        title="product photos"
+        multiple
+        onSelect={(picks) => void attach(picks.flatMap((pick) => (pick.file ? [pick.file] : [])))}
       />
     </CollapsibleSection>
   );

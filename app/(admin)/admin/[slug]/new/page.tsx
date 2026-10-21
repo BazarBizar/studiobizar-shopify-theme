@@ -4,7 +4,7 @@ import { DetailHeader } from "@/components/admin/detail-header";
 import { EntryForm } from "@/components/admin/entry-form";
 import { buildFieldSpecs } from "@/lib/admin/form-specs";
 import { listDefinitions } from "@/lib/admin/metaobjects";
-import { isReadOnly } from "@/lib/admin/modules";
+import { isReadOnly, moduleFor } from "@/lib/admin/modules";
 import { labelForDefinition, typeForSlug } from "@/lib/admin/navigation";
 import { listHrefFor, siteWideSection } from "@/lib/admin/site-wide";
 
@@ -38,11 +38,11 @@ export async function generateMetadata({ params }: PageProps<"/admin/[slug]/new"
 export default async function EntryCreatePage({ params }: PageProps<"/admin/[slug]/new">) {
   const { slug } = await params;
   const definition = await load(slug);
-  if (!definition) return <ScreenNotFound description="That content type does not exist, or entries of it are created by customers rather than here." />;
+  if (!definition) return <ScreenNotFound description="This can’t be created here." />;
 
   const specs = await buildFieldSpecs(definition, null);
   const label = labelForDefinition(definition);
-  const singular = label.replace(/s$/, "").toLowerCase();
+  const singular = moduleFor(definition.type).singular ?? label.replace(/s$/, "").toLowerCase();
 
   return (
     <div className="w-full max-w-3xl space-y-6">
@@ -51,7 +51,6 @@ export default async function EntryCreatePage({ params }: PageProps<"/admin/[slu
         backHref={listHrefFor(definition.type)}
         backLabel={siteWideSection(definition.type)?.label ?? label}
         title={`New ${singular}`}
-        meta={definition.type}
       />
 
       <EntryForm

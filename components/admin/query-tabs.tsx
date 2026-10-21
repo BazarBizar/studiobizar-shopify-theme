@@ -5,20 +5,12 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger } from "@/components/admin/ui/tabs";
 
 /**
- * Tab state lives in `?tab=`, written with `router.replace` — the same reasoning as
- * `CollectionTabs`: switching tabs is looking around one screen, and filling the back
- * stack with it buries the page the operator came from. The first tab is the bare URL.
- *
- * Only the active pane is rendered, by the page. A hidden tab loading every location
- * and channel is cost with no reader.
+ * Tabs that live in the URL as `?tab=` — so a tab can be linked to, reloaded and
+ * reached with Back. The first tab is the bare URL. Used by Site-wide and
+ * Collections; the page editor's Content | Settings are separate routes instead
+ * (`PageTabs`). See docs/admin/ui-standard.md.
  */
-export function SiteWideTabs({
-  tabs,
-  active,
-}: {
-  tabs: { value: string; label: string }[];
-  active: string;
-}) {
+export function QueryTabs({ tabs, active }: { tabs: { value: string; label: string }[]; active: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();

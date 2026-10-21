@@ -118,10 +118,9 @@ async function main() {
       await page.getByRole("heading", { name: "Pages", level: 1 }).waitFor();
       await shot("01-pages-list");
       check(
-        "Pages list: New page button, Visibility and Content columns",
+        "Pages list: New page button and one Status column",
         (await page.getByRole("link", { name: "New page" }).count()) === 1 &&
-          (await page.getByRole("columnheader", { name: "Visibility" }).count()) === 1 &&
-          (await page.getByRole("columnheader", { name: "Content" }).count()) === 1,
+          (await page.getByRole("columnheader", { name: "Status" }).count()) === 1,
       );
       const sidebar = page.locator("[data-sidebar='sidebar']");
       check(
@@ -153,9 +152,8 @@ async function main() {
       await shot("03-builder");
       check("Builder: Content and Settings tabs", (await page.getByRole("tab", { name: "Settings" }).count()) === 1);
       check(
-        "Builder: badges say Hidden and Draft",
-        (await page.getByText("Hidden", { exact: true }).count()) > 0 &&
-          (await page.getByText("Draft", { exact: true }).count()) > 0,
+        "Builder: a new page's status says Hidden",
+        (await page.getByText("Hidden", { exact: true }).count()) > 0,
       );
 
       await page.getByRole("button", { name: "Add section" }).click();
@@ -204,14 +202,54 @@ async function main() {
       check("Adding a preset draws it with its demo content", true);
       await shot("04b-preset-added");
 
-      // Back to the Text section, then type and leave AT ONCE for Settings —
-      // inside the autosave pause. The edit must survive.
+      // The Style tab: colour, custom spacing and a line on the Text section, and
+      // the preview must draw exactly those values.
       await aside.getByRole("button", { name: "Back to sections" }).click();
       await aside.getByRole("button", { name: /UI heading one/ }).first().click();
+      await aside.getByRole("tab", { name: "Style" }).click();
+      check(
+        "Style tab: Background & text, Spacing, and Line & corners",
+        (await aside.getByText("Background & text", { exact: true }).count()) === 1 &&
+          (await aside.getByText("Spacing", { exact: true }).count()) === 1 &&
+          (await aside.getByText("Line & corners", { exact: true }).count()) === 1,
+      );
+      await aside.getByRole("button", { name: "Dark wood" }).first().click();
+      await aside.getByLabel("Custom spacing").click();
+      await aside.getByRole("spinbutton", { name: "Space inside, top (px)" }).fill("10");
+      await aside.getByRole("combobox", { name: "Line" }).click();
+      await page.getByRole("option", { name: "Box around" }).click();
+      await aside.getByRole("spinbutton", { name: "Line thickness (px)" }).fill("3");
+      await shot("04c-style-tab");
+      const preview = page.frameLocator("iframe[title^='Preview']");
+      const frame = preview.locator("[data-sb-pad]").first();
+      await frame.waitFor({ timeout: 20000 });
+      await page.waitForTimeout(1500);
+      const drawn = await frame.evaluate((element) => {
+        const band = element.querySelector(".py-section") ?? element;
+        const own = getComputedStyle(element);
+        return {
+          background: own.backgroundColor,
+          text: own.color,
+          border: own.borderTopWidth,
+          paddingTop: getComputedStyle(band).paddingTop,
+        };
+      });
+      check(
+        "Style tab: the preview draws the colour, a readable text colour, the 10px space and the 3px line",
+        drawn.background === "rgb(48, 47, 45)" &&
+          drawn.text === "rgb(235, 232, 227)" &&
+          drawn.border === "3px" &&
+          drawn.paddingTop === "10px",
+        JSON.stringify(drawn),
+      );
+      await aside.getByRole("tab", { name: "Content" }).click();
+
+      // Back to the Text section, then type and leave AT ONCE for Settings —
+      // inside the autosave pause. The edit must survive.
       await headingInput().fill("UI heading two");
       await page.getByRole("tab", { name: "Settings" }).click();
       await page.waitForURL(/\/admin\/pages\/\d+$/, { timeout: 20000 });
-      await page.getByText("Visible on the site").waitFor({ timeout: 20000 });
+      await page.getByText("Show to visitors").waitFor({ timeout: 20000 });
       await shot("05-settings");
       check(
         "Settings: 'Visible on the site', search listing and Delete; no Body",
@@ -241,7 +279,7 @@ async function main() {
       await page.getByRole("button", { name: "Publish" }).click({ timeout: 15000 });
       await page.getByText("Published", { exact: true }).first().waitFor({ timeout: 30000 });
       await shot("07-published");
-      check("Publish: a first publish makes the page Visible", (await page.getByText("Visible", { exact: true }).count()) > 0);
+      check("Publish: a first publish makes the page Live", (await page.getByText("Live", { exact: true }).count()) > 0);
       check("Publish: reminds to add the page to Menus", (await page.getByRole("button", { name: "Menus" }).count()) > 0);
     });
 
@@ -249,7 +287,7 @@ async function main() {
     await step("Delete", async () => {
       await page.getByRole("tab", { name: "Settings" }).click();
       await page.waitForURL(/\/admin\/pages\/\d+$/);
-      await page.getByText("Visible on the site").waitFor({ timeout: 20000 });
+      await page.getByText("Show to visitors").waitFor({ timeout: 20000 });
       await page.getByRole("button", { name: "Delete page" }).click();
       await page.getByRole("alertdialog").getByRole("button", { name: "Delete page" }).click();
       await page.waitForURL(/\/admin\/pages$/, { timeout: 30000 });

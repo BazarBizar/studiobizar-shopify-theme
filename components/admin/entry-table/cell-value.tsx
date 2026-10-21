@@ -34,7 +34,7 @@ export function CellValue({ cell }: { cell: CellData | undefined }) {
   if (kind === "media") {
     if (!thumbnail) {
       // No preview resolved (a video without a poster, a non-image file).
-      return value ? <span className="font-mono text-xs">file</span> : <Empty />;
+      return value ? <span className="text-muted-foreground text-xs">File</span> : <Empty />;
     }
 
     return (

@@ -15,6 +15,7 @@ import { Textarea } from "@/components/admin/ui/textarea";
 import { isTrue, parseList } from "@/lib/admin/field-values";
 import type { FieldSpec } from "@/lib/admin/form-fields";
 
+import { CataloguePicker } from "./catalogue-picker";
 import { MediaField, MediaListField } from "./media/media-field";
 import { ReferencePicker } from "./reference-picker";
 import { RichTextEditor } from "./rich-text-editor";
@@ -138,16 +139,27 @@ export function FieldRenderer({ spec, value, onChange, invalid }: Props) {
     );
   }
 
-  /**
-   * Product and collection pickers are Phase 4. Rendered as a read-only summary rather
-   * than a text input: letting someone type a raw gid into a field is a way to silently
-   * point a project at the wrong product.
-   */
-  if (
-    spec.type.endsWith("product_reference") ||
-    spec.type.endsWith("collection_reference") ||
-    spec.type.endsWith("variant_reference")
-  ) {
+  /** Chosen by name and picture from the shop — never a typed id. */
+  if (spec.type.endsWith("product_reference") || spec.type.endsWith("collection_reference")) {
+    const multiple = spec.type.startsWith("list.");
+    const ids = multiple ? parseList(value) : value ? [value] : [];
+
+    return (
+      <CataloguePicker
+        kind={spec.type.endsWith("product_reference") ? "product" : "collection"}
+        multiple={multiple}
+        value={ids}
+        current={spec.currentRefs}
+        collectionOptions={spec.collectionOptions}
+        label={spec.name}
+        disabled={disabled}
+        onChange={(next) => onChange(multiple ? (next.length ? JSON.stringify(next) : "") : (next[0] ?? ""))}
+      />
+    );
+  }
+
+  /** Variants have no picker yet: shown, not edited. */
+  if (spec.type.endsWith("variant_reference")) {
     const count = spec.type.startsWith("list.") ? parseList(value).length : value ? 1 : 0;
 
     return (
@@ -160,7 +172,7 @@ export function FieldRenderer({ spec, value, onChange, invalid }: Props) {
               }`}
         </p>
         <p className="text-muted-foreground mt-1 text-xs">
-          Catalogue links are still edited in Shopify. Saving here leaves them untouched.
+          Product variants are chosen in Shopify. Saving here leaves this as it is.
         </p>
       </div>
     );
@@ -227,7 +239,7 @@ export function FieldRenderer({ spec, value, onChange, invalid }: Props) {
           ) : null}
           {spec.choices.map((choice) => (
             <SelectItem key={choice} value={choice}>
-              {choice}
+              {spec.choiceLabels[choice] ?? choice}
             </SelectItem>
           ))}
         </SelectContent>
@@ -249,24 +261,15 @@ export function FieldRenderer({ spec, value, onChange, invalid }: Props) {
     );
   }
 
+  /**
+   * Structured data the site writes for itself (an inquiry's line items, a builder
+   * document). Never shown as code: there is nothing in it a person should hand-edit.
+   */
   if (spec.type === "json") {
     return (
-      <div className="space-y-1">
-        <Textarea
-          id={spec.key}
-          value={value}
-          disabled={disabled}
-          rows={8}
-          spellCheck={false}
-          aria-invalid={invalid}
-          aria-describedby={describedBy}
-          onChange={(event) => onChange(event.target.value)}
-          className="font-mono text-xs"
-        />
-        <p className="text-muted-foreground text-xs">
-          Raw JSON. Malformed JSON is rejected on save, before it reaches Shopify.
-        </p>
-      </div>
+      <p className="text-muted-foreground rounded-md border px-3 py-2 text-sm">
+        Filled in automatically by the site — nothing to edit here.
+      </p>
     );
   }
 

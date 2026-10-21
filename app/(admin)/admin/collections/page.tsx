@@ -5,7 +5,7 @@ import { CollectionsTable, type CollectionRowData } from "@/components/admin/col
 import { FeaturedCollections } from "@/components/admin/collections-table/featured-collections";
 import { PageHeader } from "@/components/admin/page-header";
 import { Button } from "@/components/admin/ui/button";
-import { CollectionTabs } from "@/components/admin/collections-table/collection-tabs";
+import { QueryTabs } from "@/components/admin/query-tabs";
 import { listCollections, sortOrderLabel } from "@/lib/admin/collections";
 import { getFeaturedCollections } from "@/lib/admin/site-settings";
 
@@ -43,7 +43,7 @@ export default async function CollectionsPage({ searchParams }: PageProps<"/admi
     <div className="space-y-6">
       <PageHeader
         title="Collections"
-        description={`${collections.length} collections, edited straight on Shopify.`}
+        description="Groups of products shown together in the shop. Open one to change its name, description and photo."
         actions={
           <Button asChild size="sm">
             <AppLink href="/admin/collections/new" showPending={false}>
@@ -54,7 +54,13 @@ export default async function CollectionsPage({ searchParams }: PageProps<"/admi
         }
       />
 
-      <CollectionTabs active={active} />
+      <QueryTabs
+        active={active}
+        tabs={[
+          { value: "all", label: "All collections" },
+          { value: "featured", label: "Featured on the website" },
+        ]}
+      />
 
       {active === "all" ? (
         <CollectionsTable rows={rows} />

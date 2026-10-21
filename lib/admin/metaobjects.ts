@@ -77,6 +77,12 @@ export type EntryReference = {
   title?: string | null;
   displayName?: string | null;
   url?: string | null;
+  /** A referenced metaobject's own fields — only to find a picture for it. */
+  fields?: { reference?: { image?: { url: string } | null } | null }[] | null;
+  /** A referenced product's main picture. */
+  featuredMedia?: { preview?: { image?: { url: string } | null } | null } | null;
+  /** A video's still frame. */
+  preview?: { image?: { url: string } | null } | null;
   mimeType?: string | null;
   image?: {
     url: string;

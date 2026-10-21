@@ -17,7 +17,7 @@ export function PageHeader({
 }: {
   title: string;
   description?: string;
-  /** Machine identifier — a metaobject type, a handle. Rendered monospace. */
+  /** A short count or status beside the title, e.g. "17 pages". Never an id. */
   meta?: string;
   actions?: React.ReactNode;
 }) {
@@ -27,7 +27,7 @@ export function PageHeader({
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
           {meta ? (
-            <Badge variant="outline" className="font-mono text-[11px] font-normal">
+            <Badge variant="outline" className="text-[11px] font-normal">
               {meta}
             </Badge>
           ) : null}

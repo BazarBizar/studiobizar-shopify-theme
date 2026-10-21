@@ -83,7 +83,6 @@ export function CollectionProducts({
       <CardContent className="space-y-3 px-4">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-sm font-semibold">Products</h2>
-          <Badge variant="secondary">Read-only</Badge>
           <span className="text-muted-foreground ms-auto text-xs">
             {products.length} of {total}
           </span>
@@ -92,7 +91,7 @@ export function CollectionProducts({
         <p className="text-muted-foreground text-xs">
           {smart
             ? "Chosen automatically by this collection's rules. Use this to check what the rules match."
-            : "Membership is edited in Shopify."}
+            : "To add or remove products, open a product and change its collections in Shopify."}
         </p>
 
         {products.length === 0 ? (
@@ -125,14 +124,11 @@ export function CollectionProducts({
                   >
                     {product.title}
                   </AppLink>
-                  <span className="text-muted-foreground block truncate font-mono text-xs">
-                    {product.handle}
-                  </span>
                 </span>
 
                 {product.status !== "ACTIVE" ? (
                   <Badge variant="outline" className="text-[11px] font-normal">
-                    {product.status.toLowerCase()}
+                    {product.status === "DRAFT" ? "Draft — hidden" : "Archived — hidden"}
                   </Badge>
                 ) : null}
               </li>

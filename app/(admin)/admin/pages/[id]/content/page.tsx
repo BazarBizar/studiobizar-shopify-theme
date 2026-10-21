@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { AppLink } from "@/components/admin/app-link";
 import { ConvertPage } from "@/components/admin/page-builder/convert-page";
 import { PageBuilder } from "@/components/admin/page-builder/page-builder";
+import { PageEditorBar } from "@/components/admin/pages-table/page-editor-bar";
 import { Button } from "@/components/admin/ui/button";
 import { listCollections } from "@/lib/admin/collections";
 import { listAllEntries } from "@/lib/admin/metaobjects";
@@ -51,11 +52,22 @@ export default async function PageContentScreen({ params }: PageProps<"/admin/pa
   // rather than an empty editor whose first autosave would replace its content.
   if (state.migrated && !state.exists) {
     return (
-      <ConvertPage
-        pageId={state.page.id}
-        title={state.page.title}
-        route={routeForPageHandle(state.page.handle)}
-      />
+      <>
+        <PageEditorBar
+          className="-mx-4 -mt-4 md:-mx-6 md:-mt-6"
+          title={state.page.title}
+          path={routeForPageHandle(state.page.handle)}
+          param={id}
+          active="content"
+          isPublished={state.page.isPublished}
+          content="setup"
+        />
+        <ConvertPage
+          pageId={state.page.id}
+          title={state.page.title}
+          route={routeForPageHandle(state.page.handle)}
+        />
+      </>
     );
   }
 

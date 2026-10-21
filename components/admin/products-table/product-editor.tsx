@@ -1,14 +1,14 @@
 "use client";
 
-import { Loader2Icon, SaveIcon, XIcon } from "lucide-react";
+import { XIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
 
 import { FieldRenderer } from "@/components/admin/field-renderer";
+import { SaveBar } from "@/components/admin/save-bar";
 import { RichTextEditor } from "@/components/admin/rich-text-editor";
 import { Badge } from "@/components/admin/ui/badge";
-import { Button } from "@/components/admin/ui/button";
 import { Input } from "@/components/admin/ui/input";
 import { Label } from "@/components/admin/ui/label";
 import {
@@ -159,12 +159,12 @@ export function ProductEditor({ productId, initialCore, specs, vendors, productT
       <CollapsibleSection
         id="product"
         title="Product"
-        description="Title, description, vendor, type, status and tags."
+        description="Name, description and whether it is on sale."
         dirty={coreDirty.length > 0}
       >
         <fieldset disabled={saving} className="space-y-6">
           <div className="space-y-1.5">
-            <Label htmlFor="title">Title</Label>
+            <Label htmlFor="title">Product name</Label>
             <Input
               id="title"
               value={core.title}
@@ -173,13 +173,18 @@ export function ProductEditor({ productId, initialCore, specs, vendors, productT
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="handle">Handle</Label>
-            <Input
-              id="handle"
-              value={core.handle}
-              onChange={(event) => setCore({ ...core, handle: event.target.value })}
-              className="font-mono text-xs"
-            />
+            <Label htmlFor="handle">Web address</Label>
+            <div className="flex items-center gap-1">
+              <span className="text-muted-foreground shrink-0 text-sm">/products/</span>
+              <Input
+                id="handle"
+                value={core.handle}
+                onChange={(event) => setCore({ ...core, handle: event.target.value })}
+              />
+            </div>
+            <p className="text-muted-foreground text-xs">
+              Changing this changes the product’s link. Old links to it stop working.
+            </p>
           </div>
 
           <div className="space-y-1.5">
@@ -188,6 +193,7 @@ export function ProductEditor({ productId, initialCore, specs, vendors, productT
               value={core.descriptionHtml}
               onChange={(value) => setCore({ ...core, descriptionHtml: value })}
               ariaLabel="Description"
+              format="html"
             />
           </div>
 
@@ -195,7 +201,7 @@ export function ProductEditor({ productId, initialCore, specs, vendors, productT
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-1.5">
-              <Label htmlFor="vendor">Vendor</Label>
+              <Label htmlFor="vendor">Brand / maker</Label>
               <Input
                 id="vendor"
                 list="product-vendors"
@@ -210,7 +216,7 @@ export function ProductEditor({ productId, initialCore, specs, vendors, productT
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="productType">Type</Label>
+              <Label htmlFor="productType">Product type</Label>
               <Input
                 id="productType"
                 list="product-types"
@@ -226,14 +232,15 @@ export function ProductEditor({ productId, initialCore, specs, vendors, productT
 
             <div className="space-y-1.5">
               <Label htmlFor="status">Status</Label>
+              {/* Sentences, not Shopify's three words — what each one DOES. */}
               <Select value={core.status} onValueChange={(value) => setCore({ ...core, status: value })}>
                 <SelectTrigger id="status" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ACTIVE">Active</SelectItem>
-                  <SelectItem value="DRAFT">Draft</SelectItem>
-                  <SelectItem value="ARCHIVED">Archived</SelectItem>
+                  <SelectItem value="ACTIVE">Active — shown on the site</SelectItem>
+                  <SelectItem value="DRAFT">Draft — hidden, still being prepared</SelectItem>
+                  <SelectItem value="ARCHIVED">Archived — hidden, no longer sold</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -243,6 +250,9 @@ export function ProductEditor({ productId, initialCore, specs, vendors, productT
 
           <div className="space-y-1.5">
             <Label htmlFor="tags">Tags</Label>
+            <p className="text-muted-foreground text-xs">
+              Words used to group and filter products. Type one and press Enter.
+            </p>
             <Input
               id="tags"
               value={tagDraft}
@@ -262,7 +272,7 @@ export function ProductEditor({ productId, initialCore, specs, vendors, productT
               }}
               // Blur adds too, so a typed tag is not lost by clicking elsewhere.
               onBlur={() => addTag(tagDraft)}
-              placeholder="Type a tag and press Enter"
+              placeholder="e.g. teak"
             />
 
             {core.tags.length ? (
@@ -293,24 +303,24 @@ export function ProductEditor({ productId, initialCore, specs, vendors, productT
       <CollapsibleSection
         id="specs"
         title="Specifications"
-        description={`${specs.length} metafields from the product definition.`}
+        description="Details shown on the product page — materials, sizes, care and the story behind it."
         dirty={specDirty.length > 0}
       >
         <fieldset disabled={saving} className="space-y-6">
           {specs.length === 0 ? (
             <p className="text-muted-foreground text-sm">
-              No product metafield definitions on this store.
+              There are no extra product details to fill in.
             </p>
           ) : (
-            specs.map((spec, index) => (
+            specs.filter((spec) => !spec.hidden).map((spec, index) => (
               <React.Fragment key={spec.key}>
                 {index > 0 ? <Separator /> : null}
                 <div className="grid gap-2 sm:grid-cols-[13rem_1fr] sm:gap-4">
                   <div className="min-w-0 space-y-1">
                     <Label htmlFor={spec.key}>{spec.name}</Label>
-                    <p className="text-muted-foreground font-mono text-[11px] break-all">
-                      {spec.key}
-                    </p>
+                    {spec.description ? (
+                      <p className="text-muted-foreground text-xs">{spec.description}</p>
+                    ) : null}
                   </div>
                   <FieldRenderer
                     spec={spec}
@@ -324,10 +334,15 @@ export function ProductEditor({ productId, initialCore, specs, vendors, productT
         </fieldset>
       </CollapsibleSection>
 
-      <CollapsibleSection id="seo" title="SEO" dirty={coreDirty.some((key) => key.startsWith("seo"))}>
+      <CollapsibleSection
+        id="seo"
+        title="Search engine listing"
+        description="How this product appears in Google. Leave empty to use the name and description."
+        dirty={coreDirty.some((key) => key.startsWith("seo"))}
+      >
         <fieldset disabled={saving} className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="seoTitle">SEO title</Label>
+            <Label htmlFor="seoTitle">Title in Google</Label>
             <Input
               id="seoTitle"
               value={core.seoTitle}
@@ -335,7 +350,7 @@ export function ProductEditor({ productId, initialCore, specs, vendors, productT
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="seoDescription">SEO description</Label>
+            <Label htmlFor="seoDescription">Description in Google</Label>
             <Textarea
               id="seoDescription"
               rows={3}
@@ -346,31 +361,15 @@ export function ProductEditor({ productId, initialCore, specs, vendors, productT
         </fieldset>
       </CollapsibleSection>
 
-      <div className="bg-background/95 supports-[backdrop-filter]:bg-background/70 sticky bottom-0 flex items-center justify-between gap-3 border-t py-4 backdrop-blur">
-        <p className="text-muted-foreground text-xs">
-          {dirty
-            ? `${coreDirty.length + specDirty.length} unsaved change(s)`
-            : "All changes saved"}
-        </p>
-
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!dirty || saving}
-            onClick={() => {
-              setCore(initialCore);
-              setValues(initialValues);
-            }}
-          >
-            Discard
-          </Button>
-          <Button type="button" disabled={!dirty || saving} onClick={save}>
-            {saving ? <Loader2Icon className="size-4 animate-spin" /> : <SaveIcon className="size-4" />}
-            {saving ? "Saving…" : "Save"}
-          </Button>
-        </div>
-      </div>
+      <SaveBar
+        dirty={dirty}
+        saving={saving}
+        onSave={() => void save()}
+        onDiscard={() => {
+          setCore(initialCore);
+          setValues(initialValues);
+        }}
+      />
     </>
   );
 }

@@ -2,7 +2,7 @@ import "server-only";
 
 import { unstable_rethrow } from "next/navigation";
 
-import type { UniversalSettings } from "@/lib/page-builder/define-section";
+import { NEUTRAL_STYLE, type UniversalSettings } from "@/lib/page-builder/define-section";
 import type { PageDocument, SectionInstance } from "@/lib/page-builder/document";
 
 import { RENDERERS, type RenderContext, type SectionContext } from "./renderers";
@@ -83,10 +83,11 @@ export async function SectionRenderer({ doc, context }: { doc: PageDocument; con
 
     if (item.section.type === "page_heading" && next && sitsUnderHeading(next.section)) {
       const inner = draw(next, { ...context, id: next.section.id, inline: true });
-      // Inside the heading's band its own ground and spacing do not apply; only
-      // per-device visibility still does.
+      // Inside the heading's band its own ground, spacing and style do not apply;
+      // only per-device visibility still does.
       const children = inner
         ? framed(next.section, inner, {
+            ...NEUTRAL_STYLE,
             surface: "inherit",
             rhythm: "default",
             hideOn: (next.section.settings as UniversalSettings).hideOn,

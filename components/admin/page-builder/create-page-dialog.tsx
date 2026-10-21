@@ -110,14 +110,13 @@ export function CreatePageForm({
       <div className="space-y-1.5">
         <Label htmlFor="new-page-handle">Address</Label>
         <div className="flex items-center gap-1">
-          <span className="text-muted-foreground font-mono text-sm">/</span>
+          <span className="text-muted-foreground text-sm">/</span>
           <Input
             id="new-page-handle"
             value={effectiveHandle}
             maxLength={100}
             aria-invalid={Boolean(problem)}
             aria-describedby="new-page-handle-help"
-            className="font-mono"
             onChange={(event) => {
               setHandleTouched(true);
               setHandle(event.target.value.toLowerCase());

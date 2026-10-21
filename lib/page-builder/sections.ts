@@ -1,4 +1,4 @@
-import { defineSection } from "./define-section";
+import { defineSection, OWN_GROUND } from "./define-section";
 import {
   block,
   blocks,
@@ -123,6 +123,7 @@ export const hero = defineSection({
     }),
   ],
   universal: ["hideOn"],
+  omitStyle: OWN_GROUND,
 });
 
 export const textBlock = defineSection({
@@ -358,6 +359,7 @@ export const fullImage = defineSection({
   category: "Images",
   fields: [image("image", "Image", { required: true })],
   universal: ["hideOn"],
+  omitStyle: OWN_GROUND,
 });
 
 export const productRail = defineSection({
@@ -431,6 +433,7 @@ export const collectionCarousel = defineSection({
     toggle("viewAll", "Show “view all”", { default: true }),
   ],
   universal: ["hideOn"],
+  omitStyle: OWN_GROUND,
   summaryKey: "title",
   source: (s) => s.source === "picked" ? null : SOURCES.collections,
 });
@@ -605,6 +608,7 @@ export const instagram = defineSection({
     }),
   ],
   universal: ["hideOn"],
+  omitStyle: OWN_GROUND,
 });
 
 export const contactCta = defineSection({

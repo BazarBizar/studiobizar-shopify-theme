@@ -1,4 +1,4 @@
-import { defineSection } from "./define-section";
+import { defineSection, OWN_GROUND } from "./define-section";
 import {
   block,
   blocks,
@@ -154,6 +154,7 @@ export const imageBanner = defineSection({
   ],
   // The photograph is the ground; a Background setting would change nothing.
   universal: ["hideOn"],
+  omitStyle: OWN_GROUND,
   summaryKey: "title",
 });
 
@@ -211,6 +212,7 @@ export const slideshow = defineSection({
     ),
   ],
   universal: ["hideOn"],
+  omitStyle: OWN_GROUND,
 });
 
 export const ctaBanner = defineSection({
@@ -574,6 +576,9 @@ export const marquee = defineSection({
     ),
     toggle("lines", "Lines above and below", { group: "layout" }),
   ],
+  // A slim band by design (`py-section-xs`): the rhythm presets never applied to it.
+  // Its height is set with Custom spacing on the Style tab instead.
+  universal: ["surface", "hideOn"],
 });
 
 /* -------------------------------------------------------------------------- *

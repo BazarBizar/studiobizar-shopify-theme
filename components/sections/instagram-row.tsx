@@ -31,7 +31,7 @@ export function InstagramRow({
   if (tiles.length === 0) return null;
 
   return (
-    <section data-surface="light" className="bg-background py-16 text-foreground">
+    <section data-surface="light" className="sb-band bg-background py-16 text-foreground">
       <Container>
         <h2 className="text-h2 mb-8">Instagram</h2>
 

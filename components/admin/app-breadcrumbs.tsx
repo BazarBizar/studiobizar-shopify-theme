@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { Fragment } from "react";
 
 import { AppLink } from "@/components/admin/app-link";
+import { useCrumbLabels } from "@/components/admin/crumbs";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -23,6 +24,8 @@ import {
  */
 export function AppBreadcrumbs({ labels }: { labels: Record<string, string> }) {
   const pathname = usePathname();
+  // Names the screens gave their records — see `CrumbLabel`.
+  const named = useCrumbLabels();
 
   const segments = pathname.split("/").filter(Boolean);
   // Everything here lives under /admin, which is the root crumb.
@@ -35,6 +38,7 @@ export function AppBreadcrumbs({ labels }: { labels: Record<string, string> }) {
     // page's id opens its Settings, and `content` is its Content tab.
     const parent = rest[index - 1];
     const label =
+      named[href] ??
       labels[segment] ??
       (segment === "new"
         ? "New"

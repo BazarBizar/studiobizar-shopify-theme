@@ -56,49 +56,47 @@ export default async function ProductDetailPage({ params }: PageProps<"/admin/pr
         backHref="/admin/products"
         backLabel="Products"
         title={product.title}
-        meta={product.handle}
+        status={
+          <Badge
+            variant={product.status === "ARCHIVED" ? "secondary" : "outline"}
+            className={
+              product.status === "ACTIVE"
+                ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+                : product.status === "DRAFT"
+                  ? "border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                  : undefined
+            }
+          >
+            {product.status === "ACTIVE" ? "Active" : product.status === "DRAFT" ? "Draft" : "Archived"}
+          </Badge>
+        }
+        actions={
+          <>
+            {/* Built from STOREFRONT_URL: Shopify cannot answer this, because a headless
+                store's primaryDomain is still the Shopify-hosted address. */}
+            {storeUrl ? (
+              <Button asChild variant="outline" size="sm">
+                <a href={storeUrl} target="_blank" rel="noreferrer">
+                  View on store
+                  <ExternalLinkIcon className="size-3.5" />
+                </a>
+              </Button>
+            ) : null}
+            {shopDomain ? (
+              <Button asChild variant="outline" size="sm">
+                <a
+                  href={`https://admin.shopify.com/store/${shopDomain}/products/${product.param}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open in Shopify
+                  <ExternalLinkIcon className="size-3.5" />
+                </a>
+              </Button>
+            ) : null}
+          </>
+        }
       />
-
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge
-          variant={product.status === "ARCHIVED" ? "secondary" : "outline"}
-          className={
-            product.status === "ACTIVE"
-              ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
-              : product.status === "DRAFT"
-                ? "border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-400"
-                : undefined
-          }
-        >
-          {product.status.charAt(0) + product.status.slice(1).toLowerCase()}
-        </Badge>
-
-        <div className="ms-auto flex gap-2">
-          {/* Built from STOREFRONT_URL: Shopify cannot answer this, because a headless
-              store's primaryDomain is still the Shopify-hosted address. */}
-          {storeUrl ? (
-            <Button asChild variant="outline" size="sm">
-              <a href={storeUrl} target="_blank" rel="noreferrer">
-                View on store
-                <ExternalLinkIcon className="size-3.5" />
-              </a>
-            </Button>
-          ) : null}
-
-          {shopDomain ? (
-            <Button asChild variant="outline" size="sm">
-              <a
-                href={`https://admin.shopify.com/store/${shopDomain}/products/${product.param}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Open in Shopify
-                <ExternalLinkIcon className="size-3.5" />
-              </a>
-            </Button>
-          ) : null}
-        </div>
-      </div>
 
       <ProductSectionProvider>
         <ProductMedia productId={product.id} media={product.media} />
@@ -131,7 +129,7 @@ export default async function ProductDetailPage({ params }: PageProps<"/admin/pr
         <CollapsibleSection
           id="details"
           title="Details"
-          description="Read-only. Edited in Shopify."
+          description="For reference only — these are managed in Shopify."
         >
           {/* Read-only facts as a description list, not a form with disabled inputs — a
               greyed control reads worse than plain text and offers an edit that will

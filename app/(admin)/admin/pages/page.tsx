@@ -23,8 +23,8 @@ export default async function PagesScreen() {
     <div className="space-y-6">
       <PageHeader
         title="Pages"
-        description="Every page on the site. Content is what a page shows; Settings are its title, address, visibility and search listing."
-        meta={`${pages.length} pages${waiting ? ` · ${waiting} not published` : ""}`}
+        description="Every page on the website. “Edit content” changes what the page shows; “Settings” changes its title, web address and whether visitors can see it."
+        meta={waiting ? `${waiting} waiting to be published` : undefined}
         actions={
           <Button asChild size="sm">
             <AppLink href="/admin/pages/new">

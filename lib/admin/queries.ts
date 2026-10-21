@@ -45,6 +45,8 @@ export type PickerEntry = {
   handle: string;
   label: string;
   thumbnail: string | null;
+  /** For an entry that wraps a photo (`captioned_image`): that file's id. */
+  fileId: string | null;
 };
 
 type ApiError = { code?: string; message?: string };

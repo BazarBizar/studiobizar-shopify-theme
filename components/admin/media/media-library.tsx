@@ -10,7 +10,6 @@ import {
   ListIcon,
   Loader2Icon,
   SearchIcon,
-  UploadIcon,
 } from "lucide-react";
 import Image from "next/image";
 import * as React from "react";
@@ -31,7 +30,6 @@ import { Skeleton } from "@/components/admin/ui/skeleton";
 import { Switch } from "@/components/admin/ui/switch";
 import {
   setFileAltRequest,
-  uploadFileRequest,
   useFiles,
   type FileKind,
   type FileSort,
@@ -41,6 +39,7 @@ import { cn } from "@/lib/utils/cn";
 
 import { describe, FallbackIcon, formatBytes, formatOf, pixels, sized } from "./media-utils";
 import { MediaViewer, VIEWER_LAST } from "./media-viewer";
+import { UploadButton, useFileUpload } from "./upload";
 
 /**
  * The media library.
@@ -481,7 +480,6 @@ export function MediaLibrary() {
   const [sort, setSort] = React.useState<LibrarySort>("newest");
   const [view, setView] = React.useState<View>("list");
   const [onlyMissing, setOnlyMissing] = React.useState(false);
-  const [uploading, setUploading] = React.useState(false);
   /** Index into `shown` of the file open in the viewer. */
   const [viewing, setViewing] = React.useState<number | null>(null);
   /**
@@ -566,31 +564,12 @@ export function MediaLibrary() {
     });
   }, [files, onlyMissing, localSort, sort]);
 
-  async function onUpload(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    // Reset immediately so choosing the same file twice still fires a change event.
-    event.target.value = "";
-    if (!file) return;
-
-    setUploading(true);
-    try {
-      const { processing } = await uploadFileRequest(file);
-      toast.success("Uploaded", {
-        description: processing
-          ? "Added to Shopify Files — the preview appears once processing finishes."
-          : "Added to Shopify Files.",
-      });
-      await refetch();
-      // Newest first is the default order, so the new file is at the top of page 1.
-      goTo(0);
-    } catch (caught) {
-      toast.error("Upload failed", {
-        description: caught instanceof Error ? caught.message : "Shopify did not accept the file.",
-      });
-    } finally {
-      setUploading(false);
-    }
-  }
+  // The shared upload: same request, button and toasts as every media picker.
+  const { uploading, upload } = useFileUpload(async () => {
+    await refetch();
+    // Newest first is the default order, so the new file is at the top of page 1.
+    goTo(0);
+  });
 
   /*
     Said plainly because it would otherwise be a trap. Shopify's file query has no
@@ -661,13 +640,7 @@ export function MediaLibrary() {
 
         <ViewToggle view={view} onChange={setView} />
 
-        <Button asChild variant="outline" disabled={uploading}>
-          <label className="cursor-pointer">
-            {uploading ? <Loader2Icon className="animate-spin" /> : <UploadIcon />}
-            Upload
-            <input type="file" className="sr-only" onChange={onUpload} disabled={uploading} />
-          </label>
-        </Button>
+        <UploadButton uploading={uploading} onFile={(file) => void upload(file)} size="default" />
       </div>
 
       <div className="flex flex-wrap items-center gap-3">

@@ -1,25 +1,14 @@
 "use client";
 
-import { Loader2Icon, Trash2Icon } from "lucide-react";
+import { Trash2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/admin/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 import { Button } from "@/components/admin/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/admin/ui/tooltip";
 import { deleteEntryRequest } from "@/lib/admin/queries";
-import { cn } from "@/lib/utils/cn";
 
 /**
  * Delete one metaobject entry, behind a confirmation.
@@ -46,76 +35,52 @@ export function DeleteEntryAction({
 }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
-  const [deleting, setDeleting] = React.useState(false);
 
-  async function confirm(event: React.MouseEvent) {
-    // Radix closes on click by default. Held open so the spinner is visible and so a
-    // failure is seen on the dialog that caused it rather than behind it.
-    event.preventDefault();
-    setDeleting(true);
-
+  async function remove() {
     try {
       await deleteEntryRequest({ id: entryId });
-
-      toast.success("Deleted", { description: `${name} is gone from the store.` });
-      setOpen(false);
-
+      toast.success("Deleted", { description: `${name} is removed from the site.` });
       // The list is server-rendered, so the row goes only when the screen is refetched.
-      // The server action already dropped the cache tags; this asks for the new HTML.
       router.refresh();
     } catch (error) {
       toast.error("Could not delete", {
         description: error instanceof Error ? error.message : "Nothing was deleted.",
       });
-    } finally {
-      setDeleting(false);
+      throw error;
     }
   }
 
   return (
-    <AlertDialog open={open} onOpenChange={(next) => !deleting && setOpen(next)}>
+    <>
       <Tooltip>
         <TooltipTrigger asChild>
-          <AlertDialogTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="text-muted-foreground hover:text-destructive"
-              aria-label={`Delete ${name}`}
-            >
-              <Trash2Icon className="size-3.5" />
-            </Button>
-          </AlertDialogTrigger>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="text-muted-foreground hover:text-destructive"
+            aria-label={`Delete ${name}`}
+            onClick={() => setOpen(true)}
+          >
+            <Trash2Icon className="size-3.5" />
+          </Button>
         </TooltipTrigger>
         <TooltipContent>Delete</TooltipContent>
       </Tooltip>
 
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete this {typeLabel}?</AlertDialogTitle>
-          <AlertDialogDescription>
-            <span className="text-foreground font-medium">{name}</span> will be removed
-            from Shopify and from the storefront. This cannot be undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={confirm}
-            disabled={deleting}
-            /* The confirm button is the destructive one, and it is NOT the focused one —
-               AlertDialog focuses Cancel, so a reflexive Enter cancels. */
-            className={cn(
-              "bg-destructive text-white hover:bg-destructive/90",
-              "focus-visible:ring-destructive/30",
-            )}
-          >
-            {deleting ? <Loader2Icon className="size-3.5 animate-spin" /> : null}
-            Delete
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        destructive
+        title={`Delete this ${typeLabel}?`}
+        description={
+          <>
+            <span className="text-foreground font-medium">{name}</span> will be removed from the site. This
+            cannot be undone.
+          </>
+        }
+        confirmLabel="Delete"
+        onConfirm={remove}
+      />
+    </>
   );
 }

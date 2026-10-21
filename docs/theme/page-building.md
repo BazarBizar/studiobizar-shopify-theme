@@ -83,6 +83,14 @@ renders correctly. An editor discovers what a block does by emptying fields and
 seeing what happens, and a section that breaks when a field is blank is a section
 they will stop using.
 
+**4. The Style tab: `render 'sb-section-style', settings: s`.** The builder's Style
+tab (colours, custom spacing, line, corners) is the same set of settings on every
+section, generated into its schema under a "Style" header. One snippet reads them
+all and writes the attributes — put it on the section's outer element, before
+`{{ section.shopify_attributes }}`. A section that already has a `style` attribute
+passes it as `extra_style` so there is only one. `yarn check:liquid` counts the
+Style settings as read only when this exact render is present.
+
 One more, for whoever adds the next section: **classes assembled from a setting
 are invisible to Tailwind.** `section-{{ s.rhythm }}` is never emitted. That is
 what `snippets/sb-section-classes.liquid` is for — write the options out as

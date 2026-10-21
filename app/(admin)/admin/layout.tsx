@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { AdminProviders } from "@/components/admin/admin-providers";
 import { AppBreadcrumbs } from "@/components/admin/app-breadcrumbs";
 import { AppSidebar, type SidebarSection } from "@/components/admin/app-sidebar";
+import { CrumbProvider } from "@/components/admin/crumbs";
 import { Separator } from "@/components/admin/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/admin/ui/sidebar";
 import { getAdminSettings } from "@/lib/admin/admin-settings";
@@ -23,7 +24,7 @@ import { staffSignOut } from "./actions";
 export const dynamic = "force-dynamic";
 
 /**
- * The tab title and icon come from `admin_settings` (Site-wide → Admin panel), falling
+ * The tab title and icon come from `admin_settings` (Site-wide → Admin appearance), falling
  * back to "Admin" and the site's own favicon — see `getAdminSettings`, which never throws.
  */
 export async function generateMetadata(): Promise<Metadata> {
@@ -82,7 +83,6 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
         .map((item) => ({
           href: item.href,
           label: item.label,
-          readOnly: item.readOnly,
           badge: item.badge,
           matches: item.matches,
           type: item.type ?? null,
@@ -119,6 +119,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
           />
 
           <SidebarInset className="min-w-0">
+            <CrumbProvider>
             {/* h-14 and z-10 are fixed by convention: anything sticky inside a page
                 must use top-14, or it will sit under this header. */}
             <header className="bg-background/95 supports-[backdrop-filter]:bg-background/70 sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b px-4 backdrop-blur">
@@ -128,6 +129,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
             </header>
 
             <div className="min-w-0 flex-1 p-4 md:p-6">{children}</div>
+            </CrumbProvider>
           </SidebarInset>
         </SidebarProvider>
       </div>

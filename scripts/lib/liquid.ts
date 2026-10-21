@@ -12,10 +12,14 @@
  *   link → `<id>_label` (text) + `<id>_url` (url) · url → url · video → video_url
  *   select → select · toggle → checkbox · number → range · product → product
  *   blocks → the section's blocks, `max_blocks` = the field's max
+ *   color → color
  *   universal surface / rhythm / hideOn → `surface` / `rhythm` / `hide_on`
  *   (rhythm's `default` is `theme` in the theme, as in every other theme section).
+ *   The Style tab (spacing, lines, colours) → the same settings, snake_case, read
+ *   by the `sb-section-style` snippet — see `STYLE_SETTING_IDS`.
  */
 
+import { STYLE_KEYS } from "../../lib/page-builder/define-section";
 import type { FieldDef, LeafFieldDef } from "../../lib/page-builder/fields";
 import { SECTION_PRESETS, type PresetBlock } from "../../lib/page-builder/presets";
 import { SECTIONS, type SectionType } from "../../lib/page-builder/registry";
@@ -41,6 +45,14 @@ export const LIQUID_SECTIONS: Partial<Record<SectionType, string>> = {
 };
 
 export const snake = (key: string) => key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+
+/**
+ * The Style tab's theme settings. A section passes `settings: section.settings` to
+ * `sb-section-style`, which reads all of them — so the parity check counts them as
+ * read when the section renders that snippet.
+ */
+export const STYLE_SETTING_IDS: readonly string[] = STYLE_KEYS.map(snake);
+export const STYLE_SNIPPET = "sb-section-style";
 
 type Json = Record<string, unknown>;
 
@@ -104,16 +116,24 @@ export function settingsFor(field: LeafFieldDef): Json[] {
         {
           type: "range",
           id,
-          label: field.label.replace(/\s*\(%\)$/, ""),
+          label: field.label.replace(/\s*\((%|px)\)$/, ""),
           min: field.min,
           max: field.max,
           step,
-          ...(/\(%\)$/.test(field.label) ? { unit: "%" } : /seconds/i.test(field.label) ? { unit: "s" } : {}),
+          ...(/\(%\)$/.test(field.label)
+            ? { unit: "%" }
+            : /\(px\)$/.test(field.label)
+              ? { unit: "px" }
+              : /seconds/i.test(field.label)
+                ? { unit: "s" }
+                : {}),
           default: field.default,
           ...info(field),
         },
       ];
     }
+    case "color":
+      return [{ type: "color", id, label: field.label, ...info(field) }];
     case "product":
       return [{ type: "product", id, label: field.label, ...info(field) }];
     case "products":
@@ -127,7 +147,8 @@ export function settingsFor(field: LeafFieldDef): Json[] {
   }
 }
 
-const GROUP_ORDER = { content: 0, layout: 1, advanced: 2 } as const;
+const GROUP_ORDER = { content: 0, layout: 1, style: 2, advanced: 3 } as const;
+const GROUP_HEADER = { content: "Content", layout: "Layout", style: "Style", advanced: "Advanced" } as const;
 
 /**
  * Fields grouped as the builder's form groups them — content, then Layout, then
@@ -141,7 +162,7 @@ function settingsList(fields: readonly FieldDef[]): Json[] {
     if (field.kind === "blocks") continue;
     const next = field.group ?? "content";
     if (next !== group) {
-      out.push({ type: "header", content: next === "layout" ? "Layout" : next === "advanced" ? "Advanced" : "Content" });
+      out.push({ type: "header", content: GROUP_HEADER[next] });
       group = next;
     }
     out.push(...(field.key in UNIVERSAL ? [UNIVERSAL[field.key]!(field)] : settingsFor(field)));

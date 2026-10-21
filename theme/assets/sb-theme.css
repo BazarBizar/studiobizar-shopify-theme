@@ -2224,6 +2224,20 @@
     scroll-behavior: auto !important;
   }
 }
+[data-sb-pad]
+  :is(.sb-band, .py-section, .py-section-xs, .py-section-sm, .py-section-md, .py-section-lg, .py-section-xl, .pt-section, .pb-section):not(
+    :is(.sb-band, .py-section, .py-section-xs, .py-section-sm, .py-section-md, .py-section-lg, .py-section-xl, .pt-section, .pb-section) *,
+    [data-sb-pad] [data-section-id] *
+  ) {
+  padding-top: var(--sb-pad-top);
+  padding-bottom: var(--sb-pad-bottom);
+}
+[data-sb-pad]:not(
+    :has(.sb-band, .py-section, .py-section-xs, .py-section-sm, .py-section-md, .py-section-lg, .py-section-xl, .pt-section, .pb-section)
+  ) {
+  padding-top: var(--sb-pad-top);
+  padding-bottom: var(--sb-pad-bottom);
+}
 @keyframes sb-marquee {
   from {
     transform: translateX(0);

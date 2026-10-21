@@ -75,8 +75,8 @@ export function ProductChannels({
   return (
     <CollapsibleSection
       id="channels"
-      title="Channels"
-      description={`${liveCount} of ${allPublications.length} live`}
+      title="Where it’s sold"
+      description={`Shown in ${liveCount} of ${allPublications.length} places`}
     >
       <ul className="divide-border divide-y">
         {allPublications.map((publication) => {

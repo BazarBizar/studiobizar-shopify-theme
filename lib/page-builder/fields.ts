@@ -52,7 +52,8 @@ export type CaptionedImageValue = { image: ImageRef; caption: string };
  * adjustments some pages need to look exactly as designed, which most edits never
  * touch.
  */
-export type FieldGroup = "content" | "layout" | "advanced";
+/** `style` is the editor's Style tab — spacing, lines and colours, as in Elementor. */
+export type FieldGroup = "content" | "layout" | "style" | "advanced";
 
 /**
  * `when` shows a field only while another field holds one of the listed values —
@@ -96,6 +97,7 @@ export type LeafFieldDef<K extends string = string> =
   | (Base<K> & { kind: "select"; options: readonly SelectOption[]; default: string; display?: SelectDisplay })
   | (Base<K> & { kind: "toggle"; default: boolean })
   | (Base<K> & { kind: "number"; min: number; max: number; default: number })
+  | (Base<K> & { kind: "color" })
   | (Base<K> & { kind: "product" })
   | (Base<K> & { kind: "products"; max: number })
   | (Base<K> & { kind: "collection" })
@@ -146,6 +148,8 @@ type ValueByKind = {
   select: string;
   toggle: boolean;
   number: number;
+  /** `#rrggbb`, or "" for none. */
+  color: string;
   product: ResourceRef | null;
   products: ResourceRef[];
   collection: ResourceRef | null;
@@ -258,6 +262,19 @@ export const number = <K extends string>(
   label: string,
   opts: Opts & { min: number; max: number; default: number },
 ) => ({ ...opts, key, label, kind: "number" as const });
+
+/**
+ * A colour, stored as `#rrggbb` or "" for "none". Only that shape is accepted —
+ * the value lands in a style attribute, so nothing else may get through.
+ */
+export const color = <K extends string>(key: K, label: string, opts: Opts = {}) => ({
+  ...opts,
+  key,
+  label,
+  kind: "color" as const,
+});
+
+export const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
 export const product = <K extends string>(key: K, label: string, opts: Opts = {}) => ({
   ...opts,
@@ -537,6 +554,8 @@ export function fieldSchema(field: FieldDef): z.ZodType {
       return z.boolean();
     case "number":
       return z.number().int().min(field.min).max(field.max);
+    case "color":
+      return z.string().refine((value) => value === "" || HEX_COLOR.test(value), "Use a colour like #302f2d.");
     case "product":
       return resourceRefSchema("Product").nullable();
     case "products":
@@ -561,6 +580,7 @@ export function fieldDefault(field: FieldDef): unknown {
       return field.default;
     case "richText":
     case "video":
+    case "color":
       return "";
     case "image":
     case "link":
@@ -592,6 +612,7 @@ export function isFieldFilled(field: FieldDef, value: unknown): boolean {
     case "textarea":
     case "url":
     case "video":
+    case "color":
       return typeof value === "string" && value.trim() !== "";
     case "richText":
       return typeof value === "string" && value !== "" && /"value":"\s*\S/.test(value);

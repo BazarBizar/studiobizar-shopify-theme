@@ -25,6 +25,10 @@ export type LoadStrategy = "client" | "server";
 export type ModuleDef = {
   /** Sidebar and screen title. Defaults to the definition's own name. */
   label?: string;
+  /** One of them, lower case, for "New …" and messages: "question", not "faq". */
+  singular?: string;
+  /** One plain sentence under the list's title: what these are and where they show. */
+  description?: string;
   /** Preferred column order. Unlisted fields follow, behind the column menu. */
   columns?: string[];
   /** Offered as filters above the table. */
@@ -110,6 +114,8 @@ export function isHeavyType(type: string): boolean {
 export const MODULES: Record<string, ModuleDef> = {
   captioned_image: {
     label: "Images",
+    singular: "image",
+    description: "Photos with a caption, used in slideshows and galleries across the site.",
     /**
      * Beside Media, "Images" read as the same thing twice. It is not: these are the
      * caption + credit wrappers the storefront's hero slider and galleries point at,
@@ -124,6 +130,8 @@ export const MODULES: Record<string, ModuleDef> = {
 
   designer: {
     label: "Designers",
+    singular: "designer",
+    description: "The designers shown on the Professionals page. Drag the rows to change their order.",
     columns: ["portrait", "name", "studio", "byline", "sort_order"],
     neverColumn: ["bio_full", "bio_short"],
     searchFields: ["name", "studio"],
@@ -133,6 +141,8 @@ export const MODULES: Record<string, ModuleDef> = {
 
   project: {
     label: "Projects",
+    singular: "project",
+    description: "Finished projects shown on the Projects page. Drag the rows to change their order.",
     columns: ["card_image", "title", "category", "location", "year", "is_selected", "sort_order"],
     facets: ["category", "is_selected"],
     neverColumn: ["body", "gallery", "related_projects", "featured_items", "subtitle"],
@@ -143,6 +153,8 @@ export const MODULES: Record<string, ModuleDef> = {
 
   service: {
     label: "Services",
+    singular: "service",
+    description: "The services listed on the Our Services page. Drag the rows to change their order.",
     columns: ["title", "sort_order"],
     neverColumn: ["body"],
     searchFields: ["title"],
@@ -152,6 +164,8 @@ export const MODULES: Record<string, ModuleDef> = {
 
   faq_item: {
     label: "FAQ",
+    singular: "question",
+    description: "Questions and answers on the FAQ page. Drag the rows to change their order.",
     columns: ["question", "category", "sort_order"],
     facets: ["category"],
     neverColumn: ["answer"],
@@ -162,6 +176,8 @@ export const MODULES: Record<string, ModuleDef> = {
 
   location: {
     label: "Locations",
+    singular: "location",
+    description: "Showrooms and workshops on the Our Locations page.",
     columns: ["image", "name", "kind", "phone", "email", "sort_order"],
     facets: ["kind"],
     neverColumn: ["address", "hours"],
@@ -172,6 +188,8 @@ export const MODULES: Record<string, ModuleDef> = {
 
   contact_channel: {
     label: "Contact channels",
+    singular: "contact channel",
+    description: "The email addresses, phone numbers and social links on the Contact page.",
     columns: ["label", "value", "link_type", "link_url", "sort_order"],
     facets: ["link_type"],
     searchFields: ["label", "value"],
@@ -194,7 +212,7 @@ export const MODULES: Record<string, ModuleDef> = {
   },
 
   admin_settings: {
-    label: "Admin panel",
+    label: "Admin appearance",
     columns: ["panel_title", "logo", "favicon"],
     /** A singleton the panel reads on every page; see `site_settings` above. */
     deletable: false,
@@ -203,6 +221,7 @@ export const MODULES: Record<string, ModuleDef> = {
 
   email_notification: {
     label: "Email notifications",
+    singular: "email rule",
     /**
      * Who gets the staff copy of each storefront email — see
      * `lib/email/notification-recipients.ts` for the routing. Deletable: removing an
@@ -216,6 +235,7 @@ export const MODULES: Record<string, ModuleDef> = {
 
   inquiry: {
     label: "Inquiries",
+    singular: "inquiry",
     /**
      * READ-ONLY, with one exception.
      *

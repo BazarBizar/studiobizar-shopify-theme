@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/admin/ui/card";
 import { SERIES, type SeriesKey } from "@/lib/admin/series-colors";
 
 import { formatNumber } from "./stat-tile";
+import { EmptyState } from "@/components/admin/empty-state";
 
 /**
  * The one chart on this dashboard, for the one genuinely part-to-whole figure.
@@ -41,7 +42,7 @@ export function PartToWhole({
         </div>
 
         {total === 0 ? (
-          <p className="text-muted-foreground py-6 text-center text-sm">Nothing to show yet.</p>
+          <EmptyState title="Nothing to show yet" className="py-6" />
         ) : (
           <>
             <div

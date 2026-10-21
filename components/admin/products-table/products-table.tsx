@@ -253,9 +253,6 @@ export function ProductsTable({
               >
                 {row.original.title}
               </AppLink>
-              <span className="text-muted-foreground block max-w-72 truncate font-mono text-xs">
-                {row.original.handle}
-              </span>
             </span>
           </div>
         ),

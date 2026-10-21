@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  ArrowLeftIcon,
   CopyPlusIcon,
   EllipsisVerticalIcon,
   ExternalLinkIcon,
@@ -19,17 +18,7 @@ import { useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/admin/ui/alert-dialog";
-import { Badge } from "@/components/admin/ui/badge";
+import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 import { Button } from "@/components/admin/ui/button";
 import {
   DropdownMenu,
@@ -54,7 +43,7 @@ import {
 import { sectionFromPreset, type SectionPreset } from "@/lib/page-builder/presets";
 import { cn } from "@/lib/utils/cn";
 
-import { PageTabs } from "@/components/admin/pages-table/page-tabs";
+import { PageEditorBar } from "@/components/admin/pages-table/page-editor-bar";
 
 import { DuplicatePageDialog } from "./create-page-dialog";
 import { EditorLookupsContext, type CollectionOption, type EditorLookups } from "./field-controls";
@@ -122,6 +111,9 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
    * (and on the next keystroke, re-saving) the text that was just undone.
    */
   const [epoch, setEpoch] = React.useState(0);
+  // Content or Style. Held here, not in the editor, which remounts on undo/redo —
+  // an undo while styling should leave you on the Style tab.
+  const [editorTab, setEditorTab] = React.useState<"content" | "style">("content");
   const step = React.useCallback((kind: "undo" | "redo") => {
     dispatch({ kind });
     setEpoch((value) => value + 1);
@@ -401,8 +393,9 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
     }
   }
 
+  // The dialog stays open with its spinner until this settles — the panel's rule
+  // for confirmations (ConfirmDialog) — then closes itself.
   async function runConfirmed(action: NonNullable<Confirm>) {
-    setConfirm(null);
     setBusy(action);
 
     try {
@@ -445,40 +438,15 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
     <EditorLookupsContext.Provider value={lookups}>
       <div className="-m-4 flex h-[calc(100svh-3.5rem)] flex-col md:-m-6">
         {/* ---------------- top bar ---------------- */}
-        <div className="bg-background flex flex-wrap items-center gap-2 border-b px-3 py-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Back to pages"
-            onClick={async () => {
-              if (await leave()) router.push("/admin/pages");
-            }}
-          >
-            <ArrowLeftIcon />
-          </Button>
-
-          <div className="min-w-0">
-            <h1 className="truncate text-sm font-semibold">{page.title}</h1>
-            <p className="text-muted-foreground truncate font-mono text-[11px]">{publicPath}</p>
-          </div>
-
-          <PageTabs param={page.param} active="content" beforeLeave={leave} />
-
-          {/* Two questions, two badges: can visitors reach the page (set in Settings),
-              and is the content they see the latest. */}
-          <div className="flex items-center gap-1.5">
-            {isLive ? <Badge variant="secondary">Visible</Badge> : <Badge variant="outline">Hidden</Badge>}
-            {!hasPublished ? (
-              <Badge variant="outline">Draft</Badge>
-            ) : hasUnpublished || dirty ? (
-              <Badge variant="outline">Unpublished changes</Badge>
-            ) : (
-              <Badge variant="secondary">Published</Badge>
-            )}
-          </div>
-
-          <div className="ms-auto flex items-center gap-1.5">
+        <PageEditorBar
+          title={page.title}
+          path={publicPath}
+          param={page.param}
+          active="content"
+          isPublished={isLive}
+          content={!hasPublished ? "draft" : hasUnpublished || dirty ? "changes" : "published"}
+          onLeave={leave}
+        >
             <span
               className={cn(
                 "text-muted-foreground hidden items-center gap-1 text-xs sm:inline-flex",
@@ -584,8 +552,7 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
-        </div>
+        </PageEditorBar>
 
         {/* ---------------- notices ---------------- */}
         {(saveState === "conflict" || saveState === "error" || initial.dropped > 0 || initial.publishedInvalid) && (
@@ -661,6 +628,8 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
                   section={selectedSection}
                   previousType={content.sections[content.sections.findIndex((item) => item.id === selectedSection.id) - 1]?.type ?? null}
                   collections={collections}
+                  tab={editorTab}
+                  onTabChange={setEditorTab}
                   onBack={() => setPanel({ kind: "list" })}
                   onChange={(key, value) => dispatch({ kind: "setting", id: selectedSection.id, key, value })}
                   onToggle={() => dispatch({ kind: "toggle", id: selectedSection.id })}
@@ -712,26 +681,19 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
         />
 
         {/* ---------------- confirmations ---------------- */}
-        <AlertDialog open={confirm !== null} onOpenChange={(open) => !open && setConfirm(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                {confirm === "rollback" ? "Load the previously published version?" : "Discard unpublished changes?"}
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {confirm === "rollback"
-                  ? "Your draft is replaced by the version that was live before the last publish. Nothing changes on the site until you publish."
-                  : "Your draft goes back to what is live now. Changes since the last publish are lost."}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={() => confirm && void runConfirmed(confirm)}>
-                {confirm === "rollback" ? "Load it" : "Discard"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <ConfirmDialog
+          open={confirm !== null}
+          onOpenChange={(open) => !open && setConfirm(null)}
+          destructive={confirm === "discard"}
+          title={confirm === "rollback" ? "Load the previously published version?" : "Discard unpublished changes?"}
+          description={
+            confirm === "rollback"
+              ? "Your draft is replaced by the version that was live before the last publish. Nothing changes on the site until you publish."
+              : "Your draft goes back to what is live now. Changes since the last publish are lost."
+          }
+          confirmLabel={confirm === "rollback" ? "Load it" : "Discard changes"}
+          onConfirm={() => (confirm ? runConfirmed(confirm) : undefined)}
+        />
       </div>
     </EditorLookupsContext.Provider>
   );

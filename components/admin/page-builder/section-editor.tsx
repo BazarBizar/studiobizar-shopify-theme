@@ -1,12 +1,23 @@
 "use client";
 
-import { ArrowLeftIcon, ChevronRightIcon, CopyIcon, ExternalLinkIcon, EyeIcon, EyeOffIcon, Trash2Icon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  ChevronRightIcon,
+  CopyIcon,
+  ExternalLinkIcon,
+  EyeIcon,
+  EyeOffIcon,
+  RotateCcwIcon,
+  Trash2Icon,
+} from "lucide-react";
+import * as React from "react";
 
 import { Button } from "@/components/admin/ui/button";
 import { Label } from "@/components/admin/ui/label";
 import { Separator } from "@/components/admin/ui/separator";
+import { Tabs, TabsList, TabsTrigger } from "@/components/admin/ui/tabs";
 import { PAGE_SURFACES, type PageSettings, type SectionInstance } from "@/lib/page-builder/document";
-import { SURFACE_OPTIONS } from "@/lib/page-builder/define-section";
+import { NEUTRAL_STYLE, SURFACE_OPTIONS } from "@/lib/page-builder/define-section";
 import { isFieldActive, isFieldFilled, type FieldDef } from "@/lib/page-builder/fields";
 import { sectionDefinition } from "@/lib/page-builder/registry";
 
@@ -64,6 +75,8 @@ export function SectionEditor({
   section,
   previousType,
   collections,
+  tab,
+  onTabChange,
   onBack,
   onChange,
   onToggle,
@@ -74,6 +87,8 @@ export function SectionEditor({
   /** The type of the section above — whether this one can share the page heading's band. */
   previousType: string | null;
   collections: CollectionOption[];
+  tab: "content" | "style";
+  onTabChange: (tab: "content" | "style") => void;
   onBack: () => void;
   onChange: (key: string, value: unknown) => void;
   onToggle: () => void;
@@ -93,14 +108,16 @@ export function SectionEditor({
    */
   const afterHeading = previousType === "page_heading";
   const joined = afterHeading && settings.placement === "heading";
-  const offered = (field: { key: string }) =>
-    !(field.key === "placement" && !afterHeading) && !(joined && (field.key === "surface" || field.key === "rhythm"));
+  const offered = (field: FieldDef) =>
+    !(field.key === "placement" && !afterHeading) && !(joined && field.group === "style");
 
   const active = definition.fields.filter((field) => isFieldActive(field, settings) && offered(field));
   const content = active.filter((field) => (field.group ?? "content") === "content");
   const layout = active.filter((field) => field.group === "layout");
+  const style = active.filter((field) => field.group === "style");
   const advanced = active.filter((field) => field.group === "advanced");
   const source = definition.source(settings);
+  const showTabs = style.length > 0 || joined;
 
   return (
     <div className="flex h-full flex-col">
@@ -135,6 +152,32 @@ export function SectionEditor({
         </Button>
       </div>
 
+      {/* Content | Style, as in Elementor: what the section says, then how it looks. */}
+      {showTabs && (
+        <div className="border-b px-4 py-2">
+          <Tabs value={tab} onValueChange={(next) => onTabChange(next as "content" | "style")}>
+            <TabsList className="w-full">
+              <TabsTrigger value="content" className="flex-1">
+                Content
+              </TabsTrigger>
+              <TabsTrigger value="style" className="flex-1">
+                Style
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+      )}
+
+      {showTabs && tab === "style" ? (
+        <StyleTab
+          fields={style}
+          joined={joined}
+          sectionId={section.id}
+          settings={settings}
+          collections={collections}
+          onChange={onChange}
+        />
+      ) : (
       <div className="flex-1 space-y-5 overflow-y-auto p-4">
         <p className="text-muted-foreground text-xs">{definition.description}</p>
 
@@ -221,6 +264,121 @@ export function SectionEditor({
           </details>
         )}
       </div>
+      )}
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- *
+ * Style tab
+ * -------------------------------------------------------------------------- */
+
+/** The Style tab's three headings, by setting key. Anything else lands under the first. */
+const STYLE_GROUPS = [
+  { title: "Background & text", keys: ["surface", "bgColor", "textColor"] },
+  { title: "Spacing", keys: ["rhythm", "customSpacing", "paddingTop", "paddingBottom", "marginTop", "marginBottom"] },
+  { title: "Line & corners", keys: ["border", "borderWidth", "borderColor", "radius"] },
+] as const;
+
+const STYLE_RESET: Record<string, unknown> = { ...NEUTRAL_STYLE, surface: "inherit", rhythm: "default" };
+
+/**
+ * A readable text colour for a background — the design's two neutrals, chosen by
+ * the background's brightness. Offered automatically, so picking a dark
+ * background never leaves dark text on it.
+ */
+function contrastFor(background: string): string {
+  const [r, g, b] = [1, 3, 5].map((at) => Number.parseInt(background.slice(at, at + 2), 16));
+  const luminance = (0.299 * r! + 0.587 * g! + 0.114 * b!) / 255;
+  return luminance < 0.55 ? "#ebe8e3" : "#302f2d";
+}
+
+function StyleTab({
+  fields,
+  joined,
+  sectionId,
+  settings,
+  collections,
+  onChange,
+}: {
+  fields: FieldDef[];
+  joined: boolean;
+  sectionId: string;
+  settings: Record<string, unknown>;
+  collections: CollectionOption[];
+  onChange: (key: string, value: unknown) => void;
+}) {
+  const grouped = STYLE_GROUPS.map((group, index) => ({
+    title: group.title,
+    fields: fields.filter((field) =>
+      (group.keys as readonly string[]).includes(field.key) ||
+      (index === 0 && !STYLE_GROUPS.some((other) => (other.keys as readonly string[]).includes(field.key))),
+    ),
+  })).filter((group) => group.fields.length > 0);
+
+  const changed = Object.entries(STYLE_RESET).some(
+    ([key, value]) => key in settings && settings[key] !== value,
+  );
+
+  // A new background with no text colour yet gets a readable one alongside it —
+  // still the editor's to change.
+  const change = (key: string, value: unknown) => {
+    onChange(key, value);
+    if (key === "bgColor" && typeof value === "string" && value && !settings.textColor) {
+      onChange("textColor", contrastFor(value));
+    }
+  };
+
+  if (joined) {
+    return (
+      <div className="flex-1 overflow-y-auto p-4">
+        <p className="text-muted-foreground text-xs">
+          This section shares the page heading’s band, so it takes the heading’s style. Change
+          the style on the Page heading instead, or set “Band” to “Separate band”.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 space-y-5 overflow-y-auto p-4">
+      {grouped.map((group, index) => (
+        <React.Fragment key={group.title}>
+          {index > 0 && <Separator />}
+          <div className="space-y-4">
+            <h3 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">{group.title}</h3>
+            {group.fields.map((field) => (
+              <Field
+                key={field.key}
+                field={field}
+                sectionId={sectionId}
+                settings={settings}
+                collections={collections}
+                onChange={change}
+              />
+            ))}
+          </div>
+        </React.Fragment>
+      ))}
+
+      {changed && (
+        <>
+          <Separator />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              for (const [key, value] of Object.entries(STYLE_RESET)) {
+                if (key in settings && settings[key] !== value) onChange(key, value);
+              }
+            }}
+          >
+            <RotateCcwIcon />
+            Reset style
+          </Button>
+        </>
+      )}
     </div>
   );
 }

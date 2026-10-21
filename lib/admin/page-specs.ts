@@ -5,6 +5,7 @@ import { BUILDER_METAFIELD_KEYS } from "@/lib/page-builder/document";
 import { choicesFrom, fileKindFrom, referenceDefinitionId, type FieldSpec } from "./form-fields";
 import { listDefinitions } from "./metaobjects";
 import { OPERATIONS } from "./operations";
+import { withReferencePreviews } from "./reference-previews";
 import { adminGraphQL } from "./shopify";
 
 /**
@@ -63,13 +64,15 @@ export async function buildPageMetafieldSpecs(
     (definition) => !BUILDER_METAFIELD_KEYS.includes(definition.key),
   );
 
-  return editable.map((definition) => {
+  const specs = editable.map((definition) => {
     const definitionId = referenceDefinitionId(definition.validations);
 
     return {
       key: definition.key,
       name: definition.name,
       description: definition.description,
+      hidden: false,
+      choiceLabels: {},
       // Shopify does not mark metafield definitions required the way metaobject
       // fields are; the form treats them as optional and lets Shopify judge validity.
       required: false,
@@ -79,10 +82,13 @@ export async function buildPageMetafieldSpecs(
       fileKind: fileKindFrom(definition.validations),
       currentFile: null,
       currentRefs: [],
+      collectionOptions: [],
       editable: true,
       initialValue: byKey.get(definition.key)?.value ?? "",
     } satisfies FieldSpec;
   });
+
+  return withReferencePreviews(specs);
 }
 
 /**

@@ -2,12 +2,15 @@ import { z } from "zod";
 
 import {
   blockProblems,
+  color,
   fieldDefault,
   fieldSchema,
   isFieldActive,
   isFieldFilled,
   lenientFieldSchema,
+  number,
   select,
+  toggle,
   type FieldDef,
   type SettingsOf,
 } from "./fields";
@@ -66,13 +69,77 @@ export const HIDE_ON_OPTIONS = [
 ] as const;
 
 const UNIVERSAL_FIELDS = [
-  select("surface", "Background", SURFACE_OPTIONS, { group: "layout" }),
-  select("rhythm", "Vertical spacing", RHYTHM_OPTIONS, { group: "layout" }),
+  select("surface", "Background", SURFACE_OPTIONS, { group: "style" }),
+  // Hidden while Custom spacing is on: the custom numbers replace it, and a
+  // control that visibly does nothing is the commonest "spacing is broken" report.
+  select("rhythm", "Vertical spacing", RHYTHM_OPTIONS, { group: "style", when: { field: "customSpacing", is: [false] } }),
   select("hideOn", "Show on", HIDE_ON_OPTIONS, { group: "layout" }),
 ] as const;
 
 export type UniversalKey = (typeof UNIVERSAL_FIELDS)[number]["key"];
-export type UniversalSettings = SettingsOf<typeof UNIVERSAL_FIELDS>;
+
+/**
+ * THE STYLE TAB — spacing, lines and colours, the handful of controls an
+ * Elementor user reaches for, on every section. Every default changes nothing,
+ * so a page made before these existed looks exactly as it did.
+ *
+ * Kept narrow on purpose: px within fixed ranges, `#rrggbb` colours, a line on
+ * named sides. `SectionFrame` (Next) and `sb-section-style` (Liquid) turn them
+ * into the same inline style, and `globals.css` / `sb-theme.css` hold the rule
+ * that lets the custom padding REPLACE a section's own band padding rather than
+ * add to it.
+ */
+export const BORDER_OPTIONS = [
+  { value: "none", label: "No line" },
+  { value: "all", label: "Box around" },
+  { value: "top", label: "Line above" },
+  { value: "bottom", label: "Line below" },
+  { value: "y", label: "Lines above and below" },
+] as const;
+
+const SPACING = { group: "style", when: { field: "customSpacing", is: [true] } } as const;
+const LINED = { group: "style", when: { field: "border", is: ["all", "top", "bottom", "y"] } } as const;
+
+const STYLE_FIELDS = [
+  color("bgColor", "Background colour", { group: "style", help: "Overrides the background above. Leave empty to use it." }),
+  color("textColor", "Text colour", { group: "style", help: "Headings, text and buttons in this section." }),
+  toggle("customSpacing", "Custom spacing", {
+    group: "style",
+    help: "Set the space inside and around this section yourself, in pixels. Replaces Vertical spacing.",
+  }),
+  number("paddingTop", "Space inside, top (px)", { ...SPACING, min: 0, max: 200, default: 64 }),
+  number("paddingBottom", "Space inside, bottom (px)", { ...SPACING, min: 0, max: 200, default: 64 }),
+  number("marginTop", "Space above the section (px)", { ...SPACING, min: 0, max: 200, default: 0 }),
+  number("marginBottom", "Space below the section (px)", { ...SPACING, min: 0, max: 200, default: 0 }),
+  select("border", "Line", BORDER_OPTIONS, { group: "style" }),
+  number("borderWidth", "Line thickness (px)", { ...LINED, min: 1, max: 10, default: 1 }),
+  color("borderColor", "Line colour", { ...LINED, help: "Leave empty for a soft line in the text colour." }),
+  number("radius", "Rounded corners (px)", { group: "style", min: 0, max: 48, default: 0 }),
+] as const;
+
+export type StyleKey = (typeof STYLE_FIELDS)[number]["key"];
+export const STYLE_KEYS: readonly StyleKey[] = STYLE_FIELDS.map((field) => field.key);
+export type StyleSettings = SettingsOf<typeof STYLE_FIELDS>;
+
+/** The style a section has when nobody has touched the Style tab. */
+/** For sections that paint their own ground: the colour controls would be hidden under it. */
+export const OWN_GROUND: readonly StyleKey[] = ["bgColor", "textColor"];
+
+export const NEUTRAL_STYLE: StyleSettings = {
+  bgColor: "",
+  textColor: "",
+  customSpacing: false,
+  paddingTop: 64,
+  paddingBottom: 64,
+  marginTop: 0,
+  marginBottom: 0,
+  border: "none",
+  borderWidth: 1,
+  borderColor: "",
+  radius: 0,
+};
+
+export type UniversalSettings = SettingsOf<typeof UNIVERSAL_FIELDS> & StyleSettings;
 
 /* -------------------------------------------------------------------------- *
  * The definition
@@ -137,6 +204,17 @@ export function defineSection<
    * does nothing.
    */
   universal?: readonly UniversalKey[];
+  /**
+   * Whether the Style tab's spacing, lines and colours are offered. Stored and
+   * validated either way; off only where they would do nothing visible.
+   */
+  style?: boolean;
+  /**
+   * Style controls this section cannot show — the colours of a section that paints
+   * its own ground edge to edge (a full-bleed image, a band with a fixed surface).
+   * Offering them would be offering a control that visibly does nothing.
+   */
+  omitStyle?: readonly StyleKey[];
   /** The settings key whose value labels the section in the list. */
   summaryKey?: F[number]["key"];
   hidden?: boolean;
@@ -145,10 +223,13 @@ export function defineSection<
   type S = SettingsOf<F> & UniversalSettings;
 
   const shown = new Set<UniversalKey>(definition.universal ?? ["surface", "rhythm", "hideOn"]);
-  const all: readonly FieldDef[] = [...definition.fields, ...UNIVERSAL_FIELDS];
+  const all: readonly FieldDef[] = [...definition.fields, ...UNIVERSAL_FIELDS, ...STYLE_FIELDS];
   const visible: readonly FieldDef[] = [
     ...definition.fields,
     ...UNIVERSAL_FIELDS.filter((field) => shown.has(field.key)),
+    ...(definition.style === false
+      ? []
+      : STYLE_FIELDS.filter((field) => !(definition.omitStyle ?? []).includes(field.key))),
   ];
 
   const strictShape = Object.fromEntries(all.map((field) => [field.key, fieldSchema(field)]));

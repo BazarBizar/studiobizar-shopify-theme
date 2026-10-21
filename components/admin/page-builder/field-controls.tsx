@@ -5,16 +5,16 @@ import {
   ArrowUpIcon,
   ChevronRightIcon,
   CopyIcon,
-  ImageIcon,
   PlusIcon,
   Trash2Icon,
   XIcon,
 } from "lucide-react";
-import Image from "next/image";
 import * as React from "react";
 import { toast } from "sonner";
 
-import { MediaPicker } from "@/components/admin/media/media-picker";
+import { CataloguePicker } from "@/components/admin/catalogue-picker";
+import { MediaPicker, type MediaPick } from "@/components/admin/media/media-picker";
+import { MediaRows, MediaSlot, moved } from "@/components/admin/media/media-selection";
 import { SectionIcon } from "@/components/sections/section-icon";
 import { RichTextEditor } from "@/components/admin/rich-text-editor";
 import { Button } from "@/components/admin/ui/button";
@@ -44,10 +44,11 @@ import {
 } from "@/components/admin/ui/select";
 import { Switch } from "@/components/admin/ui/switch";
 import { Textarea } from "@/components/admin/ui/textarea";
-import { useProductSearch, type PickerFile } from "@/lib/admin/queries";
+import { type PickerFile } from "@/lib/admin/queries";
 import {
   blockDefinition,
   createBlock,
+  HEX_COLOR,
   isFieldActive,
   isFieldFilled,
   isSafeHref,
@@ -154,14 +155,13 @@ export function FieldControl({ field, value, onChange, inputId, collections }: C
             id={inputId}
             value={href}
             maxLength={2048}
-            placeholder="/"
+            placeholder="e.g. /contact or https://www.example.com"
             aria-invalid={unsafe}
             onChange={(event) => onChange(event.target.value.trim())}
-            className="font-mono text-xs"
           />
           {unsafe && (
             <p className="text-destructive text-xs" role="alert">
-              Use a path on this site like /shop, or an address starting with https://.
+              Use a page on this site, like /contact, or a full web address starting with https://.
             </p>
           )}
         </div>
@@ -177,19 +177,18 @@ export function FieldControl({ field, value, onChange, inputId, collections }: C
             id={inputId}
             value={address}
             maxLength={512}
-            placeholder="https://www.youtube.com/watch?v=…"
+            placeholder="Paste a YouTube or Vimeo link"
             aria-invalid={address !== "" && !parsed}
             onChange={(event) => onChange(event.target.value.trim())}
-            className="font-mono text-xs"
           />
           {address !== "" &&
             (parsed ? (
               <p className="text-muted-foreground text-xs">
-                {parsed.provider === "youtube" ? "YouTube" : "Vimeo"} video {parsed.id}
+                {parsed.provider === "youtube" ? "YouTube" : "Vimeo"} video found.
               </p>
             ) : (
               <p className="text-destructive text-xs" role="alert">
-                Not a YouTube or Vimeo video address.
+                This doesn’t look like a YouTube or Vimeo link. Copy it from the video’s Share button.
               </p>
             ))}
         </div>
@@ -221,22 +220,10 @@ export function FieldControl({ field, value, onChange, inputId, collections }: C
       return <Switch id={inputId} checked={Boolean(value)} onCheckedChange={(checked) => onChange(checked)} />;
 
     case "number":
-      return (
-        <Input
-          id={inputId}
-          type="number"
-          inputMode="numeric"
-          min={field.min}
-          max={field.max}
-          step={1}
-          value={String(value ?? field.default)}
-          onChange={(event) => {
-            const next = Number.parseInt(event.target.value, 10);
-            if (Number.isFinite(next)) onChange(Math.min(field.max, Math.max(field.min, next)));
-          }}
-          className="w-28"
-        />
-      );
+      return <NumberField inputId={inputId} field={field} value={value as number | undefined} onChange={onChange} />;
+
+    case "color":
+      return <ColorField inputId={inputId} value={(value as string) ?? ""} onChange={onChange} />;
 
     case "product":
     case "products":
@@ -261,6 +248,151 @@ export function FieldControl({ field, value, onChange, inputId, collections }: C
 }
 
 /* -------------------------------------------------------------------------- *
+ * Number and colour — the Style tab's controls
+ * -------------------------------------------------------------------------- */
+
+/**
+ * A slider with the number beside it, as in Elementor: drag for a feel, type for
+ * an exact value. Out-of-range typing is clamped rather than refused.
+ */
+function NumberField({
+  inputId,
+  field,
+  value,
+  onChange,
+}: {
+  inputId: string;
+  field: { min: number; max: number; default: number; label: string };
+  value: number | undefined;
+  onChange: (value: unknown) => void;
+}) {
+  const current = value ?? field.default;
+  const set = (raw: string) => {
+    const next = Number.parseInt(raw, 10);
+    if (Number.isFinite(next)) onChange(Math.min(field.max, Math.max(field.min, next)));
+  };
+
+  return (
+    <div className="flex items-center gap-3">
+      <input
+        type="range"
+        min={field.min}
+        max={field.max}
+        step={1}
+        value={current}
+        aria-label={field.label}
+        onChange={(event) => set(event.target.value)}
+        className="accent-primary h-1.5 min-w-0 flex-1 cursor-pointer"
+      />
+      <Input
+        id={inputId}
+        type="number"
+        inputMode="numeric"
+        min={field.min}
+        max={field.max}
+        step={1}
+        value={String(current)}
+        onChange={(event) => set(event.target.value)}
+        className="h-8 w-20 text-xs"
+      />
+    </div>
+  );
+}
+
+/** The design's own palette first, so the obvious choices are one click away. */
+const BRAND_COLOURS = [
+  { value: "#ebe8e3", label: "Earth" },
+  { value: "#302f2d", label: "Dark wood" },
+  { value: "#41473e", label: "Black olive" },
+  { value: "#47515c", label: "Charcoal blue" },
+  { value: "#4a3c3f", label: "Deep mocha" },
+  { value: "#1d1d1b", label: "Off-black" },
+  { value: "#ffffff", label: "White" },
+] as const;
+
+function ColorField({
+  inputId,
+  value,
+  onChange,
+}: {
+  inputId: string;
+  value: string;
+  onChange: (value: unknown) => void;
+}) {
+  // The typed text, re-synced when the value changes from outside (a swatch, the
+  // picker, undo) — adjusted during render rather than in an effect.
+  const [draft, setDraft] = React.useState(value);
+  const [synced, setSynced] = React.useState(value);
+  if (value !== synced) {
+    setSynced(value);
+    setDraft(value);
+  }
+  const valid = draft === "" || HEX_COLOR.test(draft);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-1.5">
+        {BRAND_COLOURS.map((swatch) => (
+          <button
+            key={swatch.value}
+            type="button"
+            title={swatch.label}
+            aria-label={swatch.label}
+            aria-pressed={value.toLowerCase() === swatch.value}
+            onClick={() => onChange(swatch.value)}
+            className={cn(
+              "size-6 rounded-full border shadow-xs transition-transform hover:scale-110",
+              value.toLowerCase() === swatch.value && "ring-ring ring-2 ring-offset-1",
+            )}
+            style={{ backgroundColor: swatch.value }}
+          />
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        <label
+          className="relative size-8 shrink-0 cursor-pointer overflow-hidden rounded-md border"
+          title="Pick any colour"
+          style={value ? { backgroundColor: value } : undefined}
+        >
+          {!value && (
+            <span className="text-muted-foreground absolute inset-0 flex items-center justify-center text-[10px]">
+              —
+            </span>
+          )}
+          <input
+            type="color"
+            value={value || "#ffffff"}
+            onChange={(event) => onChange(event.target.value)}
+            className="absolute inset-0 size-full cursor-pointer opacity-0"
+            aria-label="Pick any colour"
+          />
+        </label>
+        <Input
+          id={inputId}
+          value={draft}
+          maxLength={7}
+          placeholder="None"
+          aria-invalid={!valid}
+          onChange={(event) => {
+            const next = event.target.value.trim();
+            setDraft(next);
+            if (next === "" || HEX_COLOR.test(next)) onChange(next.toLowerCase());
+          }}
+          className="h-8 w-24 text-xs"
+        />
+        {value && (
+          <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" onClick={() => onChange("")}>
+            <XIcon className="size-3.5" />
+            Clear
+          </Button>
+        )}
+      </div>
+      {!valid && <p className="text-destructive text-xs">Use a colour code like #302f2d, or pick one above.</p>}
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- *
  * Images
  * -------------------------------------------------------------------------- */
 
@@ -276,46 +408,28 @@ function toImageRef(file: PickerFile): ImageRef | null {
   return { id: file.id, url: file.url, altText: file.alt, width: file.width, height: file.height };
 }
 
-function useImagePicker(onPicked: (image: ImageRef) => void) {
-  const [open, setOpen] = React.useState(false);
-
-  const onSelect = (file: PickerFile) => {
-    const image = toImageRef(file);
-    if (!image) {
-      toast.error("That file can’t be used here", {
-        description: "Choose an image. A file uploaded a moment ago may still be processing — try again shortly.",
-      });
-      return;
-    }
-    onPicked(image);
-  };
-
-  return { open, setOpen, onSelect };
+/**
+ * The picks from the shared `MediaPicker` → snapshots, refusing what cannot be
+ * stored (say so once, keep the rest).
+ */
+function imagesFrom(picks: MediaPick[]): ImageRef[] {
+  const images = picks.flatMap((pick) => {
+    const image = pick.file ? toImageRef(pick.file) : null;
+    return image ? [image] : [];
+  });
+  if (images.length < picks.length) {
+    toast.error("A file can’t be used here", {
+      description: "Choose an image. A file uploaded a moment ago may still be processing — try again shortly.",
+    });
+  }
+  return images;
 }
 
-function Thumb({ image, className }: { image: ImageRef | null; className?: string }) {
-  return (
-    <span
-      className={cn(
-        "bg-muted flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-md border",
-        className,
-      )}
-    >
-      {image ? (
-        <Image
-          src={cdnImage(image.url, 160)}
-          alt={image.altText ?? ""}
-          width={64}
-          height={64}
-          unoptimized
-          className="size-full object-cover"
-        />
-      ) : (
-        <ImageIcon className="text-muted-foreground size-4" />
-      )}
-    </span>
-  );
-}
+const previewOfImage = (image: ImageRef) => ({
+  thumbnail: cdnImage(image.url, 160),
+  label: image.altText ?? "",
+  kind: "image" as const,
+});
 
 /**
  * The image's alt text FOR THIS USE. It starts as the file's own alt text from
@@ -333,17 +447,26 @@ function AltInput({
   onChange: (image: ImageRef) => void;
 }) {
   return (
-    <Input
-      value={image.altText ?? ""}
-      maxLength={512}
-      placeholder="Alt text — describes the photo for screen readers"
-      aria-label={`${label} alt text`}
-      onChange={(event) => onChange({ ...image, altText: event.target.value || null })}
-      className="h-7 text-xs"
-    />
+    <label className="block space-y-0.5">
+      <span
+        className="text-muted-foreground text-[11px]"
+        title="Describes the photo for Google and for people who cannot see it."
+      >
+        Image description
+      </span>
+      <Input
+        value={image.altText ?? ""}
+        maxLength={512}
+        placeholder="e.g. Oak dining table in a bright room"
+        aria-label={`${label} image description`}
+        onChange={(event) => onChange({ ...image, altText: event.target.value || null })}
+        className="h-7 text-xs"
+      />
+    </label>
   );
 }
 
+/** One image — the shared `MediaSlot` and `MediaPicker`, as on every form in the panel. */
 function ImageField({
   value,
   onChange,
@@ -353,41 +476,36 @@ function ImageField({
   onChange: (value: ImageRef | null) => void;
   label: string;
 }) {
-  const picker = useImagePicker((image) => onChange(image));
+  const [open, setOpen] = React.useState(false);
 
   return (
-    <div className="flex items-start gap-3">
-      <Thumb image={value} className="size-20" />
-      <div className="min-w-0 flex-1 space-y-2">
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={() => picker.setOpen(true)}>
-            {value ? "Replace" : "Choose image"}
-          </Button>
-          {value && (
-            <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={() => onChange(null)}>
-              <XIcon className="size-3.5" />
-              Remove
-            </Button>
-          )}
-        </div>
+    <>
+      <MediaSlot
+        preview={value ? previewOfImage(value) : null}
+        onChoose={() => setOpen(true)}
+        onRemove={() => onChange(null)}
+      >
         {value && <AltInput image={value} label={label} onChange={onChange} />}
-      </div>
+      </MediaSlot>
       <MediaPicker
-        open={picker.open}
-        onOpenChange={picker.setOpen}
-        kind="image"
+        open={open}
+        onOpenChange={setOpen}
         title={label.toLowerCase()}
-        selectedId={value?.id ?? null}
-        onSelect={picker.onSelect}
+        selectedIds={value ? [value.id] : []}
+        onSelect={(picks) => {
+          const [image] = imagesFrom(picks);
+          if (image) onChange(image);
+        }}
       />
-    </div>
+    </>
   );
 }
 
 /**
- * Several images, in an order that matters, each with an optional caption.
- * Reordered by buttons rather than by drag: this sits inside the section list's
- * own drag context, and a nested one fights it.
+ * Several images, in an order that matters, each with an optional caption — the
+ * shared `MediaRows`, several chosen at once in the `MediaPicker`. Reordered by
+ * buttons rather than by drag: this sits inside the section list's own drag
+ * context, and a nested one fights it.
  */
 function ImageListField({
   value,
@@ -402,111 +520,53 @@ function ImageListField({
   max: number;
   captions: boolean;
 }) {
-  const picker = useImagePicker((image) => onChange([...value, { image, caption: "" }]));
-
-  const move = (index: number, delta: number) => {
-    const target = index + delta;
-    if (target < 0 || target >= value.length) return;
+  const [open, setOpen] = React.useState(false);
+  const update = (index: number, item: CaptionedImageValue) => {
     const next = [...value];
-    [next[index], next[target]] = [next[target]!, next[index]!];
+    next[index] = item;
     onChange(next);
   };
 
   return (
-    <div className="space-y-2">
-      {value.length > 0 && (
-        <ul className="space-y-2">
-          {value.map((item, index) => (
-            <li key={`${item.image.id}-${index}`} className="flex items-start gap-2 rounded-md border p-2">
-              <Thumb image={item.image} className="size-14" />
-
-              <div className="min-w-0 flex-1 space-y-1">
-                {captions && (
+    <>
+      <MediaRows
+        noun="images"
+        max={max}
+        rows={value.map((item, index) => ({
+          key: `${item.image.id}-${index}`,
+          preview: { ...previewOfImage(item.image), label: "" },
+          extra: (
+            <>
+              {captions && (
+                <label className="block space-y-0.5">
+                  <span className="text-muted-foreground text-[11px]">Caption (optional)</span>
                   <Input
                     value={item.caption}
                     maxLength={200}
-                    placeholder="Caption — shown under the photo (optional)"
                     aria-label={`${label} ${index + 1} caption`}
-                    onChange={(event) => {
-                      const next = [...value];
-                      next[index] = { ...item, caption: event.target.value };
-                      onChange(next);
-                    }}
+                    onChange={(event) => update(index, { ...item, caption: event.target.value })}
                     className="h-7 text-xs"
                   />
-                )}
-                <AltInput
-                  image={item.image}
-                  label={`${label} ${index + 1}`}
-                  onChange={(image) => {
-                    const next = [...value];
-                    next[index] = { ...item, image };
-                    onChange(next);
-                  }}
-                />
-              </div>
-
-              <div className="flex shrink-0 items-center">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  aria-label={`Move ${label} ${index + 1} up`}
-                  disabled={index === 0}
-                  onClick={() => move(index, -1)}
-                >
-                  <ArrowUpIcon />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  aria-label={`Move ${label} ${index + 1} down`}
-                  disabled={index === value.length - 1}
-                  onClick={() => move(index, 1)}
-                >
-                  <ArrowDownIcon />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  className="text-destructive"
-                  aria-label={`Remove ${label} ${index + 1}`}
-                  onClick={() => onChange(value.filter((_, position) => position !== index))}
-                >
-                  <XIcon />
-                </Button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <div className="flex items-center gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={value.length >= max}
-          onClick={() => picker.setOpen(true)}
-        >
-          <PlusIcon className="size-3.5" />
-          Add image
-        </Button>
-        <span className="text-muted-foreground text-xs">
-          {value.length} of {max}
-        </span>
-      </div>
-
-      <MediaPicker
-        open={picker.open}
-        onOpenChange={picker.setOpen}
-        kind="image"
-        title={label.toLowerCase()}
-        onSelect={picker.onSelect}
+                </label>
+              )}
+              <AltInput image={item.image} label={`${label} ${index + 1}`} onChange={(image) => update(index, { ...item, image })} />
+            </>
+          ),
+        }))}
+        onMove={(index, delta) => onChange(moved(value, index, delta))}
+        onRemove={(index) => onChange(value.filter((_, position) => position !== index))}
+        onAdd={() => setOpen(true)}
       />
-    </div>
+      <MediaPicker
+        open={open}
+        onOpenChange={setOpen}
+        title={label.toLowerCase()}
+        multiple
+        limit={max - value.length}
+        selectedIds={value.map((item) => item.image.id)}
+        onSelect={(picks) => onChange([...value, ...imagesFrom(picks).map((image) => ({ image, caption: "" }))])}
+      />
+    </>
   );
 }
 
@@ -545,17 +605,17 @@ function LinkField({
         <Input
           value={href}
           maxLength={2048}
-          placeholder="Choose a page, or paste https://…"
+          placeholder="Pick a page with the button, or paste a web address"
           aria-label="Button link"
           aria-invalid={unsafe}
           onChange={(event) => update({ href: event.target.value.trim() })}
-          className="min-w-0 flex-1 font-mono text-xs"
+          className="min-w-0 flex-1 text-xs"
         />
         <LinkPicker onPick={(target) => update({ href: target.href, label: label || target.label.toLowerCase() })} />
       </div>
       {unsafe && (
         <p className="text-destructive text-xs" role="alert">
-          Use a path on this site like /shop, or an address starting with https://.
+          Use a page on this site, like /contact, or a full web address starting with https://.
         </p>
       )}
     </div>
@@ -676,6 +736,11 @@ function ChoiceField({
  * Products and collections
  * -------------------------------------------------------------------------- */
 
+/**
+ * Products and collections in a section — the panel's shared `CataloguePicker`, the
+ * same dialog the content forms use. The document stores a snapshot (id, handle,
+ * title), so the picker hands back the records, not just their ids.
+ */
 function ResourceField({
   kind,
   value,
@@ -693,134 +758,24 @@ function ResourceField({
   label: string;
   onChange: (value: ResourceRef[]) => void;
 }) {
-  const [open, setOpen] = React.useState(false);
-  const [search, setSearch] = React.useState("");
-  const [debounced, setDebounced] = React.useState("");
-
-  React.useEffect(() => {
-    const timer = setTimeout(() => setDebounced(search.trim()), 250);
-    return () => clearTimeout(timer);
-  }, [search]);
-
-  const products = useProductSearch(debounced, kind === "product" && open);
-  const chosen = new Set(value.map((item) => item.id));
-
-  const options: CollectionOption[] =
-    kind === "collection"
-      ? collections
-      : (products.data ?? []).map((product) => ({ ...product }));
-
-  const pick = (option: CollectionOption) => {
-    const ref: ResourceRef = { id: option.id, handle: option.handle, title: option.title };
-    onChange(multiple ? [...value, ref] : [ref]);
-    if (!multiple || value.length + 1 >= max) setOpen(false);
-  };
-
-  const move = (index: number, delta: number) => {
-    const target = index + delta;
-    if (target < 0 || target >= value.length) return;
-    const next = [...value];
-    [next[index], next[target]] = [next[target]!, next[index]!];
-    onChange(next);
-  };
-
   return (
-    <div className="space-y-2">
-      {value.length > 0 && (
-        <ul className="space-y-1.5">
-          {value.map((item, index) => (
-            <li key={item.id} className="flex items-center gap-2 rounded-md border px-2 py-1.5">
-              <span className="min-w-0 flex-1 truncate text-sm">{item.title}</span>
-              {multiple && (
-                <>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    aria-label={`Move ${item.title} up`}
-                    disabled={index === 0}
-                    onClick={() => move(index, -1)}
-                  >
-                    <ArrowUpIcon />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    aria-label={`Move ${item.title} down`}
-                    disabled={index === value.length - 1}
-                    onClick={() => move(index, 1)}
-                  >
-                    <ArrowDownIcon />
-                  </Button>
-                </>
-              )}
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-xs"
-                className="text-destructive"
-                aria-label={`Remove ${item.title}`}
-                onClick={() => onChange(value.filter((other) => other.id !== item.id))}
-              >
-                <XIcon />
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {(multiple ? value.length < max : true) && (
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <Button type="button" variant="outline" size="sm">
-              <PlusIcon className="size-3.5" />
-              {multiple || value.length === 0 ? `Add ${kind}` : `Change ${kind}`}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-80 p-0" align="start">
-            {/* Products are searched on the server across the whole catalogue;
-                collections are few enough to filter here. */}
-            <Command shouldFilter={kind === "collection"}>
-              <CommandInput
-                placeholder={`Search ${kind === "product" ? "products" : "collections"}`}
-                value={search}
-                onValueChange={setSearch}
-                aria-label={`Search for ${label.toLowerCase()}`}
-              />
-              <CommandList>
-                <CommandEmpty>
-                  {kind === "product" && products.isFetching ? "Searching…" : "Nothing found."}
-                </CommandEmpty>
-                <CommandGroup>
-                  {options
-                    .filter((option) => !chosen.has(option.id))
-                    .map((option) => (
-                      <CommandItem key={option.id} value={`${option.title} ${option.handle}`} onSelect={() => pick(option)}>
-                        <span className="bg-muted flex size-7 shrink-0 items-center justify-center overflow-hidden rounded border">
-                          {option.thumbnail ? (
-                            <Image
-                              src={option.thumbnail}
-                              alt=""
-                              width={28}
-                              height={28}
-                              unoptimized
-                              className="size-full object-cover"
-                            />
-                          ) : (
-                            <ImageIcon className="text-muted-foreground size-3" />
-                          )}
-                        </span>
-                        <span className="min-w-0 flex-1 truncate">{option.title}</span>
-                      </CommandItem>
-                    ))}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
-      )}
-    </div>
+    <CataloguePicker
+      kind={kind}
+      multiple={multiple}
+      max={multiple ? max : undefined}
+      value={value.map((item) => item.id)}
+      current={value.map((item) => ({ id: item.id, label: item.title, thumbnail: null, handle: item.handle }))}
+      collectionOptions={collections.map((item) => ({
+        id: item.id,
+        label: item.title,
+        thumbnail: item.thumbnail,
+        handle: item.handle,
+      }))}
+      label={label}
+      onChange={(_, items) =>
+        onChange(items.map((item) => ({ id: item.id, handle: item.handle ?? "", title: item.label })))
+      }
+    />
   );
 }
 
@@ -1109,7 +1064,7 @@ function LinkPicker({ onPick }: { onPick: (target: LinkTarget) => void }) {
                       }}
                     >
                       <span className="min-w-0 flex-1 truncate">{target.label}</span>
-                      <span className="text-muted-foreground shrink-0 font-mono text-[11px]">{target.href}</span>
+                      <span className="text-muted-foreground shrink-0 text-[11px]">{target.href}</span>
                     </CommandItem>
                   ))}
               </CommandGroup>

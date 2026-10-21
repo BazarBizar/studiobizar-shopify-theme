@@ -6,6 +6,7 @@ import { EntryForm } from "@/components/admin/entry-form";
 import { Badge } from "@/components/admin/ui/badge";
 import { entryIdFromParam, formatDate } from "@/lib/admin/field-values";
 import { buildFieldSpecs } from "@/lib/admin/form-specs";
+import { fieldCopy } from "@/lib/admin/field-copy";
 import { getEntry, listDefinitions, NotAllowedError, NotFoundError } from "@/lib/admin/metaobjects";
 import { moduleFor } from "@/lib/admin/modules";
 import { labelForDefinition, typeForSlug } from "@/lib/admin/navigation";
@@ -52,7 +53,7 @@ export async function generateMetadata({ params }: PageProps<"/admin/[slug]/[id]
 export default async function EntryEditPage({ params }: PageProps<"/admin/[slug]/[id]">) {
   const { slug, id } = await params;
   const loaded = await load(slug, id);
-  if (!loaded) return <ScreenNotFound description="That entry does not exist. It may have been deleted in Shopify." />;
+  if (!loaded) return <ScreenNotFound description="We couldn’t find that. It may have been deleted." />;
 
   const { definition, entry } = loaded;
   const moduleDef = moduleFor(definition.type);
@@ -80,26 +81,28 @@ export default async function EntryEditPage({ params }: PageProps<"/admin/[slug]
         backHref={listHrefFor(definition.type)}
         backLabel={siteWideSection(definition.type)?.label ?? label}
         title={entry.displayName || entry.handle}
-        meta={entry.handle}
         readOnly={moduleDef.readOnly === true}
+        status={
+          entry.status ? (
+            <Badge
+              variant="outline"
+              className={entry.status === "ACTIVE" ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" : "border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-400"}
+            >
+              {entry.status === "ACTIVE" ? "Published" : "Draft — not on the site"}
+            </Badge>
+          ) : undefined
+        }
+        meta={
+          <>
+            Last saved {formatDate(entry.updatedAt, true)}
+            {moduleDef.readOnly && moduleDef.editableFields?.length
+              ? ` · You can only change the ${moduleDef.editableFields
+                  .map((key) => (fieldCopy(definition.type, key).label ?? key).toLowerCase())
+                  .join(", ")} here — the rest is kept as the customer sent it.`
+              : ""}
+          </>
+        }
       />
-
-      <div className="flex flex-wrap items-center gap-2">
-        <p className="text-muted-foreground text-xs">
-          Updated {formatDate(entry.updatedAt, true)}
-        </p>
-        {entry.status ? (
-          <Badge variant="outline" className="text-[11px] font-normal">
-            {entry.status.toLowerCase()}
-          </Badge>
-        ) : null}
-        {moduleDef.readOnly && moduleDef.editableFields?.length ? (
-          <p className="text-muted-foreground text-xs">
-            Only {moduleDef.editableFields.join(", ")} can be changed — the rest is kept as
-            the customer sent it.
-          </p>
-        ) : null}
-      </div>
 
       <EntryForm
         mode="update"

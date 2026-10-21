@@ -408,6 +408,35 @@
   --sb-section: var(--sb-section-xl);
 }
 
+/**
+ * The page builder's "Custom spacing" (Style tab). The section frame carries
+ * `data-sb-pad` and `--sb-pad-top/bottom`. They replace the padding of the
+ * section's BAND — its outermost element with a `*-section` padding utility, or
+ * one marked `sb-band` where a component pads with fixed values — top AND
+ * bottom, so the number an editor types is the space they get, even on a
+ * section that normally has no top padding of its own. Bands nested inside the
+ * band are left alone, and so is a section drawn inside another's frame (one
+ * joined to the page heading). A section with no band gets the padding on the
+ * frame itself.
+ *
+ * Unlayered on purpose: it must win over the Tailwind utilities it replaces.
+ * The Liquid twin is the same block in theme-build/sb-theme.css.
+ */
+[data-sb-pad]
+  :is(.sb-band, .py-section, .py-section-xs, .py-section-sm, .py-section-md, .py-section-lg, .py-section-xl, .pt-section, .pb-section):not(
+    :is(.sb-band, .py-section, .py-section-xs, .py-section-sm, .py-section-md, .py-section-lg, .py-section-xl, .pt-section, .pb-section) *,
+    [data-sb-pad] [data-section-id] *
+  ) {
+  padding-top: var(--sb-pad-top);
+  padding-bottom: var(--sb-pad-bottom);
+}
+[data-sb-pad]:not(
+    :has(.sb-band, .py-section, .py-section-xs, .py-section-sm, .py-section-md, .py-section-lg, .py-section-xl, .pt-section, .pb-section)
+  ) {
+  padding-top: var(--sb-pad-top);
+  padding-bottom: var(--sb-pad-bottom);
+}
+
 /* The 4-up product / collection grid from Shop All, collapsing on mobile. */
 @utility sb-grid-4 {
   display: grid;

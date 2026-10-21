@@ -26,7 +26,6 @@ import { cn } from "@/lib/utils/cn";
 export type SidebarItem = {
   href: string;
   label: string;
-  readOnly: boolean;
   /** Group key. Drives the icon TINT, and the icon itself only as a fallback. */
   group: string;
   /** Metaobject type, or null for a bespoke screen. */
@@ -143,10 +142,6 @@ export function AppSidebar({
                               className="ms-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1 text-[11px] font-semibold text-white group-data-[collapsible=icon]:hidden"
                             >
                               {item.badge}
-                            </span>
-                          ) : item.readOnly ? (
-                            <span className="text-muted-foreground ms-auto text-[11px] group-data-[collapsible=icon]:hidden">
-                              read-only
                             </span>
                           ) : null}
                         </AppLink>

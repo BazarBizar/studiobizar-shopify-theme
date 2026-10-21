@@ -60,29 +60,29 @@ export default async function CollectionDetailPage({ params }: PageProps<"/admin
         backHref="/admin/collections"
         backLabel="Collections"
         title={collection.title}
-        meta={collection.handle}
+        actions={
+          <>
+            {storeUrl ? (
+              <Button asChild variant="outline" size="sm">
+                <a href={storeUrl} target="_blank" rel="noreferrer">
+                  View on store
+                  <ExternalLinkIcon className="size-3.5" />
+                </a>
+              </Button>
+            ) : null}
+            <Button asChild variant="outline" size="sm">
+              <a
+                href={`https://admin.shopify.com/store/${process.env.SHOPIFY_STORE_DOMAIN?.replace(".myshopify.com", "")}/collections/${collection.param}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open in Shopify
+                <ExternalLinkIcon className="size-3.5" />
+              </a>
+            </Button>
+          </>
+        }
       />
-
-      <div className="flex flex-wrap gap-2">
-        {storeUrl ? (
-          <Button asChild variant="outline" size="sm">
-            <a href={storeUrl} target="_blank" rel="noreferrer">
-              View on store
-              <ExternalLinkIcon className="size-3.5" />
-            </a>
-          </Button>
-        ) : null}
-        <Button asChild variant="outline" size="sm">
-          <a
-            href={`https://admin.shopify.com/store/${process.env.SHOPIFY_STORE_DOMAIN?.replace(".myshopify.com", "")}/collections/${collection.param}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Open in Shopify
-            <ExternalLinkIcon className="size-3.5" />
-          </a>
-        </Button>
-      </div>
 
       <CollectionForm
         mode="edit"

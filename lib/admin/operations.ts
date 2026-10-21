@@ -110,7 +110,7 @@ const REFERENCE_SELECTION = `
  * populates one of them. Selecting just `reference` — the obvious thing — leaves
  * every list field looking empty in the form, which reads as data loss.
  */
-const ENTRY_FIELDS = `
+const entryFields = (reference: string) => `
     id
     handle
     type
@@ -126,15 +126,52 @@ const ENTRY_FIELDS = `
       type
       value
       reference {
-${REFERENCE_SELECTION}
+${reference}
       }
       references(first: 50) {
         nodes {
-${REFERENCE_SELECTION}
+${reference}
         }
       }
     }
 `;
+
+/**
+ * A picture for each thing a reference points at, so a form can show "which photo"
+ * rather than a list of titles — a gallery of captioned images, a product, a
+ * collection. Only on the ONE-entry query: on a list of entries this nesting
+ * multiplies the query cost by every row.
+ */
+const REFERENCE_PREVIEW = `
+      ... on Metaobject {
+        fields {
+          reference {
+            ... on MediaImage {
+              image {
+                url
+              }
+            }
+          }
+        }
+      }
+      ... on Product {
+        featuredMedia {
+          preview {
+            image {
+              url
+            }
+          }
+        }
+      }
+      ... on Collection {
+        image {
+          url
+        }
+      }
+`;
+
+const ENTRY_FIELDS = entryFields(REFERENCE_SELECTION);
+const ENTRY_FIELDS_WITH_PREVIEWS = entryFields(REFERENCE_SELECTION + REFERENCE_PREVIEW);
 
 export type OperationKind = "read" | "write";
 
@@ -210,7 +247,7 @@ ${ENTRY_FIELDS}
     document: `
       query AdminMetaobject($id: ID!) {
         metaobject(id: $id) {
-${ENTRY_FIELDS}
+${ENTRY_FIELDS_WITH_PREVIEWS}
         }
       }
     `,
@@ -305,6 +342,22 @@ ${ENTRY_FIELDS}
               }
             }
           }
+        }
+      }
+    `,
+  },
+
+  /**
+   * What a form's references point at — name and picture — for the forms whose values
+   * arrive as bare gids (product and page metafields). One request for the whole form.
+   */
+  referencePreviews: {
+    kind: "read",
+    document: `
+      query AdminReferencePreviews($ids: [ID!]!) {
+        nodes(ids: $ids) {
+${REFERENCE_SELECTION}
+${REFERENCE_PREVIEW}
         }
       }
     `,

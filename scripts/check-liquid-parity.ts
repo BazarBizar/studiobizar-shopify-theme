@@ -31,7 +31,7 @@ import type { FieldDef, LeafFieldDef } from "../lib/page-builder/fields";
 import { SECTION_PRESETS } from "../lib/page-builder/presets";
 import { SECTIONS, type SectionType } from "../lib/page-builder/registry";
 
-import { LIQUID_SECTIONS } from "./lib/liquid";
+import { LIQUID_SECTIONS, STYLE_SETTING_IDS, STYLE_SNIPPET } from "./lib/liquid";
 
 const ROOT = resolve(__dirname, "..");
 
@@ -40,7 +40,10 @@ const ROOT = resolve(__dirname, "..");
  * only the settings named here are required to exist (the newer layout options).
  */
 const PARTIAL: Partial<Record<SectionType, { file: string; settings: string[] }>> = {
-  media_text: { file: "sb-media-text", settings: ["eyebrow", "image_width", "vertical_align", "link_style", "image_ratio"] },
+  media_text: {
+    file: "sb-media-text",
+    settings: ["eyebrow", "image_width", "vertical_align", "link_style", "image_ratio", ...STYLE_SETTING_IDS],
+  },
 };
 
 type Setting = {
@@ -79,7 +82,10 @@ function markupReadsEverySetting(file: string, schema: Schema) {
     ...(schema.settings ?? []).filter((setting) => setting.id).map((setting) => setting.id!),
     ...(schema.blocks ?? []).flatMap((block) => (block.settings ?? []).filter((setting) => setting.id).map((setting) => setting.id!)),
   ];
+  // The Style tab's settings are read by one snippet, handed the whole settings object.
+  const styled = new RegExp(`render\\s+'${STYLE_SNIPPET}',\\s*settings:\\s*(section\\.settings|s)\\b`).test(source);
   for (const id of new Set(ids)) {
+    if (styled && STYLE_SETTING_IDS.includes(id)) continue;
     check(`${file}: the markup reads "${id}"`, new RegExp(`\\.${id}\\b`).test(source), "a setting the theme offers but never uses");
   }
 }
@@ -120,6 +126,8 @@ function expected(field: LeafFieldDef): { id: string; type: string; field: LeafF
       return [{ id, type: "checkbox", field }];
     case "number":
       return [{ id, type: "range", field }];
+    case "color":
+      return [{ id, type: "color", field }];
     case "product":
       return [{ id, type: "product", field }];
     case "products":
@@ -229,6 +237,11 @@ for (const [type, partial] of Object.entries(PARTIAL) as [SectionType, { file: s
   if (!check(`${type}: theme/sections/${partial.file}.liquid exists`, schema !== null)) continue;
   for (const id of partial.settings) {
     check(`${partial.file}: setting "${id}"`, (schema!.settings ?? []).some((setting) => setting.id === id), "missing");
+  }
+  // Its Style tab settings exist only if the snippet that reads them is rendered.
+  if (partial.settings.some((id) => STYLE_SETTING_IDS.includes(id))) {
+    const source = readFileSync(resolve(ROOT, "theme/sections", `${partial.file}.liquid`), "utf8");
+    check(`${partial.file}: renders "${STYLE_SNIPPET}"`, source.includes(`render '${STYLE_SNIPPET}', settings: s`));
   }
 }
 

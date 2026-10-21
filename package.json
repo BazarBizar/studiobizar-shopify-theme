@@ -38,6 +38,7 @@
     "check:handles": "tsx scripts/check-reserved-handles.ts",
     "check:page-builder-live": "tsx --conditions=react-server scripts/check-page-builder-live.ts",
     "check:page-builder-ui": "tsx --conditions=react-server scripts/check-page-builder-ui.ts",
+    "check:page-builder-style": "tsx --conditions=react-server scripts/check-page-builder-style.ts",
     "check:liquid": "tsx scripts/check-liquid-parity.ts",
     "check:liquid-render": "tsx scripts/check-liquid-render.ts",
     "liquid:icons": "tsx scripts/generate-liquid-icons.tsx",
