@@ -13,19 +13,12 @@ import * as React from "react";
 import { toast } from "sonner";
 
 import { CataloguePicker } from "@/components/admin/catalogue-picker";
+import { DestinationPicker, type DestinationOption } from "@/components/admin/destination-picker";
 import { MediaPicker, type MediaPick } from "@/components/admin/media/media-picker";
 import { MediaRows, MediaSlot, moved } from "@/components/admin/media/media-selection";
 import { SectionIcon } from "@/components/sections/section-icon";
 import { RichTextEditor } from "@/components/admin/rich-text-editor";
 import { Button } from "@/components/admin/ui/button";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/admin/ui/command";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,7 +27,6 @@ import {
 } from "@/components/admin/ui/dropdown-menu";
 import { Input } from "@/components/admin/ui/input";
 import { Label } from "@/components/admin/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/admin/ui/popover";
 import {
   Select,
   SelectContent,
@@ -146,27 +138,8 @@ export function FieldControl({ field, value, onChange, inputId, collections }: C
     case "link":
       return <LinkField value={(value as LinkValue | null) ?? null} onChange={onChange} inputId={inputId} />;
 
-    case "url": {
-      const href = (value as string) ?? "";
-      const unsafe = href !== "" && !isSafeHref(href);
-      return (
-        <div className="space-y-1">
-          <Input
-            id={inputId}
-            value={href}
-            maxLength={2048}
-            placeholder="e.g. /contact or https://www.example.com"
-            aria-invalid={unsafe}
-            onChange={(event) => onChange(event.target.value.trim())}
-          />
-          {unsafe && (
-            <p className="text-destructive text-xs" role="alert">
-              Use a page on this site, like /contact, or a full web address starting with https://.
-            </p>
-          )}
-        </div>
-      );
-    }
+    case "url":
+      return <HrefField inputId={inputId} href={(value as string) ?? ""} onChange={(href) => onChange(href)} />;
 
     case "video": {
       const address = (value as string) ?? "";
@@ -585,7 +558,6 @@ function LinkField({
 }) {
   const label = value?.label ?? "";
   const href = value?.href ?? "";
-  const unsafe = href !== "" && !isSafeHref(href);
 
   const update = (next: Partial<LinkValue>) => {
     const merged = { label, href, ...next };
@@ -601,21 +573,72 @@ function LinkField({
         placeholder="Button text, e.g. shop the collection"
         onChange={(event) => update({ label: event.target.value })}
       />
-      <div className="flex gap-2">
+      <HrefField
+        href={href}
+        // A page picked for an empty button names the button after it.
+        onChange={(next, picked) => update({ href: next, ...(picked && !label ? { label: picked.toLowerCase() } : {}) })}
+      />
+    </div>
+  );
+}
+
+const ANOTHER_WEBSITE = "__another_website__";
+
+/**
+ * Where a link goes, in the page builder — the panel's shared
+ * `DestinationPicker` (as in Menus) over the site's pages and collections, with
+ * "Another website" opening an address field.
+ */
+function HrefField({
+  inputId,
+  href,
+  onChange,
+}: {
+  inputId?: string;
+  href: string;
+  onChange: (href: string, pickedLabel?: string) => void;
+}) {
+  const { linkTargets } = React.useContext(EditorLookupsContext);
+  const onList = linkTargets.some((target) => target.href === href);
+  const [typing, setTyping] = React.useState(href !== "" && !onList);
+  const unsafe = href !== "" && !isSafeHref(href);
+
+  const options: DestinationOption[] = [
+    ...linkTargets.map((target) => ({ value: target.href, label: target.label, group: target.group, hint: target.href })),
+    { value: ANOTHER_WEBSITE, label: "Another website (type the address)", group: "Other" },
+  ];
+
+  return (
+    <div className="space-y-2">
+      <DestinationPicker
+        id={inputId}
+        value={typing ? ANOTHER_WEBSITE : onList ? href : ""}
+        options={options}
+        placeholder="Choose where it goes"
+        onChange={(next) => {
+          if (next === ANOTHER_WEBSITE) {
+            setTyping(true);
+            if (onList) onChange("");
+            return;
+          }
+          setTyping(false);
+          onChange(next, linkTargets.find((target) => target.href === next)?.label);
+        }}
+      />
+      {typing && (
         <Input
           value={href}
           maxLength={2048}
-          placeholder="Pick a page with the button, or paste a web address"
-          aria-label="Button link"
+          placeholder="e.g. https://www.instagram.com/studiobizar"
+          aria-label="Web address"
           aria-invalid={unsafe}
-          onChange={(event) => update({ href: event.target.value.trim() })}
-          className="min-w-0 flex-1 text-xs"
+          onChange={(event) => onChange(event.target.value.trim())}
+          className="text-xs"
         />
-        <LinkPicker onPick={(target) => update({ href: target.href, label: label || target.label.toLowerCase() })} />
-      </div>
+      )}
       {unsafe && (
         <p className="text-destructive text-xs" role="alert">
-          Use a page on this site, like /contact, or a full web address starting with https://.
+          Use a full web address starting with https://, or choose a page from the list.
         </p>
       )}
     </div>
@@ -1029,53 +1052,6 @@ function BlocksField({
  * The site's pages and collections, to point a button at without knowing the
  * address. Pasting a URL still works for anything else.
  */
-function LinkPicker({ onPick }: { onPick: (target: LinkTarget) => void }) {
-  const { linkTargets } = React.useContext(EditorLookupsContext);
-  const [open, setOpen] = React.useState(false);
-  const groups = (["Pages", "Collections", "Site"] as const).filter((group) =>
-    linkTargets.some((target) => target.group === group),
-  );
-
-  if (linkTargets.length === 0) return null;
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button type="button" variant="outline" size="sm" className="shrink-0">
-          Choose
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-72 p-0" align="end">
-        <Command>
-          <CommandInput placeholder="Search pages and collections" />
-          <CommandList>
-            <CommandEmpty>Nothing found.</CommandEmpty>
-            {groups.map((group) => (
-              <CommandGroup key={group} heading={group}>
-                {linkTargets
-                  .filter((target) => target.group === group)
-                  .map((target) => (
-                    <CommandItem
-                      key={`${group}-${target.href}`}
-                      value={`${target.label} ${target.href}`}
-                      onSelect={() => {
-                        onPick(target);
-                        setOpen(false);
-                      }}
-                    >
-                      <span className="min-w-0 flex-1 truncate">{target.label}</span>
-                      <span className="text-muted-foreground shrink-0 text-[11px]">{target.href}</span>
-                    </CommandItem>
-                  ))}
-              </CommandGroup>
-            ))}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
 /** A text value chosen from the ones already in use — the FAQ categories. */
 function SuggestField({
   inputId,

@@ -181,6 +181,20 @@ async function main() {
       await page.getByRole("button", { name: "Redo" }).click();
       check("Redo: puts it back", (await headingInput().inputValue()) === "UI heading one");
 
+      // The button's destination: the shared link picker (as in Menus). Picking a page
+      // names an empty button after it, and the preview draws the link.
+      await aside.getByRole("combobox").filter({ hasText: "Choose where it goes" }).first().click();
+      await page.getByPlaceholder("Search pages and collections").fill("contact");
+      await page.getByRole("option").first().click();
+      const buttonText = await aside.getByPlaceholder(/Button text/).inputValue();
+      const previewLink = page.frameLocator("iframe[title^='Preview']").getByRole("link", { name: buttonText, exact: false }).first();
+      await previewLink.waitFor({ timeout: 20000 });
+      check(
+        "Link picker: choosing a page fills the button and the preview links to it",
+        buttonText === "contact" && /\/contact$/.test((await previewLink.getAttribute("href")) ?? ""),
+        `${buttonText} → ${await previewLink.getAttribute("href")}`,
+      );
+
       // Add section shows a picture of the preset under the pointer, and a preset arrives filled in.
       await aside.getByRole("button", { name: "Back to sections" }).click();
       await page.getByRole("button", { name: "Add section" }).click();

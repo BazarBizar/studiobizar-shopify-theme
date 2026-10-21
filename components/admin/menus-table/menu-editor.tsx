@@ -22,20 +22,12 @@ import { useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
 
+import { DestinationPicker } from "@/components/admin/destination-picker";
 import { SaveBar } from "@/components/admin/save-bar";
 import { Button } from "@/components/admin/ui/button";
 import { Card, CardContent } from "@/components/admin/ui/card";
 import { Input } from "@/components/admin/ui/input";
 import { Label } from "@/components/admin/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/admin/ui/select";
 import type { DestinationOption, Menu, MenuItemNode } from "@/lib/admin/menus";
 import { updateMenuRequest, type MenuItemPayload } from "@/lib/admin/queries";
 import { cn } from "@/lib/utils/cn";
@@ -96,6 +88,15 @@ function parse(destination: string): { type: string; resourceId: string | null }
 
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Where a menu link goes — the panel's shared `DestinationPicker`, the same list
+ * the page builder's buttons use.
+ *
+ * An item can point at something this picker does not offer — a blog, a
+ * customer-account page, a page deleted since. Rather than silently resetting it
+ * to Home, the current value is offered as its own choice so the item keeps its
+ * destination through an unrelated edit.
+ */
 function DestinationSelect({
   value,
   options,
@@ -107,49 +108,9 @@ function DestinationSelect({
   onChange: (value: string) => void;
   id: string;
 }) {
-  const groups = React.useMemo(() => {
-    const map = new Map<string, DestinationOption[]>();
-    for (const option of options) {
-      const list = map.get(option.group) ?? [];
-      list.push(option);
-      map.set(option.group, list);
-    }
-    return [...map];
-  }, [options]);
-
-  /**
-   * An item can point at something this picker does not offer — a blog, a
-   * customer-account page, a page deleted since. Rather than silently resetting
-   * it to Home, the current value is added as its own option so the item keeps
-   * its destination through an unrelated edit.
-   */
   const known = options.some((option) => option.value === value);
-
-  return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger id={id} className="w-full">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {!known && (
-          <SelectGroup>
-            <SelectLabel>Current</SelectLabel>
-            <SelectItem value={value}>The link it has now (kept as is)</SelectItem>
-          </SelectGroup>
-        )}
-        {groups.map(([group, list]) => (
-          <SelectGroup key={group}>
-            <SelectLabel>{group}</SelectLabel>
-            {list.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        ))}
-      </SelectContent>
-    </Select>
-  );
+  const all = known ? options : [{ value, label: "The link it has now (kept as is)", group: "Current" }, ...options];
+  return <DestinationPicker id={id} value={value} options={all} onChange={onChange} />;
 }
 
 function Row({

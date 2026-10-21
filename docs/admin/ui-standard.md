@@ -8,7 +8,7 @@ in the panel. When something here changes, change it in the shared component, ne
 
 | Area | Found | Standard (source of truth) |
 |---|---|---|
-| Media selection | `MediaPicker` (grid, search, upload, infinite scroll) on single images; a **list** dialog with no upload for the Project gallery and product "photos in a room" (captioned images); lists of photos added **one per dialog** | `MediaPicker` for every media choice, including captioned images, with single and multiple modes |
+| Media selection | `MediaPicker` (grid, search, upload, infinite scroll) on single images; a **list** dialog with no upload for the Project gallery and product "photos in a room" (captioned images); lists of photos added **one per dialog** | `MediaPicker` for every media choice, over the same library (all Shopify files), including captioned images, with single and multiple modes |
 | Selected media | Four previews: `MediaField`, `MediaListField`, the builder's `ImageField` / `ImageListField`, and the gallery rows, at 48–96px with different buttons | `MediaSlot` (one) and `MediaRows` (many) in `components/admin/media/media-selection.tsx` |
 | Record pickers | Products and collections in a **dialog** in forms (`CataloguePicker`), but a **popover** in the builder and on Collections › Featured; designers and projects in a third, separate dialog | `RecordPickerDialog` + `RecordRows` (`components/admin/record-picker.tsx`) for every record, with the same click-to-select and **Select** / **Add N** as the media picker |
 | Detail headers | Actions and status in an ad-hoc row under `DetailHeader` (products, collections, customers, entries) | `DetailHeader` with `status` and `actions` props, on the title line |
@@ -18,6 +18,7 @@ in the panel. When something here changes, change it in the shared component, ne
 | Save | Sticky bar with status + Discard + Save on most forms; page settings had no Discard or status; menus had no Discard | `SaveBar` everywhere, with a browser warning when leaving with unsaved changes |
 | Confirmations | Deleting an entry kept its dialog open with a spinner; deleting a page closed at once; leaving page settings used `window.confirm` | `ConfirmDialog` (stays open while working) and `useConfirm()` for the "leave anyway?" question |
 | Upload | Two copies of upload + toasts (picker, Media library) | `useFileUpload()` + `UploadButton` |
+| Link destinations | A plain dropdown without search in Menus; a separate "Choose" popover beside a text field for page-builder buttons; a bare text field for a section's address | `DestinationPicker`: one searchable, grouped list everywhere, with "Another website" opening an address field |
 | Empty states | One-line `<p>`s worded and spaced differently | `EmptyState` |
 
 ## Shared components
@@ -36,6 +37,7 @@ in the panel. When something here changes, change it in the shared component, ne
 | `MediaSlot`, `MediaRows`, `MediaThumb` | `components/admin/media/media-selection.tsx` | Showing chosen media |
 | `useFileUpload`, `UploadButton` | `components/admin/media/upload.tsx` | Every upload |
 | `RecordPickerDialog`, `RecordRows` | `components/admin/record-picker.tsx` | Choosing and showing records |
+| `DestinationPicker` | `components/admin/destination-picker.tsx` | Where a link goes (menus, buttons, addresses) |
 | `CataloguePicker`, `ReferencePicker` | `components/admin/catalogue-picker.tsx`, `reference-picker.tsx` | Products/collections; metaobject references (photos go to the media picker) |
 
 Before writing a new header, picker, dialog, save area or empty message, use one of these. If one
@@ -87,8 +89,8 @@ Labels are verbs: Save, Discard, Upload, Choose image, Add photos, Remove, Delet
 - **Dialog** for choosing things (media, records) and for forms that need focus.
 - **ConfirmDialog** for anything irreversible. It stays open with a spinner until the action
   finishes; Cancel keeps the focus.
-- **Popover** only for small inline helpers (a link target next to an input). Never for choosing
-  media or records.
+- **Popover** only for picking one value for a field, like a select with search (`DestinationPicker`).
+  Never for choosing media or records.
 
 ## Media
 
