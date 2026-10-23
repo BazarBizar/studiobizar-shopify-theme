@@ -19,6 +19,7 @@
  *   link → `<id>_label` (text) + `<id>_url` (url) · url → url · video → video_url
  *   select → select · toggle → checkbox · number → range · product → product
  *   blocks → the section's blocks, one per block type, `max_blocks` = max
+ *   a field marked `nextOnly` → nothing yet (Next first, by decision)
  *   universal surface / rhythm / hideOn → `surface` / `rhythm` / `hide_on`
  *   (rhythm's `default` is the theme's `theme`).
  */
@@ -32,6 +33,7 @@ import { SECTION_PRESETS } from "../lib/page-builder/presets";
 import { SECTIONS, type SectionType } from "../lib/page-builder/registry";
 
 import { LIQUID_SECTIONS, STYLE_SETTING_IDS, STYLE_SNIPPET } from "./lib/liquid";
+import { DESIGN_SNIPPET, SECTION_PREFIX } from "./lib/liquid-design";
 
 const ROOT = resolve(__dirname, "..");
 
@@ -82,10 +84,11 @@ function markupReadsEverySetting(file: string, schema: Schema) {
     ...(schema.settings ?? []).filter((setting) => setting.id).map((setting) => setting.id!),
     ...(schema.blocks ?? []).flatMap((block) => (block.settings ?? []).filter((setting) => setting.id).map((setting) => setting.id!)),
   ];
-  // The Style tab's settings are read by one snippet, handed the whole settings object.
+  // The Style tab's settings are read by one snippet, handed the whole settings object;
+  // it hands the design settings (`d_*`) on to `sb-design`.
   const styled = new RegExp(`render\\s+'${STYLE_SNIPPET}',\\s*settings:\\s*(section\\.settings|s)\\b`).test(source);
   for (const id of new Set(ids)) {
-    if (styled && STYLE_SETTING_IDS.includes(id)) continue;
+    if (styled && (STYLE_SETTING_IDS.includes(id) || id.startsWith(SECTION_PREFIX))) continue;
     check(`${file}: the markup reads "${id}"`, new RegExp(`\\.${id}\\b`).test(source), "a setting the theme offers but never uses");
   }
 }
@@ -101,6 +104,8 @@ function schemaOf(file: string): Schema | null {
 
 /** What one Next field must look like in the theme, as one or two settings. */
 function expected(field: LeafFieldDef): { id: string; type: string; field: LeafFieldDef }[] {
+  // Next only for now (`nextOnly` in lib/page-builder/fields.ts): not required of the theme yet.
+  if (field.nextOnly) return [];
   const id = snake(field.key);
   switch (field.kind) {
     case "text":
@@ -261,6 +266,25 @@ try {
   });
 } catch (error) {
   check("every theme section schema matches the page builder", false, String((error as { stderr?: Buffer }).stderr ?? "").trim() || "run: yarn liquid:schemas");
+}
+
+// The design snippet, Site style and fonts are generated from the design value.
+check(
+  `${STYLE_SNIPPET} hands the design settings to ${DESIGN_SNIPPET}`,
+  readFileSync(resolve(ROOT, "theme/snippets", `${STYLE_SNIPPET}.liquid`), "utf8").includes(
+    `render '${DESIGN_SNIPPET}', settings: st, prefix: '${SECTION_PREFIX}'`,
+  ),
+);
+try {
+  execFileSync(process.execPath, [resolve(ROOT, "node_modules/tsx/dist/cli.mjs"), resolve(ROOT, "scripts/generate-liquid-design.ts"), "--check"], {
+    stdio: "pipe",
+  });
+} catch (error) {
+  check(
+    "the theme's design snippet, Site style and fonts match the page builder",
+    false,
+    String((error as { stderr?: Buffer }).stderr ?? "").trim() || "run: yarn liquid:design",
+  );
 }
 
 // The icon snippet is generated from the Next icon set.

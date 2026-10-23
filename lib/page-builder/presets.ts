@@ -107,8 +107,8 @@ const VARIANTS: SectionPreset[] = [
   {
     id: "slideshow",
     type: "slideshow",
-    label: "Slideshow",
-    description: "Several photographs in turn, each with its own heading and button.",
+    label: "Hero slider",
+    description: "Slides with their own photo, heading and buttons — each one designed on its own.",
     category: "Banners",
     settings: {
       slides: [

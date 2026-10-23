@@ -3,11 +3,13 @@
 import { ArrowLeft, ArrowRight, Pause, Play } from "lucide-react";
 import * as React from "react";
 
+// The zod-free half: no validation code in a visitor's browser.
+import { designStyle, type DesignValue } from "@/lib/page-builder/design-style";
 import type { ShopifyImage } from "@/lib/shopify/types";
 import { cn } from "@/lib/utils/cn";
 
-import { BANNER_HEIGHT, BannerCopyBlock, BannerImage, type BannerCopy } from "./image-banner";
-import { alignFromPosition, ImagePlaceholder, Overlay, positionClasses, toneSurface, type Position } from "./shared";
+import { BANNER_HEIGHT, BANNER_HEIGHT_MOBILE, BannerCopyBlock, BannerImage, type BannerCopy, type CopyWidth } from "./image-banner";
+import { alignFromPosition, ImagePlaceholder, mobilePositionClasses, Overlay, positionClasses, toneSurface, type Position } from "./shared";
 
 const REDUCED = "(prefers-reduced-motion: reduce)";
 const subscribeReduced = (onChange: () => void) => {
@@ -19,9 +21,18 @@ const subscribeReduced = (onChange: () => void) => {
 export type Slide = {
   id: string;
   image: ShopifyImage | null;
+  /** A crop for phones; the main image when absent. */
+  mobileImage?: ShopifyImage | null;
   copy: BannerCopy;
   position: Position;
+  /** Where the copy sits on phones, when that differs. */
+  positionMobile?: Position | null;
+  textWidth?: CopyWidth;
   tone: "light" | "dark";
+  /** This slide's own darkening; the slider's when absent. */
+  overlay?: { percent: number; color: string | null } | null;
+  /** Typography and the like, for this slide only — see `lib/page-builder/design.ts`. */
+  design?: DesignValue;
 };
 
 /**
@@ -37,19 +48,25 @@ export type Slide = {
 export function Slideshow({
   slides,
   height,
+  heightMobile,
   overlay,
   autoplay,
   interval,
   controls,
+  transition = "fade",
   placeholder,
   priority = false,
 }: {
   slides: Slide[];
   height: "small" | "medium" | "large" | "screen";
+  /** On phones, when it differs. */
+  heightMobile?: "small" | "medium" | "large" | "screen" | null;
   overlay: number;
   autoplay: boolean;
   interval: number;
   controls: "both" | "dots" | "arrows";
+  /** How one slide gives way to the next. Reduced motion: always a fade. */
+  transition?: "fade" | "slide" | "zoom";
   placeholder?: boolean;
   /** At the top of the page: the first slide loads at once. */
   priority?: boolean;
@@ -77,38 +94,77 @@ export function Slideshow({
     <section
       aria-roledescription="carousel"
       aria-label="Slideshow"
-      className={cn("bg-off-black relative isolate overflow-hidden", BANNER_HEIGHT[height])}
+      className={cn(
+        "bg-off-black relative isolate overflow-hidden",
+        BANNER_HEIGHT[height],
+        heightMobile && BANNER_HEIGHT_MOBILE[heightMobile],
+      )}
       onMouseEnter={() => setHeld(true)}
       onMouseLeave={() => setHeld(false)}
       onFocusCapture={() => setHeld(true)}
       onBlurCapture={() => setHeld(false)}
     >
-      {slides.map((slide, position) => (
-        <div
-          key={slide.id}
-          role="group"
-          aria-roledescription="slide"
-          aria-label={`${position + 1} of ${count}`}
-          aria-hidden={position !== index}
-          inert={position !== index}
-          className={cn(
-            "absolute inset-0 flex transition-opacity duration-700 ease-in-out",
-            position === index ? "opacity-100" : "pointer-events-none opacity-0",
-          )}
-        >
-          {slide.image ? <BannerImage image={slide.image} priority={priority && position === 0} /> : placeholder && <ImagePlaceholder />}
-          <Overlay percent={slide.image ? overlay : 0} />
+      {slides.map((slide, position) => {
+        const designed = designStyle(slide.design);
+        const active = position === index;
+        // Slide: each one stands where its place in the row puts it, and the row moves.
+        const sliding = transition === "slide" && !reduced;
+        const offset = position - index;
+        return (
           <div
-            data-surface={toneSurface(slide.tone)}
+            key={slide.id}
+            role="group"
+            aria-roledescription="slide"
+            aria-label={`${position + 1} of ${count}`}
+            aria-hidden={position !== index}
+            inert={position !== index}
+            {...designed.attrs}
+            style={{ ...(designed.style as React.CSSProperties), ...(sliding ? { transform: `translateX(${offset * 100}%)` } : {}) }}
             className={cn(
-              "sb-container py-section text-foreground relative flex w-full flex-col pb-20",
-              positionClasses(slide.position),
+              "absolute inset-0 flex ease-in-out",
+              sliding ? "transition-transform duration-700" : "transition-opacity duration-700",
+              !sliding && (active ? "opacity-100" : "opacity-0"),
+              !active && "pointer-events-none",
             )}
           >
-            <BannerCopyBlock copy={slide.copy} align={alignFromPosition(slide.position)} />
+            {/* The slow zoom (Ken Burns): the active photograph grows a little over its time on screen. */}
+            <div
+              className={cn(
+                "absolute inset-0 overflow-hidden",
+                transition === "zoom" && "transition-transform ease-out motion-reduce:transition-none motion-reduce:transform-none",
+                transition === "zoom" && (active ? "scale-[1.08]" : "scale-100"),
+              )}
+              style={transition === "zoom" && active ? { transitionDuration: `${interval + 1}s` } : undefined}
+            >
+              {slide.image ? (
+                <BannerImage image={slide.image} mobileImage={slide.mobileImage} priority={priority && position === 0} />
+              ) : (
+                placeholder && <ImagePlaceholder />
+              )}
+            </div>
+            <Overlay
+              percent={slide.image ? (slide.overlay?.percent ?? overlay) : 0}
+              color={slide.overlay?.color}
+              max={slide.overlay ? 90 : 80}
+            />
+            <div
+              data-surface={toneSurface(slide.tone)}
+              className={cn(
+                "sb-container py-section text-foreground relative flex w-full flex-col pb-20",
+                positionClasses(slide.position),
+                slide.positionMobile && mobilePositionClasses(slide.positionMobile),
+              )}
+            >
+              <BannerCopyBlock
+                copy={slide.copy}
+                align={alignFromPosition(slide.position)}
+                mobileAlign={slide.positionMobile ? alignFromPosition(slide.positionMobile) : undefined}
+                width={slide.textWidth}
+              />
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       {count > 1 && (
         <div

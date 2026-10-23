@@ -2,6 +2,8 @@ import { defineSection, OWN_GROUND } from "./define-section";
 import {
   block,
   blocks,
+  color,
+  design,
   image,
   link,
   number,
@@ -149,7 +151,7 @@ export const imageBanner = defineSection({
     overlay(),
     toggle("panel", "Put the text on a panel", {
       group: "layout",
-      help: "A solid block behind the copy — earth under dark text, off-black under light text.",
+      help: "A solid block behind the text — earth under dark text, off-black under light text.",
     }),
   ],
   // The photograph is the ground; a Background setting would change nothing.
@@ -158,10 +160,25 @@ export const imageBanner = defineSection({
   summaryKey: "title",
 });
 
+/** "Same as desktop", then the nine places — for a slide's position on phones. */
+const MOBILE_POSITIONS = [{ value: "same", label: "Same as desktop" }, ...POSITIONS] as const;
+
+const TEXT_WIDTHS = [
+  { value: "wide", label: "Wide" },
+  { value: "medium", label: "Medium" },
+  { value: "narrow", label: "Narrow" },
+  { value: "full", label: "Full width" },
+] as const;
+
+/**
+ * THE HERO SLIDER. Every slide is its own design: photograph (and a phone crop), copy,
+ * two buttons, where the copy sits on desktop and on phones, its own darkening and
+ * colour, its own typography. Fields marked `nextOnly` are not in the Liquid theme yet.
+ */
 export const slideshow = defineSection({
   type: "slideshow",
-  label: "Slideshow",
-  description: "Full-width slides, each with its own photograph, heading and button. Plays on its own or by arrows.",
+  label: "Hero slider",
+  description: "Full-width slides, each designed on its own — photo, text, buttons, position and style. Plays by itself or by arrows.",
   category: "Banners",
   fields: [
     blocks("slides", "Slides", {
@@ -174,13 +191,45 @@ export const slideshow = defineSection({
           "Slide",
           [
             image("image", "Image", { required: true }),
+            image("mobileImage", "Image on phones", {
+              nextOnly: true,
+              help: "Optional — a taller crop for narrow screens. Empty uses the image above.",
+            }),
             text("eyebrow", "Small label", { max: 60 }),
             text("title", "Heading", { max: 160 }),
             textarea("body", "Text", { max: 400 }),
             link("link", "Button"),
             select("buttonStyle", "Button style", BUTTON_STYLES),
-            select("position", "Text position", POSITIONS, { default: "bottom-left", display: "position" }),
-            select("tone", "Text colour", TEXT_TONES),
+            link("link2", "Second button", { nextOnly: true }),
+            select("buttonStyle2", "Second button style", BUTTON_STYLES, { default: "outline", nextOnly: true }),
+            select("position", "Text position", POSITIONS, { default: "bottom-left", display: "position", group: "style" }),
+            select("positionMobile", "Text position on phones", MOBILE_POSITIONS, { default: "same", group: "style", nextOnly: true }),
+            select("textWidth", "Text width", TEXT_WIDTHS, { default: "wide", group: "style", nextOnly: true }),
+            select("tone", "Text colour", TEXT_TONES, { group: "style" }),
+            select(
+              "overlayMode",
+              "Darkening",
+              [
+                { value: "slider", label: "Same as the other slides" },
+                { value: "own", label: "This slide’s own" },
+              ],
+              { group: "style", nextOnly: true },
+            ),
+            number("slideOverlay", "This slide’s darkening (%)", {
+              min: 0,
+              max: 90,
+              default: 30,
+              group: "style",
+              nextOnly: true,
+              when: { field: "overlayMode", is: ["own"] },
+            }),
+            color("overlayColor", "Darkening colour", {
+              group: "style",
+              nextOnly: true,
+              when: { field: "overlayMode", is: ["own"] },
+              help: "Empty uses black.",
+            }),
+            design("design", "Typography & buttons", { group: "style", parts: ["typography", "buttons"], nextOnly: true }),
           ],
           { summaryKey: "title" },
         ),
@@ -191,6 +240,12 @@ export const slideshow = defineSection({
       default: "large",
       group: "layout",
     }),
+    select(
+      "heightMobile",
+      "Height on phones",
+      [{ value: "same", label: "Same as desktop" }, ...BANNER_HEIGHTS.filter((option) => option.value !== "adapt")],
+      { default: "same", group: "layout", nextOnly: true },
+    ),
     overlay(),
     toggle("autoplay", "Change slides automatically", { default: true, group: "layout" }),
     number("interval", "Seconds per slide", {
@@ -210,15 +265,31 @@ export const slideshow = defineSection({
       ],
       { group: "layout" },
     ),
+    select(
+      "transition",
+      "Change between slides",
+      [
+        { value: "fade", label: "Fade" },
+        { value: "slide", label: "Slide sideways" },
+        { value: "zoom", label: "Fade, with a slow zoom" },
+      ],
+      {
+        group: "layout",
+        nextOnly: true,
+        help: "Visitors who ask their device for less motion always get a plain fade.",
+      },
+    ),
   ],
   universal: ["hideOn"],
   omitStyle: OWN_GROUND,
+  // Each slide places its text with "Text position".
+  textAlign: false,
 });
 
 export const ctaBanner = defineSection({
   type: "cta_banner",
   label: "Call to action",
-  description: "One message and one or two buttons, on a colour or a photograph — the band that closes a landing page.",
+  description: "One message and one or two buttons, on a colour or a photograph — the section that closes a landing page.",
   category: "Banners",
   fields: [
     ...intro({ titleRequired: true }),
@@ -738,7 +809,7 @@ export const logoList = defineSection({
 export const featuredProduct = defineSection({
   type: "featured_product",
   label: "Featured product",
-  description: "One product given the room of a band — its photographs, its story and a link to it.",
+  description: "One product with a whole section to itself — its photographs, its story and a link to it.",
   category: "Catalogue",
   fields: [
     product("product", "Product", { required: true }),
@@ -777,7 +848,7 @@ export const featuredProduct = defineSection({
 export const spacer = defineSection({
   type: "spacer",
   label: "Spacer",
-  description: "Empty space between two bands, with an optional line — for the breathing room a composition needs.",
+  description: "Empty space between two sections, with an optional line — for a little breathing room.",
   category: "Layout",
   fields: [
     select(
@@ -812,7 +883,7 @@ export const spacer = defineSection({
 export const newsletter = defineSection({
   type: "newsletter",
   label: "Newsletter sign-up",
-  description: "An email field and a short invitation — the same sign-up the footer has, given its own band.",
+  description: "An email field and a short invitation — the same sign-up the footer has, in its own section.",
   category: "Site",
   fields: [
     text("title", "Heading", { max: 160 }),

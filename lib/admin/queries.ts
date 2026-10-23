@@ -338,6 +338,18 @@ export async function convertToBuilderRequest(id: string): Promise<{ revision: n
   return post<{ revision: number }>("/api/admin/pages/builder", { operation: "builderConvert", id });
 }
 
+/** The Theme Builder (header and footer): the draft goes in whole; the server validates it. */
+export async function themeSaveRequest(input: { baseRevision: number; content: unknown }): Promise<{ revision: number }> {
+  return post<{ revision: number }>("/api/admin/theme-builder", { operation: "themeSaveDraft", ...input });
+}
+
+export async function themeActionRequest(
+  operation: "themePublish" | "themeDiscard" | "themeRollback",
+  baseRevision: number,
+): Promise<{ revision: number }> {
+  return post<{ revision: number }>("/api/admin/theme-builder", { operation, baseRevision });
+}
+
 export async function builderActionRequest(
   operation: "builderPublish" | "builderDiscard" | "builderRollback",
   input: { id: string; baseRevision: number },
@@ -345,15 +357,17 @@ export async function builderActionRequest(
   return post<{ revision: number }>("/api/admin/pages/builder", { operation, ...input });
 }
 
-export type ProductOption = { id: string; title: string; handle: string; thumbnail: string | null };
+export type ProductOption = { id: string; title: string; handle: string; thumbnail: string | null; status: string };
 
 /**
- * Active products matching a search, for the builder's product picker. The same
- * list endpoint the Products screen uses — no new route, no new query.
+ * Products by name, for the pickers — the same list endpoint the Products screen uses.
+ * Active ones by default: a link or a reference to a draft would point at a page
+ * visitors cannot open. A collection can take drafts too
+ * (`includeDrafts`): putting a product in place before it goes on sale is normal.
  */
-export function useProductSearch(search: string, enabled = true) {
+export function useProductSearch(search: string, enabled = true, { includeDrafts = false } = {}) {
   return useQuery({
-    queryKey: ["admin", "product-search", search],
+    queryKey: ["admin", "product-search", search, includeDrafts],
     enabled,
     staleTime: 30_000,
     queryFn: async () => {
@@ -361,11 +375,11 @@ export function useProductSearch(search: string, enabled = true) {
         operation: "products",
         first: 20,
         search: search || null,
-        status: ["ACTIVE"],
+        status: includeDrafts ? ["ACTIVE", "DRAFT"] : ["ACTIVE"],
         sortKey: "TITLE",
         reverse: false,
       });
-      return page.products.map(({ id, title, handle, thumbnail }) => ({ id, title, handle, thumbnail }));
+      return page.products.map(({ id, title, handle, thumbnail, status }) => ({ id, title, handle, thumbnail, status }));
     },
   });
 }

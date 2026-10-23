@@ -6,10 +6,13 @@ import { PageBuilder } from "@/components/admin/page-builder/page-builder";
 import { PageEditorBar } from "@/components/admin/pages-table/page-editor-bar";
 import { Button } from "@/components/admin/ui/button";
 import { listCollections } from "@/lib/admin/collections";
+import { getExampleMedia } from "@/lib/admin/example-media";
+import { getThemeState } from "@/lib/admin/theme-builder";
+import { linkTargetsFrom } from "@/lib/admin/link-targets";
 import { listAllEntries } from "@/lib/admin/metaobjects";
 import { BuilderError, getBuilderState } from "@/lib/admin/page-builder";
 import { listPages, pageIdFromParam, PageNotFoundError } from "@/lib/admin/pages";
-import { ROUTES, routeForPageHandle, shopifyUrlToRoute } from "@/lib/routes";
+import { routeForPageHandle } from "@/lib/routes";
 
 export const metadata = { title: "Content" };
 
@@ -76,25 +79,17 @@ export default async function PageContentScreen({ params }: PageProps<"/admin/pa
     listPages(),
     listAllEntries("faq_item").catch(() => []),
   ]);
+  // What a newly added section is filled with, so it never arrives empty; and the
+  // site's saved colours (Header & footer → Site style), for every colour picker.
+  const [examples, savedColours] = await Promise.all([
+    getExampleMedia(collections),
+    getThemeState()
+      .then((theme) => theme.draft.global.colors)
+      .catch(() => []),
+  ]);
 
-  /** Where a button can point, offered by the link picker. Visible pages only — a link to a hidden one 404s. */
-  const linkTargets = [
-    ...pages
-      .filter((entry) => entry.isPublished)
-      .map((entry) => ({ label: entry.title, href: routeForPageHandle(entry.handle), group: "Pages" as const })),
-    ...collections
-      .filter((collection) => collection.handle !== "frontpage")
-      .map((collection) => ({
-        label: collection.title,
-        href: shopifyUrlToRoute(`/collections/${collection.handle}`),
-        group: "Collections" as const,
-      })),
-    { label: "Shop", href: ROUTES.shop, group: "Site" as const },
-    { label: "All collections", href: ROUTES.collections, group: "Site" as const },
-    { label: "Projects", href: ROUTES.projects, group: "Site" as const },
-    { label: "Designers", href: ROUTES.designers, group: "Site" as const },
-    { label: "Contact", href: ROUTES.contact, group: "Site" as const },
-  ];
+  /** Where a button can point, offered by the link picker. */
+  const linkTargets = linkTargetsFrom(pages, collections);
 
   /** The categories the FAQ entries use, in first-seen order. */
   const faqCategories = [
@@ -132,7 +127,7 @@ export default async function PageContentScreen({ params }: PageProps<"/admin/pa
           title: collection.title,
           thumbnail: collection.image?.url ?? null,
         }))}
-      lookups={{ linkTargets, faqCategories }}
+      lookups={{ linkTargets, faqCategories, examples, savedColours }}
       publicPath={routeForPageHandle(state.page.handle)}
     />
   );

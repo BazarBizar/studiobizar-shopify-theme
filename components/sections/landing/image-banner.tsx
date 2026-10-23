@@ -11,9 +11,11 @@ import {
   HEADING,
   ImagePlaceholder,
   ITEMS_ALIGN,
+  ITEMS_ALIGN_MOBILE,
   Overlay,
   positionClasses,
   TEXT_ALIGN,
+  TEXT_ALIGN_MOBILE,
   toneSurface,
   type Align,
   type HeadingSize,
@@ -30,6 +32,23 @@ export const BANNER_HEIGHT: Record<Exclude<BannerHeight, "adapt">, string> = {
   screen: "min-h-svh",
 };
 
+/** A different height on phones only — overrides the phone part of `BANNER_HEIGHT`. */
+export const BANNER_HEIGHT_MOBILE: Record<Exclude<BannerHeight, "adapt">, string> = {
+  small: "max-sm:min-h-[24rem]",
+  medium: "max-sm:min-h-[30rem]",
+  large: "max-sm:min-h-[36rem]",
+  screen: "max-sm:min-h-svh",
+};
+
+export type CopyWidth = "wide" | "medium" | "narrow" | "full";
+
+const COPY_WIDTH: Record<CopyWidth, string> = {
+  wide: "max-w-[46rem]",
+  medium: "max-w-[36rem]",
+  narrow: "max-w-[28rem]",
+  full: "max-w-none",
+};
+
 export type BannerCopy = {
   eyebrow?: string;
   title?: string;
@@ -42,9 +61,31 @@ export type BannerCopy = {
 };
 
 /** The copy block of a banner or a slide: label, heading, text, buttons. */
-export function BannerCopyBlock({ copy, align, className }: { copy: BannerCopy; align: Align; className?: string }) {
+export function BannerCopyBlock({
+  copy,
+  align,
+  mobileAlign,
+  width = "wide",
+  className,
+}: {
+  copy: BannerCopy;
+  align: Align;
+  /** On phones, when the copy sits differently there. */
+  mobileAlign?: Align;
+  width?: CopyWidth;
+  className?: string;
+}) {
   return (
-    <div className={cn("flex max-w-[46rem] flex-col", ITEMS_ALIGN[align], TEXT_ALIGN[align], className)}>
+    <div
+      className={cn(
+        "flex flex-col",
+        COPY_WIDTH[width],
+        ITEMS_ALIGN[align],
+        TEXT_ALIGN[align],
+        mobileAlign && [ITEMS_ALIGN_MOBILE[mobileAlign], TEXT_ALIGN_MOBILE[mobileAlign]],
+        className,
+      )}
+    >
       <Eyebrow>{copy.eyebrow}</Eyebrow>
       {copy.title?.trim() && <h2 className={HEADING[copy.headingSize]}>{copy.title}</h2>}
       {copy.body?.trim() && <p className="text-body mt-5 max-w-[38rem] whitespace-pre-line">{copy.body}</p>}
@@ -54,6 +95,7 @@ export function BannerCopyBlock({ copy, align, className }: { copy: BannerCopy; 
         secondary={copy.secondary}
         secondaryStyle={copy.secondaryStyle}
         align={align}
+        mobileAlign={mobileAlign}
         className="mt-8"
       />
     </div>

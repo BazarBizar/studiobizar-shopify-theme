@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   blockProblems,
   color,
+  design,
   fieldDefault,
   fieldSchema,
   isFieldActive,
@@ -101,7 +102,7 @@ const SPACING = { group: "style", when: { field: "customSpacing", is: [true] } }
 const LINED = { group: "style", when: { field: "border", is: ["all", "top", "bottom", "y"] } } as const;
 
 const STYLE_FIELDS = [
-  color("bgColor", "Background colour", { group: "style", help: "Overrides the background above. Leave empty to use it." }),
+  color("bgColor", "Background colour", { group: "style", help: "Your own colour instead of the Background choice above. Leave empty to keep that choice." }),
   color("textColor", "Text colour", { group: "style", help: "Headings, text and buttons in this section." }),
   toggle("customSpacing", "Custom spacing", {
     group: "style",
@@ -115,6 +116,8 @@ const STYLE_FIELDS = [
   number("borderWidth", "Line thickness (px)", { ...LINED, min: 1, max: 10, default: 1 }),
   color("borderColor", "Line colour", { ...LINED, help: "Leave empty for a soft line in the text colour." }),
   number("radius", "Rounded corners (px)", { group: "style", min: 0, max: 48, default: 0 }),
+  // Typography, background image, shadow, width, per-device values — see `design.ts`.
+  design("design", "Design", { group: "style" }),
 ] as const;
 
 export type StyleKey = (typeof STYLE_FIELDS)[number]["key"];
@@ -137,6 +140,7 @@ export const NEUTRAL_STYLE: StyleSettings = {
   borderWidth: 1,
   borderColor: "",
   radius: 0,
+  design: {},
 };
 
 export type UniversalSettings = SettingsOf<typeof UNIVERSAL_FIELDS> & StyleSettings;
@@ -183,6 +187,8 @@ export type SectionDefinition<
    * hunting for fields that are not here.
    */
   source: (settings: S) => ContentSource | null;
+  /** Whether the Style tab offers "Text alignment" — off where the section places its text itself. */
+  textAlign: boolean;
 };
 
 /** A screen in the panel that holds what a section shows. */
@@ -215,6 +221,11 @@ export function defineSection<
    * Offering them would be offering a control that visibly does nothing.
    */
   omitStyle?: readonly StyleKey[];
+  /**
+   * Off where the section places its own text — a slideshow sets a position per
+   * slide — so a section-wide "Text alignment" would visibly do nothing.
+   */
+  textAlign?: boolean;
   /** The settings key whose value labels the section in the list. */
   summaryKey?: F[number]["key"];
   hidden?: boolean;
@@ -278,5 +289,6 @@ export function defineSection<
     missing,
     hidden: definition.hidden ?? false,
     source: definition.source ?? (() => null),
+    textAlign: definition.textAlign ?? true,
   };
 }

@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+import { designSchema, readDesign, type DesignValue } from "./design";
+import { HEX_COLOR, imageRefSchema, type ImageRef } from "./value-schemas";
+
+export { HEX_COLOR, imageRefSchema, type ImageRef };
+
 /**
  * THE VOCABULARY a section's settings are written in.
  *
@@ -23,18 +28,6 @@ import { z } from "zod";
 /* -------------------------------------------------------------------------- *
  * Value shapes
  * -------------------------------------------------------------------------- */
-
-/**
- * A snapshot of a Shopify file, taken when it was picked. Rendering from the
- * snapshot costs no query; the gid is kept so the panel can re-resolve it.
- */
-export type ImageRef = {
-  id: string;
-  url: string;
-  altText: string | null;
-  width: number | null;
-  height: number | null;
-};
 
 /** A product or collection. `title` is for the panel's list; `handle` is what renders. */
 export type ResourceRef = { id: string; handle: string; title: string };
@@ -72,6 +65,12 @@ type Base<K extends string> = {
    * pick-list of them, so a typo cannot quietly match nothing.
    */
   suggest?: "faqCategories";
+  /**
+   * Rendered by the Next storefront only, for now: the Liquid theme does not draw
+   * it yet (by decision — Next first). The schema generator and `check:liquid` skip
+   * it, so it is one grep away when the theme catches up: `nextOnly: true`.
+   */
+  nextOnly?: boolean;
 };
 
 export type SelectOption = { value: string; label: string };
@@ -101,7 +100,32 @@ export type LeafFieldDef<K extends string = string> =
   | (Base<K> & { kind: "product" })
   | (Base<K> & { kind: "products"; max: number })
   | (Base<K> & { kind: "collection" })
-  | (Base<K> & { kind: "collections"; max: number });
+  | (Base<K> & { kind: "collections"; max: number })
+  | (Base<K> & { kind: "design"; parts: readonly DesignPart[] });
+
+/**
+ * The parts of the design panel a `design` field offers. A section offers them all;
+ * a slide, which has its own position and size controls, offers fewer.
+ */
+export type DesignPart =
+  | "typography"
+  | "buttons"
+  | "background"
+  | "spacing"
+  | "effects"
+  | "images"
+  | "layout"
+  | "visibility";
+export const ALL_DESIGN_PARTS: readonly DesignPart[] = [
+  "typography",
+  "buttons",
+  "background",
+  "spacing",
+  "effects",
+  "images",
+  "layout",
+  "visibility",
+];
 
 /**
  * A BLOCK: one repeatable, reorderable piece inside a section — a question in a
@@ -155,6 +179,7 @@ type ValueByKind = {
   collection: ResourceRef | null;
   collections: ResourceRef[];
   blocks: BlockValue[];
+  design: DesignValue;
 };
 
 export type FieldValue<F extends FieldDef> = ValueByKind[F["kind"]];
@@ -274,8 +299,6 @@ export const color = <K extends string>(key: K, label: string, opts: Opts = {}) 
   kind: "color" as const,
 });
 
-export const HEX_COLOR = /^#[0-9a-f]{6}$/i;
-
 export const product = <K extends string>(key: K, label: string, opts: Opts = {}) => ({
   ...opts,
   key,
@@ -303,6 +326,16 @@ export const collections = <K extends string>(key: K, label: string, opts: Opts 
   label,
   kind: "collections" as const,
 });
+
+/**
+ * The advanced look — typography, background, effects, layout, per device. One
+ * object (see `design.ts`), empty by default, so adding it changes nothing.
+ */
+export const design = <K extends string>(
+  key: K,
+  label: string,
+  opts: Opts & { parts?: readonly DesignPart[] } = {},
+) => ({ ...opts, key, label, kind: "design" as const, parts: opts.parts ?? ALL_DESIGN_PARTS });
 
 export const block = <const T extends string, const F extends readonly LeafFieldDef[]>(
   type: T,
@@ -390,21 +423,6 @@ export function parseVideoUrl(value: string): VideoRef | null {
   return null;
 }
 
-/**
- * Only Shopify's CDN. `next.config.ts` allows a handful of image hosts for the
- * Instagram feed; a builder image has no business being any of them, and an
- * arbitrary host here would be an arbitrary request from every visitor.
- */
-const CDN_URL = /^https:\/\/cdn\.shopify\.com\/[^\s]+$/;
-
-const imageRefSchema = z.strictObject({
-  id: z.string().regex(/^gid:\/\/shopify\/(MediaImage|GenericFile)\/\d+$/),
-  url: z.string().max(2048).regex(CDN_URL),
-  altText: z.string().max(512).nullable(),
-  width: z.number().int().positive().nullable(),
-  height: z.number().int().positive().nullable(),
-});
-
 const HANDLE = /^[a-z0-9][a-z0-9-]*$/;
 
 const resourceRefSchema = (kind: "Product" | "Collection") =>
@@ -456,7 +474,7 @@ function blockSettingsSchema(definition: BlockDef, mode: "strict" | "lenient"): 
   const shape = Object.fromEntries(
     definition.fields.map((field) => [
       field.key,
-      mode === "strict" ? fieldSchema(field) : fieldSchema(field).catch(fieldDefault(field)),
+      mode === "strict" ? fieldSchema(field) : lenientFieldSchema(field),
     ]),
   );
   return mode === "strict" ? z.strictObject(shape) : z.object(shape);
@@ -519,7 +537,12 @@ function lenientBlocks(field: BlocksFieldDef): z.ZodType {
 
 /** What a READ goes through: never fails, a bad value becomes its default. */
 export function lenientFieldSchema(field: FieldDef): z.ZodType {
-  return field.kind === "blocks" ? lenientBlocks(field) : fieldSchema(field).catch(fieldDefault(field));
+  if (field.kind === "blocks") return lenientBlocks(field);
+  // Part by part, so one damaged value costs that value and not the whole design.
+  // `optional()` first: in Zod 4 a bare transform makes a missing key an error, and a
+  // section saved before the design existed has none.
+  if (field.kind === "design") return z.unknown().optional().transform(readDesign);
+  return fieldSchema(field).catch(fieldDefault(field));
 }
 
 /** The strict schema for one field — what a WRITE must satisfy. */
@@ -566,6 +589,9 @@ export function fieldSchema(field: FieldDef): z.ZodType {
       return z.array(resourceRefSchema("Collection")).max(field.max);
     case "blocks":
       return blocksSchema(field);
+    case "design":
+      // Optional on write too: a section built before the design existed has none.
+      return designSchema.optional();
   }
 }
 
@@ -591,6 +617,8 @@ export function fieldDefault(field: FieldDef): unknown {
     case "products":
     case "collections":
       return [];
+    case "design":
+      return {};
     case "blocks":
       return field.defaults.flatMap((type) => {
         const definition = blockDefinition(field, type);
@@ -630,6 +658,7 @@ export function isFieldFilled(field: FieldDef, value: unknown): boolean {
     case "select":
     case "toggle":
     case "number":
+    case "design":
       return true;
   }
 }

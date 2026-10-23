@@ -2,12 +2,15 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
 import { BuilderPage } from "@/components/page-builder/builder-page";
+import { LivePreview } from "@/components/page-builder/live-preview";
 import { PreviewBridge } from "@/components/page-builder/preview-bridge";
 import { Providers } from "@/components/providers";
 import { currentStaff } from "@/lib/admin/auth";
 import { STAFF_LOGIN_PATH } from "@/lib/admin/cookie";
 import { BuilderError, getBuilderState } from "@/lib/admin/page-builder";
 import { pageIdFromParam, PageNotFoundError } from "@/lib/admin/pages";
+
+import { renderPagePreview } from "../../actions";
 
 /**
  * The page builder's preview: the DRAFT, drawn by the same `BuilderPage` the
@@ -57,7 +60,15 @@ export default async function PreviewPage({ params, searchParams }: PageProps<"/
   return (
     <Providers>
       <PreviewBridge />
-      <BuilderPage doc={doc} title={state.page.title} preview />
+      {version === "live" ? (
+        <BuilderPage doc={doc} title={state.page.title} preview />
+      ) : (
+        // Follows the editor as it types — see `LivePreview`.
+        <LivePreview
+          initial={<BuilderPage doc={doc} title={state.page.title} preview />}
+          render={renderPagePreview.bind(null, state.page.title)}
+        />
+      )}
     </Providers>
   );
 }

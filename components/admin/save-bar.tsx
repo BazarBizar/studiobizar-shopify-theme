@@ -3,6 +3,7 @@
 import { Loader2Icon, SaveIcon } from "lucide-react";
 import * as React from "react";
 
+import { useRegisterUnsaved } from "@/components/admin/leave-guard";
 import { Button } from "@/components/admin/ui/button";
 
 /**
@@ -51,8 +52,13 @@ export function SaveBar({
   );
 }
 
-/** The browser's own "Leave site?" prompt while there is something unsaved. */
+/**
+ * While there is something unsaved: the browser's own "Leave site?" prompt on
+ * closing or reloading, and the panel's own question on a click elsewhere in the
+ * panel (`leave-guard.tsx`).
+ */
 export function useUnsavedChangesWarning(active: boolean) {
+  useRegisterUnsaved(active);
   React.useEffect(() => {
     if (!active) return;
     const warn = (event: BeforeUnloadEvent) => {

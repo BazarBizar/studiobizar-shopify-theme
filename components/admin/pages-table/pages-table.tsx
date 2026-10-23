@@ -1,6 +1,7 @@
 import { ExternalLinkIcon, PencilIcon, PlusIcon, SettingsIcon } from "lucide-react";
 
 import { AppLink } from "@/components/admin/app-link";
+import { Badge } from "@/components/admin/ui/badge";
 import { Button } from "@/components/admin/ui/button";
 import {
   Table,
@@ -26,6 +27,9 @@ import { paramFromPageId } from "@/lib/admin/pages";
  * Each row offers the page's two tabs: Content (the page builder) and Settings.
  * A page whose layout is code has Settings only.
  *
+ * On a phone the action column would sit off-screen, so the row's two buttons move
+ * under the page's name instead.
+ *
  * A server-rendered table, not `DataTable`: a couple of dozen rows need no
  * client-side sorting or paging. Work still to do is sorted to the top.
  */
@@ -41,7 +45,7 @@ export function PagesTable({ pages, routeFor }: { pages: PageRow[]; routeFor: (h
             <TableHead>Page</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="hidden lg:table-cell">Last edited</TableHead>
-            <TableHead className="w-0 text-right">
+            <TableHead className="hidden w-0 text-right sm:table-cell">
               <span className="sr-only">Actions</span>
             </TableHead>
           </TableRow>
@@ -59,6 +63,12 @@ export function PagesTable({ pages, routeFor }: { pages: PageRow[]; routeFor: (h
                   <AppLink href={primary} className="font-medium underline-offset-4 hover:underline">
                     {page.title}
                   </AppLink>
+                  {/* Its title is the shop's name, so it is otherwise easy to miss. */}
+                  {route === "/" ? (
+                    <Badge variant="secondary" className="ms-2 align-middle text-[11px] font-normal">
+                      Home page
+                    </Badge>
+                  ) : null}
                   <p className="text-muted-foreground mt-0.5 text-xs">
                     {page.isPublished ? (
                       <a
@@ -74,6 +84,22 @@ export function PagesTable({ pages, routeFor }: { pages: PageRow[]; routeFor: (h
                       route
                     )}
                   </p>
+                  <div className="mt-2 flex gap-1 sm:hidden">
+                    {page.editable && (
+                      <Button asChild variant="outline" size="xs">
+                        <AppLink href={`/admin/pages/${param}/content`}>
+                          {page.status === "setup" ? <PlusIcon /> : <PencilIcon />}
+                          Edit content
+                        </AppLink>
+                      </Button>
+                    )}
+                    <Button asChild variant="ghost" size="xs">
+                      <AppLink href={`/admin/pages/${param}`}>
+                        <SettingsIcon />
+                        {page.editable ? "Settings" : "Edit"}
+                      </AppLink>
+                    </Button>
+                  </div>
                 </TableCell>
 
                 <TableCell className="max-w-64">
@@ -95,7 +121,7 @@ export function PagesTable({ pages, routeFor }: { pages: PageRow[]; routeFor: (h
                   )}
                 </TableCell>
 
-                <TableCell className="text-right">
+                <TableCell className="hidden text-right sm:table-cell">
                   <div className="flex justify-end gap-1">
                     {page.editable && (
                       <Button asChild variant="outline" size="sm">

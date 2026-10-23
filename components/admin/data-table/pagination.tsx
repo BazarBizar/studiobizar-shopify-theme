@@ -21,7 +21,8 @@ import {
 export const PAGE_SIZES = [10, 25, 50, 100] as const;
 export const DEFAULT_PAGE_SIZE = 25;
 
-const formatNumber = (value: number) => new Intl.NumberFormat().format(value);
+// A fixed locale: the viewer's own differs between server and browser render ("2,027" vs "2.027").
+const formatNumber = (value: number) => new Intl.NumberFormat("en-GB").format(value);
 
 /** Client-side pagination: the whole collection is in memory, so counts are exact. */
 export function DataTablePagination<TData>({

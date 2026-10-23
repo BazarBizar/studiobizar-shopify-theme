@@ -42,6 +42,23 @@ export const JUSTIFY: Record<Align, string> = {
   right: "justify-end",
 };
 
+/** The same three on phones only (below 750px) — for copy placed differently there. */
+export const TEXT_ALIGN_MOBILE: Record<Align, string> = {
+  left: "max-sm:text-left",
+  center: "max-sm:text-center",
+  right: "max-sm:text-right",
+};
+export const ITEMS_ALIGN_MOBILE: Record<Align, string> = {
+  left: "max-sm:items-start",
+  center: "max-sm:items-center",
+  right: "max-sm:items-end",
+};
+export const JUSTIFY_MOBILE: Record<Align, string> = {
+  left: "max-sm:justify-start",
+  center: "max-sm:justify-center",
+  right: "max-sm:justify-end",
+};
+
 export type Position =
   | "top-left"
   | "top-center"
@@ -62,6 +79,15 @@ export function positionClasses(position: Position): string {
   return cn(VERTICAL[vertical] ?? VERTICAL.middle, HORIZONTAL[horizontal] ?? HORIZONTAL.center);
 }
 
+const VERTICAL_MOBILE = { top: "max-sm:justify-start", middle: "max-sm:justify-center", bottom: "max-sm:justify-end" } as const;
+const HORIZONTAL_MOBILE = { left: "max-sm:items-start", center: "max-sm:items-center", right: "max-sm:items-end" } as const;
+
+/** `positionClasses` for phones only — where a slide puts its copy differently there. */
+export function mobilePositionClasses(position: Position): string {
+  const [vertical, horizontal] = position.split("-") as [keyof typeof VERTICAL_MOBILE, keyof typeof HORIZONTAL_MOBILE];
+  return cn(VERTICAL_MOBILE[vertical] ?? VERTICAL_MOBILE.middle, HORIZONTAL_MOBILE[horizontal] ?? HORIZONTAL_MOBILE.center);
+}
+
 /** The column the copy aligns with, from where it sits. */
 export function alignFromPosition(position: Position): Align {
   return (position.split("-")[1] as Align | undefined) ?? "center";
@@ -77,6 +103,7 @@ export function Buttons({
   secondary,
   secondaryStyle = "outline",
   align = "left",
+  mobileAlign,
   className,
 }: {
   primary?: LandingLink | null;
@@ -84,6 +111,8 @@ export function Buttons({
   secondary?: LandingLink | null;
   secondaryStyle?: ButtonVariant;
   align?: Align;
+  /** Where the row sits on phones, when that differs. */
+  mobileAlign?: Align;
   className?: string;
 }) {
   const links = [
@@ -93,7 +122,7 @@ export function Buttons({
   if (links.length === 0) return null;
 
   return (
-    <div className={cn("flex flex-wrap gap-3", JUSTIFY[align], className)}>
+    <div data-sb-buttons="" className={cn("flex flex-wrap gap-3", JUSTIFY[align], mobileAlign && JUSTIFY_MOBILE[mobileAlign], className)}>
       {links.map((item) => (
         <ButtonLink key={`${item.href}-${item.label}`} href={item.href} variant={item.variant} external={isExternal(item.href)}>
           {item.label}
@@ -214,9 +243,19 @@ export function Prose({ html, className, size = "body" }: { html?: string; class
 }
 
 /** A darkening layer over a photograph, 0–80%. */
-export function Overlay({ percent }: { percent: number }) {
+/**
+ * Darkens a photograph so the copy on it reads. Off-black by default; a slide may
+ * choose its own colour and go a little further (`max`).
+ */
+export function Overlay({ percent, color, max = 80 }: { percent: number; color?: string | null; max?: number }) {
   if (percent <= 0) return null;
-  return <div aria-hidden className="bg-off-black absolute inset-0" style={{ opacity: Math.min(percent, 80) / 100 }} />;
+  return (
+    <div
+      aria-hidden
+      className={cn("absolute inset-0", !color && "bg-off-black")}
+      style={{ opacity: Math.min(percent, max) / 100, ...(color ? { backgroundColor: color } : {}) }}
+    />
+  );
 }
 
 /** Light copy → the off-black surface's tokens; dark copy → earth's. Paints nothing by itself. */

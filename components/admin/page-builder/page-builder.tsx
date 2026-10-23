@@ -6,11 +6,9 @@ import {
   ExternalLinkIcon,
   HistoryIcon,
   Loader2Icon,
-  MonitorIcon,
   RotateCcwIcon,
   Redo2Icon,
   SendIcon,
-  SmartphoneIcon,
   TriangleAlertIcon,
   Undo2Icon,
 } from "lucide-react";
@@ -27,7 +25,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/admin/ui/dropdown-menu";
-import { PREVIEW_MESSAGE } from "@/components/page-builder/preview-bridge";
+import { PREVIEW_MESSAGE, type SectionContents } from "@/components/page-builder/preview-bridge";
 import {
   builderActionRequest,
   draftRevisionRequest,
@@ -40,6 +38,11 @@ import {
   type DocumentContent,
   type PublishProblem,
 } from "@/lib/page-builder/document";
+import { designStyle, type Device } from "@/lib/page-builder/design";
+import type { UniversalSettings } from "@/lib/page-builder/define-section";
+import { frameStyle } from "@/components/page-builder/section-frame";
+import { NO_EXAMPLE_MEDIA, withExamples } from "@/lib/page-builder/examples";
+import { findTextPath, withText } from "@/lib/page-builder/inline-edit";
 import { sectionFromPreset, type SectionPreset } from "@/lib/page-builder/presets";
 import { cn } from "@/lib/utils/cn";
 
@@ -48,6 +51,7 @@ import { PageEditorBar } from "@/components/admin/pages-table/page-editor-bar";
 import { DuplicatePageDialog } from "./create-page-dialog";
 import { EditorLookupsContext, type CollectionOption, type EditorLookups } from "./field-controls";
 import { historyReducer, initialHistory, insertionIndex } from "./reducer";
+import { DeviceSwitch, DeviceViewport, EditorDeviceContext, PaneSwitch } from "./editor-device";
 import { PageSettingsEditor, SectionEditor } from "./section-editor";
 import { SectionList } from "./section-list";
 
@@ -129,7 +133,14 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
   const [problems, setProblems] = React.useState<PublishProblem[]>([]);
   const [busy, setBusy] = React.useState<Busy>(null);
   const [confirm, setConfirm] = React.useState<Confirm>(null);
-  const [viewport, setViewport] = React.useState<"desktop" | "mobile">("desktop");
+  // The device being edited: the preview's width, and which value every responsive
+  // control edits — see `editor-device.tsx`.
+  const [device, setDevice] = React.useState<Device>("d");
+  // What the selected section draws, as the preview reports it (`SectionContents`).
+  const [contents, setContents] = React.useState<{ id: string; contents: SectionContents } | null>(null);
+  // Below 1024px: the settings or the preview, one at a time (`PaneSwitch`).
+  const [pane, setPane] = React.useState<"edit" | "preview">("edit");
+  const deviceState = React.useMemo(() => ({ device, setDevice }), [device]);
   const [duplicating, setDuplicating] = React.useState(false);
 
   const contentJson = React.useMemo(() => JSON.stringify(content), [content]);
@@ -166,6 +177,10 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
 
     const snapshot = contentRef.current;
     const json = JSON.stringify(snapshot);
+    // Nothing new since the last save: no request. An autosave timer that fires
+    // during a publish would otherwise save the same content again, and its answer
+    // ("there are unpublished changes") could land after the publish and contradict it.
+    if (json === savedJsonRef.current) return true;
 
     const run = (async () => {
       setSaveState("saving");
@@ -179,7 +194,6 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
         setHasUnpublished(result.hasUnpublishedChanges);
         setSaveState("idle");
         setSaveError(null);
-        post({ type: PREVIEW_MESSAGE.refresh });
         return true;
       } catch (error) {
         if (error instanceof RequestError && error.code === "CONFLICT") {
@@ -196,7 +210,7 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
     const ok = await run;
     inflightRef.current = null;
     return ok;
-  }, [page.id, post]);
+  }, [page.id]);
 
   React.useEffect(() => {
     conflictRef.current = saveState === "conflict";
@@ -295,12 +309,69 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
     post({ type: PREVIEW_MESSAGE.select, id: selectedId });
   }, [selectedId, post]);
 
+  /**
+   * LIVE PREVIEW. What is on screen goes to the preview a moment after each change —
+   * not after it is saved — and is drawn there by the server (`LivePreview`), so the
+   * preview follows typing instead of trailing the autosave by seconds.
+   *
+   * The selected section's Style goes over at ONCE, as properties set on its frame
+   * (`sb-preview:style`), so a slider moves the section as it is dragged; the redraw
+   * that follows lands on the same values.
+   */
+  const sendContent = React.useCallback(
+    () => post({ type: PREVIEW_MESSAGE.content, content: contentRef.current }),
+    [post],
+  );
+  React.useEffect(() => {
+    const timer = window.setTimeout(sendContent, 150);
+    return () => window.clearTimeout(timer);
+  }, [content, sendContent]);
+  React.useEffect(() => {
+    const section = content.sections.find((item) => item.id === selectedId);
+    if (!section) return;
+    const settings = section.settings as UniversalSettings;
+    const frame = frameStyle(settings);
+    const designed = designStyle(settings.design);
+    post({
+      type: PREVIEW_MESSAGE.style,
+      id: section.id,
+      style: { ...(frame.style as Record<string, string>), ...designed.style },
+      attrs: {
+        ...designed.attrs,
+        ...(frame.padded ? { "data-sb-pad": "" } : {}),
+        ...(settings.surface !== "inherit" ? { "data-surface": settings.surface } : {}),
+      },
+    });
+  }, [content, selectedId, post]);
+
   React.useEffect(() => {
     function onMessage(event: MessageEvent) {
       if (event.origin !== window.location.origin || event.source !== iframeRef.current?.contentWindow) return;
-      const data = event.data as { type?: unknown; id?: unknown } | null;
+      const data = event.data as { type?: unknown; id?: unknown; text?: unknown; token?: unknown; path?: unknown; value?: unknown } | null;
       if (data?.type === PREVIEW_MESSAGE.clicked && typeof data.id === "string") {
         setPanel({ kind: "section", id: data.id });
+      }
+      if (data?.type === PREVIEW_MESSAGE.contents && typeof data.id === "string") {
+        setContents({ id: data.id, contents: (data as { contents: SectionContents }).contents });
+      }
+
+      // Editing text in the preview (`lib/page-builder/inline-edit.ts`): which setting
+      // is this text, and then each keystroke into it.
+      const section =
+        typeof data?.id === "string" ? contentRef.current.sections.find((item) => item.id === data.id) : undefined;
+      if (data?.type === PREVIEW_MESSAGE.editRequest && section && typeof data.text === "string") {
+        const path = findTextPath(section.settings as Record<string, unknown>, data.text);
+        iframeRef.current?.contentWindow?.postMessage(
+          { type: PREVIEW_MESSAGE.editable, token: data.token, id: section.id, path },
+          window.location.origin,
+        );
+        if (path) setEditorTab("content");
+      }
+      if (data?.type === PREVIEW_MESSAGE.edit && section && Array.isArray(data.path) && typeof data.value === "string") {
+        const [key, ...rest] = data.path as (string | number)[];
+        if (typeof key !== "string") return;
+        const settings = section.settings as Record<string, unknown>;
+        dispatch({ kind: "setting", id: section.id, key, value: withText(settings[key], rest, data.value) });
       }
     }
     window.addEventListener("message", onMessage);
@@ -310,9 +381,15 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
   /* ---- section actions ---- */
 
   const addSection = (preset: SectionPreset) => {
-    const section = sectionFromPreset(preset);
+    // Filled with example content, so the new section is plainly THERE — in the list,
+    // in the preview — and shows what it can hold.
+    const section = withExamples(sectionFromPreset(preset), lookups.examples ?? NO_EXAMPLE_MEDIA);
     dispatch({ kind: "insert", section, index: insertionIndex(content, selectedId) });
     setPanel({ kind: "section", id: section.id });
+    // A section just added is filled in first — never opened on the Style tab left
+    // over from the last one.
+    setEditorTab("content");
+    toast.success(`${preset.label} added`, { description: "It holds example content — replace it with your own." });
   };
 
   const duplicate = (id: string) => {
@@ -436,6 +513,7 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
 
   return (
     <EditorLookupsContext.Provider value={lookups}>
+    <EditorDeviceContext.Provider value={deviceState}>
       <div className="-m-4 flex h-[calc(100svh-3.5rem)] flex-col md:-m-6">
         {/* ---------------- top bar ---------------- */}
         <PageEditorBar
@@ -484,28 +562,7 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
               </Button>
             </div>
 
-            <div className="bg-muted hidden rounded-md p-0.5 lg:flex" role="group" aria-label="Preview width">
-              <Button
-                type="button"
-                variant={viewport === "desktop" ? "outline" : "ghost"}
-                size="icon-xs"
-                aria-label="Desktop preview"
-                aria-pressed={viewport === "desktop"}
-                onClick={() => setViewport("desktop")}
-              >
-                <MonitorIcon />
-              </Button>
-              <Button
-                type="button"
-                variant={viewport === "mobile" ? "outline" : "ghost"}
-                size="icon-xs"
-                aria-label="Mobile preview"
-                aria-pressed={viewport === "mobile"}
-                onClick={() => setViewport("mobile")}
-              >
-                <SmartphoneIcon />
-              </Button>
-            </div>
+            <DeviceSwitch className="hidden lg:flex" />
 
             <Button asChild variant="outline" size="sm">
               <a href={previewSrc} target="_blank" rel="noopener noreferrer">
@@ -593,7 +650,7 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
 
         {/* ---------------- editor + preview ---------------- */}
         <div className="grid min-h-0 flex-1 lg:grid-cols-[22rem_1fr]">
-          <aside className="bg-background flex min-h-0 flex-col border-r">
+          <aside className={cn("bg-background flex min-h-0 flex-col border-r", pane === "preview" && "max-lg:hidden")}>
             {problems.length > 0 && (
               <div className="border-b px-3 py-2 text-xs">
                 <p className="font-medium text-amber-700 dark:text-amber-500">Not published — these need content first:</p>
@@ -617,6 +674,7 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
               {panel.kind === "page" ? (
                 <PageSettingsEditor
                   settings={content.page}
+                  settingsHref={`/admin/pages/${page.id.split("/").pop()}`}
                   onBack={() => setPanel({ kind: "list" })}
                   onChange={(key, value) => dispatch({ kind: "page", key, value })}
                 />
@@ -631,7 +689,14 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
                   tab={editorTab}
                   onTabChange={setEditorTab}
                   onBack={() => setPanel({ kind: "list" })}
+                  onOpenHeading={() => {
+                    const above = content.sections[content.sections.findIndex((item) => item.id === selectedSection.id) - 1];
+                    if (!above) return;
+                    setPanel({ kind: "section", id: above.id });
+                    setEditorTab("style");
+                  }}
                   onChange={(key, value) => dispatch({ kind: "setting", id: selectedSection.id, key, value })}
+                  contents={contents?.id === selectedSection.id ? contents.contents : null}
                   onToggle={() => dispatch({ kind: "toggle", id: selectedSection.id })}
                   onDuplicate={() => duplicate(selectedSection.id)}
                   onRemove={() => remove(selectedSection.id)}
@@ -655,21 +720,30 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
             </div>
           </aside>
 
-          {/* The preview is the real page. Below `lg` there is no room for it beside
+          {/* The preview is the real page, at the chosen device's real width (scaled to
+              fit — see `DeviceViewport`). Below `lg` there is no room for it beside
               the editor; the Preview button opens it in a tab instead. */}
-          <div className="bg-muted/40 hidden min-h-0 lg:flex lg:justify-center">
-            <iframe
-              ref={iframeRef}
-              src={previewSrc}
-              title={`Preview of ${page.title}`}
-              onLoad={() => post({ type: PREVIEW_MESSAGE.select, id: selectedId })}
-              className={cn(
-                "h-full border-0 bg-white transition-[width] duration-200",
-                viewport === "mobile" ? "my-4 h-[calc(100%-2rem)] w-[390px] rounded-lg border shadow-sm" : "w-full",
+          <div className={cn("bg-muted/40 min-h-0", pane === "preview" ? "flex" : "hidden lg:flex")}>
+            <DeviceViewport device={device}>
+              {(style) => (
+                <iframe
+                  ref={iframeRef}
+                  src={previewSrc}
+                  title={`Preview of ${page.title}`}
+                  onLoad={() => {
+                    post({ type: PREVIEW_MESSAGE.select, id: selectedId });
+                    // Anything typed while the preview was loading.
+                    sendContent();
+                  }}
+                  className={cn("border-0 bg-white", device !== "d" && "rounded-lg border shadow-sm")}
+                  style={style}
+                />
               )}
-            />
+            </DeviceViewport>
           </div>
         </div>
+
+        <PaneSwitch pane={pane} onChange={setPane} />
 
         {/* The copy is of what is on screen: anything typed but not yet autosaved is
             saved first. */}
@@ -695,6 +769,7 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
           onConfirm={() => (confirm ? runConfirmed(confirm) : undefined)}
         />
       </div>
+    </EditorDeviceContext.Provider>
     </EditorLookupsContext.Provider>
   );
 }

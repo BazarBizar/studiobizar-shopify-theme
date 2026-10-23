@@ -53,7 +53,7 @@ function money(value: { amount: string; currencyCode: string } | null) {
   if (!value) return "—";
   const amount = Number(value.amount);
   if (Number.isNaN(amount)) return `${value.amount} ${value.currencyCode}`;
-  return new Intl.NumberFormat(undefined, { style: "currency", currency: value.currencyCode }).format(amount);
+  return new Intl.NumberFormat("en-GB", { style: "currency", currency: value.currencyCode }).format(amount);
 }
 
 export function CustomersTable({ rows }: { rows: CustomerRowData[] }) {

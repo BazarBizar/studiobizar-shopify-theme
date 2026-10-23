@@ -17,12 +17,18 @@
  *   (rhythm's `default` is `theme` in the theme, as in every other theme section).
  *   The Style tab (spacing, lines, colours) → the same settings, snake_case, read
  *   by the `sb-section-style` snippet — see `STYLE_SETTING_IDS`.
+ *   design → the most-used part of it, desktop and phone, as `d_*` settings under
+ *   headers (scripts/lib/liquid-design.ts), read by the generated `sb-design`
+ *   snippet that `sb-section-style` renders. A `design` field marked `nextOnly` (a
+ *   slide's) produces nothing.
  */
 
 import { STYLE_KEYS } from "../../lib/page-builder/define-section";
 import type { FieldDef, LeafFieldDef } from "../../lib/page-builder/fields";
 import { SECTION_PRESETS, type PresetBlock } from "../../lib/page-builder/presets";
 import { SECTIONS, type SectionType } from "../../lib/page-builder/registry";
+
+import { designSettings, themeDesignParts } from "./liquid-design";
 
 /** Page-builder type → theme section file (theme/sections/<file>.liquid). */
 export const LIQUID_SECTIONS: Partial<Record<SectionType, string>> = {
@@ -51,7 +57,7 @@ export const snake = (key: string) => key.replace(/[A-Z]/g, (letter) => `_${lett
  * `sb-section-style`, which reads all of them — so the parity check counts them as
  * read when the section renders that snippet.
  */
-export const STYLE_SETTING_IDS: readonly string[] = STYLE_KEYS.map(snake);
+export const STYLE_SETTING_IDS: readonly string[] = STYLE_KEYS.filter((key) => key !== "design").map(snake);
 export const STYLE_SNIPPET = "sb-section-style";
 
 type Json = Record<string, unknown>;
@@ -87,6 +93,8 @@ const info = (field: { help?: string }) => (field.help ? { info: field.help } : 
 
 /** One Next leaf field → its theme setting(s). */
 export function settingsFor(field: LeafFieldDef): Json[] {
+  // Next only for now — see `nextOnly` in lib/page-builder/fields.ts.
+  if (field.nextOnly) return [];
   const id = snake(field.key);
   switch (field.kind) {
     case "text":
@@ -154,7 +162,7 @@ const GROUP_HEADER = { content: "Content", layout: "Layout", style: "Style", adv
  * Fields grouped as the builder's form groups them — content, then Layout, then
  * Advanced, each under a header — keeping form order within a group.
  */
-function settingsList(fields: readonly FieldDef[]): Json[] {
+function settingsList(fields: readonly FieldDef[], type: SectionType): Json[] {
   const out: Json[] = [];
   let group: string | undefined = "content";
   const ordered = [...fields].sort((a, b) => GROUP_ORDER[a.group ?? "content"] - GROUP_ORDER[b.group ?? "content"]);
@@ -165,7 +173,13 @@ function settingsList(fields: readonly FieldDef[]): Json[] {
       out.push({ type: "header", content: GROUP_HEADER[next] });
       group = next;
     }
-    out.push(...(field.key in UNIVERSAL ? [UNIVERSAL[field.key]!(field)] : settingsFor(field)));
+    out.push(
+      ...(field.key in UNIVERSAL
+        ? [UNIVERSAL[field.key]!(field)]
+        : field.kind === "design"
+          ? designSettings(themeDesignParts(type))
+          : settingsFor(field)),
+    );
   }
   return out;
 }
@@ -243,7 +257,7 @@ export function schemaFor(type: SectionType): Json {
     name: definition.label,
     tag: "section",
     class: `sb-section-${type.replace(/_/g, "-")}`,
-    settings: settingsList(fields),
+    settings: settingsList(fields, type),
     ...(blocksField && blocksField.kind === "blocks"
       ? {
           max_blocks: blocksField.max,

@@ -192,6 +192,14 @@ function dropNow(type: string): string[] {
     revalidateTag(TAGS.content, "max");
     return [TAGS.content];
   }
+  /**
+   * The Theme Builder's header and footer render inside every cached page, like a
+   * menu — and the published layout itself is read under `content`.
+   */
+  if (type === "theme") {
+    revalidateTag(TAGS.content, "max");
+    return [TAGS.content];
+  }
   if (type === "page") {
     revalidateTag(TAGS.content, "max");
     revalidateTag(TAGS.metaobjects, "max");

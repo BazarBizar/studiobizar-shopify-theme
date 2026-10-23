@@ -96,7 +96,9 @@ async function main() {
     if (message.type() === "error") consoleErrors.push(message.text());
   });
   page.on("pageerror", (error) => consoleErrors.push(`pageerror: ${error.message}`));
-  const shot = (name: string) => page.screenshot({ path: join(SHOTS, `${name}.png`) });
+  // `caret: "initial"`: by default Playwright hides the text caret by writing a style onto
+  // inputs, which a page still hydrating reports as a server/client mismatch.
+  const shot = (name: string) => page.screenshot({ path: join(SHOTS, `${name}.png`), caret: "initial" });
 
   async function step(label: string, fn: () => Promise<void>) {
     try {
@@ -157,7 +159,7 @@ async function main() {
       );
 
       await page.getByRole("button", { name: "Add section" }).click();
-      const textOption = page.locator("[cmdk-item]").filter({ hasText: "the usual text band" });
+      const textOption = page.locator("[cmdk-item]").filter({ hasText: "the usual text section" });
       check("Add section: offers 'Text'", (await textOption.count()) === 1);
       check(
         "Add section: one Contact form entry (the retired one is not offered)",
@@ -165,25 +167,54 @@ async function main() {
       );
       await textOption.click();
 
+      // A new section arrives FILLED — example heading, text and button — and shows in
+      // the preview straight away, before anything is saved.
+      check("Add section: the new section holds example content", (await headingInput().inputValue()) === "Your heading here");
+      await page.frameLocator("iframe[title^='Preview']").getByText("Your heading here").first().waitFor({ timeout: 15000 });
+      check("Add section: the preview shows the new section at once", true);
+
+      // Live preview: the typed heading reaches the preview without waiting for the save.
+      const typedAt = Date.now();
       await headingInput().fill("UI heading one");
+      await page.frameLocator("iframe[title^='Preview']").getByText("UI heading one").waitFor({ timeout: 15000 });
+      const lag = Date.now() - typedAt;
+      check(`Live preview: the typed heading is drawn in ${lag}ms`, lag < 2500, lag);
       check(
         "Section form: Advanced is folded away",
         (await aside.locator("details:not([open])").filter({ hasText: "Advanced" }).count()) === 1,
       );
-      check("Section form: 'Show on' replaces 'Visibility'", (await aside.getByText("Show on", { exact: true }).count()) === 1);
+      // One "Show on", not two: the per-device switches under Style → More design.
+      check("Section form: no second 'Show on' on the Content tab", (await aside.getByText("Show on", { exact: true }).count()) === 0);
       await page.getByText("Draft saved").waitFor({ timeout: 15000 });
       await page.frameLocator("iframe[title^='Preview']").getByText("UI heading one").waitFor({ timeout: 20000 });
       check("Autosave + preview: the typed heading appears in the preview", true);
       await shot("04-section-editor");
 
       await page.getByRole("button", { name: "Undo" }).click();
-      check("Undo: takes the whole typed heading back", (await headingInput().inputValue()) === "");
+      check("Undo: takes the whole typed heading back", (await headingInput().inputValue()) === "Your heading here");
       await page.getByRole("button", { name: "Redo" }).click();
       check("Redo: puts it back", (await headingInput().inputValue()) === "UI heading one");
 
+      // Editing in place: double-click the heading in the preview, type, Enter — the
+      // setting changes, as if typed in the form.
+      await page
+        .frameLocator("iframe[title^='Preview']")
+        .getByRole("heading", { name: "UI heading one" })
+        .first()
+        .dblclick();
+      await page.waitForTimeout(300);
+      await page.keyboard.type("Edited in place");
+      await page.keyboard.press("Enter");
+      await page.waitForTimeout(600);
+      check("In-place edit: typing over the heading in the preview changes the setting", (await headingInput().inputValue()) === "Edited in place");
+      await page.frameLocator("iframe[title^='Preview']").getByText("Edited in place").first().waitFor({ timeout: 10000 });
+      await headingInput().fill("UI heading one");
+
       // The button's destination: the shared link picker (as in Menus). Picking a page
-      // names an empty button after it, and the preview draws the link.
-      await aside.getByRole("combobox").filter({ hasText: "Choose where it goes" }).first().click();
+      // names an empty button after it, and the preview draws the link. (Emptied first:
+      // it arrived with the example "learn more" → Shop.)
+      await aside.getByPlaceholder(/Button text/).fill("");
+      await aside.getByRole("combobox").filter({ hasText: "Shop" }).first().click();
       await page.getByPlaceholder("Search pages and collections").fill("contact");
       await page.getByRole("option").first().click();
       const buttonText = await aside.getByPlaceholder(/Button text/).inputValue();
@@ -221,6 +252,7 @@ async function main() {
       await aside.getByRole("button", { name: "Back to sections" }).click();
       await aside.getByRole("button", { name: /UI heading one/ }).first().click();
       await aside.getByRole("tab", { name: "Style" }).click();
+      check("Style tab: 'Show on devices' is there, once", (await aside.getByText("Show on devices").count()) === 1);
       check(
         "Style tab: Background & text, Spacing, and Line & corners",
         (await aside.getByText("Background & text", { exact: true }).count()) === 1 &&
@@ -228,6 +260,15 @@ async function main() {
           (await aside.getByText("Line & corners", { exact: true }).count()) === 1,
       );
       await aside.getByRole("button", { name: "Dark wood" }).first().click();
+      // Instant: the colour is on the section within a quarter second — set on its frame
+      // directly, before the server has redrawn anything.
+      await page.waitForTimeout(250);
+      const instant = await page
+        .frameLocator("iframe[title^='Preview']")
+        .locator('[data-section-type="text_block"]')
+        .first()
+        .evaluate((frame) => getComputedStyle(frame).backgroundColor);
+      check("Style: a colour shows in the preview at once", instant === "rgb(48, 47, 45)", instant);
       await aside.getByLabel("Custom spacing").click();
       await aside.getByRole("spinbutton", { name: "Space inside, top (px)" }).fill("10");
       await aside.getByRole("combobox", { name: "Line" }).click();
@@ -255,6 +296,37 @@ async function main() {
           drawn.border === "3px" &&
           drawn.paddingTop === "10px",
         JSON.stringify(drawn),
+      );
+
+      // The design panel: typography per device. A heading size for desktop and a
+      // smaller one for tablet, a font — and the preview, at each device's width,
+      // must draw exactly those.
+      await aside.getByText("Typography", { exact: true }).click();
+      await aside.getByRole("combobox").filter({ hasText: "Default (Helvetica Neue)" }).first().click();
+      await page.getByRole("option", { name: /Playfair Display/ }).click();
+      await aside.getByLabel("Size (px)").fill("40");
+      await aside.getByRole("button", { name: "Tablet view" }).first().click();
+      check(
+        "Design: on tablet the size says it follows desktop",
+        (await aside.getByText("Same as desktop until changed here.").count()) > 0,
+      );
+      await aside.getByLabel("Size (px)").fill("30");
+      await page.getByText("Draft saved").waitFor({ timeout: 15000 });
+      await page.waitForTimeout(2500);
+      await shot("04d-design-tablet");
+      const headingAt = async () =>
+        preview.locator("[data-sb-hsize] h2").first().evaluate((element) => {
+          const style = getComputedStyle(element);
+          return { size: style.fontSize, font: style.fontFamily };
+        });
+      const tablet = await headingAt();
+      await aside.getByRole("button", { name: "Desktop view" }).first().click();
+      await page.waitForTimeout(1200);
+      const desktop = await headingAt();
+      check(
+        "Design: the preview draws 40px on desktop and 30px on tablet, in the chosen font",
+        desktop.size === "40px" && tablet.size === "30px" && /Playfair/.test(desktop.font),
+        JSON.stringify({ desktop, tablet }),
       );
       await aside.getByRole("tab", { name: "Content" }).click();
 
@@ -286,6 +358,155 @@ async function main() {
       check("The edit made just before switching tabs was saved", heading === "UI heading two", heading);
       check("No false 'edited elsewhere' after Back", (await page.getByText("Edited elsewhere").count()) === 0);
       await shot("06-back-to-content");
+
+      // A section joined to the Page heading: its Style tab explains, and both ways
+      // out are buttons — never only the name of a setting to go and find.
+      await aside.getByRole("button", { name: "Back to sections" }).click();
+      await page.getByRole("button", { name: "Add section" }).click();
+      await page.locator("[cmdk-item]").filter({ hasText: "Questions that open to their answer" }).first().click();
+      // Added last; up under the Page heading, past the Text and the preset.
+      await aside.getByRole("button", { name: "Back to sections" }).click();
+      for (let step = 0; step < 2; step++) {
+        await aside.getByRole("button", { name: "More actions for Questions & answers" }).click();
+        await page.getByRole("menuitem", { name: "Move up" }).click();
+        await page.getByRole("menu").waitFor({ state: "hidden" });
+      }
+      await aside.getByRole("button", { name: /^Questions & answers/ }).first().click();
+      await aside.getByRole("radio", { name: "Joined to the Page heading above" }).click();
+      await aside.getByRole("tab", { name: "Style" }).click();
+      const ownLook = aside.getByRole("button", { name: "Style this section on its own" });
+      const headingLook = aside.getByRole("button", { name: "Change the look on the Page heading" });
+      await shot("06b-joined-style-tab");
+      check(
+        "Joined section: Style tab explains and offers both ways out",
+        (await aside.getByText(/joined to the Page heading/).count()) > 0 &&
+          (await ownLook.count()) === 1 &&
+          (await headingLook.count()) === 1,
+      );
+      await ownLook.click();
+      check(
+        "Joined section: 'Style this section on its own' brings its style controls back",
+        (await aside.getByText("Background & text", { exact: true }).count()) === 1,
+      );
+      await aside.getByRole("tab", { name: "Content" }).click();
+      await aside.getByRole("radio", { name: "Joined to the Page heading above" }).click();
+      await aside.getByRole("tab", { name: "Style" }).click();
+      await headingLook.click();
+      check(
+        "Joined section: the other button opens the Page heading on its Style tab",
+        (await aside.getByRole("heading", { name: "Page heading", level: 2 }).count()) === 1 &&
+          (await aside.getByRole("tab", { name: "Style", selected: true }).count()) === 1,
+      );
+      // Out again, so the publish below is not held up by an empty FAQ section.
+      await aside.getByRole("button", { name: "Back to sections" }).click();
+      await aside.getByRole("button", { name: /^Questions & answers/ }).first().click();
+      await aside.getByRole("button", { name: "Delete section" }).click();
+
+      // The Hero slider: a slide designed on its own — its heading size, and a
+      // different place for its copy on phones. Then removed again: slides without
+      // photographs cannot be published.
+      await page.getByRole("button", { name: "Add section" }).click();
+      await page.locator("[cmdk-item]").filter({ hasText: "each one designed on its own" }).first().click();
+      await aside.getByRole("button", { name: /^Slide/ }).first().click();
+      await aside.getByLabel(/^Heading/).first().fill("Slide one");
+      await aside.getByText("Position & style").first().click();
+      await aside.getByRole("combobox", { name: "Text position on phones" }).click();
+      await page.getByRole("option", { name: "Top centre" }).click();
+      await aside.getByText("Typography", { exact: true }).first().click();
+      await aside.getByLabel("Size (px)").first().fill("52");
+      await page.getByText("Draft saved").waitFor({ timeout: 15000 });
+      await page.waitForTimeout(2500);
+      await shot("06c-hero-slide");
+      const copyOf = () =>
+        preview
+          .locator('[data-section-type="slideshow"] [aria-roledescription="slide"]')
+          .first()
+          .evaluate((slide) => {
+            const copy = slide.querySelector("[data-surface]")!;
+            const style = getComputedStyle(copy);
+            return {
+              size: getComputedStyle(slide.querySelector("h2")!).fontSize,
+              justify: style.justifyContent,
+              items: style.alignItems,
+            };
+          });
+      const onDesktop = await copyOf();
+      // The device switch above the preview — on the Content tab it is the only one.
+      await page.getByRole("button", { name: "Mobile view" }).first().click();
+      await page.waitForTimeout(1500);
+      const onPhone = await copyOf();
+      await page.getByRole("button", { name: "Desktop view" }).first().click();
+      check(
+        "Hero slider: the slide's own heading size, bottom-left on desktop and top-centre on phones",
+        onDesktop.size === "52px" &&
+          onDesktop.justify === "flex-end" &&
+          onDesktop.items === "flex-start" &&
+          onPhone.justify === "flex-start" &&
+          onPhone.items === "center",
+        JSON.stringify({ onDesktop, onPhone }),
+      );
+      await aside.getByRole("button", { name: "Delete section" }).click();
+
+      // Three photographs: photos and captions, no heading or button — so Typography
+      // offers Text only, and its size reaches the captions.
+      await page.getByRole("button", { name: "Add section" }).click();
+      await page.locator("[cmdk-item]").filter({ hasText: "A row of up to three captioned photographs" }).first().click();
+      await aside.getByRole("tab", { name: "Style" }).click();
+      await aside.getByText("Typography", { exact: true }).click();
+      await page.waitForTimeout(2500);
+      const targets = await aside.getByRole("radiogroup", { name: "Style for" }).getByRole("radio").allTextContents();
+      check("Three photographs: Typography offers only what it has (Text)", JSON.stringify(targets) === '["Text"]', JSON.stringify(targets));
+      await aside.getByLabel("Size (px)").first().fill("21");
+      await page.waitForTimeout(1500);
+      const captionSize = await page
+        .frameLocator("iframe[title^='Preview']")
+        .locator('[data-section-type="captioned_row"] figcaption')
+        .first()
+        .evaluate((caption) => getComputedStyle(caption).fontSize)
+        .catch(() => null);
+      check("Three photographs: the text size reaches the captions", captionSize === "21px", captionSize);
+      check(
+        "Three photographs: no Buttons part, as it has no buttons",
+        (await aside.locator("summary").filter({ hasText: /^Buttons$/ }).count()) === 0 && (await aside.locator("summary").filter({ hasText: /^Typography/ }).count()) === 1,
+      );
+      // "Rounded corners" on a section with no background showed nothing; the photos'
+      // own corners sit right beside it.
+      check(
+        "Three photographs: corners are offered for the section and the photos",
+        (await aside.getByRole("spinbutton", { name: "Section corners (px)" }).count()) === 1 && (await aside.getByRole("spinbutton", { name: "Photo corners (px)" }).count()) === 1,
+      );
+      await aside.getByRole("spinbutton", { name: "Photo corners (px)" }).fill("16");
+      await page.waitForTimeout(1500);
+      const photoCorners = await page
+        .frameLocator("iframe[title^='Preview']")
+        .locator('[data-section-type="captioned_row"] img')
+        .first()
+        .evaluate((img) => [img, img.parentElement!].map((el) => getComputedStyle(el).borderRadius))
+        .catch(() => null);
+      check("Three photographs: Photo corners round the photographs", Boolean(photoCorners?.includes("16px")), JSON.stringify(photoCorners));
+      await shot("06b-photo-corners");
+      await aside.getByRole("tab", { name: "Content" }).click();
+      await aside.getByRole("button", { name: "Delete section" }).click();
+
+      // Call to action: its buttons take their own colour and corners.
+      await page.getByRole("button", { name: "Add section" }).click();
+      await page.locator("[cmdk-item]").filter({ hasText: "One centred message and its buttons" }).first().click();
+      await aside.getByRole("tab", { name: "Style" }).click();
+      await page.waitForTimeout(2000);
+      await aside.locator("summary").filter({ hasText: /^Buttons$/ }).click();
+      await aside.locator("#design-button-background").fill("#a65a3f");
+      await aside.getByRole("spinbutton", { name: "Rounded corners" }).last().fill("20");
+      await page.waitForTimeout(1500);
+      const look = await page
+        .frameLocator("iframe[title^='Preview']")
+        .locator('[data-section-type="cta_banner"] [data-sb-button="solid"]')
+        .first()
+        .evaluate((button) => [getComputedStyle(button).backgroundColor, getComputedStyle(button).borderTopLeftRadius, getComputedStyle(button).color])
+        .catch(() => null);
+      check("Buttons: the colour and corners reach the button, with a readable label", JSON.stringify(look) === '["rgb(166, 90, 63)","20px","rgb(235, 232, 227)"]', JSON.stringify(look));
+      await shot("06c-button-look");
+      await aside.getByRole("tab", { name: "Content" }).click();
+      await aside.getByRole("button", { name: "Delete section" }).click();
     });
 
     /* ---------------- Publish ---------------- */

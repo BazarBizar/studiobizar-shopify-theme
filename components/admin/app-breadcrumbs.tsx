@@ -29,7 +29,11 @@ export function AppBreadcrumbs({ labels }: { labels: Record<string, string> }) {
 
   const segments = pathname.split("/").filter(Boolean);
   // Everything here lives under /admin, which is the root crumb.
-  const rest = segments.slice(1);
+  // A page's Content tab is the page itself in the trail, as its Settings tab is: the
+  // tabs say which one is open, and a trail that grows and shrinks on a tab click jumps.
+  const rest = segments
+    .slice(1)
+    .filter((segment, index, all) => !(segment === "content" && all[index - 2] === "pages"));
 
   const crumbs = rest.map((segment, index) => {
     const href = `/admin/${rest.slice(0, index + 1).join("/")}`;

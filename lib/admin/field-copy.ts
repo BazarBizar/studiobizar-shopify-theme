@@ -119,7 +119,9 @@ export const FIELD_COPY: Record<string, Record<string, FieldCopy>> = {
   },
 
   site_settings: {
-    title: { label: "Site name" },
+    // Only the settings entry's own name ("Site Settings"); the site never shows it. As
+    // "Site name" it read like the shop's name, which changing here would not change.
+    title: { label: "Entry name", hidden: true },
     featured_collections: {
       label: "Featured collections",
       help: "The collections highlighted across the site, in this order.",

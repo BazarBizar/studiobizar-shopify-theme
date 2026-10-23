@@ -1,0 +1,176 @@
+/* =============================================================================
+   DESIGN — the page builder's design value (lib/page-builder/design.ts).
+   The frame puts VALUES on itself as custom properties and says which are set,
+   per device, in `data-sb-*` attributes (`"d t"` = desktop and tablet). These
+   rules apply them: desktop everywhere, tablet below 1024px, mobile below 750px —
+   so a value set only for desktop carries down, as in Elementor. A property that
+   is not set has no attribute, so the component's own value stays.
+   Unlayered on purpose: it must win over the Tailwind utilities it replaces.
+   SHARED: imported by app/globals.css AND theme-build/sb-theme.css — the Liquid
+   theme's `sb-design` snippet writes the same properties and attributes.
+   ============================================================================= */
+
+[data-sb-hfont] :is(h1, h2, h3, h4, h5, h6) { font-family: var(--sb-h-font); }
+[data-sb-hweight] :is(h1, h2, h3, h4, h5, h6) { font-weight: var(--sb-h-weight); }
+[data-sb-hcolor] :is(h1, h2, h3, h4, h5, h6) { color: var(--sb-h-color); }
+[data-sb-htt] :is(h1, h2, h3, h4, h5, h6) { text-transform: var(--sb-h-tt); }
+[data-sb-hsize~="d"] :is(h1, h2, h3, h4, h5, h6) { font-size: var(--sb-h-size); }
+[data-sb-hlh~="d"] :is(h1, h2, h3, h4, h5, h6) { line-height: var(--sb-h-lh); }
+[data-sb-hls~="d"] :is(h1, h2, h3, h4, h5, h6) { letter-spacing: var(--sb-h-ls); }
+
+/* "Text" is running text wherever it is: paragraphs, list items (and a menu's links, which
+   carry their own size class), captions, quotes, and term/description pairs — each of
+   which may set its own size, so each is named rather than left to inherit. */
+[data-sb-pfont] :is(p, li, li > a, figcaption, blockquote, dt, dd) { font-family: var(--sb-p-font); }
+[data-sb-pweight] :is(p, li, li > a, figcaption, blockquote, dt, dd) { font-weight: var(--sb-p-weight); }
+[data-sb-pcolor] :is(p, li, li > a, figcaption, blockquote, dt, dd) { color: var(--sb-p-color); }
+[data-sb-ptt] :is(p, li, li > a, figcaption, blockquote, dt, dd) { text-transform: var(--sb-p-tt); }
+[data-sb-psize~="d"] :is(p, li, li > a, figcaption, blockquote, dt, dd) { font-size: var(--sb-p-size); }
+[data-sb-plh~="d"] :is(p, li, li > a, figcaption, blockquote, dt, dd) { line-height: var(--sb-p-lh); }
+[data-sb-pls~="d"] :is(p, li, li > a, figcaption, blockquote, dt, dd) { letter-spacing: var(--sb-p-ls); }
+[data-sb-bfont] [data-sb-button] { font-family: var(--sb-b-font); }
+[data-sb-bweight] [data-sb-button] { font-weight: var(--sb-b-weight); }
+[data-sb-btt] [data-sb-button] { text-transform: var(--sb-b-tt); }
+[data-sb-bls~="d"] [data-sb-button] { letter-spacing: var(--sb-b-ls); }
+/* A bigger label needs a taller button: the fixed height gives way to padding. */
+[data-sb-bsize~="d"] [data-sb-button] { font-size: var(--sb-b-size); height: auto; padding-block: 0.55em; }
+
+/* The buttons' look (design.buttonLook). Filled and outlined buttons take all of it; a
+   text link only its colours. A chosen colour stays under the pointer and dims instead
+   of the outline's fill-on-hover, which could hide it — unless a hover colour is set.
+   Space above replaces the button row's own margin (the row is `data-sb-buttons`;
+   a single button carries its margin itself). */
+[data-sb-btn-bg] [data-sb-button]:not([data-sb-button="text"]) { background-color: var(--sb-btn-bg); }
+[data-sb-btn-fg] [data-sb-button] { color: var(--sb-btn-fg); }
+[data-sb-btn-bc] [data-sb-button]:not([data-sb-button="text"]) { border: var(--sb-btn-bw, 1px) solid var(--sb-btn-bc); }
+[data-sb-btn-bw] [data-sb-button]:not([data-sb-button="text"]) { border-width: var(--sb-btn-bw); border-style: solid; }
+[data-sb-btn-r] [data-sb-button]:not([data-sb-button="text"]) { border-radius: var(--sb-btn-r); }
+:is([data-sb-btn-bg], [data-sb-btn-fg], [data-sb-btn-bc]) [data-sb-button="outline"]:hover {
+  background-color: var(--sb-btn-bg, transparent);
+  color: var(--sb-btn-fg, currentColor);
+}
+:is([data-sb-btn-bg], [data-sb-btn-fg], [data-sb-btn-bc]) [data-sb-button]:not([data-sb-button="text"]):hover { opacity: 0.85; }
+[data-sb-btn-hbg] [data-sb-button]:not([data-sb-button="text"]):hover { background-color: var(--sb-btn-hbg); opacity: 1; }
+[data-sb-btn-hfg] [data-sb-button]:hover { color: var(--sb-btn-hfg); }
+[data-sb-btn-hbc] [data-sb-button]:not([data-sb-button="text"]):hover { border-color: var(--sb-btn-hbc); }
+[data-sb-btn-px~="d"] [data-sb-button]:not([data-sb-button="text"]) { padding-inline: var(--sb-btn-px); min-width: 0; }
+[data-sb-btn-py~="d"] [data-sb-button]:not([data-sb-button="text"]) { padding-block: var(--sb-btn-py); height: auto; }
+[data-sb-btn-mt~="d"] :is([data-sb-buttons], [data-sb-button]:not([data-sb-buttons] *)) { margin-top: var(--sb-btn-mt); }
+[data-sb-btn-gap~="d"] [data-sb-buttons] { gap: var(--sb-btn-gap); }
+[data-sb-py~="d"] { padding-block: var(--sb-py); }
+[data-sb-pt~="d"] { padding-top: var(--sb-pt); }
+[data-sb-pb~="d"] { padding-bottom: var(--sb-pb); }
+
+[data-sb-align~="d"] { text-align: var(--sb-align); }
+[data-sb-maxw~="d"] .sb-container { max-width: var(--sb-maxw); margin-inline: auto; }
+[data-sb-minh~="d"] { min-height: var(--sb-minh); }
+[data-sb-valign] { display: flex; flex-direction: column; }
+[data-sb-valign="center"] { justify-content: center; }
+[data-sb-valign="bottom"] { justify-content: flex-end; }
+
+[data-sb-bg] {
+  background-image: var(--sb-bg);
+  background-size: cover;
+  background-position: var(--sb-bg-pos, center);
+  background-repeat: no-repeat;
+}
+
+/* Photographs inside a section: a shape, rounded corners, a slow zoom under the pointer.
+   A photograph that FILLS its box (Next: `data-nimg="fill"`; the theme: an `absolute`
+   <img>, maybe in a <picture>) takes the shape on that box instead. */
+[data-sb-ratio] img:not([data-nimg="fill"], .absolute) { aspect-ratio: var(--sb-ratio); object-fit: cover; width: 100%; height: auto; }
+[data-sb-ratio] :has(> img:is([data-nimg="fill"], .absolute), > picture > img:is([data-nimg="fill"], .absolute)):not([data-section-id], section) { aspect-ratio: var(--sb-ratio); height: auto; }
+[data-sb-imgr] img { border-radius: var(--sb-imgr); }
+[data-sb-imgr] :has(> img:is([data-nimg="fill"], .absolute), > picture > img:is([data-nimg="fill"], .absolute)) { border-radius: var(--sb-imgr); overflow: hidden; }
+[data-sb-zoom] :has(> img, > picture > img) { overflow: hidden; }
+[data-sb-zoom] img { transition: transform 0.6s var(--sb-ease-out, ease-out); }
+[data-sb-zoom] :has(> img, > picture > img):hover img { transform: scale(1.05); }
+@media (prefers-reduced-motion: reduce) {
+  [data-sb-zoom] :has(> img, > picture > img):hover img { transform: none; }
+}
+
+@media (min-width: 1024px) {
+  [data-sb-hide~="d"] { display: none !important; }
+}
+
+@media (max-width: 1023px) {
+  [data-sb-hsize~="t"] :is(h1, h2, h3, h4, h5, h6) { font-size: var(--sb-h-size-t); }
+  [data-sb-hlh~="t"] :is(h1, h2, h3, h4, h5, h6) { line-height: var(--sb-h-lh-t); }
+  [data-sb-hls~="t"] :is(h1, h2, h3, h4, h5, h6) { letter-spacing: var(--sb-h-ls-t); }
+  [data-sb-psize~="t"] :is(p, li, li > a, figcaption, blockquote, dt, dd) { font-size: var(--sb-p-size-t); }
+  [data-sb-plh~="t"] :is(p, li, li > a, figcaption, blockquote, dt, dd) { line-height: var(--sb-p-lh-t); }
+  [data-sb-pls~="t"] :is(p, li, li > a, figcaption, blockquote, dt, dd) { letter-spacing: var(--sb-p-ls-t); }
+  [data-sb-py~="t"] { padding-block: var(--sb-py-t); }
+  [data-sb-bsize~="t"] [data-sb-button] { font-size: var(--sb-b-size-t); height: auto; padding-block: 0.55em; }
+  [data-sb-bls~="t"] [data-sb-button] { letter-spacing: var(--sb-b-ls-t); }
+  [data-sb-btn-px~="t"] [data-sb-button]:not([data-sb-button="text"]) { padding-inline: var(--sb-btn-px-t); min-width: 0; }
+  [data-sb-btn-py~="t"] [data-sb-button]:not([data-sb-button="text"]) { padding-block: var(--sb-btn-py-t); height: auto; }
+  [data-sb-btn-mt~="t"] :is([data-sb-buttons], [data-sb-button]:not([data-sb-buttons] *)) { margin-top: var(--sb-btn-mt-t); }
+  [data-sb-btn-gap~="t"] [data-sb-buttons] { gap: var(--sb-btn-gap-t); }
+  [data-sb-pt~="t"] { padding-top: var(--sb-pt-t); }
+  [data-sb-pb~="t"] { padding-bottom: var(--sb-pb-t); }
+  [data-sb-align~="t"] { text-align: var(--sb-align-t); }
+  [data-sb-maxw~="t"] .sb-container { max-width: var(--sb-maxw-t); margin-inline: auto; }
+  [data-sb-minh~="t"] { min-height: var(--sb-minh-t); }
+  [data-sb-rad~="t"] { --sb-rad: var(--sb-rad-t); }
+
+  [data-sb-pad][data-sb-space-t] {
+    margin-top: var(--sb-mt-t, var(--sb-mt, 0px));
+    margin-bottom: var(--sb-mb-t, var(--sb-mb, 0px));
+  }
+  [data-sb-pad][data-sb-space-t]
+    :is(.sb-band, .py-section, .py-section-xs, .py-section-sm, .py-section-md, .py-section-lg, .py-section-xl, .pt-section, .pb-section):not(
+      :is(.sb-band, .py-section, .py-section-xs, .py-section-sm, .py-section-md, .py-section-lg, .py-section-xl, .pt-section, .pb-section) *,
+      [data-sb-pad] [data-section-id] *
+    ),
+  [data-sb-pad][data-sb-space-t]:not(
+      :has(.sb-band, .py-section, .py-section-xs, .py-section-sm, .py-section-md, .py-section-lg, .py-section-xl, .pt-section, .pb-section)
+    ) {
+    padding-top: var(--sb-pad-top-t, var(--sb-pad-top));
+    padding-bottom: var(--sb-pad-bottom-t, var(--sb-pad-bottom));
+  }
+}
+
+@media (min-width: 750px) and (max-width: 1023px) {
+  [data-sb-hide~="t"] { display: none !important; }
+}
+
+@media (max-width: 749px) {
+  [data-sb-hide~="m"] { display: none !important; }
+  [data-sb-hsize~="m"] :is(h1, h2, h3, h4, h5, h6) { font-size: var(--sb-h-size-m); }
+  [data-sb-hlh~="m"] :is(h1, h2, h3, h4, h5, h6) { line-height: var(--sb-h-lh-m); }
+  [data-sb-hls~="m"] :is(h1, h2, h3, h4, h5, h6) { letter-spacing: var(--sb-h-ls-m); }
+  [data-sb-psize~="m"] :is(p, li, li > a, figcaption, blockquote, dt, dd) { font-size: var(--sb-p-size-m); }
+  [data-sb-plh~="m"] :is(p, li, li > a, figcaption, blockquote, dt, dd) { line-height: var(--sb-p-lh-m); }
+  [data-sb-pls~="m"] :is(p, li, li > a, figcaption, blockquote, dt, dd) { letter-spacing: var(--sb-p-ls-m); }
+  [data-sb-py~="m"] { padding-block: var(--sb-py-m); }
+  [data-sb-bsize~="m"] [data-sb-button] { font-size: var(--sb-b-size-m); height: auto; padding-block: 0.55em; }
+  [data-sb-bls~="m"] [data-sb-button] { letter-spacing: var(--sb-b-ls-m); }
+  [data-sb-btn-px~="m"] [data-sb-button]:not([data-sb-button="text"]) { padding-inline: var(--sb-btn-px-m); min-width: 0; }
+  [data-sb-btn-py~="m"] [data-sb-button]:not([data-sb-button="text"]) { padding-block: var(--sb-btn-py-m); height: auto; }
+  [data-sb-btn-mt~="m"] :is([data-sb-buttons], [data-sb-button]:not([data-sb-buttons] *)) { margin-top: var(--sb-btn-mt-m); }
+  [data-sb-btn-gap~="m"] [data-sb-buttons] { gap: var(--sb-btn-gap-m); }
+  [data-sb-pt~="m"] { padding-top: var(--sb-pt-m); }
+  [data-sb-pb~="m"] { padding-bottom: var(--sb-pb-m); }
+  [data-sb-align~="m"] { text-align: var(--sb-align-m); }
+  [data-sb-maxw~="m"] .sb-container { max-width: var(--sb-maxw-m); margin-inline: auto; }
+  [data-sb-minh~="m"] { min-height: var(--sb-minh-m); }
+  [data-sb-rad~="m"] { --sb-rad: var(--sb-rad-m); }
+  [data-sb-bg-m] { background-image: var(--sb-bg-m); }
+
+  [data-sb-pad][data-sb-space-m] {
+    margin-top: var(--sb-mt-m, var(--sb-mt-t, var(--sb-mt, 0px)));
+    margin-bottom: var(--sb-mb-m, var(--sb-mb-t, var(--sb-mb, 0px)));
+  }
+  [data-sb-pad][data-sb-space-m]
+    :is(.sb-band, .py-section, .py-section-xs, .py-section-sm, .py-section-md, .py-section-lg, .py-section-xl, .pt-section, .pb-section):not(
+      :is(.sb-band, .py-section, .py-section-xs, .py-section-sm, .py-section-md, .py-section-lg, .py-section-xl, .pt-section, .pb-section) *,
+      [data-sb-pad] [data-section-id] *
+    ),
+  [data-sb-pad][data-sb-space-m]:not(
+      :has(.sb-band, .py-section, .py-section-xs, .py-section-sm, .py-section-md, .py-section-lg, .py-section-xl, .pt-section, .pb-section)
+    ) {
+    padding-top: var(--sb-pad-top-m, var(--sb-pad-top-t, var(--sb-pad-top)));
+    padding-bottom: var(--sb-pad-bottom-m, var(--sb-pad-bottom-t, var(--sb-pad-bottom)));
+  }
+}

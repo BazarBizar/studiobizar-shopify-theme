@@ -1,4 +1,5 @@
 import type { StyleSettings, UniversalSettings } from "@/lib/page-builder/define-section";
+import { designStyle } from "@/lib/page-builder/design";
 import { HEX_COLOR } from "@/lib/page-builder/fields";
 import { cn } from "@/lib/utils/cn";
 
@@ -14,6 +15,11 @@ import { cn } from "@/lib/utils/cn";
  * Then the Style tab (spacing, lines, colours) as ONE inline style — see
  * `frameStyle`. Its Liquid twin is `theme/snippets/sb-section-style.liquid`; the
  * two must produce the same declarations.
+ *
+ * Then the DESIGN value (`lib/page-builder/design.ts`) — typography, background
+ * image, shadow, width, per-device values — as custom properties plus `data-sb-*`
+ * attributes that the "Design" rules in `globals.css` apply per breakpoint. Next
+ * only for now: the theme does not render it yet.
  *
  * The component inside is untouched. Class names are written out in full because
  * Tailwind only emits what it can read in the source.
@@ -74,8 +80,10 @@ export function frameStyle(settings: StyleSettings): { style: React.CSSPropertie
   if (settings.customSpacing) {
     style["--sb-pad-top"] = `${settings.paddingTop}px`;
     style["--sb-pad-bottom"] = `${settings.paddingBottom}px`;
-    style.marginTop = `${settings.marginTop}px`;
-    style.marginBottom = `${settings.marginBottom}px`;
+    // As properties, not margin itself: an inline margin could not be overridden
+    // for tablet and mobile (`design.spacing`); the `[data-sb-pad]` rule applies them.
+    style["--sb-mt"] = `${settings.marginTop}px`;
+    style["--sb-mb"] = `${settings.marginBottom}px`;
   }
   const sides = BORDER_SIDES[settings.border] ?? [];
   if (sides.length) {
@@ -83,7 +91,9 @@ export function frameStyle(settings: StyleSettings): { style: React.CSSPropertie
     for (const side of sides) style[`border${side}`] = line;
   }
   if (settings.radius > 0) {
-    style.borderRadius = `${settings.radius}px`;
+    // Through a property, so tablet and mobile can round differently (`design.radius`).
+    style["--sb-radius"] = `${settings.radius}px`;
+    style.borderRadius = "var(--sb-rad, var(--sb-radius))";
     // `clip`, not `hidden`: rounds what the section paints without creating a
     // scroll container, so sticky children keep working.
     style.overflow = "clip";
@@ -105,6 +115,7 @@ export function SectionFrame({
 }) {
   const painted = settings.surface !== "inherit";
   const { style, padded } = frameStyle(settings);
+  const designed = designStyle(settings.design);
 
   return (
     <div
@@ -112,7 +123,8 @@ export function SectionFrame({
       data-section-type={type}
       data-surface={painted ? settings.surface : undefined}
       data-sb-pad={padded ? "" : undefined}
-      style={style}
+      {...designed.attrs}
+      style={{ ...style, ...designed.style } as React.CSSProperties}
       className={cn(
         // `flow-root` keeps a child's margin inside the band, so a painted ground
         // reaches the edge of what the section draws.

@@ -49,7 +49,7 @@
     <p class="text-body mt-5 max-w-[38rem] whitespace-pre-line">{{ body | escape }}</p>
   {%- endif -%}
   {%- if has_primary or has_secondary -%}
-    <div class="mt-8 flex flex-wrap gap-3 {{ justify_class }}">
+    <div data-sb-buttons class="mt-8 flex flex-wrap gap-3 {{ justify_class }}">
       {%- if has_primary -%}
         {%- render 'sb-button', label: primary_label, href: primary_url, variant: primary_style -%}
       {%- endif -%}

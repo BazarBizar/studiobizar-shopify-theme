@@ -5,6 +5,9 @@
 
     <div ... {% render 'sb-section-style', settings: s %} {{ section.shopify_attributes }}>
 
+  It also renders `sb-design` — the section's design settings (`d_*`), merged into
+  the same style attribute.
+
   Colours rebind the same tokens a `data-surface` does, so everything inside
   follows. "Custom spacing" sets --sb-pad-top/bottom and `data-sb-pad`; the rule
   in sb-theme.css then makes them REPLACE the section's own band padding.
@@ -61,4 +64,4 @@
 -%}
 
 {%- if st.custom_spacing %} data-sb-pad{% endif -%}
-{%- if css != blank %} style="{{ css | escape }}"{% endif -%}
+{%- render 'sb-design', settings: st, prefix: 'd_', css: css -%}

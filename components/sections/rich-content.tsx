@@ -61,7 +61,7 @@ export function RichContent({
 
           if ("buttons" in item) {
             return (
-              <div key={item.id} className={cn("flex flex-wrap gap-4", centred && "justify-center", gap)}>
+              <div key={item.id} data-sb-buttons="" className={cn("flex flex-wrap gap-4", centred && "justify-center", gap)}>
                 {item.buttons.map((button) => (
                   <ButtonLink key={button.id} href={button.href} variant={button.variant} external={button.external}>
                     {button.label}

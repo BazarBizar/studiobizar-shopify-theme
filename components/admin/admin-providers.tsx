@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { useState } from "react";
 
+import { LeaveGuardHost } from "@/components/admin/leave-guard";
 import { Toaster } from "@/components/admin/ui/sonner";
 import { TooltipProvider } from "@/components/admin/ui/tooltip";
 
@@ -89,6 +90,7 @@ export function AdminProviders({
           {/* Rendered inside the panel so its trigger context is the panel, and
               positioned top-right per the shared convention. */}
           <Toaster position="top-right" richColors closeButton />
+          <LeaveGuardHost />
         </TooltipProvider>
       </QueryClientProvider>
     </ThemeProvider>

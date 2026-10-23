@@ -87,10 +87,13 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function formatMoney(amount: string, currency: string) {
-  // Money stays a string end to end; this only formats for display.
+  // Money stays a string end to end; this only formats for display. A FIXED locale,
+  // as the admin's dates (`lib/admin/field-values.ts`): the viewer's own differs
+  // between the server render and the browser — "€0.00" vs "€0,00" — and React
+  // throws the server's table away with a hydration error.
   const value = Number(amount);
   if (Number.isNaN(value)) return `${amount} ${currency}`;
-  return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(value);
+  return new Intl.NumberFormat("en-GB", { style: "currency", currency }).format(value);
 }
 
 function PriceRange({ price }: { price: ProductRowData["price"] }) {

@@ -3,6 +3,9 @@
    `source(none)` switches off automatic detection, which would otherwise crawl
    the Next app and pull in admin-panel utilities this stylesheet must not carry. */
 @import "tailwindcss" source(none);
+/* The page builder's design value — the same rules the Next build uses
+   (app/globals.css), drawn here from what snippets/sb-design.liquid writes. */
+@import "../styles/sb-design.css";
 @source "../theme/**/*.liquid";
 @source "../theme/**/*.json";
 

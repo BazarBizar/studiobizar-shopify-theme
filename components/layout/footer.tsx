@@ -3,9 +3,11 @@ import Link from "next/link";
 import { Logo } from "@/components/layout/logo";
 import { NewsletterForm } from "@/components/layout/newsletter-form";
 import { SocialLinks } from "@/components/layout/social-links";
+import { ThemeFooter } from "@/components/layout/theme-footer";
 import { Container } from "@/components/ui/container";
 import { FALLBACK_NAV, FOOTER_COLUMNS, MENUS } from "@/lib/navigation";
-import { getMenu, getSiteSettings } from "@/lib/shopify";
+import { getMenu, getSiteSettings, getThemeLayout } from "@/lib/shopify";
+import type { ThemeLayoutContent } from "@/lib/theme-builder/layout";
 import { resolveSocialLinks } from "@/lib/social";
 import type { MenuLink } from "@/lib/shopify/types";
 import type { Surface } from "@/components/layout/page-shell";
@@ -31,7 +33,12 @@ async function menuOrFallback(
  * footer is on all twenty-three routes, so no state of that data may leave it
  * blank.
  */
-export async function Footer({ surface = "olive" }: { surface?: Surface }) {
+export async function Footer({ surface = "olive", theme }: { surface?: Surface; theme?: ThemeLayoutContent | null }) {
+  // The Theme Builder's footer once one is published (or the draft, in its preview);
+  // until then, the original below.
+  const layout = theme === undefined ? await getThemeLayout() : theme;
+  if (layout) return <ThemeFooter content={layout} surface={surface} />;
+
   const [about, info, legal, settings] = await Promise.all([
     menuOrFallback(MENUS.footerAbout, FALLBACK_NAV.footerAbout),
     menuOrFallback(MENUS.footerInfo, FALLBACK_NAV.footerInfo),

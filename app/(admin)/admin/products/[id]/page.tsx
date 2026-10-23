@@ -1,5 +1,6 @@
 import { ExternalLinkIcon } from "lucide-react";
 
+import { AppLink } from "@/components/admin/app-link";
 import { ScreenNotFound } from "@/components/admin/screen-not-found";
 import { DetailHeader } from "@/components/admin/detail-header";
 import { ProductChannels } from "@/components/admin/products-table/product-channels";
@@ -129,13 +130,13 @@ export default async function ProductDetailPage({ params }: PageProps<"/admin/pr
         <CollapsibleSection
           id="details"
           title="Details"
-          description="For reference only — these are managed in Shopify."
+          description="Facts about the product. Its collections are changed on each collection’s page."
         >
           {/* Read-only facts as a description list, not a form with disabled inputs — a
               greyed control reads worse than plain text and offers an edit that will
               never work. */}
           <dl className="divide-border divide-y">
-            {[
+            {([
               ["Category", product.category?.fullName ?? "—"],
               ["Variants", String(product.variants)],
               [
@@ -146,12 +147,22 @@ export default async function ProductDetailPage({ params }: PageProps<"/admin/pr
               [
                 "Collections",
                 product.collections.length
-                  ? product.collections.map((collection) => collection.title).join(", ")
-                  : "—",
+                  ? product.collections.map((collection, index) => (
+                      <span key={collection.id}>
+                        {index > 0 ? ", " : null}
+                        <AppLink
+                          href={`/admin/collections/${collection.id.split("/").pop()}`}
+                          className="underline underline-offset-2"
+                        >
+                          {collection.title}
+                        </AppLink>
+                      </span>
+                    ))
+                  : "None yet — add it from a collection’s page.",
               ],
               ["Created", formatDate(product.createdAt, true)],
               ["Updated", formatDate(product.updatedAt, true)],
-            ].map(([label, value]) => (
+            ] as [string, React.ReactNode][]).map(([label, value]) => (
               <div key={label} className="py-2">
                 <dt className="text-muted-foreground text-xs font-medium">{label}</dt>
                 <dd className="text-sm">{value}</dd>

@@ -30,8 +30,8 @@ export function useFileUpload(onUploaded: (file: PickerFile) => void | Promise<v
       await onUploaded(created);
       toast.success("Uploaded", {
         description: processing
-          ? "Added to Shopify Files — the preview appears once processing finishes."
-          : "Added to Shopify Files.",
+          ? "Uploaded — the preview appears in a moment, once it is processed."
+          : "Uploaded.",
       });
     } catch (caught) {
       toast.error("Upload failed", {

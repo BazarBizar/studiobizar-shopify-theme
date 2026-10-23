@@ -9,6 +9,7 @@ import { Button } from "@/components/admin/ui/button";
 import { pageStatus, STATUS_TONE, type ContentStatus } from "@/lib/admin/page-status";
 import { cn } from "@/lib/utils/cn";
 
+import { useRememberPageBar } from "./page-bar-memory";
 import { PageTabs } from "./page-tabs";
 
 /** The page's one status, as a badge; the hint is its tooltip (or shown under it). */
@@ -27,7 +28,8 @@ export function PageStatusBadge({
       <Badge variant="outline" className={STATUS_TONE[status.tone]} title={status.hint}>
         {status.label}
       </Badge>
-      {showHint ? <p className="text-muted-foreground mt-1 text-xs whitespace-normal">{status.hint}</p> : null}
+      {/* The hint is a sentence; on a phone the badge says enough and the row stays short. */}
+      {showHint ? <p className="text-muted-foreground mt-1 hidden text-xs whitespace-normal sm:block">{status.hint}</p> : null}
     </>
   );
 }
@@ -66,6 +68,7 @@ export function PageEditorBar({
   className?: string;
 }) {
   const router = useRouter();
+  useRememberPageBar(param ? { param, title, path, isPublished, content } : null);
 
   return (
     <div className={cn("bg-background flex flex-wrap items-center gap-2 border-b px-3 py-2", className)}>

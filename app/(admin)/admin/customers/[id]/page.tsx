@@ -38,7 +38,7 @@ export default async function CustomerDetailPage({ params }: PageProps<"/admin/c
     const amount = Number(value.amount);
     return Number.isNaN(amount)
       ? `${value.amount} ${value.currencyCode}`
-      : new Intl.NumberFormat(undefined, { style: "currency", currency: value.currencyCode }).format(amount);
+      : new Intl.NumberFormat("en-GB", { style: "currency", currency: value.currencyCode }).format(amount);
   };
 
   /**

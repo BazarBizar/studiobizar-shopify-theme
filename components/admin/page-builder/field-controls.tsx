@@ -56,8 +56,12 @@ import {
   type ResourceRef,
   type SelectDisplay,
 } from "@/lib/page-builder/fields";
+import type { DesignValue } from "@/lib/page-builder/design";
+import type { ExampleMedia } from "@/lib/page-builder/examples";
 import { cdnImage } from "@/lib/shopify/transforms";
 import { cn } from "@/lib/utils/cn";
+
+import { DesignControls } from "./design-controls";
 
 /**
  * One input per field KIND — the only place the builder decides what a setting
@@ -74,7 +78,14 @@ export type LinkTarget = { label: string; href: string; group: "Pages" | "Collec
  * What the form offers to pick from, loaded once for the whole editor rather than
  * threaded through every field: link destinations and the FAQ categories in use.
  */
-export type EditorLookups = { linkTargets: LinkTarget[]; faqCategories: string[] };
+export type EditorLookups = {
+  linkTargets: LinkTarget[];
+  faqCategories: string[];
+  /** The shop's photographs and products a newly added section is filled with — see `lib/page-builder/examples.ts`. */
+  examples?: ExampleMedia;
+  /** The site's saved colours (Header & footer → Site style), offered in every colour picker. */
+  savedColours?: { name: string; value: string }[];
+};
 
 export const EditorLookupsContext = React.createContext<EditorLookups>({ linkTargets: [], faqCategories: [] });
 
@@ -198,6 +209,15 @@ export function FieldControl({ field, value, onChange, inputId, collections }: C
     case "color":
       return <ColorField inputId={inputId} value={(value as string) ?? ""} onChange={onChange} />;
 
+    case "design":
+      return (
+        <DesignControls
+          value={(value as DesignValue | undefined) ?? {}}
+          parts={field.parts}
+          onChange={(next) => onChange(next)}
+        />
+      );
+
     case "product":
     case "products":
     case "collection":
@@ -283,7 +303,7 @@ const BRAND_COLOURS = [
   { value: "#ffffff", label: "White" },
 ] as const;
 
-function ColorField({
+export function ColorField({
   inputId,
   value,
   onChange,
@@ -301,11 +321,12 @@ function ColorField({
     setDraft(value);
   }
   const valid = draft === "" || HEX_COLOR.test(draft);
+  const saved = React.useContext(EditorLookupsContext).savedColours ?? [];
 
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-1.5">
-        {BRAND_COLOURS.map((swatch) => (
+        {[...BRAND_COLOURS, ...saved.map((colour) => ({ value: colour.value.toLowerCase(), label: colour.name }))].map((swatch) => (
           <button
             key={swatch.value}
             type="button"
@@ -440,7 +461,7 @@ function AltInput({
 }
 
 /** One image — the shared `MediaSlot` and `MediaPicker`, as on every form in the panel. */
-function ImageField({
+export function ImageField({
   value,
   onChange,
   label,
@@ -971,41 +992,12 @@ function BlocksField({
                 )}
 
                 {open && (
-                  <div className="space-y-3 border-t px-3 py-3">
-                    {definition.fields
-                      .filter((child) => isFieldActive(child, item.settings))
-                      .map((child) => {
-                        const inputId = `${item.id}-${child.key}`;
-                        const missing = child.required && !isFieldFilled(child, item.settings[child.key]);
-                        const inline = child.kind === "toggle";
-
-                        return (
-                          <div key={child.key} className={inline ? "flex items-center justify-between gap-4" : "space-y-1.5"}>
-                            <Label htmlFor={inputId} className="text-xs">
-                              {child.label}
-                              {child.required && (
-                                <span className="text-muted-foreground" aria-label="required">
-                                  *
-                                </span>
-                              )}
-                            </Label>
-                            <FieldControl
-                              field={child}
-                              value={item.settings[child.key]}
-                              inputId={inputId}
-                              collections={collections}
-                              onChange={(next) => update(item.id, child.key, next)}
-                            />
-                            {child.help && !inline && <p className="text-muted-foreground text-xs">{child.help}</p>}
-                            {missing && (
-                              <p className="text-xs text-amber-600 dark:text-amber-500">
-                                Needed before this page can be published.
-                              </p>
-                            )}
-                          </div>
-                        );
-                      })}
-                  </div>
+                  <BlockFields
+                    definition={definition}
+                    item={item}
+                    collections={collections}
+                    onChange={(key, next) => update(item.id, key, next)}
+                  />
                 )}
               </li>
             );
@@ -1053,6 +1045,83 @@ function BlocksField({
  * address. Pasting a URL still works for anything else.
  */
 /** A text value chosen from the ones already in use — the FAQ categories. */
+/**
+ * One open block's form. What the block SAYS comes first; how it looks (fields in a
+ * style, layout or advanced group) is folded below, so a slide with a dozen design
+ * options still opens on its photo and words.
+ */
+function BlockFields({
+  definition,
+  item,
+  collections,
+  onChange,
+}: {
+  definition: BlockDef;
+  item: BlockValue;
+  collections: CollectionOption[];
+  onChange: (key: string, next: unknown) => void;
+}) {
+  const active = definition.fields.filter((child) => isFieldActive(child, item.settings));
+  const says = active.filter((child) => (child.group ?? "content") === "content");
+  const looks = active.filter((child) => (child.group ?? "content") !== "content");
+
+  const render = (child: (typeof active)[number]) => {
+    const inputId = `${item.id}-${child.key}`;
+    // The design panel names its own parts; a label above it would say it twice.
+    if (child.kind === "design") {
+      return (
+        <FieldControl
+          key={child.key}
+          field={child}
+          value={item.settings[child.key]}
+          inputId={inputId}
+          collections={collections}
+          onChange={(next) => onChange(child.key, next)}
+        />
+      );
+    }
+    const missing = child.required && !isFieldFilled(child, item.settings[child.key]);
+    const inline = child.kind === "toggle";
+
+    return (
+      <div key={child.key} className={inline ? "flex items-center justify-between gap-4" : "space-y-1.5"}>
+        <Label htmlFor={inputId} className="text-xs">
+          {child.label}
+          {child.required && (
+            <span className="text-muted-foreground" aria-label="required">
+              *
+            </span>
+          )}
+        </Label>
+        <FieldControl
+          field={child}
+          value={item.settings[child.key]}
+          inputId={inputId}
+          collections={collections}
+          onChange={(next) => onChange(child.key, next)}
+        />
+        {child.help && !inline && <p className="text-muted-foreground text-xs">{child.help}</p>}
+        {missing && <p className="text-xs text-amber-600 dark:text-amber-500">Needed before this page can be published.</p>}
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-3 border-t px-3 py-3">
+      {says.map(render)}
+      {looks.length > 0 && (
+        <details className="group/looks rounded-md border">
+          <summary className="flex cursor-pointer list-none items-center gap-1.5 px-3 py-2 text-xs font-medium [&::-webkit-details-marker]:hidden">
+            <ChevronRightIcon className="text-muted-foreground size-3.5 transition-transform group-open/looks:rotate-90" />
+            Position &amp; style
+          </summary>
+          <div className="space-y-3 border-t px-3 py-3">{looks.map(render)}</div>
+        </details>
+      )}
+    </div>
+  );
+}
+
 function SuggestField({
   inputId,
   value,

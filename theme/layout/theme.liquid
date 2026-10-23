@@ -25,6 +25,7 @@
 
     {{ 'sb-theme.css' | asset_url | stylesheet_tag }}
     {%- render 'sb-css-variables' -%}
+    {%- render 'sb-font-faces' -%}
 
     {% comment %}
       TYPEFACE — Helvetica Neue is a licensed Linotype face, so there is nothing
@@ -109,10 +110,14 @@
 
     `min-h-full flex flex-col` + `flex-1` on <main> is what keeps the footer at
     the bottom of a short page — the same three classes app/layout.tsx used.
+
+    Theme settings → Site style (fonts and buttons for every page) is drawn here,
+    as Next's PageShell draws it; a section's own design still wins.
   {% endcomment %}
   <body
     data-surface="{{ settings.page_surface }}"
     class="min-h-full flex flex-col bg-background text-foreground antialiased"
+    {% render 'sb-design', settings: settings, prefix: 'site_' %}
   >
     <a class="sb-skip-link" href="#main">{{ 'general.accessibility.skip_to_content' | t }}</a>
 

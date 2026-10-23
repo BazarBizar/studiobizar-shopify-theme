@@ -1,6 +1,7 @@
 import "server-only";
 
 import { OPERATIONS } from "./operations";
+import { setProductCollections } from "./products";
 import { adminGraphQL, assertNoUserErrors } from "./shopify";
 
 /**
@@ -11,6 +12,10 @@ import { adminGraphQL, assertNoUserErrors } from "./shopify";
  * products appear in it, and one mistyped condition empties it on the storefront with no
  * undo. The rules are READ so the form can show them as context; that the display is
  * read-only is a consequence of this module never sending them, not a UI choice.
+ *
+ * A MANUAL collection's products can be added and removed (`setCollectionMembership`,
+ * through each product — see `setProductCollections`). A smart one's cannot: its rules
+ * decide, and the write refuses it.
  *
  * This store happens to have twelve collections, all manual — but the rule is written
  * for the store, not for today's data.
@@ -277,4 +282,38 @@ export async function updateCollection(id: string, input: CollectionWriteInput) 
   if (!data.collectionUpdate.collection) throw new Error("Shopify updated nothing.");
 
   return data.collectionUpdate.collection;
+}
+
+/** A collection's rules decide a smart collection's products; only a manual one is edited by hand. */
+export class SmartCollectionError extends Error {}
+
+/**
+ * Adds or removes products in a MANUAL collection — one product update each, a few at
+ * a time. Refuses a smart collection. Returns the products that failed, by id, so the
+ * editor can say which ones did not move rather than "something went wrong".
+ */
+export async function setCollectionMembership(
+  collectionId: string,
+  change: { add?: string[]; remove?: string[] },
+): Promise<{ failed: string[] }> {
+  const collection = await getCollection(collectionId);
+  if (!collection) throw new Error("This collection no longer exists.");
+  if (collection.ruleSet) {
+    throw new SmartCollectionError("This collection fills itself from its rules, so products can’t be added or removed by hand.");
+  }
+
+  const jobs = [
+    ...(change.add ?? []).map((id) => ({ id, change: { join: [collectionId] } })),
+    ...(change.remove ?? []).map((id) => ({ id, change: { leave: [collectionId] } })),
+  ];
+  const failed: string[] = [];
+  for (let start = 0; start < jobs.length; start += 4) {
+    const results = await Promise.allSettled(
+      jobs.slice(start, start + 4).map((job) => setProductCollections(job.id, job.change)),
+    );
+    results.forEach((result, index) => {
+      if (result.status === "rejected") failed.push(jobs[start + index]!.id);
+    });
+  }
+  return { failed };
 }

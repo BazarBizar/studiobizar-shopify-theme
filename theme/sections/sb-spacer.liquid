@@ -162,7 +162,7 @@
       "type": "color",
       "id": "bg_color",
       "label": "Background colour",
-      "info": "Overrides the background above. Leave empty to use it."
+      "info": "Your own colour instead of the Background choice above. Leave empty to keep that choice."
     },
     {
       "type": "color",
@@ -270,6 +270,71 @@
       "step": 1,
       "unit": "px",
       "default": 0
+    },
+    {
+      "type": "paragraph",
+      "content": "Design — empty uses the design’s own value. “On phones” is for screens narrower than 750px."
+    },
+    {
+      "type": "header",
+      "content": "Shadow & size"
+    },
+    {
+      "type": "select",
+      "id": "d_shadow",
+      "label": "Shadow",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "soft",
+          "label": "Soft"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "strong",
+          "label": "Strong"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "number",
+      "id": "d_min_height",
+      "label": "Minimum height (px)",
+      "placeholder": "Default"
+    },
+    {
+      "type": "number",
+      "id": "d_min_height_m",
+      "label": "Minimum height on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "select",
+      "id": "d_valign",
+      "label": "Content sits",
+      "options": [
+        {
+          "value": "top",
+          "label": "Top"
+        },
+        {
+          "value": "center",
+          "label": "Middle"
+        },
+        {
+          "value": "bottom",
+          "label": "Bottom"
+        }
+      ],
+      "default": "top",
+      "info": "When the section is taller than its content."
     }
   ],
   "presets": [

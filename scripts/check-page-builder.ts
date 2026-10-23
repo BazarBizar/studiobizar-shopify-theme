@@ -17,10 +17,14 @@ import {
   sameContent,
 } from "../lib/page-builder/document";
 import { isSafeHref, parseVideoUrl } from "../lib/page-builder/fields";
-import { SECTION_PRESETS, sectionFromPreset } from "../lib/page-builder/presets";
+import { withExamples } from "../lib/page-builder/examples";
+import { findTextPath, withText } from "../lib/page-builder/inline-edit";
+import { presetById, SECTION_PRESETS, sectionFromPreset } from "../lib/page-builder/presets";
 import { builderHandleProblem, handleFromTitle, isBuilderEditable, isBuilderHandle } from "../lib/page-builder/handles";
 import { PAGE_MIGRATIONS, migrateToDocument } from "../lib/page-builder/migrations";
+import { contrastRatio, designSchema, designStyle, readDesign } from "../lib/page-builder/design";
 import { SECTIONS, SECTION_TYPES } from "../lib/page-builder/registry";
+import { defaultLayoutContent, menusIn, parseThemeLayout, sameThemeContent, themeContentSchema } from "../lib/theme-builder/layout";
 import { PAGE_TEMPLATES, documentFromTemplate } from "../lib/page-builder/templates";
 
 let failures = 0;
@@ -340,6 +344,145 @@ for (const reserved of ["shop", "admin", "api", "preview", "home", "our-services
 check('handle "summer-campaign" is allowed', builderHandleProblem("summer-campaign") === null);
 check('handle "-bad-" is refused', builderHandleProblem("-bad-") !== null);
 check('handleFromTitle("Été & Co!")', handleFromTitle("Été & Co!") === "ete-and-co");
+
+
+/* --- design value: sparse, validated, per device --- */
+
+check("an empty design changes nothing", Object.keys(designStyle({}).style).length === 0 && Object.keys(designStyle({}).attrs).length === 0);
+check("a design colour must be #rrggbb", !designSchema.safeParse({ heading: { color: "red; background:url(x)" } }).success);
+check("a font must be one of the list", !designSchema.safeParse({ heading: { font: "comic-sans" } }).success);
+check(
+  "a damaged design part costs only that part",
+  JSON.stringify(readDesign({ heading: { size: { d: 9999 } }, opacity: 50 })) === JSON.stringify({ opacity: 50 }),
+);
+{
+  const { style, attrs } = designStyle({ heading: { size: { d: 40, m: 28 } } });
+  check(
+    "per-device sizes become desktop and mobile properties",
+    style["--sb-h-size"] === "40px" && style["--sb-h-size-m"] === "28px" && attrs["data-sb-hsize"] === "d m",
+  );
+}
+check(
+  "a section saved before the design existed reads an empty design",
+  (() => {
+    const read = SECTIONS.text_block.lenient({ title: "Kept" }) as { title: string; design: unknown };
+    return read.title === "Kept" && JSON.stringify(read.design) === "{}";
+  })(),
+);
+
+/* --- theme layout: the header and footer --- */
+
+{
+  const content = defaultLayoutContent();
+  check("the default header and footer pass the write schema", themeContentSchema.safeParse(content).success);
+  const read = parseThemeLayout(
+    JSON.stringify({ ...content, version: 1, meta: { revision: 3, savedAt: null, savedBy: null, publishedAt: null, publishedBy: null } }),
+  );
+  check("a saved layout reads back the same", read.ok && sameThemeContent(read.layout, content) && read.layout.meta.revision === 3);
+  check("the default uses the five site menus", menusIn(content).length === 5);
+
+  const damaged = JSON.parse(JSON.stringify(content));
+  damaged.header.desktop.left.push({ id: "b_zzzzzzzz", type: "made_up", settings: {} });
+  damaged.header.desktop.right[0].settings.menu = "not-a-menu";
+  const repaired = parseThemeLayout(JSON.stringify(damaged));
+  check(
+    "a damaged layout keeps every valid element and repairs the bad setting",
+    repaired.ok &&
+      repaired.layout.header.desktop.left.length === content.header.desktop.left.length &&
+      repaired.layout.header.desktop.right[0]!.settings.menu === "primary",
+  );
+  const unsafe = JSON.parse(JSON.stringify(content));
+  unsafe.header.style.background = "red";
+  check("a layout with a bad colour is refused on write", !themeContentSchema.safeParse(unsafe).success);
+  check("broken JSON is not a layout", !parseThemeLayout("{oops").ok);
+}
+
+
+/* --- example content: a section added is never empty --- */
+
+{
+  const IMAGE_EXAMPLE = {
+    id: "gid://shopify/MediaImage/1",
+    url: "https://cdn.shopify.com/s/files/1/example.jpg",
+    altText: null,
+    width: 1600,
+    height: 1000,
+  };
+  const media = {
+    images: [IMAGE_EXAMPLE],
+    products: [{ id: "gid://shopify/Product/1", handle: "chair", title: "Chair" }],
+    collections: [{ id: "gid://shopify/Collection/1", handle: "chairs", title: "Chairs" }],
+  };
+  const unfillable = /Video address|Logo/;
+  let valid = 0;
+  const empty: string[] = [];
+  for (const preset of SECTION_PRESETS) {
+    const section = withExamples(sectionFromPreset(preset), media);
+    const definition = SECTIONS[section.type];
+    if ((definition.strict as { safeParse: (v: unknown) => { success: boolean } }).safeParse(section.settings).success) valid += 1;
+    const missing = (definition.missing as (s: unknown) => string[])(section.settings).filter((label) => !unfillable.test(label));
+    if (missing.length) empty.push(`${preset.id}: ${missing.join(", ")}`);
+  }
+  check(`every preset with examples passes the write schema (${valid}/${SECTION_PRESETS.length})`, valid === SECTION_PRESETS.length);
+  check(`every preset with examples has its required content filled${empty.length ? " — " + empty.slice(0, 3).join(" | ") : ""}`, empty.length === 0);
+  const text = withExamples(sectionFromPreset(presetById("text_block")!), media) as { settings: { title: string } };
+  check("a plain Text section arrives with an example heading", text.settings.title === "Your heading here");
+  const heading = withExamples(sectionFromPreset(presetById("page_heading")!), media) as { settings: { title: string } };
+  check("a Page heading keeps its title empty (empty means: the page's title)", heading.settings.title === "");
+}
+
+
+/* --- design: gradient, corners per device, images, readability --- */
+
+{
+  const gradient = designStyle({ background: { gradient: { from: "#ebe8e3", to: "#302f2d", angle: 90 } } });
+  check("a gradient becomes the background", gradient.style["--sb-bg"] === "linear-gradient(90deg, #ebe8e3, #302f2d)" && gradient.attrs["data-sb-bg"] === "");
+  check("a gradient with a bad colour is refused", !designSchema.safeParse({ background: { gradient: { from: "red", to: "#302f2d", angle: 90 } } }).success);
+  const corners = designStyle({ radius: { m: 24 } });
+  check("mobile corners set their own property and clip", corners.style["--sb-rad-m"] === "24px" && corners.attrs["data-sb-rad"] === "m" && corners.style.overflow === "clip");
+  const images = designStyle({ images: { ratio: "square", radius: 8, zoom: true } });
+  check(
+    "image shape, corners and zoom reach the section",
+    images.style["--sb-ratio"] === "1 / 1" && images.style["--sb-imgr"] === "8px" && images.attrs["data-sb-zoom"] === "",
+  );
+  check("an unknown image shape is refused", !designSchema.safeParse({ images: { ratio: "circle" } }).success);
+  const buttons = designStyle({
+    buttonLook: { background: "#a65a3f", hoverColor: "#ebe8e3", borderWidth: 0, radius: 12, padX: { d: 40, m: 16 }, spaceAbove: { t: 24 } },
+  });
+  check(
+    "the buttons' look: colours, line, corners and per-device spacing",
+    buttons.style["--sb-btn-bg"] === "#a65a3f" &&
+      buttons.style["--sb-btn-hfg"] === "#ebe8e3" &&
+      buttons.style["--sb-btn-bw"] === "0px" &&
+      buttons.style["--sb-btn-r"] === "12px" &&
+      buttons.attrs["data-sb-btn-px"] === "d m" &&
+      buttons.style["--sb-btn-px-m"] === "16px" &&
+      buttons.attrs["data-sb-btn-mt"] === "t",
+  );
+  check("a button colour must be #rrggbb", !designSchema.safeParse({ buttonLook: { background: "red" } }).success);
+  check("button corners are bounded", !designSchema.safeParse({ buttonLook: { radius: 500 } }).success);
+  check("a damaged button look is dropped on read, the rest kept", readDesign({ buttonLook: { color: "x" }, shadow: "soft" }).shadow === "soft" && readDesign({ buttonLook: { color: "x" } }).buttonLook === undefined);
+  check("contrast: dark wood on earth reads well", contrastRatio("#302f2d", "#ebe8e3") > 10);
+  check("contrast: earth on white does not", contrastRatio("#ebe8e3", "#ffffff") < 1.5);
+}
+
+
+/* --- editing text in the preview --- */
+
+{
+  const settings = {
+    title: "Soft geometry",
+    link: { label: "discover", href: "/shop" },
+    body: '{"type":"root","children":[]}',
+    slides: [{ id: "b_aaaaaaaa", type: "slide", settings: { title: "Second  slide\n" } }],
+  };
+  check("in place: a heading is found by its text", JSON.stringify(findTextPath(settings, "Soft geometry")) === '["title"]');
+  check("in place: a button's label, never its address", JSON.stringify(findTextPath(settings, "discover")) === '["link","label"]' && findTextPath(settings, "/shop") === null);
+  check("in place: text inside a slide, whitespace aside", JSON.stringify(findTextPath(settings, "Second slide")) === '["slides",0,"settings","title"]');
+  check("in place: rich text is not offered", findTextPath(settings, '{"type":"root","children":[]}') === null);
+  const changed = withText(settings, ["slides", 0, "settings", "title"], "New");
+  check("in place: the new value lands at its path, the old settings untouched", changed.slides[0]!.settings.title === "New" && settings.slides[0]!.settings.title === "Second  slide\n");
+}
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll page builder checks passed.");
 process.exit(failures ? 1 : 0);

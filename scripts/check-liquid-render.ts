@@ -44,7 +44,10 @@ import {
 } from "liquidjs";
 import { chromium } from "playwright";
 
+import { designStyle, type DesignValue } from "../lib/page-builder/design-style";
+
 import { LIQUID_SECTIONS } from "./lib/liquid";
+import { DESIGN_SNIPPET, designSettings, FONT_SNIPPET, SECTION_PREFIX, SITE_PREFIX, themeSettingsFor } from "./lib/liquid-design";
 
 const ROOT = path.resolve(__dirname, "..");
 const THEME = path.join(ROOT, "theme");
@@ -338,6 +341,13 @@ async function renderAll() {
       }
     }
 
+    // The sample design on the first preset — drawn and measured in the browser.
+    if (file === "sb-cta-banner" && schema.presets?.[0]) {
+      const preset = schema.presets[0];
+      const html = await render(source, { ...settingsFrom(schema.settings, preset.settings), ...themeSettingsFor(DESIGN_SAMPLE) }, [], false);
+      rendered.push({ name: `${file}--design`, html });
+    }
+
     // Every field empty, every block empty — live and in the editor.
     const firstPreset = schema.presets?.[0];
     const emptyBlocks = (firstPreset?.blocks ?? []).map((block, index) => ({
@@ -382,7 +392,123 @@ async function renderAll() {
  * Look at it
  * -------------------------------------------------------------------------- */
 
+/* -------------------------------------------------------------------------- *
+ * The design value: the Liquid snippet writes what Next writes
+ * -------------------------------------------------------------------------- */
+
+/** Every design control set, desktop and phone — the most the theme can be handed. */
+const DESIGN_SAMPLE: DesignValue = {
+  heading: { font: "playfair-display", size: { d: 44, m: 28 }, weight: 600, color: "#a65a3f", transform: "uppercase" },
+  text: { size: { d: 19 }, color: "#47515c" },
+  button: { font: "inter", size: { m: 12 }, transform: "none" },
+  align: { d: "center", m: "left" },
+  buttonLook: {
+    background: "#a65a3f",
+    color: "#ffffff",
+    borderColor: "#302f2d",
+    borderWidth: 2,
+    radius: 20,
+    hoverBackground: "#47515c",
+    hoverColor: "#ebe8e3",
+    hoverBorderColor: "#1d1d1b",
+    padX: { d: 40, m: 16 },
+    padY: { d: 14 },
+    spaceAbove: { m: 12 },
+    gap: { d: 24 },
+  },
+  images: { ratio: "square", radius: 12, zoom: true },
+  shadow: "medium",
+  maxWidth: { d: 900 },
+  minHeight: { d: 600, m: 400 },
+  verticalAlign: "center",
+};
+
+/** What a rendered element carries: its data-sb-* attributes and its style declarations. */
+function carried(html: string) {
+  const decode = (text: string) => text.replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+  const attrs: Record<string, string> = {};
+  for (const [, name, value] of html.matchAll(/\s(data-sb-[a-z0-9-]+)(?:="([^"]*)")?/g)) attrs[name!] = value ?? "";
+  const style: Record<string, string> = {};
+  const raw = html.match(/\sstyle="([^"]*)"/)?.[1];
+  for (const declaration of decode(raw ?? "").split(";")) {
+    const at = declaration.indexOf(":");
+    if (at > 0) style[declaration.slice(0, at).trim()] = declaration.slice(at + 1).trim();
+  }
+  return { attrs, style };
+}
+
+/** `designStyle` as an element would carry it: camelCase properties as CSS names. */
+function expectedFrom(value: DesignValue) {
+  const { style, attrs } = designStyle(value);
+  return {
+    attrs,
+    style: Object.fromEntries(Object.entries(style).map(([key, v]) => [key.startsWith("--") ? key : key.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`), v])),
+  };
+}
+
+const sorted = (record: Record<string, string>) => JSON.stringify(Object.fromEntries(Object.entries(record).sort()));
+
+async function designParity() {
+  // Defaults as Shopify hands them (selects on "Default", numbers empty), then the values.
+  const defaults = (prefix: string) =>
+    Object.fromEntries(
+      designSettings(["typography", "align", "buttons", "images", "effects", "width", "height"], prefix)
+        .filter((setting) => typeof setting.id === "string")
+        .map((setting) => [setting.id, setting.default ?? (setting.type === "checkbox" ? false : "")]),
+    );
+  const cases: [string, DesignValue, string][] = [
+    ["nothing set", {}, SECTION_PREFIX],
+    ["every control, desktop and phone", DESIGN_SAMPLE, SECTION_PREFIX],
+    ["zero corners on photos write nothing; a zero line is a choice", { images: { radius: 0 }, buttonLook: { borderWidth: 0 } }, SECTION_PREFIX],
+    ["a height with no position, a position with no height", { minHeight: { m: 300 } }, SECTION_PREFIX],
+    ["Site style", { heading: DESIGN_SAMPLE.heading, buttonLook: DESIGN_SAMPLE.buttonLook }, SITE_PREFIX],
+  ];
+  for (const [label, value, prefix] of cases) {
+    const settings = { ...defaults(prefix), ...themeSettingsFor(value, prefix) };
+    const html = await engine.parseAndRender(`<div{% render '${DESIGN_SNIPPET}', settings: s, prefix: '${prefix}' %}></div>`, { s: settings });
+    const got = carried(html);
+    const want = expectedFrom(value);
+    check(`design · ${label}: the same attributes as Next`, sorted(got.attrs) === sorted(want.attrs), `${sorted(got.attrs)} ≠ ${sorted(want.attrs)}`);
+    check(`design · ${label}: the same properties as Next`, sorted(got.style) === sorted(want.style), `${sorted(got.style)} ≠ ${sorted(want.style)}`);
+  }
+  // The ten fonts, latin and latin-ext each, every file in the theme's assets.
+  const faces = await engine.parseAndRender(`{% render '${FONT_SNIPPET}' %}`, {});
+  const files = [...faces.matchAll(/url\((sb-font-[^)]+\.woff2)\)/g)].map((match) => match[1]!);
+  check(
+    `design · ${FONT_SNIPPET}: 20 faces, every file present`,
+    files.length === 20 && files.every((file) => fs.existsSync(path.join(THEME, "assets", file))),
+    files.join(", "),
+  );
+}
+
+/** A section given the sample design, drawn by the built theme CSS. */
+async function designDrawn(tab: import("playwright").Page, label: "desktop" | "phone") {
+  const section = tab.locator('[data-shot="sb-cta-banner--design"]');
+  const looks = await section.evaluate((root) => {
+    const frame = root.querySelector<HTMLElement>("[data-sb-hsize]")!;
+    const heading = frame.querySelector("h1, h2, h3")!;
+    const button = frame.querySelector<HTMLElement>('[data-sb-button="solid"]')!;
+    return {
+      headingSize: getComputedStyle(heading).fontSize,
+      headingFont: getComputedStyle(heading).fontFamily,
+      headingColour: getComputedStyle(heading).color,
+      buttonBackground: getComputedStyle(button).backgroundColor,
+      buttonCorners: getComputedStyle(button).borderTopLeftRadius,
+      buttonPadding: getComputedStyle(button).paddingLeft,
+      shadow: getComputedStyle(frame).boxShadow !== "none",
+      minHeight: getComputedStyle(frame).minHeight,
+    };
+  });
+  const phone = label === "phone";
+  check(`design drawn (${label}): heading size`, looks.headingSize === (phone ? "28px" : "44px"), looks.headingSize);
+  check(`design drawn (${label}): heading font and colour`, /Playfair/.test(looks.headingFont) && looks.headingColour === "rgb(166, 90, 63)", `${looks.headingFont} ${looks.headingColour}`);
+  check(`design drawn (${label}): button colour and corners`, looks.buttonBackground === "rgb(166, 90, 63)" && looks.buttonCorners === "20px", `${looks.buttonBackground} ${looks.buttonCorners}`);
+  check(`design drawn (${label}): button space inside`, looks.buttonPadding === (phone ? "16px" : "40px"), looks.buttonPadding);
+  check(`design drawn (${label}): shadow and minimum height`, looks.shadow && looks.minHeight === (phone ? "400px" : "600px"), `${looks.shadow} ${looks.minHeight}`);
+}
+
 async function main() {
+  await designParity();
   await renderAll();
   fs.rmSync(OUT, { recursive: true, force: true });
   fs.mkdirSync(OUT, { recursive: true });
@@ -450,6 +576,7 @@ async function main() {
       [...new Set(errors)].slice(0, 3).join(" | "),
     );
 
+    await designDrawn(tab, label);
     if (label === "desktop") await interactions(tab);
     await context.close();
   }

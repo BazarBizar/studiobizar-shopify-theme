@@ -1521,6 +1521,56 @@ ${REFERENCE_PREVIEW}
       }
     `,
   },
+
+  /* ------------------------------------------------------------- theme builder */
+
+  /**
+   * The header and footer layout's three copies, on the SHOP (see
+   * `lib/theme-builder/layout.ts`). The shop id comes back too: it is the owner every
+   * write names.
+   */
+  themeLayout: {
+    kind: "read",
+    document: `
+      query AdminThemeLayout {
+        shop {
+          id
+          published: metafield(namespace: "custom", key: "theme_layout") {
+            value
+          }
+          draft: metafield(namespace: "custom", key: "theme_layout_draft") {
+            value
+          }
+          previous: metafield(namespace: "custom", key: "theme_layout_previous") {
+            value
+          }
+        }
+      }
+    `,
+  },
+
+  /**
+   * Every Theme Builder write: ONE `metafieldsSet`, which Shopify applies all or
+   * nothing — so a publish can never leave the live and previous copies half
+   * swapped.
+   */
+  themeLayoutSet: {
+    kind: "write",
+    document: `
+      mutation AdminThemeLayoutSet($metafields: [MetafieldsSetInput!]!) {
+        metafieldsSet(metafields: $metafields) {
+          metafields {
+            key
+          }
+          userErrors {
+            field
+            message
+            code
+          }
+        }
+      }
+    `,
+  },
 } as const satisfies Record<string, Operation>);
 
 export type OperationName = keyof typeof OPERATIONS;

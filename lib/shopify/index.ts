@@ -25,9 +25,11 @@ import {
   getMenuQuery,
   getPageBuilderDocumentQuery,
   getPageQuery,
+  getThemeLayoutQuery,
   getPagesQuery,
   getShopQuery,
 } from "./queries/content";
+import { parseThemeLayout, type ThemeLayout } from "@/lib/theme-builder/layout";
 import { getMetaobjectQuery, getMetaobjectsQuery } from "./queries/metaobject";
 import {
   getProductQuery,
@@ -368,6 +370,39 @@ export async function getLivePageBuilderDocument(
   });
 
   return { found: Boolean(data.page), value: data.page?.document?.value ?? null };
+}
+
+/**
+ * The published header and footer layout, or null — null until the Theme Builder
+ * first publishes, and when the stored copy cannot be read. Either way the shell then
+ * draws its original header and footer. Cached with the rest of the content.
+ */
+export async function getThemeLayout(): Promise<ThemeLayout | null> {
+  try {
+    const data = await shopifyFetch<{ shop: { layout: Maybe<{ value: string }> } }>({
+      query: getThemeLayoutQuery,
+      tags: [TAGS.content],
+      revalidate: REVALIDATE.content,
+    });
+    const parsed = parseThemeLayout(data.shop.layout?.value);
+    if (!parsed.ok && parsed.reason === "invalid") {
+      console.error("[theme-builder] the published header and footer are not readable — drawing the original ones.");
+    }
+    return parsed.ok ? parsed.layout : null;
+  } catch {
+    // The shell must render even when Shopify is unreachable.
+    return null;
+  }
+}
+
+/** What the Storefront API serves RIGHT NOW — uncached, for "has my publish landed yet?". */
+export async function getLiveThemeLayoutStamp(): Promise<string | null> {
+  const data = await shopifyFetch<{ shop: { layout: Maybe<{ value: string }> } }>({
+    query: getThemeLayoutQuery,
+    revalidate: false,
+  });
+  const parsed = parseThemeLayout(data.shop.layout?.value);
+  return parsed.ok ? parsed.layout.meta.publishedAt : null;
 }
 
 export async function getPages(first = 50): Promise<ShopifyPage[]> {

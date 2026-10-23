@@ -24,14 +24,14 @@ import {
  */
 const PLACEMENT_FIELD = select(
   "placement",
-  "Band",
+  "Placement",
   [
-    { value: "band", label: "Separate band" },
-    { value: "heading", label: "Same band as the heading" },
+    { value: "band", label: "Its own section" },
+    { value: "heading", label: "Joined to the Page heading above" },
   ],
   {
     group: "layout",
-    help: "Same band puts this directly under the page heading, as one block — as on the FAQ page.",
+    help: "Joined shows it right under the page heading as one block, with the heading’s background — as on the FAQ page.",
   },
 );
 
@@ -72,7 +72,7 @@ const BUTTON_STYLES = [
 export const pageHeading = defineSection({
   type: "page_heading",
   label: "Page heading",
-  description: "The page's one main heading, with an optional intro. Can be kept for screen readers only, under an image-only hero.",
+  description: "The page's main heading, with an optional intro. Can be hidden from view (screen readers still read it) when a photo at the top says it all.",
   category: "Intro",
   fields: [
     text("title", "Heading", { help: "Leave empty to use the page title." }),
@@ -109,8 +109,8 @@ export const pageHeading = defineSection({
 
 export const hero = defineSection({
   type: "hero",
-  label: "Hero slideshow",
-  description: "Full-width photographs at the top of a page. One image is a still; several play as a slideshow.",
+  label: "Photo slideshow",
+  description: "Full-width photographs only, no text, at the top of a page. One image is a still; several play in turn. For text and buttons on the photos, use Hero slider.",
   category: "Intro",
   fields: [
     // No caption: the hero is image-only by design, so a caption would be text the
@@ -119,7 +119,7 @@ export const hero = defineSection({
       max: 8,
       required: true,
       captions: false,
-      help: "Describe each photograph in its alt text — the hero shows images only.",
+      help: "Fill in each photo's Image description — this section shows photos only, no text.",
     }),
   ],
   universal: ["hideOn"],
@@ -129,7 +129,7 @@ export const hero = defineSection({
 export const textBlock = defineSection({
   type: "text_block",
   label: "Text",
-  description: "A heading, a few paragraphs and one optional button — the usual text band.",
+  description: "A heading, a few paragraphs and one optional button — the usual text section.",
   category: "Text & media",
   fields: [
     text("title", "Heading", { required: true }),
@@ -140,10 +140,10 @@ export const textBlock = defineSection({
       "textStyle",
       "Text style",
       [
-        { value: "prose", label: "Running copy" },
+        { value: "prose", label: "Several paragraphs" },
         { value: "plain", label: "Single paragraph" },
       ],
-      { group: "advanced", help: "Single paragraph sets a short text with tighter lines." },
+      { group: "advanced", help: "Single paragraph: one short text, with the lines closer together." },
     ),
     select(
       "spaceAbove",
@@ -152,7 +152,7 @@ export const textBlock = defineSection({
         { value: "standard", label: "Standard" },
         { value: "none", label: "None" },
       ],
-      { group: "advanced", help: "None when the band above already ends in space — as under three photographs." },
+      { group: "advanced", help: "Choose None when the section above already leaves enough space — for example under Three photographs." },
     ),
   ],
   summaryKey: "title",
@@ -188,9 +188,9 @@ export const richTextSection = defineSection({
         ),
         block("text", "Text", [
           richText("body", "Text", { required: true }),
-          select("scale", "Copy size", [
-            { value: "body", label: "Running copy" },
-            { value: "lead", label: "Lead — heading size" },
+          select("scale", "Text size", [
+            { value: "body", label: "Normal" },
+            { value: "lead", label: "Large — heading size" },
           ]),
         ]),
         block("button", "Button", [link("link", "Button", { required: true }), select("style", "Style", BUTTON_STYLES)]),
@@ -198,13 +198,13 @@ export const richTextSection = defineSection({
     }),
     select(
       "width",
-      "Measure",
+      "Text width",
       [
         { value: "medium", label: "Medium" },
         { value: "narrow", label: "Narrow" },
         { value: "full", label: "Full width" },
       ],
-      { group: "layout", help: "How wide the copy runs before it wraps. Narrow keeps a line readable." },
+      { group: "layout", help: "How wide the text runs before it wraps to the next line. Narrow is easiest to read." },
     ),
     select(
       "align",
@@ -417,7 +417,7 @@ export const productMosaic = defineSection({
 export const collectionCarousel = defineSection({
   type: "collection_carousel",
   label: "Collection carousel",
-  description: "A scrolling row of collection cards on an earth band.",
+  description: "A scrolling row of collection cards on an earth-coloured background.",
   category: "Catalogue",
   fields: [
     text("title", "Heading", { required: true, default: "Signature Collections" }),
@@ -460,7 +460,7 @@ export const projectCards = defineSection({
       { group: "layout" },
     ),
     toggle("viewAll", "Show “view all”", { default: true }),
-    text("introTitle", "Intro heading", { help: "Optional text under the cards, inside the same band." }),
+    text("introTitle", "Intro heading", { help: "Optional text under the cards, in the same section." }),
     richText("introBody", "Intro text"),
     link("introLink", "Intro button"),
   ],

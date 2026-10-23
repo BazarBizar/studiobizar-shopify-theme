@@ -37,8 +37,13 @@ entries sections draw on; locations and contact channels are on Site-wide).
   section everywhere.
 - Fine adjustments that exist so pages match their design exactly sit under **Advanced**,
   folded away.
-- **Band: Same band as the heading** is offered only directly under a Page heading; when it is on,
-  the section's own background and spacing are not offered, because they do not apply.
+- **Placement: Joined to the Page heading above** is offered only directly under a Page heading; when
+  it is on, the section's own background and spacing are not offered, because they do not apply. Its
+  Style tab says why and offers two buttons instead: open the Page heading's Style tab, or switch the
+  section back to **Its own section**.
+- Editor-facing text avoids internal words ("band", "copy", "measure", "alt text"): labels say what
+  the editor sees on the page, and a message that explains why something is unavailable also offers
+  the way out as a button or link, never only the name of a setting to go and find.
 - Links have a **Choose** picker (pages, collections, site sections); FAQ category is a pick-list
   of the categories in use.
 - **Load previously published version** puts the earlier version into the DRAFT; it goes live only
@@ -107,6 +112,108 @@ same controls on every section (`STYLE_FIELDS` in `define-section.ts`):
   declarations. A section joined to the page heading's band takes the heading's style instead.
 - `defineSection({ style: false })` hides the tab's extra controls for a section where they would
   do nothing.
+
+## A new section arrives filled; the preview follows live
+
+- **Example content.** A section added from Add section is filled by `withExamples`
+  (`lib/page-builder/examples.ts`): every still-empty content field gets an example — heading,
+  text, button, and the shop's own photographs, products and collections (`getExampleMedia`,
+  loaded with the Content tab). A preset's own copy stays; colours, sizes and choices are never
+  touched; a field whose emptiness means something ("Leave empty to use the page title") stays
+  empty. The editor says "… added — it holds example content", and the preview scrolls to it.
+- **Live preview.** The editor posts what is on screen to the preview 150ms after each change
+  (`sb-preview:content`); `LivePreview` has the server draw it (`renderPagePreview`, a Server
+  Function in `app/(admin)/preview/actions.tsx`) and React reconciles it into the page in place —
+  no save in between, scroll and carousels undisturbed. The selected section's Style is applied
+  at once (`sb-preview:style`), so a slider moves the section as it is dragged. Autosave runs
+  behind, unchanged. The Theme Builder's preview works the same way (`renderThemePreview`).
+
+- **Editing in place.** Double-click a heading, a line, a button label or a caption in the
+  preview and type over it; Enter or a click elsewhere finishes, Escape puts it back, Shift+Enter is a
+  new line. The preview asks the editor which setting the text is (`findTextPath`,
+  `lib/page-builder/inline-edit.ts`, matched by value, blocks included, rich text excluded); each
+  keystroke updates it through the editor's history (so Undo works); the live redraw waits until
+  the edit ends. Clicking a section in the preview selects it without scrolling the page.
+- **Narrow screens.** Below 1024px a "Show preview / Back to editing" button switches between the
+  settings and the preview (`PaneSwitch`); the preview stays loaded while hidden.
+- **One "Show on".** For a section with the design panel, the Content tab's old *Show on* select is
+  not offered; the three switches under More design → *Show on devices* are the one control. A choice
+  the old setting can express (all / desktop only / mobile only) is stored there — what the Liquid
+  theme reads — and only a tablet-specific one goes to `design.hide`.
+- **Readability.** The Style tab warns, with the contrast ratio, when text or headings would be hard
+  to read on the chosen background (WCAG: 4.5:1 for text, 3:1 for headings).
+
+## More design — the design value (per device)
+
+Every section's Style tab ends with **More design**, the editor for one `design` value
+(`lib/page-builder/design.ts`; `design-style.ts` is its zod-free half, for client components):
+
+- **Typography** for Headings, Text and Buttons — font (Helvetica Neue, or one of ten self-hosted
+  Fontsource fonts, downloaded only when used), size, weight, line height, letter spacing, colour
+  (not for buttons — see Buttons), letter case; text alignment.
+- **Buttons** (`buttonLook`) — background, text and line colour, as they are and under the pointer;
+  line thickness; rounded corners; space inside (sides, top and bottom), space above the buttons
+  and between them, per device. Filled and outlined buttons take all of it; a text link only its
+  colours. Each button carries its variant (`data-sb-button="solid|outline|text"`) and a button row
+  is marked `data-sb-buttons`, so "space above" replaces the row's own margin. A chosen colour
+  stays under the pointer and dims (the outline's fill-on-hover could hide it) unless a hover
+  colour is set; a new background with no text colour gets a readable one. Offered on sections
+  with buttons, on each Hero slider slide, and for the whole site (Theme Builder → Site style →
+  Buttons for the whole site), where a section's own still wins.
+- **Background image** (and a phone crop) with an overlay colour and strength.
+- **Spacing per device** — tablet and mobile overrides of Custom spacing.
+- **Background gradient** (two colours, a direction), under the background image.
+- **Corners, shadow & transparency** — rounded corners can differ on tablet and mobile.
+- **Images** (not on banners and heroes, whose photograph is their ground): a shape for every
+  photograph in the section (square, tall, landscape, wide), rounded corners, a slow zoom on hover.
+- **Width & height** (content width, minimum height, where content sits), **Show on devices**.
+
+Only what does something is offered. When a section is selected, and after each redraw, the preview
+reports what that section actually draws (`sb-preview:contents`: headings, text, buttons, images,
+a content column). Typography then offers only the targets it has (Three photographs: Text — its
+captions), Images hides where there is no photograph, and Content width hides on sections that run
+edge to edge (full image, marquee, spacer). "Text" covers paragraphs, list items, captions, quotes
+and term/description pairs. `defineSection({ textAlign: false })` drops Text alignment where the
+section places its own text (the slideshow: Text position per slide).
+
+On a section with photographs, "Line & corners" offers **Section corners** (its background and
+line — the help says when there is nothing yet to see them on) and, beside it, **Photo corners**,
+which edits `design.images.radius` (the same value as More design → Images).
+
+Values that can differ per device are stored as `{ d, t, m }`: desktop applies everywhere, tablet
+below 1024px, mobile below 750px — Elementor's inheritance. The editor's device switch (above the
+preview, and at the top of the Style tab) sets both the preview width and which value every
+responsive control edits; the desktop preview renders at 1440px and is scaled to fit.
+
+The value is sparse: unset means the brand's own value, an empty object changes nothing, and each
+control has its own reset. `SectionFrame` turns it into custom properties plus `data-sb-*`
+attributes; the static rules in `globals.css` (section "DESIGN") apply them per breakpoint — no
+`<style>` per section. The same value styles each slide of the **Hero slider**
+(`fields: design("design", …, { parts: ["typography"] })`) and the Theme Builder's typography.
+
+**In the Liquid theme** (decided 2026-10-23): the most-used part of the design value, desktop and
+phone (Shopify's editor has no tablet) — typography for headings, text and buttons (font, size,
+weight, colour, case) and text alignment; the Buttons look; the photographs' shape, corners and
+zoom; shadow, content width, minimum height. One table, `scripts/lib/liquid-design.ts`, drives the
+`d_*` section settings (in each generated schema, offered only where they do something), the
+Site style group (`site_*`) in `config/settings_schema.json`, and the generated
+`snippets/sb-design.liquid`, which `sb-section-style` renders (and `theme.liquid` on `<body>` for
+Site style). It writes the same custom properties and `data-sb-*` attributes as `designStyle`, and
+both builds import the same rules, `styles/sb-design.css`. The ten fonts are the same Fontsource
+files, copied to `theme/assets/sb-font-*.woff2` with `snippets/sb-font-faces.liquid`.
+`yarn liquid:design` writes all of it; `check:liquid` fails when it is stale; `check:liquid-render`
+renders the snippet for real design values and requires exactly what `designStyle` writes, then
+measures a designed section in Chromium at both widths.
+
+Still Next only: background image/gradient/overlay, line height, letter spacing, transparency,
+per-device spacing, tablet values, a slide's own design, and fields marked `nextOnly: true`.
+Shopify Theme Check warns (ExcessiveSettingsCount, advice, not a limit) on sections now above 40
+settings.
+
+**Hero slider** (`slideshow`): each slide has its own photo and phone crop, two buttons, text
+position on desktop and on phones, text width, text colour, darkening (shared or its own, with a
+colour) and typography; the slider's height can differ on phones, and slides change by fade,
+sideways slide, or fade with a slow zoom (reduced motion: always a fade).
 
 ## Files
 

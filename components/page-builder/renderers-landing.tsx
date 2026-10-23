@@ -76,8 +76,16 @@ export const LANDING_RENDERERS = {
         .map((slide) => ({
           id: slide.id,
           image: slide.settings.image,
+          mobileImage: slide.settings.mobileImage,
           position: slide.settings.position,
+          positionMobile: slide.settings.positionMobile === "same" ? null : slide.settings.positionMobile,
+          textWidth: slide.settings.textWidth,
           tone: slide.settings.tone,
+          overlay:
+            slide.settings.overlayMode === "own"
+              ? { percent: slide.settings.slideOverlay, color: slide.settings.overlayColor || null }
+              : null,
+          design: slide.settings.design,
           copy: {
             eyebrow: slide.settings.eyebrow,
             title: slide.settings.title,
@@ -85,12 +93,16 @@ export const LANDING_RENDERERS = {
             headingSize: s.headingSize,
             primary: linkOf(slide.settings.link),
             primaryStyle: slide.settings.buttonStyle,
+            secondary: linkOf(slide.settings.link2),
+            secondaryStyle: slide.settings.buttonStyle2,
           },
         }));
       return slides.length > 0 ? (
         <Slideshow
           slides={slides}
           height={s.height}
+          heightMobile={s.heightMobile === "same" ? null : s.heightMobile}
+          transition={s.transition}
           overlay={s.overlay}
           autoplay={s.autoplay}
           interval={s.interval}

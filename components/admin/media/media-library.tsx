@@ -103,7 +103,8 @@ const VIEWS: { value: View; label: string; Icon: typeof ListIcon }[] = [
 
 const PAGE_SIZE = 50;
 
-const formatNumber = (value: number) => new Intl.NumberFormat().format(value);
+// A fixed locale: the viewer's own differs between server and browser render ("2,027" vs "2.027").
+const formatNumber = (value: number) => new Intl.NumberFormat("en-GB").format(value);
 
 function Pagination({
   page,
@@ -217,7 +218,7 @@ function useAltEditor(file: PickerFile, onSaved: (id: string, alt: string) => vo
    * saved value until the next refetch — `file.alt` still carries the OLD text
    * after a successful save, because nothing refetches the list.
    *
-   * Tracking the saved value here keeps `dirty` and the "No alt text" badge
+   * Tracking the saved value here keeps `dirty` and the "No description" badge
    * honest the moment a save lands, with no round trip.
    */
   const [stored, setStored] = React.useState(file.alt ?? "");
@@ -260,7 +261,7 @@ function AltInput({ editor, className }: { editor: AltEditor; className?: string
   return (
     <div className={cn("flex items-center gap-2", className)}>
       <Label htmlFor={`alt-${file.id}`} className="sr-only">
-        Alt text
+        Description
       </Label>
       <Input
         id={`alt-${file.id}`}
@@ -295,7 +296,7 @@ function StatusBadges({ editor }: { editor: AltEditor }) {
     <>
       {!stored && !dirty && (
         <Badge variant="outline" className="text-[11px] font-normal">
-          No alt text
+          No description
         </Badge>
       )}
       {file.status !== "READY" && (
@@ -382,7 +383,7 @@ function Tile({ file, onOpen, onSaved }: ItemProps) {
 function SmallTile({ file, onOpen }: Pick<ItemProps, "file" | "onOpen">) {
   const format = formatOf(file);
   const size = file.size != null ? formatBytes(file.size) : null;
-  const details = [file.filename, describe(file), file.alt ? `Alt: ${file.alt}` : "No alt text"]
+  const details = [file.filename, describe(file), file.alt ? file.alt : "No description yet"]
     .filter(Boolean)
     .join("\n");
 
@@ -646,7 +647,7 @@ export function MediaLibrary() {
       <div className="flex flex-wrap items-center gap-3">
         <Switch id="only-missing" checked={onlyMissing} onCheckedChange={setOnlyMissing} />
         <Label htmlFor="only-missing" className="text-sm font-normal">
-          Only files without alt text
+          Only files without a description
         </Label>
         {localOnly && (
           <span className="text-muted-foreground text-xs">
@@ -669,12 +670,12 @@ export function MediaLibrary() {
       ) : shown.length === 0 ? (
         <p className="text-muted-foreground rounded-md border p-6 text-sm">
           {onlyMissing
-            ? "Every file on this page has alt text."
+            ? "Every file on this page has a description."
             : debounced
               ? "No files match that search."
               : kind === "any"
-                ? "Shopify Files is empty."
-                : `No ${KIND_LABELS[kind].toLowerCase()} in Shopify Files.`}
+                ? "No files uploaded yet."
+                : `No ${KIND_LABELS[kind].toLowerCase()} uploaded yet.`}
         </p>
       ) : view === "grid" ? (
         <ul className={GRID_CLASS.grid}>

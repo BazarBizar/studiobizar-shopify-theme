@@ -140,6 +140,11 @@ const BESPOKE: { group: GroupKey; item: NavItem }[] = [
   },
   {
     group: "pages",
+    /** The Theme Builder: the header and footer every page shares. */
+    item: { href: "/admin/theme-builder", label: "Header & footer", readOnly: false, type: null },
+  },
+  {
+    group: "pages",
     /** The files themselves. The `captioned_image` entries that wrap them with a
      *  caption and credit are hidden from the sidebar — see `modules.ts`. */
     item: { href: "/admin/media", label: "Media", readOnly: false, type: null },

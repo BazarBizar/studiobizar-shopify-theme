@@ -32,6 +32,7 @@ in the panel. When something here changes, change it in the shared component, ne
 | `QueryTabs`, `PageTabs` | `components/admin/query-tabs.tsx`, `pages-table/page-tabs.tsx` | URL tabs |
 | `SaveBar`, `useUnsavedChangesWarning` | `components/admin/save-bar.tsx` | Every record form |
 | `ConfirmDialog`, `useConfirm`, `LEAVE_UNSAVED` | `components/admin/confirm-dialog.tsx` | Every confirmation |
+| `confirmLeave`, `LeaveGuardHost` | `components/admin/leave-guard.tsx` | Asked by `AppLink`; registered by `useUnsavedChangesWarning` |
 | `EmptyState`, `ErrorState` | `components/admin/empty-state.tsx`, `error-state.tsx` | Nothing here / something failed |
 | `MediaPicker` | `components/admin/media/media-picker.tsx` | Choosing files and captioned photos |
 | `MediaSlot`, `MediaRows`, `MediaThumb` | `components/admin/media/media-selection.tsx` | Showing chosen media |
@@ -116,4 +117,8 @@ Labels are verbs: Save, Discard, Upload, Choose image, Add photos, Remove, Delet
 - Empty: `EmptyState` (title + one line of what to do).
 - Error: `ErrorState` with Retry.
 - Success and failure of an action: a toast ("Saved" + what happened in plain words).
-- Unsaved changes: `SaveBar` status line, and the browser asks before leaving the page.
+- Unsaved changes: `SaveBar` status line; the browser asks before the tab is closed or reloaded, and
+  `AppLink` asks (`LEAVE_UNSAVED`, via `components/admin/leave-guard.tsx`) before a click elsewhere in
+  the panel — sidebar, breadcrumb, back link — throws the edits away.
+- Numbers, prices and dates use a FIXED locale (`en-GB`, shop time zone), never the viewer's: the
+  server and the browser format differently and React discards the page with a hydration error.

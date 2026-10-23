@@ -1,6 +1,6 @@
 "use client";
 
-import { ImageIcon, Loader2Icon, PlayIcon, PlusIcon } from "lucide-react";
+import { ArrowLeftIcon, ArrowRightIcon, ImageIcon, Loader2Icon, PlayIcon, PlusIcon, XIcon } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import * as React from "react";
@@ -14,21 +14,17 @@ import type { PickerFile } from "@/lib/admin/queries";
 import { CollapsibleSection } from "./product-sections";
 
 /**
- * Product media. SAVES AS YOU GO — adding is its own Shopify mutation, with no draft.
+ * Product photos. SAVES AS YOU GO — every add, remove and move is its own change in
+ * Shopify, with no draft. That is deliberately the opposite of the card next to it: a
+ * photo that only appeared after pressing Save somewhere else on the page would be a lie
+ * about what the store contains.
  *
- * That is deliberately the opposite of the core-fields card next to it. A photo that only
- * appeared after pressing Save somewhere else on the page would be a lie about what the
- * store contains, so there is no Save button here at all.
- *
- * TWO SHOPIFY FACTS THIS UI HAS TO ADMIT TO:
- *
- *  - Attaching by URL ALWAYS CREATES A NEW FILE in the library. There is no
- *    "attach the existing file", so choosing the same image for two products leaves two
- *    copies — and detaching one must not delete the other, which is why removal is
- *    Shopify-side rather than a delete here.
- *  - Reordering returns a BACKGROUND JOB, so the new order is not live the instant the
- *    call returns. Saying so beats re-reading and showing the old order as if the change
- *    had failed.
+ *  - ADD links files already in Media to the product — no second copy is made.
+ *  - REMOVE unlinks: the file stays in Media (and on any other product), so Undo simply
+ *    links it back where it was.
+ *  - ORDER is applied by Shopify in a background job, so a fresh read can still show the
+ *    old order for a moment. This list keeps its own order, and only takes the server's
+ *    when the SET of photos changes.
  */
 
 export type ProductMediaItem = {
@@ -37,6 +33,21 @@ export type ProductMediaItem = {
   contentType: string;
   preview: string | null;
 };
+
+async function send(body: Record<string, unknown>) {
+  const response = await fetch("/api/admin/products/photos", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const detail = (await response.json().catch(() => null)) as { message?: string } | null;
+    throw new Error(detail?.message ?? `Failed (${response.status})`);
+  }
+}
+
+const setOf = (media: ProductMediaItem[]) => media.map((item) => item.id).sort().join(",");
 
 export function ProductMedia({
   productId,
@@ -47,52 +58,84 @@ export function ProductMedia({
 }) {
   const router = useRouter();
   const [pickerOpen, setPickerOpen] = React.useState(false);
-  const [attaching, setAttaching] = React.useState(false);
+  const [busy, setBusy] = React.useState(false);
+  const [items, setItems] = React.useState(media);
+  const [seen, setSeen] = React.useState(() => setOf(media));
+  if (setOf(media) !== seen) {
+    setSeen(setOf(media));
+    setItems(media);
+  }
 
   async function attach(picked: PickerFile[]) {
-    const files = picked.filter((file) => file.url || file.thumbnail);
-    if (files.length < picked.length) {
-      toast.error("A file has no source yet", {
-        description: "Shopify is still processing it. Try again in a moment.",
-      });
-    }
-    if (files.length === 0) return;
-
-    setAttaching(true);
-
+    if (picked.length === 0) return;
+    setBusy(true);
     try {
-      const response = await fetch("/api/admin/products/update", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          operation: "productUpdate",
-          id: productId,
-          attachMedia: files.map((file) => ({
-            originalSource: file.url ?? file.thumbnail,
-            ...(file.alt ? { alt: file.alt } : {}),
-            mediaContentType: file.kind === "Video" ? "VIDEO" : "IMAGE",
-          })),
-        }),
-      });
-
-      if (!response.ok) {
-        const detail = (await response.json().catch(() => null)) as { message?: string } | null;
-        throw new Error(detail?.message ?? `Failed (${response.status})`);
-      }
-
-      toast.success(files.length > 1 ? `${files.length} photos added` : "Photo added", {
-        // Said plainly, because it surprises people who expect a reference.
-        description: "Shopify copies the file when it is attached, so the library now has a copy.",
-      });
-
+      await send({ operation: "productPhotosAdd", id: productId, files: picked.map((file) => file.id) });
+      toast.success(picked.length > 1 ? `${picked.length} photos added` : "Photo added");
       router.refresh();
     } catch (error) {
       toast.error("Could not add the photos", {
         description: error instanceof Error ? error.message : "Shopify refused the change.",
       });
     } finally {
-      setAttaching(false);
+      setBusy(false);
+    }
+  }
+
+  async function move(index: number, delta: -1 | 1) {
+    const target = index + delta;
+    if (target < 0 || target >= items.length) return;
+    const before = items;
+    const next = [...items];
+    const [item] = next.splice(index, 1);
+    next.splice(target, 0, item!);
+    setItems(next);
+    try {
+      await send({ operation: "productPhotosReorder", id: productId, moves: [{ id: item!.id, newPosition: target }] });
+    } catch (error) {
+      setItems(before);
+      toast.error("Could not change the order", {
+        description: error instanceof Error ? error.message : "Shopify refused the change.",
+      });
+    }
+  }
+
+  async function remove(index: number) {
+    const item = items[index]!;
+    const before = items;
+    setItems(items.filter((_, at) => at !== index));
+    try {
+      await send({ operation: "productPhotosRemove", id: productId, files: [item.id] });
+      router.refresh();
+      toast("Photo removed from this product", {
+        description: "It is still in Media.",
+        action: {
+          label: "Undo",
+          onClick: () => {
+            void (async () => {
+              try {
+                await send({ operation: "productPhotosAdd", id: productId, files: [item.id] });
+                // Linked back at the end; put it where it was.
+                if (index < before.length - 1) {
+                  await send({ operation: "productPhotosReorder", id: productId, moves: [{ id: item.id, newPosition: index }] });
+                }
+                setItems(before);
+                setSeen(setOf(before));
+                router.refresh();
+              } catch (error) {
+                toast.error("Could not put the photo back", {
+                  description: error instanceof Error ? error.message : "Add it again with Add photos.",
+                });
+              }
+            })();
+          },
+        },
+      });
+    } catch (error) {
+      setItems(before);
+      toast.error("Could not remove the photo", {
+        description: error instanceof Error ? error.message : "Shopify refused the change.",
+      });
     }
   }
 
@@ -100,15 +143,15 @@ export function ProductMedia({
     <CollapsibleSection
       id="media"
       title="Photos"
-      description={`${media.length} ${media.length === 1 ? "photo" : "photos"}. A photo you add is saved straight away.`}
+      description={`${items.length} ${items.length === 1 ? "photo" : "photos"}. Changes here are saved straight away. The first photo is the main one.`}
     >
       <div className="space-y-3">
-        {media.length === 0 ? (
+        {items.length === 0 ? (
           <EmptyState title="No photos yet" description="Add the first one with Add photos." className="py-6" />
         ) : (
           <ul className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-            {media.map((item) => (
-              <li key={item.id} className="overflow-hidden rounded-md border">
+            {items.map((item, index) => (
+              <li key={item.id} className="group relative overflow-hidden rounded-md border">
                 <span className="bg-muted flex aspect-square items-center justify-center">
                   {item.preview ? (
                     <Image
@@ -125,36 +168,61 @@ export function ProductMedia({
                     <ImageIcon className="text-muted-foreground size-5" />
                   )}
                 </span>
-                {item.alt ? (
-                  <span className="text-muted-foreground block truncate px-1.5 py-1 text-[11px]">
-                    {item.alt}
+
+                {index === 0 ? (
+                  <span className="bg-background/90 absolute top-1 left-1 rounded px-1.5 py-0.5 text-[10px] font-medium">
+                    Main photo
                   </span>
                 ) : null}
+
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon-xs"
+                  className="absolute top-1 right-1 opacity-90 shadow-sm"
+                  aria-label={`Remove photo ${index + 1} from this product`}
+                  title="Remove from this product"
+                  onClick={() => void remove(index)}
+                >
+                  <XIcon />
+                </Button>
+
+                <div className="flex items-center justify-between gap-1 border-t px-1 py-0.5">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label={`Move photo ${index + 1} earlier`}
+                    title="Move earlier"
+                    disabled={index === 0}
+                    onClick={() => void move(index, -1)}
+                  >
+                    <ArrowLeftIcon />
+                  </Button>
+                  <span className="text-muted-foreground min-w-0 truncate text-[11px]" title={item.alt ?? undefined}>
+                    {item.alt || `Photo ${index + 1}`}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label={`Move photo ${index + 1} later`}
+                    title="Move later"
+                    disabled={index === items.length - 1}
+                    onClick={() => void move(index, 1)}
+                  >
+                    <ArrowRightIcon />
+                  </Button>
+                </div>
               </li>
             ))}
           </ul>
         )}
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={attaching}
-            onClick={() => setPickerOpen(true)}
-          >
-            {attaching ? (
-              <Loader2Icon className="size-4 animate-spin" />
-            ) : (
-              <PlusIcon className="size-3.5" />
-            )}
-            {attaching ? "Adding…" : "Add photos"}
-          </Button>
-
-          <p className="text-muted-foreground text-xs">
-            To remove or reorder photos, use “Open in Shopify” above.
-          </p>
-        </div>
+        <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => setPickerOpen(true)}>
+          {busy ? <Loader2Icon className="size-4 animate-spin" /> : <PlusIcon className="size-3.5" />}
+          {busy ? "Adding…" : "Add photos"}
+        </Button>
       </div>
 
       <MediaPicker

@@ -164,8 +164,8 @@ Everything below runs locally, without Shopify:
 
 | Command | What it proves |
 |---|---|
-| `yarn check:liquid` | Each theme section matches its page-builder twin — schema, options, defaults, blocks, presets, every setting read by the markup, icons |
-| `yarn check:liquid-render` | Each section **renders**: every preset, and every field empty (live and in the editor). It runs in Chromium with the built CSS and the theme's JS, at 1440px and 390px: no overflow, no console errors, and tabs, video and slideshow working. Screenshots and an `index.html` with all of them are written to the temp folder — open it in a browser to look |
+| `yarn check:liquid` | Each theme section matches its page-builder twin — schema, options, defaults, blocks, presets, every setting read by the markup, icons, and the generated design snippet, Site style and fonts (`yarn liquid:design`) |
+| `yarn check:liquid-render` | The design snippet writes exactly what the Next builder writes, for every design control; a designed section is drawn right on desktop and phone. Each section **renders**: every preset, and every field empty (live and in the editor). It runs in Chromium with the built CSS and the theme's JS, at 1440px and 390px: no overflow, no console errors, and tabs, video and slideshow working. Screenshots and an `index.html` with all of them are written to the temp folder — open it in a browser to look |
 | `yarn theme:check` | The compiled `assets/sb-theme.css` is up to date with the sections |
 | `yarn theme:lint` | Shopify Theme Check — Liquid syntax, schema validity, missing translations |
 

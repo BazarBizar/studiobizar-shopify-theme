@@ -211,6 +211,12 @@ async function main() {
   /** Entry id 0, which Shopify never issues, so this parses the document and deletes nothing. */
   await run("metaobjectDelete", { id: "gid://shopify/Metaobject/0" });
 
+  // Theme Builder. The write names shop 0, which does not exist, so nothing is set.
+  await run("themeLayout", {});
+  await run("themeLayoutSet", {
+    metafields: [{ ownerId: "gid://shopify/Shop/0", namespace: "custom", key: "theme_layout_draft", type: "json", value: "{}" }],
+  });
+
   /**
    * The count is of what this run actually SENT, not of what the allowlist contains —
    * an operation nobody exercises here has not been checked, and saying otherwise would

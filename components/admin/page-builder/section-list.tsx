@@ -121,7 +121,7 @@ function Row({
         <span className="block truncate text-sm">{label}</span>
         {(summary || joined) && (
           <span className="text-muted-foreground block truncate text-xs">
-            {joined ? "In the heading’s band" : summary}
+            {joined ? "Joined to the Page heading" : summary}
           </span>
         )}
       </button>

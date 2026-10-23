@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+/* The page builder's design value — shared with the Liquid theme (theme-build/sb-theme.css). */
+@import "../styles/sb-design.css";
 
 /* next-themes writes `.dark` on <html>, which is a GLOBAL class: it stays there
    when the operator leaves /admin, so anything the storefront renders that reads a
@@ -436,6 +438,31 @@
   padding-top: var(--sb-pad-top);
   padding-bottom: var(--sb-pad-bottom);
 }
+
+/**
+ * The Style tab's margins. Set as properties by the frame rather than inline, so
+ * tablet and mobile can override them (below).
+ */
+[data-sb-pad] {
+  margin-top: var(--sb-mt, 0px);
+  margin-bottom: var(--sb-mb, 0px);
+}
+
+/* Theme header (components/layout/theme-header.tsx): what it does as the page scrolls.
+   `data-scrolled` and `--sb-hdr-h` come from HeaderScroll. */
+[data-theme-header] { transition: background-color 0.25s, box-shadow 0.25s, color 0.25s; }
+[data-theme-header] [data-hdr-bar] { transition: padding 0.25s; }
+[data-theme-header][data-shrink][data-scrolled] [data-hdr-bar] { padding-block: 0.6rem !important; }
+[data-theme-header][data-scroll-shadow][data-scrolled] { box-shadow: 0 1px 3px rgb(0 0 0 / 0.08), 0 4px 12px rgb(0 0 0 / 0.06); }
+/* Over the page: no background until it scrolls, and the page starts under it. */
+[data-theme-header][data-transparent] { margin-bottom: calc(-1 * var(--sb-hdr-h, 0px)); }
+[data-theme-header][data-transparent]:not([data-scrolled]) {
+  background-color: transparent !important;
+  box-shadow: none !important;
+  color: var(--sb-hdr-over) !important;
+  --sb-foreground: var(--sb-hdr-over);
+}
+
 
 /* The 4-up product / collection grid from Shop All, collapsing on mobile. */
 @utility sb-grid-4 {
