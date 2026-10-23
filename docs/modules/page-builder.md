@@ -85,11 +85,15 @@ same document without a Next helper.
 Every section's editor has two tabs, **Content** and **Style**, like Elementor's. Style holds the
 same controls on every section (`STYLE_FIELDS` in `define-section.ts`):
 
+The tab is ONE list of groups that fold away (`StyleTab` in `section-editor.tsx`). Each group holds
+everything of one kind, wherever it is stored — a section setting or the design value:
+
 | Group | Settings |
 |---|---|
-| Background & text | Background (the design's surfaces), background colour, text colour |
-| Spacing | Vertical spacing (the rhythm presets), Custom spacing → space inside top/bottom, space above/below (px) |
-| Line & corners | Line (none, box, above, below, above and below), thickness, colour, rounded corners |
+| Background | Brand colour (the design's surfaces) or an own colour; a gradient; a photo (and a phone crop, which part stays in view); an **overlay** colour and its **opacity**, over whichever is there; the section's own photo darkening (banners, slideshow, CTA on a photo); text colour; the contrast warning |
+| Spacing | "Set the spacing yourself": space inside top/bottom, space above/below, and the sides — space inside left/right (replaces the content column's gutter; empty keeps it, shown as measured) and space outside left/right (narrows the section: with a colour and corners, a card) — each per device (the device switch at the top). Off: the design's own spacing |
+| Border & shadow | Line (none, box, above, below, above and below), thickness, colour; rounded corners (per device); photo corners where the section has photographs; shadow; transparency |
+| then | Typography, Buttons, Images, Width & height, Show on devices (see below) |
 
 - Every default changes nothing, so pages made before the tab existed look the same. Stored
   documents without the keys read them as their defaults (`lenient`).
@@ -101,12 +105,21 @@ same controls on every section (`STYLE_FIELDS` in `define-section.ts`):
   a `*-section` padding utility, or one marked `sb-band` where a component pads with fixed values
   (`collection-carousel`, `instagram-row`). A new component with fixed vertical padding on its band
   needs `sb-band`, or custom spacing will be added to its padding instead of replacing it.
-- While Custom spacing is on, Vertical spacing is hidden: the numbers replace it.
+- **Vertical spacing is no longer offered** (2026-10-23): it did nothing on many sections, and
+  "Set the spacing yourself" covers it. Stored values still draw (`rhythm` stays in the document
+  and in the Liquid schemas, which theme templates use), and a section that has one says so in
+  Spacing with two buttons: *Keep it, as numbers* (measured from the preview) or *Use the design's
+  spacing*. Turning the switch on starts from the section's current space as the preview
+  measures it (`padTop`/`padBottom` in `sb-preview:contents`), so nothing moves until a number
+  changes.
 - `omitStyle: OWN_GROUND` hides the colours on sections that paint their own ground edge to edge
-  (banners, slideshow, hero, full image, collection carousel, Instagram). The marquee has no Vertical
-  spacing (it is a fixed slim band); its height is set with Custom spacing.
+  (banners, slideshow, hero, full image, collection carousel, Instagram) — and with them the
+  background photo and gradient, which would sit behind that ground unseen.
+- The sides are `design.sides` (`padLeft`/`padRight`/`marginLeft`/`marginRight`, each `{ d, t, m }`), drawn by `styles/sb-design.css` only while Custom spacing is on — like the top and bottom. Inside sets the padding of the section's `.sb-container` (or the section itself where there is none); the Liquid theme has the same settings (`d_pad_left` …).
+- `defineSection({ innerSpacing: false })` (image banner, slideshow): the height is the photo's or
+  the Height choice, so Spacing offers only the space above and below.
 - `yarn check:page-builder-style` (with `yarn dev` running) measures every section type in a real
-  browser: margin, padding, colour, line, corners, Vertical spacing, and that a section joined to the
+  browser: margin, padding, colour, line, corners, stored Vertical spacing, and that a section joined to the
   page heading does not inherit the heading's spacing. It builds hidden test pages and deletes them.
 - `SectionFrame` (`frameStyle`) and `theme/snippets/sb-section-style.liquid` write the same
   declarations. A section joined to the page heading's band takes the heading's style instead.
@@ -137,16 +150,39 @@ same controls on every section (`STYLE_FIELDS` in `define-section.ts`):
 - **Narrow screens.** Below 1024px a "Show preview / Back to editing" button switches between the
   settings and the preview (`PaneSwitch`); the preview stays loaded while hidden.
 - **One "Show on".** For a section with the design panel, the Content tab's old *Show on* select is
-  not offered; the three switches under More design → *Show on devices* are the one control. A choice
+  not offered; the three switches under *Show on devices* are the one control. A choice
   the old setting can express (all / desktop only / mobile only) is stored there — what the Liquid
   theme reads — and only a tablet-specific one goes to `design.hide`.
 - **Readability.** The Style tab warns, with the contrast ratio, when text or headings would be hard
   to read on the chosen background (WCAG: 4.5:1 for text, 3:1 for headings).
 
-## More design — the design value (per device)
+## Carousels
 
-Every section's Style tab ends with **More design**, the editor for one `design` value
-(`lib/page-builder/design.ts`; `design-style.ts` is its zod-free half, for client components):
+Every section that scrolls a row — Product carousel, Collection carousel, **Project carousel**
+(new), Instagram, Testimonials (Carousel layout) — has the same settings
+(`lib/page-builder/carousel.ts`), under Layout:
+
+- **Items across** on desktop, tablets and phones: 1–6, or "1 (or 2) and a peek of the next".
+  "As designed" (the default) keeps the section's own widths, so existing pages do not move; one
+  device chosen fills the others from the design (`DESIGNED`).
+- **Each arrow moves** 1, 2 or 3 items, or a whole row.
+- **Show at most** (or the section's existing "How many").
+- **Show more button**: its text and link. On sections that had "Show view all" it is that button;
+  empty keeps "view all" and its page (with chosen products, give it a link). Testimonials have
+  their own switch.
+
+`carouselView` (`carousel-view.ts`, no zod — the client `Carousel` imports it) turns them into
+`perView`/`step`; a chosen width is `data-cv` + `--cv-*` properties, drawn by the shared
+`styles/sb-carousel.css` (imported by both builds). The Liquid testimonials write the same
+properties, and `assets/sb-carousel.js` reads `data-sb-carousel-step`. `check:liquid-render` measures
+two across and a two-item step there; `check:page-builder-ui` sets them on a Project carousel.
+
+## The design value (per device)
+
+Below Background, Spacing and Border & shadow, the Style tab edits one `design` value
+(`lib/page-builder/design.ts`; `design-style.ts` is its zod-free half, for client components). Its
+background, per-device spacing and corners, shadow and transparency are drawn in those three
+groups; the rest in these:
 
 - **Typography** for Headings, Text and Buttons — font (Helvetica Neue, or one of ten self-hosted
   Fontsource fonts, downloaded only when used), size, weight, line height, letter spacing, colour
@@ -160,25 +196,22 @@ Every section's Style tab ends with **More design**, the editor for one `design`
   colour is set; a new background with no text colour gets a readable one. Offered on sections
   with buttons, on each Hero slider slide, and for the whole site (Theme Builder → Site style →
   Buttons for the whole site), where a section's own still wins.
-- **Background image** (and a phone crop) with an overlay colour and strength.
-- **Spacing per device** — tablet and mobile overrides of Custom spacing.
-- **Background gradient** (two colours, a direction), under the background image.
-- **Corners, shadow & transparency** — rounded corners can differ on tablet and mobile.
 - **Images** (not on banners and heroes, whose photograph is their ground): a shape for every
-  photograph in the section (square, tall, landscape, wide), rounded corners, a slow zoom on hover.
+  photograph in the section (square, tall, landscape, wide) and a slow zoom on hover. Their corners
+  are under Border & shadow.
 - **Width & height** (content width, minimum height, where content sits), **Show on devices**.
 
 Only what does something is offered. When a section is selected, and after each redraw, the preview
 reports what that section actually draws (`sb-preview:contents`: headings, text, buttons, images,
 a content column). Typography then offers only the targets it has (Three photographs: Text — its
-captions), Images hides where there is no photograph, and Content width hides on sections that run
+captions; a choice of one shows no switch, and a section with no text has no Typography group at all), Images hides where there is no photograph, and Content width hides on sections that run
 edge to edge (full image, marquee, spacer). "Text" covers paragraphs, list items, captions, quotes
 and term/description pairs. `defineSection({ textAlign: false })` drops Text alignment where the
 section places its own text (the slideshow: Text position per slide).
 
-On a section with photographs, "Line & corners" offers **Section corners** (its background and
-line — the help says when there is nothing yet to see them on) and, beside it, **Photo corners**,
-which edits `design.images.radius` (the same value as More design → Images).
+On a section with photographs, Border & shadow offers **Section corners** (its background and
+line — the help says when there is nothing yet to see them on) and, beside it, **Photo corners**
+(`design.images.radius`).
 
 Values that can differ per device are stored as `{ d, t, m }`: desktop applies everywhere, tablet
 below 1024px, mobile below 750px — Elementor's inheritance. The editor's device switch (above the

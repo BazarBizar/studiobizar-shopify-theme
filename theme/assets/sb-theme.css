@@ -2135,6 +2135,24 @@
 [data-sb-pb~="d"] {
   padding-bottom: var(--sb-pb);
 }
+[data-sb-pad][data-sb-padl~="d"] .sb-container:not([data-sb-pad] [data-section-id] *) {
+  padding-left: var(--sb-padl);
+}
+[data-sb-pad][data-sb-padl~="d"]:not(:has(.sb-container)) {
+  padding-left: var(--sb-padl);
+}
+[data-sb-pad][data-sb-padr~="d"] .sb-container:not([data-sb-pad] [data-section-id] *) {
+  padding-right: var(--sb-padr);
+}
+[data-sb-pad][data-sb-padr~="d"]:not(:has(.sb-container)) {
+  padding-right: var(--sb-padr);
+}
+[data-sb-pad][data-sb-marl~="d"] {
+  margin-left: var(--sb-marl);
+}
+[data-sb-pad][data-sb-marr~="d"] {
+  margin-right: var(--sb-marr);
+}
 [data-sb-align~="d"] {
   text-align: var(--sb-align);
 }
@@ -2247,6 +2265,24 @@
   [data-sb-pb~="t"] {
     padding-bottom: var(--sb-pb-t);
   }
+  [data-sb-pad][data-sb-padl~="t"] .sb-container:not([data-sb-pad] [data-section-id] *) {
+    padding-left: var(--sb-padl-t);
+  }
+  [data-sb-pad][data-sb-padl~="t"]:not(:has(.sb-container)) {
+    padding-left: var(--sb-padl-t);
+  }
+  [data-sb-pad][data-sb-padr~="t"] .sb-container:not([data-sb-pad] [data-section-id] *) {
+    padding-right: var(--sb-padr-t);
+  }
+  [data-sb-pad][data-sb-padr~="t"]:not(:has(.sb-container)) {
+    padding-right: var(--sb-padr-t);
+  }
+  [data-sb-pad][data-sb-marl~="t"] {
+    margin-left: var(--sb-marl-t);
+  }
+  [data-sb-pad][data-sb-marr~="t"] {
+    margin-right: var(--sb-marr-t);
+  }
   [data-sb-align~="t"] {
     text-align: var(--sb-align-t);
   }
@@ -2327,6 +2363,24 @@
   [data-sb-pb~="m"] {
     padding-bottom: var(--sb-pb-m);
   }
+  [data-sb-pad][data-sb-padl~="m"] .sb-container:not([data-sb-pad] [data-section-id] *) {
+    padding-left: var(--sb-padl-m);
+  }
+  [data-sb-pad][data-sb-padl~="m"]:not(:has(.sb-container)) {
+    padding-left: var(--sb-padl-m);
+  }
+  [data-sb-pad][data-sb-padr~="m"] .sb-container:not([data-sb-pad] [data-section-id] *) {
+    padding-right: var(--sb-padr-m);
+  }
+  [data-sb-pad][data-sb-padr~="m"]:not(:has(.sb-container)) {
+    padding-right: var(--sb-padr-m);
+  }
+  [data-sb-pad][data-sb-marl~="m"] {
+    margin-left: var(--sb-marl-m);
+  }
+  [data-sb-pad][data-sb-marr~="m"] {
+    margin-right: var(--sb-marr-m);
+  }
   [data-sb-align~="m"] {
     text-align: var(--sb-align-m);
   }
@@ -2350,6 +2404,21 @@
   [data-sb-pad][data-sb-space-m] :is(.sb-band, .py-section, .py-section-xs, .py-section-sm, .py-section-md, .py-section-lg, .py-section-xl, .pt-section, .pb-section):not( :is(.sb-band, .py-section, .py-section-xs, .py-section-sm, .py-section-md, .py-section-lg, .py-section-xl, .pt-section, .pb-section) *, [data-sb-pad] [data-section-id] * ), [data-sb-pad][data-sb-space-m]:not( :has(.sb-band, .py-section, .py-section-xs, .py-section-sm, .py-section-md, .py-section-lg, .py-section-xl, .pt-section, .pb-section) ) {
     padding-top: var(--sb-pad-top-m, var(--sb-pad-top-t, var(--sb-pad-top)));
     padding-bottom: var(--sb-pad-bottom-m, var(--sb-pad-bottom-t, var(--sb-pad-bottom)));
+  }
+}
+[data-cv] > * {
+  flex: 0 0 auto;
+  min-width: 0;
+  width: calc((100% - var(--sb-grid-gap) * var(--cv-m-gaps)) / var(--cv-m));
+}
+@media (min-width: 750px) {
+  [data-cv] > * {
+    width: calc((100% - var(--sb-grid-gap) * var(--cv-t-gaps)) / var(--cv-t));
+  }
+}
+@media (min-width: 1024px) {
+  [data-cv] > * {
+    width: calc((100% - var(--sb-grid-gap) * var(--cv-d-gaps)) / var(--cv-d));
   }
 }
 :root {

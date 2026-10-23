@@ -1,3 +1,4 @@
+import { carouselMaxField, carouselViewFields, showMoreLinkField } from "./carousel";
 import { defineSection, OWN_GROUND } from "./define-section";
 import {
   block,
@@ -388,10 +389,12 @@ export const productRail = defineSection({
       default: 12,
       when: { field: "source", is: ["collection"] },
     }),
-    toggle("viewAll", "Show “view all”", {
-      default: true,
-      when: { field: "source", is: ["collection"] },
-    }),
+    ...carouselViewFields(),
+    toggle("viewAll", "Show “view all”", { default: true }),
+    showMoreLinkField(
+      "Its text and link. Empty: “view all”, to the collection — with products you choose, give it a link.",
+      { field: "viewAll", is: [true] },
+    ),
     select(
       "viewAllPlacement",
       "“View all” position",
@@ -399,7 +402,7 @@ export const productRail = defineSection({
         { value: "below", label: "Under the row" },
         { value: "heading", label: "Beside the heading" },
       ],
-      { group: "advanced", when: { field: "source", is: ["collection"] } },
+      { group: "advanced", when: { field: "viewAll", is: [true] } },
     ),
   ],
   summaryKey: "title",
@@ -430,12 +433,35 @@ export const collectionCarousel = defineSection({
       required: true,
       when: { field: "source", is: ["picked"] },
     }),
+    carouselMaxField(12),
+    ...carouselViewFields(),
     toggle("viewAll", "Show “view all”", { default: true }),
+    showMoreLinkField("Its text and link. Empty: “view all”, to all collections.", { field: "viewAll", is: [true] }),
   ],
   universal: ["hideOn"],
   omitStyle: OWN_GROUND,
   summaryKey: "title",
   source: (s) => s.source === "picked" ? null : SOURCES.collections,
+});
+
+export const projectCarousel = defineSection({
+  type: "project_carousel",
+  label: "Project carousel",
+  description: "A scrolling row of project cards — the selected projects, or all of them.",
+  category: "Catalogue",
+  fields: [
+    text("title", "Heading", { required: true, default: "Selected Projects" }),
+    select("source", "Projects", [
+      { value: "selected", label: "Projects marked as selected" },
+      { value: "all", label: "All projects, in order" },
+    ]),
+    carouselMaxField(8),
+    ...carouselViewFields(),
+    toggle("viewAll", "Show “view all”", { default: true }),
+    showMoreLinkField("Its text and link. Empty: “view all”, to the projects page.", { field: "viewAll", is: [true] }),
+  ],
+  summaryKey: "title",
+  source: () => SOURCES.projects,
 });
 
 export const projectCards = defineSection({
@@ -600,6 +626,8 @@ export const instagram = defineSection({
   description: "The live Instagram feed, with a link to the profile.",
   category: "Site",
   fields: [
+    carouselMaxField(10, 12),
+    ...carouselViewFields(),
     imageList("fallback", "Fallback images", {
       max: 10,
       captions: false,

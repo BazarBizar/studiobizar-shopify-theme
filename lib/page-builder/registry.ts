@@ -21,6 +21,7 @@ import {
   productMosaic,
   productRail,
   projectCards,
+  projectCarousel,
   richTextSection,
   textBlock,
 } from "./sections";
@@ -68,6 +69,7 @@ export const SECTIONS = {
   [collectionCarousel.type]: collectionCarousel,
   [collectionGrid.type]: collectionGrid,
   [projectCards.type]: projectCards,
+  [projectCarousel.type]: projectCarousel,
   [designerGrid.type]: designerGrid,
   [locations.type]: locations,
   [instagram.type]: instagram,

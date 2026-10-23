@@ -5,10 +5,13 @@ import { cn } from "@/lib/utils/cn";
 export function RowHeading({
   title,
   href,
+  label = "view all",
   className,
 }: {
   title: string;
   href?: string;
+  /** The button's text — "view all" unless the builder's "Show more button" says otherwise. */
+  label?: string;
   /** For a row that sits on its own band and needs a different ink. */
   className?: string;
 }) {
@@ -17,7 +20,7 @@ export function RowHeading({
       <h2 className="text-h2">{title}</h2>
       {href && (
         <ButtonLink href={href} className="shrink-0">
-          view all
+          {label}
         </ButtonLink>
       )}
     </div>

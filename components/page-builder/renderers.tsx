@@ -15,6 +15,7 @@ import { FaqGroups } from "@/components/sections/faq-groups";
 import { FullBleedImage } from "@/components/sections/full-bleed-image";
 import { HeroSlider } from "@/components/sections/hero-slider";
 import { InstagramRow } from "@/components/sections/instagram-row";
+import { ProjectCarousel } from "@/components/sections/project-carousel";
 import { IntroBlock, IntroBody } from "@/components/sections/intro-block";
 import { ItemList } from "@/components/sections/item-list";
 import { LocationList } from "@/components/sections/location-list";
@@ -26,6 +27,7 @@ import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { GoBack } from "@/components/ui/go-back";
 import { getInstagramPosts } from "@/lib/instagram/behold";
+import { carouselView, DESIGNED } from "@/lib/page-builder/carousel";
 import { isSafeHref, type CaptionedImageValue } from "@/lib/page-builder/fields";
 import type { SectionType } from "@/lib/page-builder/registry";
 import { shopifyUrlToRoute } from "@/lib/routes";
@@ -300,9 +302,14 @@ export const RENDERERS = {
         title={s.title}
         products={products}
         viewAllHref={
-          s.source === "collection" && s.viewAll && s.collection ? collectionHref(s.collection.handle) : undefined
+          // A collection's own page by default; chosen products have none, so only a link given.
+          s.viewAll
+            ? s.moreLink?.href || (s.source === "collection" && s.collection ? collectionHref(s.collection.handle) : undefined)
+            : undefined
         }
-        viewAllPlacement={s.source === "collection" ? s.viewAllPlacement : "below"}
+        viewAllLabel={s.moreLink?.label || undefined}
+        viewAllPlacement={s.viewAllPlacement}
+        view={carouselView(s, DESIGNED.row)}
       />
     ),
   }),
@@ -405,8 +412,26 @@ export const RENDERERS = {
     render: (s, collections) => (
       <CollectionCarousel
         title={s.title}
-        collections={collections}
-        viewAllHref={s.viewAll ? "/collections" : undefined}
+        collections={collections.slice(0, s.maxItems)}
+        viewAllHref={s.viewAll ? s.moreLink?.href || "/collections" : undefined}
+        viewAllLabel={s.moreLink?.label || undefined}
+        view={carouselView(s, DESIGNED.row)}
+      />
+    ),
+  }),
+
+  project_carousel: renderer<"project_carousel", ReturnType<typeof featuredProjects>>({
+    load: async (s) => {
+      const page = await getMetaobjects(METAOBJECT_TYPES.project, { first: 100 });
+      const projects = page.items.map(normalizeProjectCard);
+      return s.source === "selected" ? featuredProjects(projects, s.maxItems) : sortProjects(projects).slice(0, s.maxItems);
+    },
+    render: (s, projects) => (
+      <ProjectCarousel
+        title={s.title}
+        projects={projects}
+        view={carouselView(s, DESIGNED.projects)}
+        more={s.viewAll ? { href: s.moreLink?.href || "/projects", label: s.moreLink?.label || "view all" } : undefined}
       />
     ),
   }),
@@ -437,8 +462,15 @@ export const RENDERERS = {
   }),
 
   instagram: renderer<"instagram", Awaited<ReturnType<typeof getInstagramPosts>>>({
-    load: () => getInstagramPosts(10),
-    render: (s, posts, { id }) => <InstagramRow posts={posts} fallback={toCaptioned(id, s.fallback)} />,
+    load: (s) => getInstagramPosts(Math.max(10, s.maxItems)),
+    render: (s, posts, { id }) => (
+      <InstagramRow
+        posts={posts}
+        fallback={toCaptioned(id, s.fallback)}
+        max={s.maxItems}
+        view={carouselView(s, DESIGNED.instagram)}
+      />
+    ),
   }),
 
   contact_details: renderer<"contact_details", ReturnType<typeof sortContactChannels>>({

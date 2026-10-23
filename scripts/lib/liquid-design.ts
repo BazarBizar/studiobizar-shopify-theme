@@ -39,7 +39,7 @@ import { SECTIONS, type SectionType } from "../../lib/page-builder/registry";
 
 type Json = Record<string, unknown>;
 
-export type ThemeDesignPart = "typography" | "align" | "buttons" | "images" | "effects" | "width" | "height";
+export type ThemeDesignPart = "typography" | "align" | "buttons" | "sides" | "images" | "effects" | "width" | "height";
 
 /** How a setting's value reaches the element — always what `designStyle` would write. */
 type Emit =
@@ -282,7 +282,27 @@ const height: Control[] = [
   },
 ];
 
-export const CONTROLS: readonly Control[] = [...typography, align, ...buttons, ...images, effects, width, ...height];
+/** Space at the sides — read only with Custom spacing on, as the top and bottom are. */
+const side = (id: string, key: string, label: string, short: string): Control => ({
+  id,
+  part: "sides",
+  header: "Spacing at the sides",
+  label,
+  input: "number",
+  min: 0,
+  max: 400,
+  responsive: true,
+  path: ["sides", key],
+  emit: { as: "value", name: `--sb-${short}`, attr: `data-sb-${short}`, format: "px" },
+});
+const sides: Control[] = [
+  { ...side("pad_left", "padLeft", "Space inside, left (px)", "padl"), info: "With Custom spacing on. Empty keeps the design’s own gutter." },
+  side("pad_right", "padRight", "Space inside, right (px)", "padr"),
+  { ...side("margin_left", "marginLeft", "Space outside, left (px)", "marl"), info: "Narrows the section — with a colour and corners, a card." },
+  side("margin_right", "marginRight", "Space outside, right (px)", "marr"),
+];
+
+export const CONTROLS: readonly Control[] = [...typography, align, ...buttons, ...sides, ...images, effects, width, ...height];
 
 export const SECTION_PREFIX = "d_";
 export const SITE_PREFIX = "site_";
@@ -326,6 +346,8 @@ export function themeDesignParts(type: SectionType): ThemeDesignPart[] {
   ) {
     parts.push("images");
   }
+  // With the Style tab's Custom spacing, whose top and bottom these sides join.
+  if (fields.some((field) => field.key === "customSpacing")) parts.push("sides");
   parts.push("effects");
   if (!NO_CONTENT_COLUMN.includes(type)) parts.push("width");
   parts.push("height");

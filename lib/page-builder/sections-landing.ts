@@ -1,3 +1,4 @@
+import { carouselViewFields, showMoreLinkField, showMoreToggle } from "./carousel";
 import { defineSection, OWN_GROUND } from "./define-section";
 import {
   block,
@@ -101,12 +102,13 @@ const WIDTHS = [
   { value: "full", label: "Full width" },
 ] as const;
 
+// On the Style tab, in Background — with the colours, gradient and overlay.
 const overlay = () =>
   number("overlay", "Image darkening (%)", {
     min: 0,
     max: 80,
     default: 30,
-    group: "layout",
+    group: "style",
     help: "Darkens the photograph so the text stays readable. 0 shows it as it is.",
   });
 
@@ -157,6 +159,8 @@ export const imageBanner = defineSection({
   // The photograph is the ground; a Background setting would change nothing.
   universal: ["hideOn"],
   omitStyle: OWN_GROUND,
+  // Its height is the photograph's (or the Height choice), so space inside changes nothing.
+  innerSpacing: false,
   summaryKey: "title",
 });
 
@@ -284,6 +288,8 @@ export const slideshow = defineSection({
   omitStyle: OWN_GROUND,
   // Each slide places its text with "Text position".
   textAlign: false,
+  // Its height is the Height choice, so space inside changes nothing.
+  innerSpacing: false,
 });
 
 export const ctaBanner = defineSection({
@@ -747,7 +753,10 @@ export const testimonials = defineSection({
       ],
       { default: "3", group: "layout", when: { field: "layout", is: ["grid", "carousel"] } },
     ),
+    ...carouselViewFields({ field: "layout", is: ["carousel"] }),
     toggle("marks", "Show quotation marks", { default: true, group: "layout" }),
+    showMoreToggle(),
+    showMoreLinkField("Where it goes — a page of reviews, say. Without a link it is not shown.", { field: "showMore", is: [true] }),
   ],
   summaryKey: "title",
 });

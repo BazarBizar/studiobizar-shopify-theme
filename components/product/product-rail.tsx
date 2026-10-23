@@ -4,6 +4,7 @@ import { ProductCard } from "@/components/product/product-card";
 import { RowHeading } from "@/components/sections/row-heading";
 import { Carousel } from "@/components/ui/carousel";
 import { Container } from "@/components/ui/container";
+import type { CarouselView } from "@/lib/page-builder/carousel-view";
 import type { ProductCard as ProductCardType } from "@/lib/shopify/types";
 
 /**
@@ -17,20 +18,25 @@ export function ProductRail({
   title,
   products,
   viewAllHref,
+  viewAllLabel = "view all",
   viewAllPlacement = "below",
+  view,
 }: {
   title: string;
   products: ProductCardType[];
   viewAllHref?: string;
+  viewAllLabel?: string;
   viewAllPlacement?: "below" | "heading";
+  /** The builder's carousel settings; absent: the row as designed. */
+  view?: CarouselView;
 }) {
   if (products.length === 0) return null;
 
   if (viewAllPlacement === "heading") {
     return (
       <Container className="pb-section">
-        <RowHeading title={title} href={viewAllHref} />
-        <Carousel ariaLabel={title}>
+        <RowHeading title={title} href={viewAllHref} label={viewAllLabel} />
+        <Carousel ariaLabel={title} perView={view?.perView} step={view?.step}>
           {products.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
@@ -43,7 +49,7 @@ export function ProductRail({
     <Container className="pb-section">
       <h2 className="text-h2 mb-8">{title}</h2>
 
-      <Carousel ariaLabel={title}>
+      <Carousel ariaLabel={title} perView={view?.perView} step={view?.step}>
         {products.map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}
@@ -52,7 +58,7 @@ export function ProductRail({
       {viewAllHref && (
         <div className="mt-8">
           <ButtonLink href={viewAllHref} variant="outline">
-            view all
+            {viewAllLabel}
           </ButtonLink>
         </div>
       )}

@@ -6,6 +6,7 @@ import { Container } from "@/components/ui/container";
 import { cdnImage } from "@/lib/shopify/transforms";
 import type { CaptionedImage } from "@/lib/shopify/entities";
 import type { InstagramPost } from "@/lib/instagram/behold";
+import type { CarouselView } from "@/lib/page-builder/carousel-view";
 
 const PROFILE_URL = "https://www.instagram.com/studiobizarantwerp";
 
@@ -21,12 +22,18 @@ const PROFILE_URL = "https://www.instagram.com/studiobizarantwerp";
 export function InstagramRow({
   posts,
   fallback,
+  max,
+  view,
 }: {
   posts: InstagramPost[];
   fallback: CaptionedImage[];
+  /** The builder's "Show at most". */
+  max?: number;
+  /** The builder's carousel settings; absent: the row as designed. */
+  view?: CarouselView;
 }) {
   const live = posts.length > 0;
-  const tiles = live ? posts : fallback.filter((item) => item.image);
+  const tiles = (live ? posts : fallback.filter((item) => item.image)).slice(0, max);
 
   if (tiles.length === 0) return null;
 
@@ -38,6 +45,8 @@ export function InstagramRow({
         <Carousel
           ariaLabel="Instagram"
           slideClassName="w-[45%] sm:w-[30%] lg:w-[calc(20%-0.5rem)]"
+          perView={view?.perView}
+          step={view?.step}
         >
           {tiles.map((tile) => {
             const isPost = "permalink" in tile;

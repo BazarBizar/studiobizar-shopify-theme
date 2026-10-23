@@ -27,7 +27,6 @@ import {
   inheritedFrom,
   resolveResponsive,
   setAt,
-  SHADOWS,
   TEXT_TRANSFORMS,
   type DesignValue,
   type Device,
@@ -37,7 +36,7 @@ import {
 import type { DesignPart, ImageRef } from "@/lib/page-builder/fields";
 import { cn } from "@/lib/utils/cn";
 
-import { DEVICE_ICONS, DeviceSwitch, useEditorDevice } from "./editor-device";
+import { DEVICE_ICONS, useEditorDevice } from "./editor-device";
 import { ColorField, ImageField } from "./field-controls";
 
 /**
@@ -59,13 +58,6 @@ type Props = {
   value: DesignValue;
   onChange: (value: DesignValue) => void;
   parts: readonly DesignPart[];
-  /**
-   * The Style tab's desktop Custom spacing, for the per-device spacing part — or null
-   * when Custom spacing is off (there is nothing to override then).
-   */
-  spacingBase?: { pt: number; pb: number; mt: number; mb: number } | null;
-  /** The Style tab's (desktop) rounded corners, px — what tablet and mobile start from. */
-  radiusBase?: number;
   /** Part names shown open at first. */
   open?: readonly DesignPart[];
   /**
@@ -97,8 +89,6 @@ export function DesignControls({
   value,
   onChange,
   parts,
-  spacingBase = null,
-  radiusBase = 0,
   open = [],
   visibility,
   align = true,
@@ -110,10 +100,12 @@ export function DesignControls({
 
   const changed = (keys: (keyof DesignValue)[]) =>
     keys.some((key) => value[key] !== undefined);
+  // A group with nothing to style is not shown at all — not shown and explained.
+  const hasText = !contents || contents.heading || contents.text || contents.button;
 
   return (
     <div className="space-y-2">
-      {has("typography") && (
+      {has("typography") && hasText && (
         <Part
           title="Typography"
           changed={changed(["heading", "text", "button", "align"])}
@@ -136,33 +128,9 @@ export function DesignControls({
           <ButtonsPart get={get} set={set} />
         </Part>
       )}
-      {has("background") && (
-        <Part
-          title="Background image & gradient"
-          changed={changed(["background"])}
-          defaultOpen={open.includes("background")}
-        >
-          <BackgroundPart get={get} set={set} />
-        </Part>
-      )}
-      {has("spacing") && (
-        <Part
-          title="Spacing per device"
-          changed={changed(["spacing"])}
-          defaultOpen={open.includes("spacing")}
-        >
-          <SpacingPart get={get} set={set} base={spacingBase} />
-        </Part>
-      )}
-      {has("effects") && (
-        <Part
-          title="Corners, shadow & transparency"
-          changed={changed(["shadow", "opacity", "radius"])}
-          defaultOpen={open.includes("effects")}
-        >
-          <EffectsPart get={get} set={set} radiusBase={radiusBase} />
-        </Part>
-      )}
+      {/* A section's background, spacing and corners/shadow are not drawn here: its
+          Style tab gathers them with the section's own colour, spacing and line, one
+          group each (section-editor.tsx). */}
       {has("images") && (
         <Part
           title="Images"
@@ -200,7 +168,7 @@ export function DesignControls({
   );
 }
 
-type PartProps = {
+export type PartProps = {
   get: (path: Path) => unknown;
   set: (path: Path, next: unknown) => void;
 };
@@ -231,14 +199,6 @@ function TypographyPart({
   const target = offered.some((option) => option.value === chosen)
     ? chosen
     : (offered[0]?.value ?? "text");
-  if (offered.length === 0) {
-    return (
-      <p className="text-muted-foreground text-xs">
-        This section shows no text of its own, so there is nothing here to
-        style.
-      </p>
-    );
-  }
   // A button's colours are under Buttons (with its line, corners and spacing), and it
   // keeps a one-line height, so neither is offered here.
   const isButton = target === "button";
@@ -246,14 +206,17 @@ function TypographyPart({
 
   return (
     <div className="space-y-4">
-      <Segmented
-        label="Style for"
-        value={target}
-        options={offered.map((option) => ({ ...option }))}
-        onChange={(next) =>
-          setTarget((next ?? "heading") as "heading" | "text" | "button")
-        }
-      />
+      {/* A choice of one is no choice: with only text (or only buttons), no switch. */}
+      {offered.length > 1 ? (
+        <Segmented
+          label="Style for"
+          value={target}
+          options={offered.map((option) => ({ ...option }))}
+          onChange={(next) =>
+            setTarget((next ?? "heading") as "heading" | "text" | "button")
+          }
+        />
+      ) : null}
 
       <Row
         label="Font"
@@ -576,63 +539,50 @@ function ButtonsPart({ get, set }: PartProps) {
   );
 }
 
-function BackgroundPart({ get, set }: PartProps) {
+/**
+ * The design's half of a background: a gradient, a photograph (and a phone crop),
+ * and an overlay over whichever is there — a colour, the gradient or the photo.
+ * The section's own colour sits above these in its Style tab's Background group.
+ */
+export function BackgroundPart({ get, set }: PartProps) {
   const image = get(["background", "image"]) as ImageRef | null | undefined;
   const overlay = get(["background", "overlay"]) as string | undefined;
 
   return (
     <div className="space-y-4">
-      <Row label="Image" hint="Covers the whole section, behind its content.">
+      <GradientRows get={get} set={set} />
+      <Row label="Photo" hint="Covers the whole section, behind its content.">
         <ImageField
-          label="Background image"
+          label="Background photo"
           value={image ?? null}
           onChange={(next) => set(["background", "image"], next ?? undefined)}
         />
       </Row>
       {image ? (
         <>
-          <Row
-            label="Image on phones"
-            hint="Optional — a taller crop for narrow screens."
-          >
+          <Row label="Photo on phones" hint="Optional — a taller crop for narrow screens.">
             <ImageField
-              label="Background image on phones"
-              value={
-                (get(["background", "mobileImage"]) as
-                  ImageRef | null | undefined) ?? null
-              }
-              onChange={(next) =>
-                set(["background", "mobileImage"], next ?? undefined)
-              }
+              label="Background photo on phones"
+              value={(get(["background", "mobileImage"]) as ImageRef | null | undefined) ?? null}
+              onChange={(next) => set(["background", "mobileImage"], next ?? undefined)}
             />
           </Row>
           <Segmented
             label="Keep in view"
-            value={
-              (get(["background", "position"]) as string | undefined) ??
-              "center"
-            }
+            value={(get(["background", "position"]) as string | undefined) ?? "center"}
             options={[
               { value: "top", label: "Top" },
               { value: "center", label: "Middle" },
               { value: "bottom", label: "Bottom" },
             ]}
-            onChange={(next) =>
-              set(
-                ["background", "position"],
-                next === "center" ? undefined : next,
-              )
-            }
+            onChange={(next) => set(["background", "position"], next === "center" ? undefined : next)}
           />
         </>
       ) : null}
-      <GradientRows get={get} set={set} />
       <Row
-        label="Overlay colour"
-        hint="A colour laid over the image so text on it stays readable."
-        onReset={
-          overlay ? () => set(["background", "overlay"], undefined) : undefined
-        }
+        label="Overlay"
+        hint="A colour over the whole background — colour, gradient or photo — so text on it stays readable."
+        onReset={overlay ? () => set(["background", "overlay"], undefined) : undefined}
       >
         <ColorField
           inputId="design-overlay"
@@ -642,7 +592,7 @@ function BackgroundPart({ get, set }: PartProps) {
       </Row>
       {overlay ? (
         <Slider
-          label="Overlay strength"
+          label="Overlay opacity"
           unit="%"
           min={0}
           max={90}
@@ -716,129 +666,6 @@ function GradientRows({ get, set }: PartProps) {
   );
 }
 
-function SpacingPart({
-  get,
-  set,
-  base,
-}: PartProps & { base: Props["spacingBase"] }) {
-  const { device } = useEditorDevice();
-
-  if (!base) {
-    return (
-      <p className="text-muted-foreground text-xs">
-        Turn on{" "}
-        <span className="text-foreground font-medium">Custom spacing</span>{" "}
-        under Spacing first. Then the space can be set separately for tablet and
-        mobile here.
-      </p>
-    );
-  }
-  if (device === "d") {
-    return (
-      <div className="space-y-2">
-        <p className="text-muted-foreground text-xs">
-          Desktop uses the Custom spacing above. Choose tablet or mobile to give
-          a smaller screen its own spacing.
-        </p>
-        <DeviceSwitch />
-      </div>
-    );
-  }
-
-  const fields = [
-    { key: "pt", label: "Space inside, top", base: base.pt },
-    { key: "pb", label: "Space inside, bottom", base: base.pb },
-    { key: "mt", label: "Space above", base: base.mt },
-    { key: "mb", label: "Space below", base: base.mb },
-  ] as const;
-
-  return (
-    <div className="space-y-4">
-      <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
-        <DeviceIcon device={device} /> Spacing on{" "}
-        {DEVICE_LABELS[device].toLowerCase()}. Empty uses the larger screen’s.
-      </p>
-      {fields.map((field) => {
-        const own = get(["spacing", device, field.key]) as number | undefined;
-        const inherited =
-          device === "m"
-            ? ((get(["spacing", "t", field.key]) as number | undefined) ??
-              field.base)
-            : field.base;
-        return (
-          <Slider
-            key={field.key}
-            label={field.label}
-            unit="px"
-            min={0}
-            max={400}
-            step={1}
-            value={own}
-            placeholder={String(inherited)}
-            onChange={(next) => set(["spacing", device, field.key], next)}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-function EffectsPart({
-  get,
-  set,
-  radiusBase,
-}: PartProps & { radiusBase: number }) {
-  const { device } = useEditorDevice();
-  const corners =
-    device === "d" ? null : (get(["radius", device]) as number | undefined);
-  const inherited =
-    device === "m"
-      ? ((get(["radius", "t"]) as number | undefined) ?? radiusBase)
-      : radiusBase;
-  return (
-    <div className="space-y-4">
-      {device === "d" ? (
-        <p className="text-muted-foreground text-xs">
-          Desktop corners are set under Line &amp; corners. Choose tablet or
-          mobile to round them differently there.
-        </p>
-      ) : (
-        <Slider
-          label={`Rounded corners on ${DEVICE_LABELS[device].toLowerCase()}`}
-          unit="px"
-          min={0}
-          max={200}
-          step={1}
-          value={corners ?? undefined}
-          placeholder={String(inherited)}
-          device={device}
-          onChange={(next) => set(["radius", device], next)}
-        />
-      )}
-      <Segmented
-        label="Shadow"
-        value={(get(["shadow"]) as string | undefined) ?? "none"}
-        options={Object.entries(SHADOWS).map(([value, shadow]) => ({
-          value,
-          label: shadow.label,
-        }))}
-        onChange={(next) => set(["shadow"], next === "none" ? undefined : next)}
-      />
-      <Slider
-        label="Transparency"
-        hint="100% is fully visible."
-        unit="%"
-        min={10}
-        max={100}
-        step={5}
-        value={get(["opacity"]) as number | undefined}
-        placeholder="100"
-        onChange={(next) => set(["opacity"], next === 100 ? undefined : next)}
-      />
-    </div>
-  );
-}
-
 function ImagesPart({ get, set }: PartProps) {
   return (
     <div className="space-y-4">
@@ -856,18 +683,7 @@ function ImagesPart({ get, set }: PartProps) {
           set(["images", "ratio"], next === "original" ? undefined : next)
         }
       />
-      <Slider
-        label="Rounded corners"
-        unit="px"
-        min={0}
-        max={120}
-        step={1}
-        value={get(["images", "radius"]) as number | undefined}
-        placeholder="0"
-        onChange={(next) =>
-          set(["images", "radius"], next === 0 ? undefined : next)
-        }
-      />
+      {/* The photographs' corners sit with the section's own, under Border & shadow. */}
       <div className="flex items-center justify-between gap-3">
         <Label htmlFor="design-zoom" className="text-xs">
           Zoom in slightly under the pointer
@@ -976,7 +792,8 @@ function VisibilityPart({
  * Building blocks
  * -------------------------------------------------------------------------- */
 
-function Part({
+/** A group that folds away — the same card for every group of the Style tab. */
+export function Part({
   title,
   changed,
   defaultOpen,

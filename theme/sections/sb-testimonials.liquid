@@ -33,6 +33,45 @@
     assign slide_class = 'basis-[86%]! sm:basis-[46%]! lg:basis-[calc(33.333%-0.42rem)]!'
   endif
 
+  comment
+    Items across, per device (lib/page-builder/carousel.ts). A chosen number replaces
+    the column widths with the shared data-cv rules (styles/sb-carousel.css); a device
+    left on "As designed" takes the columns' own count. All three as designed: the
+    column classes above, unchanged.
+  endcomment
+  assign cv_style = ''
+  if s.layout == 'carousel'
+    if s.per_desktop != 'auto' or s.per_tablet != 'auto' or s.per_mobile != 'auto'
+      if s.columns == '2'
+        assign per_d = '2'
+        assign per_t = '2'
+      else
+        assign per_d = '3'
+        assign per_t = '2.15'
+      endif
+      assign per_m = '1.16'
+      if s.per_desktop != 'auto' and s.per_desktop != blank
+        assign per_d = s.per_desktop
+      endif
+      if s.per_tablet != 'auto' and s.per_tablet != blank
+        assign per_t = s.per_tablet
+      endif
+      if s.per_mobile != 'auto' and s.per_mobile != blank
+        assign per_m = s.per_mobile
+      endif
+      assign gaps_d = per_d | plus: 0 | ceil | minus: 1
+      assign gaps_t = per_t | plus: 0 | ceil | minus: 1
+      assign gaps_m = per_m | plus: 0 | ceil | minus: 1
+      assign cv_style = '--cv-d:' | append: per_d | append: ';--cv-t:' | append: per_t | append: ';--cv-m:' | append: per_m
+      assign cv_style = cv_style | append: ';--cv-d-gaps:' | append: gaps_d | append: ';--cv-t-gaps:' | append: gaps_t | append: ';--cv-m-gaps:' | append: gaps_m
+      assign slide_class = ''
+    endif
+  endif
+  assign step = '1'
+  if s.layout == 'carousel'
+    assign step = s.step | default: '1'
+  endif
+
   assign header_align = s.heading_align
   if s.layout == 'single'
     assign header_align = 'center'
@@ -90,8 +129,14 @@
       {%- if s.layout == 'grid' or count == 1 -%}
         <div class="grid gap-[var(--sb-grid-gap)]{% if s.layout == 'grid' %} {{ grid_class }}{% endif %}">{{ figures }}</div>
       {%- else -%}
-        <div data-sb-carousel role="region" aria-roledescription="carousel" aria-label="{{ region_label | escape }}">
-          <div class="sb-track gap-[var(--sb-grid-gap)]" data-sb-carousel-track>{{ figures }}</div>
+        <div data-sb-carousel data-sb-carousel-step="{{ step | escape }}" role="region" aria-roledescription="carousel" aria-label="{{ region_label | escape }}">
+          <div
+            class="sb-track gap-[var(--sb-grid-gap)]"
+            data-sb-carousel-track
+            {% if cv_style != blank %}data-cv style="{{ cv_style | escape }}"{% endif %}
+          >
+            {{- figures -}}
+          </div>
           <div data-sb-carousel-controls hidden class="mt-6 flex justify-end gap-1">
             <button type="button" data-sb-carousel-prev aria-label="{{ label_previous }}" class="flex size-9 items-center justify-center opacity-80 hover:opacity-100">
               {%- render 'sb-icon', icon: 'arrow-left', class: 'size-5', size: 1.25 -%}
@@ -100,6 +145,12 @@
               {%- render 'sb-icon', icon: 'arrow-right', class: 'size-5', size: 1.25 -%}
             </button>
           </div>
+        </div>
+      {%- endif -%}
+      {%- if s.show_more and s.more_link_url != blank -%}
+        <div class="mt-10 flex {% if s.layout == 'single' or header_align == 'center' %}justify-center{% else %}justify-start{% endif %}">
+          {%- assign more_label = s.more_link_label | default: 'read more' -%}
+          {%- render 'sb-button', label: more_label, href: s.more_link_url, variant: 'outline' -%}
         </div>
       {%- endif -%}
     </div>
@@ -179,10 +230,151 @@
       "default": "3"
     },
     {
+      "type": "select",
+      "id": "per_desktop",
+      "label": "Items across on desktop",
+      "options": [
+        {
+          "value": "auto",
+          "label": "As designed"
+        },
+        {
+          "value": "1",
+          "label": "1"
+        },
+        {
+          "value": "2",
+          "label": "2"
+        },
+        {
+          "value": "3",
+          "label": "3"
+        },
+        {
+          "value": "4",
+          "label": "4"
+        },
+        {
+          "value": "5",
+          "label": "5"
+        },
+        {
+          "value": "6",
+          "label": "6"
+        }
+      ],
+      "default": "auto"
+    },
+    {
+      "type": "select",
+      "id": "per_tablet",
+      "label": "Items across on tablets",
+      "options": [
+        {
+          "value": "auto",
+          "label": "As designed"
+        },
+        {
+          "value": "1",
+          "label": "1"
+        },
+        {
+          "value": "1.25",
+          "label": "1 and a peek of the next"
+        },
+        {
+          "value": "2",
+          "label": "2"
+        },
+        {
+          "value": "2.25",
+          "label": "2 and a peek of the next"
+        },
+        {
+          "value": "3",
+          "label": "3"
+        },
+        {
+          "value": "4",
+          "label": "4"
+        }
+      ],
+      "default": "auto"
+    },
+    {
+      "type": "select",
+      "id": "per_mobile",
+      "label": "Items across on phones",
+      "options": [
+        {
+          "value": "auto",
+          "label": "As designed"
+        },
+        {
+          "value": "1",
+          "label": "1"
+        },
+        {
+          "value": "1.25",
+          "label": "1 and a peek of the next"
+        },
+        {
+          "value": "2",
+          "label": "2"
+        },
+        {
+          "value": "2.25",
+          "label": "2 and a peek of the next"
+        }
+      ],
+      "default": "auto"
+    },
+    {
+      "type": "select",
+      "id": "step",
+      "label": "Each arrow moves",
+      "options": [
+        {
+          "value": "1",
+          "label": "1 item"
+        },
+        {
+          "value": "2",
+          "label": "2 items"
+        },
+        {
+          "value": "3",
+          "label": "3 items"
+        },
+        {
+          "value": "page",
+          "label": "A whole row"
+        }
+      ],
+      "default": "1"
+    },
+    {
       "type": "checkbox",
       "id": "marks",
       "label": "Show quotation marks",
       "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_more",
+      "label": "Show a “show more” button",
+      "default": false
+    },
+    {
+      "type": "text",
+      "id": "more_link_label",
+      "label": "Show more button text",
+      "info": "Where it goes — a page of reviews, say. Without a link it is not shown."
+    },
+    {
+      "type": "url",
+      "id": "more_link_url",
+      "label": "Show more button link"
     },
     {
       "type": "select",
@@ -850,6 +1042,156 @@
         }
       ],
       "default": "default"
+    },
+    {
+      "type": "header",
+      "content": "Buttons"
+    },
+    {
+      "type": "color",
+      "id": "d_btn_bg",
+      "label": "Background",
+      "info": "Filled and outlined buttons take all of these; a text link only its colours."
+    },
+    {
+      "type": "color",
+      "id": "d_btn_color",
+      "label": "Text colour"
+    },
+    {
+      "type": "color",
+      "id": "d_btn_line",
+      "label": "Line colour"
+    },
+    {
+      "type": "color",
+      "id": "d_btn_hover_bg",
+      "label": "Background under the pointer"
+    },
+    {
+      "type": "color",
+      "id": "d_btn_hover_color",
+      "label": "Text colour under the pointer"
+    },
+    {
+      "type": "color",
+      "id": "d_btn_hover_line",
+      "label": "Line colour under the pointer",
+      "info": "Empty: the button keeps its colours and dims slightly."
+    },
+    {
+      "type": "number",
+      "id": "d_btn_line_width",
+      "label": "Line thickness (px)",
+      "placeholder": "Default"
+    },
+    {
+      "type": "number",
+      "id": "d_btn_radius",
+      "label": "Rounded corners (px)",
+      "placeholder": "Default"
+    },
+    {
+      "type": "number",
+      "id": "d_btn_pad_x",
+      "label": "Space inside, left and right (px)",
+      "placeholder": "Default"
+    },
+    {
+      "type": "number",
+      "id": "d_btn_pad_x_m",
+      "label": "Space inside, left and right on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "number",
+      "id": "d_btn_pad_y",
+      "label": "Space inside, top and bottom (px)",
+      "placeholder": "Default"
+    },
+    {
+      "type": "number",
+      "id": "d_btn_pad_y_m",
+      "label": "Space inside, top and bottom on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "number",
+      "id": "d_btn_space_above",
+      "label": "Space above the buttons (px)",
+      "placeholder": "Default"
+    },
+    {
+      "type": "number",
+      "id": "d_btn_space_above_m",
+      "label": "Space above the buttons on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "number",
+      "id": "d_btn_gap",
+      "label": "Space between buttons (px)",
+      "placeholder": "Default"
+    },
+    {
+      "type": "number",
+      "id": "d_btn_gap_m",
+      "label": "Space between buttons on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "header",
+      "content": "Spacing at the sides"
+    },
+    {
+      "type": "number",
+      "id": "d_pad_left",
+      "label": "Space inside, left (px)",
+      "placeholder": "Default",
+      "info": "With Custom spacing on. Empty keeps the design’s own gutter."
+    },
+    {
+      "type": "number",
+      "id": "d_pad_left_m",
+      "label": "Space inside, left on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "number",
+      "id": "d_pad_right",
+      "label": "Space inside, right (px)",
+      "placeholder": "Default"
+    },
+    {
+      "type": "number",
+      "id": "d_pad_right_m",
+      "label": "Space inside, right on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "number",
+      "id": "d_margin_left",
+      "label": "Space outside, left (px)",
+      "placeholder": "Default",
+      "info": "Narrows the section — with a colour and corners, a card."
+    },
+    {
+      "type": "number",
+      "id": "d_margin_left_m",
+      "label": "Space outside, left on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "number",
+      "id": "d_margin_right",
+      "label": "Space outside, right (px)",
+      "placeholder": "Default"
+    },
+    {
+      "type": "number",
+      "id": "d_margin_right_m",
+      "label": "Space outside, right on phones (px)",
+      "placeholder": "Same as desktop"
     },
     {
       "type": "header",

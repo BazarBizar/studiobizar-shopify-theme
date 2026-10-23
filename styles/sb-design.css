@@ -61,6 +61,17 @@
 [data-sb-pt~="d"] { padding-top: var(--sb-pt); }
 [data-sb-pb~="d"] { padding-bottom: var(--sb-pb); }
 
+/* Space inside, left and right (design.sides) — with "Set the spacing yourself" on, as the
+   top and bottom are. It REPLACES the side gutter of the section's content column
+   (.sb-container), or pads the section itself where there is no column; empty keeps
+   the design's own gutter. Space left/right narrows the section — with a colour and
+   corners, a card. A section drawn inside another's frame (joined) is left alone. */
+[data-sb-pad][data-sb-padl~="d"] .sb-container:not([data-sb-pad] [data-section-id] *) { padding-left: var(--sb-padl); }
+[data-sb-pad][data-sb-padl~="d"]:not(:has(.sb-container)) { padding-left: var(--sb-padl); }
+[data-sb-pad][data-sb-padr~="d"] .sb-container:not([data-sb-pad] [data-section-id] *) { padding-right: var(--sb-padr); }
+[data-sb-pad][data-sb-padr~="d"]:not(:has(.sb-container)) { padding-right: var(--sb-padr); }
+[data-sb-pad][data-sb-marl~="d"] { margin-left: var(--sb-marl); }
+[data-sb-pad][data-sb-marr~="d"] { margin-right: var(--sb-marr); }
 [data-sb-align~="d"] { text-align: var(--sb-align); }
 [data-sb-maxw~="d"] .sb-container { max-width: var(--sb-maxw); margin-inline: auto; }
 [data-sb-minh~="d"] { min-height: var(--sb-minh); }
@@ -109,6 +120,12 @@
   [data-sb-btn-gap~="t"] [data-sb-buttons] { gap: var(--sb-btn-gap-t); }
   [data-sb-pt~="t"] { padding-top: var(--sb-pt-t); }
   [data-sb-pb~="t"] { padding-bottom: var(--sb-pb-t); }
+  [data-sb-pad][data-sb-padl~="t"] .sb-container:not([data-sb-pad] [data-section-id] *) { padding-left: var(--sb-padl-t); }
+  [data-sb-pad][data-sb-padl~="t"]:not(:has(.sb-container)) { padding-left: var(--sb-padl-t); }
+  [data-sb-pad][data-sb-padr~="t"] .sb-container:not([data-sb-pad] [data-section-id] *) { padding-right: var(--sb-padr-t); }
+  [data-sb-pad][data-sb-padr~="t"]:not(:has(.sb-container)) { padding-right: var(--sb-padr-t); }
+  [data-sb-pad][data-sb-marl~="t"] { margin-left: var(--sb-marl-t); }
+  [data-sb-pad][data-sb-marr~="t"] { margin-right: var(--sb-marr-t); }
   [data-sb-align~="t"] { text-align: var(--sb-align-t); }
   [data-sb-maxw~="t"] .sb-container { max-width: var(--sb-maxw-t); margin-inline: auto; }
   [data-sb-minh~="t"] { min-height: var(--sb-minh-t); }
@@ -152,6 +169,12 @@
   [data-sb-btn-gap~="m"] [data-sb-buttons] { gap: var(--sb-btn-gap-m); }
   [data-sb-pt~="m"] { padding-top: var(--sb-pt-m); }
   [data-sb-pb~="m"] { padding-bottom: var(--sb-pb-m); }
+  [data-sb-pad][data-sb-padl~="m"] .sb-container:not([data-sb-pad] [data-section-id] *) { padding-left: var(--sb-padl-m); }
+  [data-sb-pad][data-sb-padl~="m"]:not(:has(.sb-container)) { padding-left: var(--sb-padl-m); }
+  [data-sb-pad][data-sb-padr~="m"] .sb-container:not([data-sb-pad] [data-section-id] *) { padding-right: var(--sb-padr-m); }
+  [data-sb-pad][data-sb-padr~="m"]:not(:has(.sb-container)) { padding-right: var(--sb-padr-m); }
+  [data-sb-pad][data-sb-marl~="m"] { margin-left: var(--sb-marl-m); }
+  [data-sb-pad][data-sb-marr~="m"] { margin-right: var(--sb-marr-m); }
   [data-sb-align~="m"] { text-align: var(--sb-align-m); }
   [data-sb-maxw~="m"] .sb-container { max-width: var(--sb-maxw-m); margin-inline: auto; }
   [data-sb-minh~="m"] { min-height: var(--sb-minh-m); }

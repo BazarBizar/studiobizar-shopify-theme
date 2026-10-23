@@ -6,6 +6,7 @@
 /* The page builder's design value — the same rules the Next build uses
    (app/globals.css), drawn here from what snippets/sb-design.liquid writes. */
 @import "../styles/sb-design.css";
+@import "../styles/sb-carousel.css";
 @source "../theme/**/*.liquid";
 @source "../theme/**/*.json";
 

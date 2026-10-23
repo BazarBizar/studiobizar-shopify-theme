@@ -348,6 +348,27 @@ async function renderAll() {
       rendered.push({ name: `${file}--design`, html });
     }
 
+    // The carousel settings: two across and two per arrow, with a "read more" button.
+    if (file === "sb-testimonials" && schema.presets?.[0]) {
+      const preset = schema.presets[0];
+      const blocks = Array.from({ length: 6 }, (_, index) => ({
+        id: `q${index}`,
+        type: "quote",
+        shopify_attributes: "",
+        settings: { ...settingsFrom(blockSchema("quote"), {}), quote: `Quote number ${index + 1}`, author: `Person ${index + 1}` },
+      }));
+      const settings = {
+        ...settingsFrom(schema.settings, preset.settings),
+        layout: "carousel",
+        per_desktop: "2",
+        step: "2",
+        show_more: true,
+        more_link_label: "All reviews",
+        more_link_url: "/pages/reviews",
+      };
+      rendered.push({ name: `${file}--carousel-settings`, html: await render(source, settings, blocks, false) });
+    }
+
     // Every field empty, every block empty — live and in the editor.
     const firstPreset = schema.presets?.[0];
     const emptyBlocks = (firstPreset?.blocks ?? []).map((block, index) => ({
@@ -416,6 +437,7 @@ const DESIGN_SAMPLE: DesignValue = {
     spaceAbove: { m: 12 },
     gap: { d: 24 },
   },
+  sides: { padLeft: { d: 64, m: 16 }, padRight: { d: 48 }, marginLeft: { m: 8 }, marginRight: { d: 40, m: 8 } },
   images: { ratio: "square", radius: 12, zoom: true },
   shadow: "medium",
   maxWidth: { d: 900 },
@@ -594,7 +616,35 @@ async function main() {
   process.exit(failures ? 1 : 0);
 }
 
+async function carouselSettings(tab: import("playwright").Page) {
+  const section = tab.locator('[data-shot="sb-testimonials--carousel-settings"]');
+  if (!(await section.count())) return;
+  const track = section.locator("[data-sb-carousel-track]");
+  const widths = await track.evaluate((element) => {
+    const items = [...element.children] as HTMLElement[];
+    const gap = parseFloat(getComputedStyle(element).columnGap) || 0;
+    return { track: element.clientWidth, item: items[0]!.getBoundingClientRect().width, gap };
+  });
+  check(
+    "carousel settings: two across on desktop",
+    Math.abs(widths.item * 2 + widths.gap - widths.track) <= 2,
+    JSON.stringify(widths),
+  );
+  await section.locator("[data-sb-carousel-next]").click();
+  await tab.waitForTimeout(700);
+  const moved = await track.evaluate((element) => {
+    const items = [...element.children] as HTMLElement[];
+    return Math.round(element.scrollLeft / (items[1]!.offsetLeft - items[0]!.offsetLeft));
+  });
+  check("carousel settings: an arrow press moves two items", moved === 2, moved);
+  check(
+    "carousel settings: the 'show more' button, with its own text",
+    (await section.getByRole("link", { name: "All reviews" }).count()) === 1,
+  );
+}
+
 async function interactions(tab: import("playwright").Page) {
+  await carouselSettings(tab);
   const tabs = tab.locator("[data-sb-tabs]").first();
   if (await tabs.count()) {
     check(

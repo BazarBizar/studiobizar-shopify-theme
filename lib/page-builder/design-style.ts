@@ -182,6 +182,17 @@ export type DesignValue = {
   align?: Responsive<(typeof ALIGNMENTS)[number]>;
   /** Tablet and mobile overrides of the Style tab's Custom spacing. */
   spacing?: { t?: SpaceBox; m?: SpaceBox };
+  /**
+   * Space at the sides, px, per device — with Custom spacing on, as the top and bottom
+   * are. Inside replaces the content column's gutter; outside narrows the section.
+   * Unset: the design's own gutter, and no space outside.
+   */
+  sides?: {
+    padLeft?: Responsive<number>;
+    padRight?: Responsive<number>;
+    marginLeft?: Responsive<number>;
+    marginRight?: Responsive<number>;
+  };
   background?: {
     image?: ImageRef | null;
     /** A different crop for phones. */
@@ -348,6 +359,11 @@ export function designStyle(value: DesignValue | undefined): {
     if (box.mb !== undefined) style[`--sb-mb-${device}`] = `${box.mb}px`;
     attrs[`data-sb-space-${device}`] = "";
   }
+
+  each("padl", "--sb-padl", value.sides?.padLeft, (v) => `${v}px`);
+  each("padr", "--sb-padr", value.sides?.padRight, (v) => `${v}px`);
+  each("marl", "--sb-marl", value.sides?.marginLeft, (v) => `${v}px`);
+  each("marr", "--sb-marr", value.sides?.marginRight, (v) => `${v}px`);
 
   const background = value.background;
   const gradient =

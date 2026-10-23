@@ -17,6 +17,7 @@ import { Steps } from "@/components/sections/landing/steps";
 import { Tabs } from "@/components/sections/landing/tabs";
 import { Testimonials } from "@/components/sections/landing/testimonials";
 import { VideoEmbed } from "@/components/sections/landing/video-embed";
+import { carouselView, DESIGNED } from "@/lib/page-builder/carousel";
 import { isSafeHref, parseVideoUrl, type LinkValue } from "@/lib/page-builder/fields";
 import { getProduct } from "@/lib/shopify";
 import { richTextToHtml } from "@/lib/shopify/transforms";
@@ -302,6 +303,8 @@ export const LANDING_RENDERERS = {
         layout={s.layout}
         columns={s.columns}
         marks={s.marks}
+        view={carouselView(s, s.columns === "2" ? DESIGNED.testimonials2 : DESIGNED.testimonials3)}
+        more={s.showMore && s.moreLink?.href ? { href: s.moreLink.href, label: s.moreLink.label || "read more" } : null}
       />
     ),
   }),

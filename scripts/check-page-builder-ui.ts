@@ -253,12 +253,16 @@ async function main() {
       await aside.getByRole("button", { name: /UI heading one/ }).first().click();
       await aside.getByRole("tab", { name: "Style" }).click();
       check("Style tab: 'Show on devices' is there, once", (await aside.getByText("Show on devices").count()) === 1);
+      const group = (title: string) => aside.locator("summary").filter({ hasText: new RegExp(`^${title}`) });
       check(
-        "Style tab: Background & text, Spacing, and Line & corners",
-        (await aside.getByText("Background & text", { exact: true }).count()) === 1 &&
-          (await aside.getByText("Spacing", { exact: true }).count()) === 1 &&
-          (await aside.getByText("Line & corners", { exact: true }).count()) === 1,
+        "Style tab: one list — Background, Spacing, Border & shadow, then the design",
+        (await group("Background").count()) === 1 &&
+          (await group("Spacing").count()) === 1 &&
+          (await group("Border & shadow").count()) === 1 &&
+          (await group("Typography").count()) === 1,
       );
+      check("Style tab: no Vertical spacing any more", (await aside.getByText("Vertical spacing").count()) === 0);
+      await group("Background").click();
       await aside.getByRole("button", { name: "Dark wood" }).first().click();
       // Instant: the colour is on the section within a quarter second — set on its frame
       // directly, before the server has redrawn anything.
@@ -269,8 +273,46 @@ async function main() {
         .first()
         .evaluate((frame) => getComputedStyle(frame).backgroundColor);
       check("Style: a colour shows in the preview at once", instant === "rgb(48, 47, 45)", instant);
-      await aside.getByLabel("Custom spacing").click();
-      await aside.getByRole("spinbutton", { name: "Space inside, top (px)" }).fill("10");
+      // An overlay over the colour: drawn as a layer on the section.
+      await aside.locator("#design-overlay").fill("#000000");
+      await page.waitForTimeout(400);
+      const overlaid = await page
+        .frameLocator("iframe[title^='Preview']")
+        .locator('[data-section-type="text_block"]')
+        .first()
+        .evaluate((frame) => getComputedStyle(frame).backgroundImage);
+      check("Style: an overlay over a plain colour reaches the preview", overlaid.startsWith("linear-gradient"), overlaid);
+      await aside.locator("#design-overlay").fill("");
+
+      // Setting the spacing yourself starts from what the section has now.
+      const before = await page
+        .frameLocator("iframe[title^='Preview']")
+        .locator('[data-section-type="text_block"] .py-section, [data-section-type="text_block"] .pt-section')
+        .first()
+        .evaluate((band) => Math.round(parseFloat(getComputedStyle(band).paddingTop)));
+      await group("Spacing").click();
+      await aside.getByLabel("Set the spacing yourself").click();
+      const startsAt = await aside.getByRole("spinbutton", { name: "Padding top (px)" }).inputValue();
+      check("Spacing: turning it on starts from the section's current space", startsAt === String(before), `${startsAt} vs ${before}`);
+      await aside.getByRole("spinbutton", { name: "Padding top (px)" }).fill("10");
+      check(
+        "Spacing: left and right are there, empty showing the design's own gutter",
+        (await aside.getByRole("spinbutton", { name: "Padding left (px)" }).inputValue()) === "" &&
+          Number(await aside.getByRole("spinbutton", { name: "Padding left (px)" }).getAttribute("placeholder")) > 0,
+      );
+      await aside.getByRole("spinbutton", { name: "Padding left (px)" }).fill("40");
+      await aside.getByRole("spinbutton", { name: "Margin left (px)" }).fill("24");
+      await page.waitForTimeout(400);
+      const sides = await page
+        .frameLocator("iframe[title^='Preview']")
+        .locator('[data-section-type="text_block"]')
+        .first()
+        .evaluate((frame) => ({
+          inside: getComputedStyle(frame.querySelector(".sb-container") ?? frame).paddingLeft,
+          outside: getComputedStyle(frame).marginLeft,
+        }));
+      check("Spacing: the preview draws 40px inside and 24px outside on the left", sides.inside === "40px" && sides.outside === "24px", JSON.stringify(sides));
+      await group("Border & shadow").click();
       await aside.getByRole("combobox", { name: "Line" }).click();
       await page.getByRole("option", { name: "Box around" }).click();
       await aside.getByRole("spinbutton", { name: "Line thickness (px)" }).fill("3");
@@ -386,7 +428,7 @@ async function main() {
       await ownLook.click();
       check(
         "Joined section: 'Style this section on its own' brings its style controls back",
-        (await aside.getByText("Background & text", { exact: true }).count()) === 1,
+        (await aside.locator("summary").filter({ hasText: /^Background/ }).count()) === 1,
       );
       await aside.getByRole("tab", { name: "Content" }).click();
       await aside.getByRole("radio", { name: "Joined to the Page heading above" }).click();
@@ -454,8 +496,11 @@ async function main() {
       await aside.getByRole("tab", { name: "Style" }).click();
       await aside.getByText("Typography", { exact: true }).click();
       await page.waitForTimeout(2500);
-      const targets = await aside.getByRole("radiogroup", { name: "Style for" }).getByRole("radio").allTextContents();
-      check("Three photographs: Typography offers only what it has (Text)", JSON.stringify(targets) === '["Text"]', JSON.stringify(targets));
+      // Only text (its captions): no Headings or Buttons, and no "Style for" switch with one choice.
+      check(
+        "Three photographs: Typography offers only what it has — text, with no one-choice switch",
+        (await aside.getByRole("radiogroup", { name: "Style for" }).count()) === 0 && (await aside.getByLabel("Size (px)").count()) > 0,
+      );
       await aside.getByLabel("Size (px)").first().fill("21");
       await page.waitForTimeout(1500);
       const captionSize = await page
@@ -470,7 +515,8 @@ async function main() {
         (await aside.locator("summary").filter({ hasText: /^Buttons$/ }).count()) === 0 && (await aside.locator("summary").filter({ hasText: /^Typography/ }).count()) === 1,
       );
       // "Rounded corners" on a section with no background showed nothing; the photos'
-      // own corners sit right beside it.
+      // own corners sit right beside it, under Border & shadow.
+      await aside.locator("summary").filter({ hasText: /^Border & shadow/ }).click();
       check(
         "Three photographs: corners are offered for the section and the photos",
         (await aside.getByRole("spinbutton", { name: "Section corners (px)" }).count()) === 1 && (await aside.getByRole("spinbutton", { name: "Photo corners (px)" }).count()) === 1,
@@ -486,6 +532,65 @@ async function main() {
       check("Three photographs: Photo corners round the photographs", Boolean(photoCorners?.includes("16px")), JSON.stringify(photoCorners));
       await shot("06b-photo-corners");
       await aside.getByRole("tab", { name: "Content" }).click();
+      await aside.getByRole("button", { name: "Delete section" }).click();
+
+      // A banner: its photograph is its ground and its height is fixed — so Background holds
+      // its own darkening (no photo or gradient that would sit unseen behind it), and Spacing
+      // offers only the space around it.
+      await page.getByRole("button", { name: "Add section" }).click();
+      await page.locator("[cmdk-item]").filter({ hasText: "A large photograph with a centred heading" }).first().click();
+      await aside.getByRole("tab", { name: "Style" }).click();
+      await aside.locator("summary").filter({ hasText: /^Background/ }).click();
+      await aside.locator("summary").filter({ hasText: /^Spacing/ }).click();
+      await aside.getByLabel("Set the spacing yourself").click();
+      check(
+        "Banner: Background has its darkening, not a photo or gradient behind its photo",
+        (await aside.getByText("Image darkening (%)").count()) === 1 &&
+          (await aside.getByText("Gradient", { exact: true }).count()) === 0 &&
+          (await aside.getByText("Photo", { exact: true }).count()) === 0,
+      );
+      check(
+        "Banner: Spacing offers its sides and the space around it, not the height",
+        (await aside.getByRole("spinbutton", { name: "Padding top (px)" }).isDisabled()) &&
+          (await aside.getByRole("spinbutton", { name: "Padding left (px)" }).isEnabled()) &&
+          (await aside.getByRole("spinbutton", { name: "Margin top (px)" }).isEnabled()),
+      );
+      await shot("06c-banner-style");
+      await aside.getByRole("tab", { name: "Content" }).click();
+      await aside.getByRole("button", { name: "Delete section" }).click();
+
+      // A section with no text of its own: no Typography group at all, rather than an empty one.
+      await page.getByRole("button", { name: "Add section" }).click();
+      await page.locator("[cmdk-item]").filter({ hasText: "Empty space between two sections" }).first().click();
+      await aside.getByRole("tab", { name: "Style" }).click();
+      await page.waitForTimeout(2500);
+      check(
+        "Spacer: no Typography group, and no 'nothing to style' message",
+        (await aside.locator("summary").filter({ hasText: /^Typography/ }).count()) === 0 &&
+          (await aside.getByText(/nothing here to style/).count()) === 0,
+      );
+      await aside.getByRole("tab", { name: "Content" }).click();
+      await aside.getByRole("button", { name: "Delete section" }).click();
+
+      // The project carousel: two across, two per arrow press — set in the editor, drawn in the preview.
+      await page.getByRole("button", { name: "Add section" }).click();
+      await page.locator("[cmdk-item]").filter({ hasText: "A scrolling row of project cards" }).first().click();
+      await aside.getByRole("combobox", { name: "Items across on desktop" }).click();
+      await page.getByRole("option", { name: "2", exact: true }).click();
+      await aside.getByRole("radio", { name: "2 items" }).click();
+      await page.waitForTimeout(2500);
+      const row = await page
+        .frameLocator("iframe[title^='Preview']")
+        .locator('[data-section-type="project_carousel"] [role="region"] > div')
+        .first()
+        .evaluate((track) => {
+          const items = [...track.children] as HTMLElement[];
+          const gap = parseFloat(getComputedStyle(track).columnGap) || 0;
+          return { cv: track.hasAttribute("data-cv"), across: (track.parentElement!.clientWidth + gap) / (items[0]!.getBoundingClientRect().width + gap) };
+        })
+        .catch(() => null);
+      check("Project carousel: two across, as chosen", Boolean(row?.cv && Math.abs(row.across - 2) < 0.05), JSON.stringify(row));
+      await shot("06d-project-carousel");
       await aside.getByRole("button", { name: "Delete section" }).click();
 
       // Call to action: its buttons take their own colour and corners.

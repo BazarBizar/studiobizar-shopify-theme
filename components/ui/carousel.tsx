@@ -4,6 +4,7 @@ import useEmblaCarousel from "embla-carousel-react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useCallback, useSyncExternalStore } from "react";
 
+import { carouselStyle, type CarouselStep, type PerView } from "@/lib/page-builder/carousel-view";
 import { cn } from "@/lib/utils/cn";
 
 /**
@@ -13,6 +14,10 @@ import { cn } from "@/lib/utils/cn";
  * collection card and a product card. Width per slide is set by
  * `slideClassName` rather than a fixed count, so the row stays a scroller on
  * mobile and shows four across on desktop, matching the landing page.
+ *
+ * `perView` (the builder's "Items across", per device) replaces those widths with
+ * the shared `data-cv` rules (styles/sb-carousel.css); `step` is how far one arrow
+ * press moves — a number of items, or "page" for a whole row.
  */
 export function Carousel({
   children,
@@ -20,6 +25,8 @@ export function Carousel({
   ariaLabel,
   className,
   gap = "grid-gap",
+  perView = null,
+  step = 1,
 }: {
   children: React.ReactNode[];
   slideClassName?: string;
@@ -27,10 +34,13 @@ export function Carousel({
   className?: string;
   /** `none` butts slides edge to edge — In Context on Collections Detail. */
   gap?: "grid-gap" | "none";
+  perView?: PerView | null;
+  step?: CarouselStep;
 }) {
   const [emblaRef, embla] = useEmblaCarousel({
     align: "start",
     containScroll: "trimSnaps",
+    slidesToScroll: step === "page" ? "auto" : step,
   });
 
   // Embla is an external store, so it is read through useSyncExternalStore
@@ -79,9 +89,13 @@ export function Carousel({
         role="region"
         aria-label={ariaLabel}
       >
-        <div className={cn("flex", gap === "grid-gap" && "gap-grid-gap")}>
+        <div
+          className={cn("flex", gap === "grid-gap" && "gap-grid-gap")}
+          data-cv={perView ? "" : undefined}
+          style={perView ? (carouselStyle(perView) as React.CSSProperties) : undefined}
+        >
           {children.map((child, index) => (
-            <div key={index} className={cn("min-w-0 shrink-0", slideClassName)}>
+            <div key={index} className={cn("min-w-0 shrink-0", !perView && slideClassName)}>
               {child}
             </div>
           ))}

@@ -68,6 +68,14 @@ export const designSchema = z.strictObject({
     .optional(),
   align: responsive(z.enum(ALIGNMENTS)).optional(),
   spacing: z.strictObject({ t: spaceBoxSchema.optional(), m: spaceBoxSchema.optional() }).optional(),
+  sides: z
+    .strictObject({
+      padLeft: responsive(px(400)).optional(),
+      padRight: responsive(px(400)).optional(),
+      marginLeft: responsive(px(400)).optional(),
+      marginRight: responsive(px(400)).optional(),
+    })
+    .optional(),
   background: z
     .strictObject({
       image: imageRefSchema.nullable().optional(),

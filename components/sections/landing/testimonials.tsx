@@ -1,6 +1,8 @@
 import Image from "next/image";
 
+import { ButtonLink } from "@/components/ui/button";
 import { Carousel } from "@/components/ui/carousel";
+import type { CarouselView } from "@/lib/page-builder/carousel-view";
 import { cdnImage } from "@/lib/shopify/transforms";
 import type { ShopifyImage } from "@/lib/shopify/types";
 import { cn } from "@/lib/utils/cn";
@@ -47,6 +49,8 @@ export function Testimonials({
   layout,
   columns,
   marks,
+  view,
+  more,
 }: {
   title: string;
   intro: string;
@@ -54,6 +58,10 @@ export function Testimonials({
   quotes: Quote[];
   layout: "grid" | "carousel" | "single";
   columns: "2" | "3";
+  /** The builder's carousel settings, for the carousel layout; absent: as designed. */
+  view?: CarouselView;
+  /** A "show more" button under the quotes. */
+  more?: { href: string; label: string } | null;
   marks: boolean;
 }) {
   const shown = quotes.filter((item) => item.quote.trim());
@@ -69,7 +77,7 @@ export function Testimonials({
           ))}
         </div>
       ) : layout === "carousel" ? (
-        <Carousel ariaLabel={title || "Testimonials"} slideClassName={SLIDE[columns]}>
+        <Carousel ariaLabel={title || "Testimonials"} slideClassName={SLIDE[columns]} perView={view?.perView} step={view?.step}>
           {shown.map((item) => (
             <Figure key={item.id} item={item} marks={marks} />
           ))}
@@ -83,6 +91,13 @@ export function Testimonials({
           ))}
         </Carousel>
       )}
+      {more ? (
+        <div className={cn("mt-10 flex", layout === "single" || headingAlign === "center" ? "justify-center" : "justify-start")}>
+          <ButtonLink href={more.href} variant="outline">
+            {more.label}
+          </ButtonLink>
+        </div>
+      ) : null}
     </div>
   );
 }

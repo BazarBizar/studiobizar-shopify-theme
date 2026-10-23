@@ -401,6 +401,86 @@
     assign attrs = attrs | append: ' data-sb-btn-gap="' | append: dev | append: '"'
   endif
 
+  assign dev = ''
+  assign k = pre | append: 'pad_left'
+  assign v = st[k]
+  if v != blank
+    assign v = v | at_least: 0 | at_most: 400 | round
+    assign css = css | append: '--sb-padl:' | append: v | append: 'px;'
+    assign dev = dev | append: ' d'
+  endif
+  assign k = pre | append: 'pad_left_m'
+  assign v = st[k]
+  if v != blank
+    assign v = v | at_least: 0 | at_most: 400 | round
+    assign css = css | append: '--sb-padl-m:' | append: v | append: 'px;'
+    assign dev = dev | append: ' m'
+  endif
+  if dev != blank
+    assign dev = dev | strip
+    assign attrs = attrs | append: ' data-sb-padl="' | append: dev | append: '"'
+  endif
+
+  assign dev = ''
+  assign k = pre | append: 'pad_right'
+  assign v = st[k]
+  if v != blank
+    assign v = v | at_least: 0 | at_most: 400 | round
+    assign css = css | append: '--sb-padr:' | append: v | append: 'px;'
+    assign dev = dev | append: ' d'
+  endif
+  assign k = pre | append: 'pad_right_m'
+  assign v = st[k]
+  if v != blank
+    assign v = v | at_least: 0 | at_most: 400 | round
+    assign css = css | append: '--sb-padr-m:' | append: v | append: 'px;'
+    assign dev = dev | append: ' m'
+  endif
+  if dev != blank
+    assign dev = dev | strip
+    assign attrs = attrs | append: ' data-sb-padr="' | append: dev | append: '"'
+  endif
+
+  assign dev = ''
+  assign k = pre | append: 'margin_left'
+  assign v = st[k]
+  if v != blank
+    assign v = v | at_least: 0 | at_most: 400 | round
+    assign css = css | append: '--sb-marl:' | append: v | append: 'px;'
+    assign dev = dev | append: ' d'
+  endif
+  assign k = pre | append: 'margin_left_m'
+  assign v = st[k]
+  if v != blank
+    assign v = v | at_least: 0 | at_most: 400 | round
+    assign css = css | append: '--sb-marl-m:' | append: v | append: 'px;'
+    assign dev = dev | append: ' m'
+  endif
+  if dev != blank
+    assign dev = dev | strip
+    assign attrs = attrs | append: ' data-sb-marl="' | append: dev | append: '"'
+  endif
+
+  assign dev = ''
+  assign k = pre | append: 'margin_right'
+  assign v = st[k]
+  if v != blank
+    assign v = v | at_least: 0 | at_most: 400 | round
+    assign css = css | append: '--sb-marr:' | append: v | append: 'px;'
+    assign dev = dev | append: ' d'
+  endif
+  assign k = pre | append: 'margin_right_m'
+  assign v = st[k]
+  if v != blank
+    assign v = v | at_least: 0 | at_most: 400 | round
+    assign css = css | append: '--sb-marr-m:' | append: v | append: 'px;'
+    assign dev = dev | append: ' m'
+  endif
+  if dev != blank
+    assign dev = dev | strip
+    assign attrs = attrs | append: ' data-sb-marr="' | append: dev | append: '"'
+  endif
+
   assign k = pre | append: 'img_shape'
   assign v = st[k]
   case v

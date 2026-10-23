@@ -37,11 +37,24 @@
 
     var dots = carousel.querySelectorAll("[data-sb-carousel-dot]");
 
+    // One slide plus the gap after it — what a step of one moves.
+    function pitch() {
+      if (slides.length > 1) return slides[1].offsetLeft - slides[0].offsetLeft || 1;
+      return slides[0].getBoundingClientRect().width || 1;
+    }
+
     function current() {
-      // Rounded against the slide width rather than tracked in a variable, so a
+      // Rounded against the slide pitch rather than tracked in a variable, so a
       // swipe, a keyboard scroll and an arrow press all agree on where we are.
-      var width = slides[0].getBoundingClientRect().width || 1;
-      return Math.round(track.scrollLeft / width);
+      return Math.round(track.scrollLeft / pitch());
+    }
+
+    // How far one arrow press moves (the builder's "Each arrow moves"): a number of
+    // slides, or "page" for as many as are in view.
+    function step() {
+      var raw = carousel.getAttribute("data-sb-carousel-step") || "1";
+      if (raw === "page") return Math.max(1, Math.floor((track.clientWidth + 1) / pitch()));
+      return Math.max(1, Number(raw) || 1);
     }
 
     function paint() {
@@ -56,9 +69,8 @@
     }
 
     function go(index) {
-      var width = slides[0].getBoundingClientRect().width || 0;
       var wrapped = (index + slides.length) % slides.length;
-      track.scrollTo({ left: wrapped * width });
+      track.scrollTo({ left: slides[wrapped].offsetLeft - slides[0].offsetLeft });
     }
 
     carousel.addEventListener("click", function (event) {
@@ -66,10 +78,10 @@
       if (!target) return;
 
       var prev = target.closest("[data-sb-carousel-prev]");
-      if (prev) return go(current() - 1);
+      if (prev) return go(current() - step());
 
       var next = target.closest("[data-sb-carousel-next]");
-      if (next) return go(current() + 1);
+      if (next) return go(current() + step());
 
       var dot = target.closest("[data-sb-carousel-dot]");
       if (dot) go(Number(dot.getAttribute("data-sb-carousel-dot")));

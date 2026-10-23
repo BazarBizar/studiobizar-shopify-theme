@@ -369,9 +369,7 @@ export function ElementEditor({ id, edits, onBack }: { id: string; edits: Edits;
       <div className="flex-1 space-y-5 overflow-y-auto p-4">
         <p className="text-muted-foreground text-xs">{definition.description}</p>
 
-        {fields.length === 0 ? (
-          <p className="text-muted-foreground text-xs">Nothing to set — it looks as the rest of the site.</p>
-        ) : (
+        {fields.length === 0 ? null : (
           fields.map((field) => {
             const inputId = `${id}-${field.key}`;
             const inline = field.kind === "toggle";

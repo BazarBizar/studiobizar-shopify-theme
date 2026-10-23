@@ -7,25 +7,40 @@ import {
   ExternalLinkIcon,
   EyeIcon,
   EyeOffIcon,
+  Link2Icon,
   RotateCcwIcon,
   Trash2Icon,
+  Unlink2Icon,
 } from "lucide-react";
 import * as React from "react";
 
 import { Button } from "@/components/admin/ui/button";
+import { Input } from "@/components/admin/ui/input";
 import { Label } from "@/components/admin/ui/label";
 import { Separator } from "@/components/admin/ui/separator";
+import { Switch } from "@/components/admin/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/admin/ui/tabs";
 import { PAGE_SURFACES, type PageSettings, type SectionInstance } from "@/lib/page-builder/document";
-import { NEUTRAL_STYLE, SURFACE_OPTIONS } from "@/lib/page-builder/define-section";
-import { contrastRatio, SURFACE_COLOURS, type DesignValue, type Device } from "@/lib/page-builder/design";
-import { isFieldActive, isFieldFilled, number, type FieldDef } from "@/lib/page-builder/fields";
+import { NEUTRAL_STYLE, RHYTHM_OPTIONS, SURFACE_OPTIONS } from "@/lib/page-builder/define-section";
+import {
+  contrastRatio,
+  DEVICE_LABELS,
+  getAt,
+  resolveResponsive,
+  setAt,
+  SHADOWS,
+  SURFACE_COLOURS,
+  type DesignValue,
+  type Device,
+  type Responsive,
+} from "@/lib/page-builder/design";
+import { isFieldActive, isFieldFilled, type FieldDef } from "@/lib/page-builder/fields";
 import { sectionDefinition } from "@/lib/page-builder/registry";
 
 import type { SectionContents } from "@/components/page-builder/preview-bridge";
 
-import { DesignControls } from "./design-controls";
-import { DeviceSwitch } from "./editor-device";
+import { BackgroundPart, DesignControls, Part, Segmented, Slider } from "./design-controls";
+import { DEVICE_ICONS, DeviceSwitch, useEditorDevice } from "./editor-device";
 import { FieldControl, type CollectionOption } from "./field-controls";
 
 /**
@@ -132,7 +147,11 @@ export function SectionEditor({
   const style = active.filter((field) => field.group === "style");
   const advanced = active.filter((field) => field.group === "advanced");
   const source = definition.source(settings);
-  const showTabs = style.length > 0 || joined;
+  // A tab with nothing on it is not offered: a section with nothing to fill in opens
+  // straight on its Style.
+  const contentEmpty = content.length === 0 && layout.length === 0 && advanced.length === 0 && !source;
+  const showTabs = (style.length > 0 || joined) && !contentEmpty;
+  const styleOnly = contentEmpty && (style.length > 0 || joined);
 
   return (
     <div className="flex h-full flex-col">
@@ -183,12 +202,13 @@ export function SectionEditor({
         </div>
       )}
 
-      {showTabs && tab === "style" ? (
+      {(showTabs && tab === "style") || styleOnly ? (
         <StyleTab
           fields={style}
           joined={joined}
           category={definition.category}
           textAlign={definition.textAlign}
+          innerSpacing={definition.innerSpacing}
           contents={contents}
           sectionId={section.id}
           settings={settings}
@@ -236,10 +256,6 @@ export function SectionEditor({
               />
             ))}
           </div>
-        )}
-
-        {content.length === 0 && layout.length === 0 && advanced.length === 0 && !source && (
-          <p className="text-muted-foreground text-xs">This section has nothing to set.</p>
         )}
 
         {layout.length > 0 && (
@@ -355,23 +371,6 @@ function readability(settings: Record<string, unknown>): string[] {
 
 const IMAGE_GROUND_CATEGORIES: readonly string[] = ["Banners", "Intro"];
 
-/** Not a setting of its own: it edits the design's photo corners (`design.images.radius`). */
-const PHOTO_CORNERS = number("photoCorners", "Photo corners (px)", {
-  group: "style",
-  min: 0,
-  max: 120,
-  default: 0,
-  help: "Rounds every photograph in this section.",
-});
-
-/** The Style tab's three headings, by setting key. Anything else lands under the first. */
-const STYLE_GROUPS = [
-  { title: "Background & text", keys: ["surface", "bgColor", "textColor"] },
-  { title: "Spacing", keys: ["rhythm", "customSpacing", "paddingTop", "paddingBottom", "marginTop", "marginBottom"] },
-  { title: "Line & corners", keys: ["border", "borderWidth", "borderColor", "radius"] },
-] as const;
-
-const STYLE_RESET: Record<string, unknown> = { ...NEUTRAL_STYLE, surface: "inherit", rhythm: "default" };
 
 /**
  * A readable text colour for a background — the design's two neutrals, chosen by
@@ -384,11 +383,178 @@ function contrastFor(background: string): string {
   return luminance < 0.55 ? "#ebe8e3" : "#302f2d";
 }
 
+/** Settings the Style tab places itself. Any other style setting of a section joins Background. */
+const SPACING_KEYS: readonly string[] = ["rhythm", "customSpacing", "paddingTop", "paddingBottom", "marginTop", "marginBottom"];
+const BORDER_KEYS: readonly string[] = ["border", "borderWidth", "borderColor", "radius"];
+const BACKGROUND_KEYS: readonly string[] = ["surface", "bgColor", "textColor"];
+
+const STYLE_RESET: Record<string, unknown> = { ...NEUTRAL_STYLE, surface: "inherit", rhythm: "default" };
+
+/** The highest the section's own spacing settings go (their fields' `max`). */
+const SPACE_MAX = 200;
+
+/**
+ * A number that can differ per device, as one control: it edits the device chosen at
+ * the top. Desktop is the section's own setting; tablet and mobile live in the design
+ * value, and an empty one follows the larger screen.
+ */
+function DeviceNumber({
+  label,
+  hint,
+  max,
+  desktop,
+  onDesktop,
+  own,
+  onOwn,
+}: {
+  label: string;
+  hint?: string;
+  max: number;
+  desktop: number;
+  onDesktop: (next: number) => void;
+  /** The tablet or mobile value, if set. */
+  own: (device: "t" | "m") => number | undefined;
+  onOwn: (device: "t" | "m", next: number | undefined) => void;
+}) {
+  const { device } = useEditorDevice();
+  if (device === "d") {
+    return (
+      <Slider
+        label={label}
+        hint={hint}
+        unit="px"
+        min={0}
+        max={max}
+        step={1}
+        // 0 is the default: shown as the placeholder, with no reset.
+        value={desktop === 0 ? undefined : desktop}
+        placeholder="0"
+        device="d"
+        onChange={(next) => onDesktop(next ?? 0)}
+      />
+    );
+  }
+  const tablet = own("t");
+  const inherited = device === "m" ? (tablet ?? desktop) : desktop;
+  const value = own(device);
+  return (
+    <Slider
+      label={label}
+      hint={hint}
+      unit="px"
+      min={0}
+      max={max}
+      step={1}
+      value={value}
+      placeholder={String(inherited)}
+      device={device}
+      inheritedNote={
+        value === undefined ? `Same as ${device === "m" && tablet !== undefined ? "tablet" : "desktop"} until changed here.` : null
+      }
+      onChange={(next) => onOwn(device, next)}
+    />
+  );
+}
+
+type BoxSide = "top" | "right" | "bottom" | "left";
+const BOX_SIDES: readonly BoxSide[] = ["top", "right", "bottom", "left"];
+const BOX_LABEL: Record<BoxSide, string> = { top: "Top", right: "Right", bottom: "Bottom", left: "Left" };
+
+/**
+ * Padding or margin as four small boxes in one row — top, right, bottom, left, as in
+ * Elementor — for the device chosen at the top. Linked, one number fills all four. An
+ * empty box follows the larger screen (or, for the sides, the design's own).
+ */
+function SpacingBox({
+  title,
+  values,
+  placeholders,
+  disabled = {},
+  hint,
+  onChange,
+}: {
+  title: string;
+  values: Record<BoxSide, number | undefined>;
+  placeholders: Record<BoxSide, string>;
+  disabled?: Partial<Record<BoxSide, boolean>>;
+  hint?: string;
+  onChange: (changes: Partial<Record<BoxSide, number | undefined>>) => void;
+}) {
+  const { device } = useEditorDevice();
+  const [linked, setLinked] = React.useState(false);
+  const DeviceGlyph = DEVICE_ICONS[device];
+  const open = BOX_SIDES.filter((side) => !disabled[side]);
+
+  const type = (side: BoxSide, raw: string) => {
+    const next = raw === "" ? undefined : Math.max(0, Math.min(SPACE_MAX, Math.round(Number(raw))));
+    if (next !== undefined && !Number.isFinite(next)) return;
+    onChange(linked ? Object.fromEntries(open.map((each) => [each, next])) : { [side]: next });
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex items-center gap-1.5 text-xs font-medium">
+          {title}
+          <DeviceGlyph className="text-muted-foreground size-3.5" aria-label={DEVICE_LABELS[device]} />
+        </span>
+        <Button
+          type="button"
+          variant={linked ? "secondary" : "ghost"}
+          size="icon-xs"
+          aria-pressed={linked}
+          aria-label={linked ? `${title}: set each side on its own` : `${title}: the same on all sides`}
+          title={linked ? "Each side on its own" : "The same on all sides"}
+          onClick={() => setLinked((on) => !on)}
+        >
+          {linked ? <Link2Icon /> : <Unlink2Icon />}
+        </Button>
+      </div>
+      <div className="grid grid-cols-4 gap-1.5">
+        {BOX_SIDES.map((side) => (
+          <label key={side} className="space-y-0.5">
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={SPACE_MAX}
+              disabled={disabled[side]}
+              aria-label={`${title} ${side} (px)`}
+              value={values[side] === undefined ? "" : String(values[side])}
+              placeholder={disabled[side] ? "–" : placeholders[side]}
+              onChange={(event) => type(side, event.target.value)}
+              className="h-8 [appearance:textfield] px-1.5 text-center text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            />
+            <span className="text-muted-foreground block text-center text-[10px]">{BOX_LABEL[side]}</span>
+          </label>
+        ))}
+      </div>
+      {hint ? <p className="text-muted-foreground text-[11px]">{hint}</p> : null}
+    </div>
+  );
+}
+
+/**
+ * THE STYLE TAB — one list of groups that fold away, each holding everything of one
+ * kind, wherever it is stored:
+ *
+ *   Background       the brand ground or an own colour, a gradient, a photo, an overlay
+ *                    over all of it, the section's own darkening, the text colour
+ *   Spacing          set by hand (or the design's own) — per device
+ *   Border & shadow  the line, the corners (the section's and its photos'), shadow,
+ *                    transparency
+ *   then the design's Typography, Buttons, Images, Width & height, Show on devices.
+ *
+ * Only what does something is offered: a section whose own photograph or band is its
+ * ground gets no background photo or gradient (they would sit behind it, unseen), and a
+ * section whose height is fixed gets no space inside.
+ */
 function StyleTab({
   fields,
   joined,
   category,
   textAlign,
+  innerSpacing,
   contents,
   sectionId,
   settings,
@@ -401,6 +567,7 @@ function StyleTab({
   /** Where the section sits in Add section — a banner's photograph is its ground. */
   category: string;
   textAlign: boolean;
+  innerSpacing: boolean;
   contents: SectionContents | null;
   onOpenHeading: () => void;
   sectionId: string;
@@ -408,25 +575,126 @@ function StyleTab({
   collections: CollectionOption[];
   onChange: (key: string, value: unknown) => void;
 }) {
-  // The design value has its own panel below the groups; see `DesignControls`.
+  const { device } = useEditorDevice();
   const designField = fields.find((field) => field.kind === "design");
-  const plain = fields.filter((field) => field.kind !== "design");
-  const grouped = STYLE_GROUPS.map((group, index) => ({
-    title: group.title,
-    fields: plain.filter((field) =>
-      (group.keys as readonly string[]).includes(field.key) ||
-      (index === 0 && !STYLE_GROUPS.some((other) => (other.keys as readonly string[]).includes(field.key))),
-    ),
-  })).filter((group) => group.fields.length > 0);
-
+  const parts = designField?.kind === "design" ? designField.parts : [];
+  const field = (key: string) => fields.find((candidate) => candidate.key === key);
   const design = (settings.design as DesignValue | undefined) ?? {};
+  const getDesign = (path: readonly (string | number)[]) => getAt(design, path);
+  const setDesign = (path: readonly (string | number)[], next: unknown) => onChange("design", setAt(design, path, next));
+
+  // A new background with no text colour yet gets a readable one alongside it —
+  // still the editor's to change.
+  const change = (key: string, value: unknown) => {
+    onChange(key, value);
+    if (key === "bgColor" && typeof value === "string" && value && !settings.textColor) {
+      onChange("textColor", contrastFor(value));
+    }
+  };
+  const plain = (candidate: FieldDef | undefined, overrides: { label?: string; help?: string } = {}) =>
+    candidate ? (
+      <Field
+        key={candidate.key}
+        field={{ ...candidate, ...overrides } as FieldDef}
+        sectionId={sectionId}
+        settings={settings}
+        collections={collections}
+        onChange={change}
+      />
+    ) : null;
+
+  /* Background */
+  // Behind a section's own photograph or band (no own colour is offered there), a
+  // background photo or gradient would never be seen.
+  const backgroundDesign = parts.includes("background") && Boolean(field("bgColor"));
+  const ownBackground = fields.filter(
+    (candidate) =>
+      candidate.kind !== "design" &&
+      ![...SPACING_KEYS, ...BORDER_KEYS, ...BACKGROUND_KEYS, "hideOn"].includes(candidate.key),
+  );
+  const hasBackground = BACKGROUND_KEYS.some((key) => field(key)) || ownBackground.length > 0 || backgroundDesign;
+  const problems = readability(settings);
+
+  /* Spacing */
+  const spacing = Boolean(field("customSpacing"));
+  const custom = Boolean(settings.customSpacing);
+  const legacy = settings.rhythm && settings.rhythm !== "default" ? String(settings.rhythm) : null;
+  const legacyLabel = RHYTHM_OPTIONS.find((option) => option.value === legacy)?.label ?? legacy;
+  const setSpacingYourself = (on: boolean) => {
+    if (!on) {
+      onChange("customSpacing", false);
+      return;
+    }
+    // Start from what the section has now (as the preview measures it on desktop), so
+    // switching to numbers changes nothing until a number is changed.
+    const now = device === "d" && contents ? contents : null;
+    onChange("customSpacing", true);
+    if (now && innerSpacing) {
+      onChange("paddingTop", Math.min(SPACE_MAX, now.padTop));
+      onChange("paddingBottom", Math.min(SPACE_MAX, now.padBottom));
+    }
+    if (legacy) onChange("rhythm", "default");
+  };
+  // Padding and margin, for the device being edited. Top and bottom on desktop are the
+  // section's own settings; tablet and mobile, and every side, live in the design value.
+  const box = (kind: "padding" | "margin") => {
+    const [topKey, topShort, bottomKey, bottomShort] =
+      kind === "padding"
+        ? (["paddingTop", "pt", "paddingBottom", "pb"] as const)
+        : (["marginTop", "mt", "marginBottom", "mb"] as const);
+    const [leftKey, rightKey] = kind === "padding" ? (["padLeft", "padRight"] as const) : (["marginLeft", "marginRight"] as const);
+    const desktop = { top: Number(settings[topKey]) || 0, bottom: Number(settings[bottomKey]) || 0 };
+    const own = (target: "t" | "m", short: string) => getDesign(["spacing", target, short]) as number | undefined;
+    const vertical = (side: "top" | "bottom", short: string) => {
+      if (device === "d") return { value: desktop[side], placeholder: "0" };
+      const inherited = device === "m" ? (own("t", short) ?? desktop[side]) : desktop[side];
+      return { value: own(device, short), placeholder: String(inherited) };
+    };
+    // An empty side keeps the design's own: the gutter the preview measures, or no margin.
+    const sideOf = (key: string, measured: number | undefined) => {
+      const value = getDesign(["sides", key]) as Responsive<number> | undefined;
+      const inherited = device === "d" ? undefined : resolveResponsive(value, device === "m" ? "t" : "d");
+      return {
+        value: value?.[device],
+        placeholder: inherited !== undefined ? String(inherited) : measured !== undefined ? String(measured) : "0",
+      };
+    };
+    const top = vertical("top", topShort);
+    const bottom = vertical("bottom", bottomShort);
+    const left = sideOf(leftKey, kind === "padding" ? contents?.padLeft : undefined);
+    const right = sideOf(rightKey, kind === "padding" ? contents?.padRight : undefined);
+
+    const change = (changes: Partial<Record<BoxSide, number | undefined>>) => {
+      let next = design;
+      for (const [side, value] of Object.entries(changes) as [BoxSide, number | undefined][]) {
+        if (side === "top" || side === "bottom") {
+          const [key, short] = side === "top" ? [topKey, topShort] : [bottomKey, bottomShort];
+          if (device === "d") onChange(key, value ?? 0);
+          else next = setAt(next, ["spacing", device, short], value);
+        } else {
+          const key = side === "left" ? leftKey : rightKey;
+          const current = { ...((getAt(next, ["sides", key]) as Responsive<number> | undefined) ?? {}) };
+          if (value === undefined) delete current[device];
+          else current[device] = value;
+          next = setAt(next, ["sides", key], Object.keys(current).length ? current : undefined);
+        }
+      }
+      // One write for the design, so linked boxes do not overwrite each other.
+      if (next !== design) onChange("design", next);
+    };
+    return {
+      values: { top: top.value, right: right.value, bottom: bottom.value, left: left.value },
+      placeholders: { top: top.placeholder, right: right.placeholder, bottom: bottom.placeholder, left: left.placeholder },
+      change,
+    };
+  };
+  const padding = box("padding");
+  const margin = box("margin");
+
+  /* Border & shadow */
   // A banner's or a hero's photograph is its ground, not an image inside it; and a
   // section with no photograph has nothing for photo controls to shape.
-  const photos =
-    designField?.kind === "design" &&
-    designField.parts.includes("images") &&
-    !IMAGE_GROUND_CATEGORIES.includes(category) &&
-    contents?.image !== false;
+  const photos = parts.includes("images") && !IMAGE_GROUND_CATEGORIES.includes(category) && contents?.image !== false;
   // The section's own corners round its background and line — on the page's own
   // ground with no line, there is nothing to see them on.
   const boxShows = Boolean(
@@ -437,34 +705,12 @@ function StyleTab({
       design.background?.gradient ||
       design.shadow,
   );
-  const cornersField = (field: FieldDef): FieldDef =>
-    field.key !== "radius"
-      ? field
-      : {
-          ...field,
-          label: photos ? "Section corners (px)" : field.label,
-          help: boxShows
-            ? "Rounds the section’s background and line."
-            : `Rounds the section’s background and line — they show once it has a background colour or a line.${photos ? " For the photographs, use Photo corners." : ""}`,
-        };
-  const setPhotoCorners = (radius: unknown) => {
-    const images = { ...design.images, radius: Number(radius) > 0 ? Number(radius) : undefined };
-    onChange("design", { ...design, images });
-  };
+  const effects = parts.includes("effects");
+  const hasBorder = BORDER_KEYS.some((key) => field(key)) || effects;
 
-  const problems = readability(settings);
   // By value: the design is an object, and a fresh `{}` is never `===` another.
   const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
   const changed = Object.entries(STYLE_RESET).some(([key, value]) => key in settings && !same(settings[key], value));
-
-  // A new background with no text colour yet gets a readable one alongside it —
-  // still the editor's to change.
-  const change = (key: string, value: unknown) => {
-    onChange(key, value);
-    if (key === "bgColor" && typeof value === "string" && value && !settings.textColor) {
-      onChange("textColor", contrastFor(value));
-    }
-  };
 
   // Not a dead end: say why there is nothing here, then offer both ways out as
   // buttons, so the editor never has to find a setting by its name.
@@ -488,7 +734,7 @@ function StyleTab({
   }
 
   return (
-    <div className="flex-1 space-y-5 overflow-y-auto p-4">
+    <div className="flex-1 space-y-4 overflow-y-auto p-4">
       {/* The device being edited — the same switch as above the preview. */}
       <div className="flex items-center justify-between gap-2">
         <p className="text-muted-foreground text-xs">
@@ -497,83 +743,178 @@ function StyleTab({
         <DeviceSwitch />
       </div>
 
-      {grouped.map((group, index) => (
-        <React.Fragment key={group.title}>
-          {index > 0 && <Separator />}
-          <div className="space-y-4">
-            <h3 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">{group.title}</h3>
-            {group.fields.map((field) => (
-              <React.Fragment key={field.key}>
-                <Field
-                  field={cornersField(field)}
-                  sectionId={sectionId}
-                  settings={settings}
-                  collections={collections}
-                  onChange={change}
-                />
-                {/* Next to the section's corners, where an editor looks for them —
-                    the same value as "More design → Images → Rounded corners". */}
-                {field.key === "radius" && photos ? (
-                  <Field
-                    field={PHOTO_CORNERS}
-                    sectionId={sectionId}
-                    settings={{ [PHOTO_CORNERS.key]: design.images?.radius ?? 0 }}
-                    collections={collections}
-                    onChange={(_, value) => setPhotoCorners(value)}
-                  />
-                ) : null}
-              </React.Fragment>
-            ))}
-          </div>
-        </React.Fragment>
-      ))}
+      <div className="space-y-2">
+        {hasBackground ? (
+          <Part
+            title="Background"
+            changed={Boolean(
+              (settings.surface && settings.surface !== "inherit") || settings.bgColor || settings.textColor || design.background,
+            )}
+            defaultOpen={false}
+          >
+            <div className="space-y-4">
+              {plain(field("surface"), { label: "Brand colour" })}
+              {plain(field("bgColor"), { label: "Own colour", help: "Instead of the brand colour. Empty keeps it." })}
+              {backgroundDesign ? <BackgroundPart get={getDesign} set={setDesign} /> : null}
+              {ownBackground.map((candidate) => plain(candidate))}
+              {plain(field("textColor"))}
+              {problems.length ? (
+                <div
+                  role="status"
+                  className="space-y-1 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
+                >
+                  {problems.map((problem) => (
+                    <p key={problem}>{problem}</p>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </Part>
+        ) : null}
 
-      {problems.length ? (
-        <div
-          role="status"
-          className="space-y-1 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
-        >
-          {problems.map((problem) => (
-            <p key={problem}>{problem}</p>
-          ))}
-        </div>
-      ) : null}
-
-      {designField ? (
-        <>
-          <Separator />
-          <div className="space-y-3">
-            <h3 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">More design</h3>
-            <DesignControls
-              value={(settings.design as DesignValue | undefined) ?? {}}
-              parts={
-                designField.kind === "design"
-                  ? // A banner's or a hero's photograph is its ground, not an image inside it;
-                    // and a section with no photograph has nothing for "Images" to shape.
-                    designField.parts.filter(
-                      (part) => part !== "images" || (!IMAGE_GROUND_CATEGORIES.includes(category) && contents?.image !== false),
-                    )
-                  : []
-              }
-              radiusBase={Number(settings.radius) || 0}
-              align={textAlign}
-              contents={contents}
-              spacingBase={
-                settings.customSpacing
-                  ? {
-                      pt: Number(settings.paddingTop),
-                      pb: Number(settings.paddingBottom),
-                      mt: Number(settings.marginTop),
-                      mb: Number(settings.marginBottom),
+        {spacing ? (
+          <Part
+            title="Spacing"
+            changed={custom || Boolean(legacy) || Boolean(design.spacing) || Boolean(design.sides)}
+            defaultOpen={false}
+          >
+            <div className="space-y-4">
+              {legacy && !custom ? (
+                // An older choice, no longer offered: said, with both ways forward.
+                <div className="space-y-2 rounded-md border px-3 py-2 text-xs">
+                  <p>
+                    This section uses an earlier spacing choice, <span className="font-medium">{legacyLabel}</span>.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={() => setSpacingYourself(true)}>
+                      Keep it, as numbers
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => onChange("rhythm", "default")}>
+                      Use the design’s spacing
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+              <div className="flex items-center justify-between gap-4">
+                <Label htmlFor={`${sectionId}-customSpacing`} className="text-xs">
+                  Set the spacing yourself
+                </Label>
+                <Switch id={`${sectionId}-customSpacing`} checked={custom} onCheckedChange={setSpacingYourself} />
+              </div>
+              {custom ? (
+                <>
+                  <SpacingBox
+                    title="Padding"
+                    values={padding.values}
+                    placeholders={padding.placeholders}
+                    disabled={innerSpacing ? {} : { top: true, bottom: true }}
+                    hint={
+                      innerSpacing
+                        ? "Space inside. Empty left and right keep the design’s own side margin."
+                        : "Space inside, at the sides — this section’s height comes from its photo and Height choice."
                     }
-                  : null
-              }
-              onChange={(next) => onChange("design", next)}
-              visibility={visibilityOf(settings, onChange)}
-            />
-          </div>
-        </>
-      ) : null}
+                    onChange={padding.change}
+                  />
+                  <SpacingBox
+                    title="Margin"
+                    values={margin.values}
+                    placeholders={margin.placeholders}
+                    hint="Space around. Left and right narrow the section — with a colour and corners, a card."
+                    onChange={margin.change}
+                  />
+                </>
+              ) : (
+                <p className="text-muted-foreground text-xs">Off: the design’s own spacing for this section.</p>
+              )}
+            </div>
+          </Part>
+        ) : null}
+
+        {hasBorder ? (
+          <Part
+            title="Border & shadow"
+            changed={Boolean(
+              (settings.border && settings.border !== "none") ||
+                Number(settings.radius) > 0 ||
+                design.radius ||
+                design.images?.radius ||
+                design.shadow ||
+                design.opacity !== undefined,
+            )}
+            defaultOpen={false}
+          >
+            <div className="space-y-4">
+              {plain(field("border"))}
+              {plain(field("borderWidth"))}
+              {plain(field("borderColor"))}
+              {field("radius") ? (
+                <DeviceNumber
+                  label={photos ? "Section corners" : "Rounded corners"}
+                  hint={
+                    boxShows
+                      ? "Rounds the section’s background and line."
+                      : `Rounds the section’s background and line — they show once it has a colour or a line.${photos ? " For the photos, use Photo corners." : ""}`
+                  }
+                  max={48}
+                  desktop={Number(settings.radius) || 0}
+                  onDesktop={(next) => onChange("radius", next)}
+                  own={(target) => getDesign(["radius", target]) as number | undefined}
+                  onOwn={(target, next) => setDesign(["radius", target], next)}
+                />
+              ) : null}
+              {photos ? (
+                <Slider
+                  label="Photo corners"
+                  hint="Rounds every photograph in this section."
+                  unit="px"
+                  min={0}
+                  max={120}
+                  step={1}
+                  value={getDesign(["images", "radius"]) as number | undefined}
+                  placeholder="0"
+                  onChange={(next) => setDesign(["images", "radius"], next === 0 ? undefined : next)}
+                />
+              ) : null}
+              {effects ? (
+                <>
+                  <Segmented
+                    label="Shadow"
+                    value={(getDesign(["shadow"]) as string | undefined) ?? "none"}
+                    options={Object.entries(SHADOWS).map(([value, shadow]) => ({ value, label: shadow.label }))}
+                    onChange={(next) => setDesign(["shadow"], next === "none" ? undefined : next)}
+                  />
+                  <Slider
+                    label="Transparency"
+                    hint="The whole section, content and all. 100% is fully visible."
+                    unit="%"
+                    min={10}
+                    max={100}
+                    step={5}
+                    value={getDesign(["opacity"]) as number | undefined}
+                    placeholder="100"
+                    onChange={(next) => setDesign(["opacity"], next === 100 ? undefined : next)}
+                  />
+                </>
+              ) : null}
+            </div>
+          </Part>
+        ) : null}
+
+        {designField ? (
+          <DesignControls
+            value={design}
+            parts={parts.filter(
+              (part) =>
+                !["background", "spacing", "effects"].includes(part) &&
+                (part !== "images" || (!IMAGE_GROUND_CATEGORIES.includes(category) && contents?.image !== false)),
+            )}
+            align={textAlign}
+            contents={contents}
+            onChange={(next) => onChange("design", next)}
+            visibility={visibilityOf(settings, onChange)}
+          />
+        ) : null}
+      </div>
 
       {changed && (
         <>

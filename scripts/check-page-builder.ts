@@ -22,6 +22,7 @@ import { findTextPath, withText } from "../lib/page-builder/inline-edit";
 import { presetById, SECTION_PRESETS, sectionFromPreset } from "../lib/page-builder/presets";
 import { builderHandleProblem, handleFromTitle, isBuilderEditable, isBuilderHandle } from "../lib/page-builder/handles";
 import { PAGE_MIGRATIONS, migrateToDocument } from "../lib/page-builder/migrations";
+import { carouselStyle, carouselView } from "../lib/page-builder/carousel";
 import { contrastRatio, designSchema, designStyle, readDesign } from "../lib/page-builder/design";
 import { SECTIONS, SECTION_TYPES } from "../lib/page-builder/registry";
 import { defaultLayoutContent, menusIn, parseThemeLayout, sameThemeContent, themeContentSchema } from "../lib/theme-builder/layout";
@@ -460,6 +461,27 @@ check(
       buttons.attrs["data-sb-btn-mt"] === "t",
   );
   check("a button colour must be #rrggbb", !designSchema.safeParse({ buttonLook: { background: "red" } }).success);
+  const sides = designStyle({ sides: { padLeft: { d: 64, m: 16 }, marginRight: { t: 24 } } });
+  check(
+    "space at the sides: per device, as properties the shared rules read",
+    sides.style["--sb-padl"] === "64px" &&
+      sides.style["--sb-padl-m"] === "16px" &&
+      sides.attrs["data-sb-padl"] === "d m" &&
+      sides.style["--sb-marr-t"] === "24px" &&
+      sides.attrs["data-sb-marr"] === "t",
+  );
+  check("space at the sides is bounded", !designSchema.safeParse({ sides: { padLeft: { d: 900 } } }).success);
+  const designedRow = { d: 4, t: 2.15, m: 1.28 };
+  check(
+    "carousel: all 'As designed' keeps the section's own widths",
+    carouselView({ perDesktop: "auto", perTablet: "auto", perMobile: "auto", step: "1" }, designedRow).perView === null,
+  );
+  const chosenRow = carouselView({ perDesktop: "2", perTablet: "auto", perMobile: "1.25", step: "page" }, designedRow);
+  check(
+    "carousel: one device chosen, the others from the design; a whole row per press",
+    JSON.stringify(chosenRow) === JSON.stringify({ perView: { d: 2, t: 2.15, m: 1.25 }, step: "page" }),
+  );
+  check("carousel: the gaps between items, for a peek too", carouselStyle({ d: 3, t: 2.25, m: 1 })["--cv-t-gaps"] === "2" && carouselStyle({ d: 3, t: 2.25, m: 1 })["--cv-m-gaps"] === "0");
   check("button corners are bounded", !designSchema.safeParse({ buttonLook: { radius: 500 } }).success);
   check("a damaged button look is dropped on read, the rest kept", readDesign({ buttonLook: { color: "x" }, shadow: "soft" }).shadow === "soft" && readDesign({ buttonLook: { color: "x" } }).buttonLook === undefined);
   check("contrast: dark wood on earth reads well", contrastRatio("#302f2d", "#ebe8e3") > 10);

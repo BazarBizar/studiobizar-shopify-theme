@@ -54,7 +54,16 @@ export type SectionContents = {
   image: boolean;
   /** A content column (`sb-container`) that "Content width" can narrow. */
   container: boolean;
+  /** The space inside it now, px — where "Set the spacing yourself" starts from. */
+  padTop: number;
+  padBottom: number;
+  /** The side gutter of its content column now, px — what an empty left/right keeps. */
+  padLeft: number;
+  padRight: number;
 };
+
+/** A section's band: what Custom spacing pads (the same list as styles/sb-design.css). */
+const BAND = ".sb-band, .py-section, .py-section-xs, .py-section-sm, .py-section-md, .py-section-lg, .py-section-xl, .pt-section, .pb-section";
 
 /** True while a line of text is being edited in place. */
 export const isEditingInPlace = () => document.querySelector("[data-sb-editing]") !== null;
@@ -199,6 +208,17 @@ export function PreviewBridge() {
         button: section.querySelector("[data-sb-button]") !== null,
         image: section.querySelector("img") !== null,
         container: section.querySelector(".sb-container") !== null,
+        ...(() => {
+          const band = section.querySelector<HTMLElement>(BAND) ?? (section as HTMLElement);
+          const style = getComputedStyle(band);
+          const column = getComputedStyle(section.querySelector<HTMLElement>(".sb-container") ?? (section as HTMLElement));
+          return {
+            padTop: Math.round(parseFloat(style.paddingTop) || 0),
+            padBottom: Math.round(parseFloat(style.paddingBottom) || 0),
+            padLeft: Math.round(parseFloat(column.paddingLeft) || 0),
+            padRight: Math.round(parseFloat(column.paddingRight) || 0),
+          };
+        })(),
       };
       window.parent.postMessage({ type: PREVIEW_MESSAGE.contents, id, contents }, origin);
     }

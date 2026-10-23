@@ -533,6 +533,20 @@ const THUMBNAILS: Record<string, React.ReactNode> = {
       ))}
     </>
   ),
+  // A row cut off at the right edge, with the arrows: it scrolls.
+  project_carousel: (
+    <>
+      <H x={10} y={12} w={50} />
+      {[10, 56, 102, 148].map((x) => (
+        <React.Fragment key={x}>
+          <Img x={x} y={24} w={42} h={50} />
+          <H x={x} y={78} w={26} h={3.5} />
+        </React.Fragment>
+      ))}
+      <rect x={10} y={88} width={8} height={5} rx={2.5} className="fill-current opacity-40" />
+      <rect x={21} y={88} width={8} height={5} rx={2.5} className="fill-current opacity-40" />
+    </>
+  ),
   designer_grid: (
     <>
       {[10, 46, 82, 118].map((x) => (
