@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import "@/lib/zod-config";
+
 /**
  * The Contact page form, which is a different, richer form from the inquiry one
  * in `lib/inquiry/schema.ts` — the design splits the name and adds a required

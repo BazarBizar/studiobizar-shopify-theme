@@ -7,7 +7,7 @@ import { audit } from "./audit";
 import { STAFF_BASE_PATH, STAFF_COOKIE, STAFF_LOGIN_PATH } from "./cookie";
 import { adminEnv, allowedEmails } from "./env";
 import { dummyHash, verifyPassword } from "./password";
-import { consume } from "./rate-limit";
+import { limit } from "./rate-limit";
 import { clientIp } from "./request";
 
 /**
@@ -85,8 +85,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
         // Rate limit before any work: the scrypt derive below is deliberately
         // expensive, which makes an unlimited login endpoint a CPU exhaustion
         // vector as well as a guessing one.
-        const limit = consume("login", `${email}:${ip}`);
-        if (!limit.ok) {
+        const perIp = await limit("login", `${email}:${ip}`);
+        // Both buckets are always charged, so neither can be spent down behind the other.
+        const account = await limit("loginAccount", email);
+        if (!perIp.ok || !account.ok) {
           audit({ action: "auth.login", actor: email || "anonymous", outcome: "denied", reason: "RATE_LIMITED", ip });
           return null;
         }

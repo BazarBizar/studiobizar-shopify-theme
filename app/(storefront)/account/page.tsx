@@ -98,7 +98,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
               : "Customer accounts are not connected on this storefront yet."}
           </p>
           {configured ? (
-            <ButtonLink href="/api/auth/login" className="mt-8">
+            <ButtonLink href="/api/auth/login" reload className="mt-8">
               Sign in
             </ButtonLink>
           ) : (
@@ -123,9 +123,11 @@ export default async function AccountPage({ searchParams }: PageProps<"/account"
       <Container className="py-section">
         <div className="flex items-center justify-between gap-6">
           <h1 className="text-h1">My Account</h1>
-          <Link href="/api/auth/logout" className="text-secondary sb-underline">
+          {/* A full page load: signing out ends at Shopify too (see ButtonLink's `reload`). */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- a route handler that redirects off-site, not a page */}
+          <a href="/api/auth/logout" className="text-secondary sb-underline">
             Sign out
-          </Link>
+          </a>
         </div>
 
         <nav aria-label="Account" className="mt-10 border-b border-border">

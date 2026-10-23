@@ -483,6 +483,8 @@ function emitLines(control: Control): string[] {
       lines.push(
         ...read(""),
         "if tall != blank and v != blank and v != 'top'",
+        // A select's value, but escaped anyway: it lands inside an attribute.
+        "  assign v = v | escape",
         "  assign attrs = attrs | append: ' data-sb-valign=\"' | append: v | append: '\"'",
         "endif",
       );

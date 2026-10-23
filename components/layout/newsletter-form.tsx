@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 
+import { Honeypot } from "@/components/forms/honeypot";
+import { HONEYPOT_FIELD, honeypotValue } from "@/lib/honeypot";
+
 type Status = "idle" | "sending" | "done" | "error";
 
 /** `inputId` lets a second sign-up on the page (the Newsletter section) keep ids unique. */
@@ -18,7 +21,7 @@ export function NewsletterForm({ inputId = "newsletter-email", className }: { in
       const response = await fetch("/api/newsletter", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, [HONEYPOT_FIELD]: honeypotValue(event.currentTarget) }),
       });
       const body = (await response.json()) as { message?: string };
 
@@ -34,7 +37,8 @@ export function NewsletterForm({ inputId = "newsletter-email", className }: { in
   }
 
   return (
-    <form onSubmit={onSubmit} className={className ?? "max-w-[26.25rem]"}>
+    <form onSubmit={onSubmit} className={`relative ${className ?? "max-w-[26.25rem]"}`}>
+      <Honeypot />
       <div className="flex items-center gap-4 border-b border-current pb-2">
         <label htmlFor={inputId} className="sr-only">
           Your email address

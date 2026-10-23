@@ -72,11 +72,18 @@ export function ButtonLink({
   children,
   href,
   external,
+  reload,
   ...props
 }: Common & {
   href: string;
   /** Renders a plain anchor with the right rel, for an off-site destination. */
   external?: boolean;
+  /**
+   * A full page load in this tab, not a client navigation — for a route that sends the
+   * visitor elsewhere (customer sign-in goes to Shopify). A client navigation would
+   * fetch that redirect, which the storefront's `connect-src 'self'` refuses.
+   */
+  reload?: boolean;
 } & Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, "href">) {
   const classes = cn(VARIANTS[variant], className);
 
@@ -90,6 +97,14 @@ export function ButtonLink({
         className={classes}
         {...props}
       >
+        {children}
+      </a>
+    );
+  }
+
+  if (reload) {
+    return (
+      <a href={href} data-sb-button={variant} className={classes} {...props}>
         {children}
       </a>
     );

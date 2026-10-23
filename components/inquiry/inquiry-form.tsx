@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
+import { Honeypot } from "@/components/forms/honeypot";
+import { HONEYPOT_FIELD, honeypotValue } from "@/lib/honeypot";
 import { inquiryContactSchema, type InquiryContact } from "@/lib/inquiry/schema";
 import { useInquiryCart } from "@/store/inquiry-cart";
 import { cn } from "@/lib/utils/cn";
@@ -56,14 +58,14 @@ export function InquiryForm() {
     defaultValues: { name: "", company: "", email: "", phone: "", message: "" },
   });
 
-  async function onSubmit(values: InquiryContact) {
+  async function onSubmit(values: InquiryContact, event?: React.BaseSyntheticEvent) {
     setSubmitError(null);
 
     try {
       const response = await fetch("/api/inquiry", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...values, items }),
+        body: JSON.stringify({ ...values, items, [HONEYPOT_FIELD]: honeypotValue(event?.target) }),
       });
 
       const body = (await response.json()) as { inquiryId?: string; message?: string };
@@ -82,7 +84,8 @@ export function InquiryForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-6">
+    <form onSubmit={handleSubmit(onSubmit)} noValidate className="relative flex flex-col gap-6">
+      <Honeypot />
       <div className="grid gap-6 sm:grid-cols-2">
         <Field id="name" label="Your name" error={errors.name?.message}>
           <input

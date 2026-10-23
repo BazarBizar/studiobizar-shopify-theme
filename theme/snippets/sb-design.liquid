@@ -491,6 +491,7 @@
   assign k = pre | append: 'valign'
   assign v = st[k]
   if tall != blank and v != blank and v != 'top'
+    assign v = v | escape
     assign attrs = attrs | append: ' data-sb-valign="' | append: v | append: '"'
   endif
 -%}

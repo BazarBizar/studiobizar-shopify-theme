@@ -4,6 +4,7 @@ import { BRAND } from "@/lib/brand";
 import { contactSchema } from "@/lib/contact/schema";
 import { sendEmail } from "@/lib/email/client";
 import { notificationRecipients } from "@/lib/email/notification-recipients";
+import { readPublicForm } from "@/lib/public-form";
 
 /**
  * The Contact page form. Unlike an inquiry there is nothing to store — the
@@ -13,13 +14,10 @@ import { notificationRecipients } from "@/lib/email/notification-recipients";
  * logged and reported as success, so development runs without credentials.
  */
 export async function POST(request: Request) {
-  let payload: unknown;
-
-  try {
-    payload = await request.json();
-  } catch {
-    return NextResponse.json({ message: "Send a JSON body." }, { status: 400 });
-  }
+  // Rate limits and a size cap before anything is read — see lib/public-form.ts.
+  const body = await readPublicForm(request, "contact", 16_000);
+  if (!body.ok) return body.response;
+  const payload = body.value;
 
   const parsed = contactSchema.safeParse(payload);
 
