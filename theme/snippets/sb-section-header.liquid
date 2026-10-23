@@ -1,0 +1,20 @@
+{% comment %}
+  A section's own heading and intro — SectionHeader in
+  components/sections/landing/shared.tsx.
+
+  Accepts:
+    heading — text
+    intro   — plain text (a textarea setting); line breaks are kept
+    align   — left | center
+{% endcomment %}
+
+{%- if heading != blank or intro != blank -%}
+  <header class="mb-10 sm:mb-14{% if align == 'center' %} mx-auto max-w-[46rem] text-center{% endif %}">
+    {%- if heading != blank -%}
+      <h2 class="text-h2">{{ heading }}</h2>
+    {%- endif -%}
+    {%- if intro != blank -%}
+      <p class="text-body text-muted mt-4 max-w-[46rem] whitespace-pre-line{% if align == 'center' %} mx-auto{% endif %}">{{ intro | escape }}</p>
+    {%- endif -%}
+  </header>
+{%- endif -%}

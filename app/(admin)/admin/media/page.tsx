@@ -15,7 +15,7 @@ export default function MediaScreen() {
     <div className="space-y-6">
       <PageHeader
         title="Media"
-        description="Everything in Shopify Files. Alt text is the only property editable here, and there is no delete — Shopify removes a file without checking what points at it."
+        description="Every photo and file on the website. Give each one a short description — Google and people using screen readers read it. Files can’t be deleted here, because a page that still shows one would break."
       />
 
       <MediaLibrary />

@@ -1,11 +1,13 @@
 import Link from "next/link";
 
 import { HeaderActions } from "@/components/layout/header-actions";
+import { ThemeHeader } from "@/components/layout/theme-header";
 import { Logo } from "@/components/layout/logo";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { Container } from "@/components/ui/container";
 import { FALLBACK_NAV, MENUS } from "@/lib/navigation";
-import { getMenu } from "@/lib/shopify";
+import { getMenu, getThemeLayout } from "@/lib/shopify";
+import type { ThemeLayoutContent } from "@/lib/theme-builder/layout";
 import type { MenuLink } from "@/lib/shopify/types";
 import { cn } from "@/lib/utils/cn";
 
@@ -24,7 +26,12 @@ async function menuOrFallback(handle: string, fallback: MenuLink[]): Promise<Men
  * wood, mocha and off-black — so it paints no background of its own and takes
  * its colour from the surrounding `data-surface`.
  */
-export async function Header() {
+export async function Header({ theme }: { theme?: ThemeLayoutContent | null } = {}) {
+  // The Theme Builder's header once one is published (or the draft, in its preview);
+  // until then, the original below.
+  const layout = theme === undefined ? await getThemeLayout() : theme;
+  if (layout) return <ThemeHeader content={layout} />;
+
   const [primary, secondary] = await Promise.all([
     menuOrFallback(MENUS.primary, FALLBACK_NAV.primary),
     menuOrFallback(MENUS.secondary, FALLBACK_NAV.secondary),

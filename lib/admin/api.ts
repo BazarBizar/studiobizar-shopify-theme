@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 import { audit, logInternalError, logValidationFailure } from "./audit";
 import { currentStaff, type StaffSession } from "./auth";
 import { AdminApiError, UserErrors } from "./shopify";
-import { consume, type LimitPreset } from "./rate-limit";
+import { limit as limitRate, type LimitPreset } from "./rate-limit";
 import { clientIp, isSameOrigin } from "./request";
 
 /**
@@ -29,6 +29,7 @@ export type ErrorCode =
   | "PAYLOAD_TOO_LARGE"
   | "NOT_ALLOWED"
   | "INVALID"
+  | "CONFLICT"
   | "UPSTREAM";
 
 const STATUS: Record<ErrorCode, number> = {
@@ -40,6 +41,7 @@ const STATUS: Record<ErrorCode, number> = {
   PAYLOAD_TOO_LARGE: 413,
   NOT_ALLOWED: 403,
   INVALID: 422,
+  CONFLICT: 409,
   UPSTREAM: 502,
 };
 
@@ -78,7 +80,7 @@ export async function guard(
     return { ok: false, response: fail("CROSS_ORIGIN", "This request must come from the admin panel.") };
   }
 
-  const budget = consume(limit, `${staff.email}:${ip}`);
+  const budget = await limitRate(limit, `${staff.email}:${ip}`);
   if (!budget.ok) {
     audit({ action, actor: staff.email, outcome: "denied", reason: "RATE_LIMITED", ip });
     return {

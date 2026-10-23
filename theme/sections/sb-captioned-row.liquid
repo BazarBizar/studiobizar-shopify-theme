@@ -48,7 +48,7 @@
       {%- endif -%}
 
       <ul class="grid gap-grid-gap sm:grid-cols-2 lg:grid-cols-3">
-        {%- for entry in entries limit: 3 -%}
+        {%- for entry in entries limit: 3 offset: s.offset -%}
           {%- if entry.image -%}
             {%- assign alt = entry.alt_text | default: entry.caption | default: '' -%}
             <li>
@@ -100,6 +100,16 @@
         { "value": "hero_slides", "label": "hero_slides" }
       ],
       "default": "feature_images"
+    },
+    {
+      "type": "range",
+      "id": "offset",
+      "label": "Skip the first N entries",
+      "info": "/our-story shows feature_images, then entries 4–6 of gallery — the same list, further along.",
+      "min": 0,
+      "max": 12,
+      "step": 3,
+      "default": 0
     },
     {
       "type": "text",

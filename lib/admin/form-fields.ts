@@ -15,8 +15,12 @@ export type FieldSpec = {
   required: boolean;
   /** Shopify field type, e.g. `single_line_text_field`, `list.file_reference`. */
   type: string;
+  /** Not shown on the form (the value is still kept and sent). See `lib/admin/field-copy.ts`. */
+  hidden: boolean;
   /** Empty unless the field has a `choices` validation. */
   choices: string[];
+  /** What to show for a stored choice, when it is a code like `product_inquiry`. */
+  choiceLabels: Record<string, string>;
   /** For metaobject references: the target definition's type. Resolved server-side. */
   targetType: string | null;
   /** For file references, narrowed from `file_type_options`. */
@@ -24,6 +28,8 @@ export type FieldSpec = {
   /** What the stored value points at now, so the form shows it without a round trip. */
   currentFile: { thumbnail: string | null; alt: string | null } | null;
   currentRefs: { id: string; label: string; thumbnail: string | null }[];
+  /** Every collection, for a collection reference field's picker. Empty for other types. */
+  collectionOptions: { id: string; label: string; thumbnail: string | null }[];
   /** False when the type is read-only and this field is not in `editableFields`. */
   editable: boolean;
   initialValue: string;

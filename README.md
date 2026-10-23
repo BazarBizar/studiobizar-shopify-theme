@@ -195,6 +195,13 @@ a filesystem path. For authenticated pages set `ADMIN_COOKIE` to the staff sessi
 - [ ] `AUTH_SECRET` is at least 32 characters and unique to this deployment.
 - [ ] `ADMIN_ALLOWED_EMAILS` lists only people who should have access today.
 - [ ] `REVALIDATE_SECRET` is set, or `/api/revalidate` will refuse everything.
+- [ ] On a host that runs more than one instance (serverless), `UPSTASH_REDIS_REST_URL`
+      and `UPSTASH_REDIS_REST_TOKEN` are set, so rate limits are shared — the log says
+      `[rate-limit] … counted per instance` when they are not.
+- [ ] `yarn check:security` passes (with `yarn dev` running), and
+      `yarn audit --groups dependencies` reports nothing. See docs/security-audit.md.
+- [ ] A new third party on the storefront (analytics, a map, chat) has its hosts added
+      to `storefrontCsp()` in `next.config.ts` — otherwise the browser refuses it.
 - [ ] `/admin` redirects to `/staff/login` with no cookie, with a forged cookie,
       and for an email that has been removed from the allowlist.
 - [ ] HTTPS is terminated in front of the app. The staff cookie is

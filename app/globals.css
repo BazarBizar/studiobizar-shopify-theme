@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+/* The page builder's design value — shared with the Liquid theme (theme-build/sb-theme.css). */
+@import "../styles/sb-design.css";
+@import "../styles/sb-carousel.css";
 
 /* next-themes writes `.dark` on <html>, which is a GLOBAL class: it stays there
    when the operator leaves /admin, so anything the storefront renders that reads a
@@ -408,6 +411,60 @@
   --sb-section: var(--sb-section-xl);
 }
 
+/**
+ * The page builder's "Custom spacing" (Style tab). The section frame carries
+ * `data-sb-pad` and `--sb-pad-top/bottom`. They replace the padding of the
+ * section's BAND — its outermost element with a `*-section` padding utility, or
+ * one marked `sb-band` where a component pads with fixed values — top AND
+ * bottom, so the number an editor types is the space they get, even on a
+ * section that normally has no top padding of its own. Bands nested inside the
+ * band are left alone, and so is a section drawn inside another's frame (one
+ * joined to the page heading). A section with no band gets the padding on the
+ * frame itself.
+ *
+ * Unlayered on purpose: it must win over the Tailwind utilities it replaces.
+ * The Liquid twin is the same block in theme-build/sb-theme.css.
+ */
+[data-sb-pad]
+  :is(.sb-band, .py-section, .py-section-xs, .py-section-sm, .py-section-md, .py-section-lg, .py-section-xl, .pt-section, .pb-section):not(
+    :is(.sb-band, .py-section, .py-section-xs, .py-section-sm, .py-section-md, .py-section-lg, .py-section-xl, .pt-section, .pb-section) *,
+    [data-sb-pad] [data-section-id] *
+  ) {
+  padding-top: var(--sb-pad-top);
+  padding-bottom: var(--sb-pad-bottom);
+}
+[data-sb-pad]:not(
+    :has(.sb-band, .py-section, .py-section-xs, .py-section-sm, .py-section-md, .py-section-lg, .py-section-xl, .pt-section, .pb-section)
+  ) {
+  padding-top: var(--sb-pad-top);
+  padding-bottom: var(--sb-pad-bottom);
+}
+
+/**
+ * The Style tab's margins. Set as properties by the frame rather than inline, so
+ * tablet and mobile can override them (below).
+ */
+[data-sb-pad] {
+  margin-top: var(--sb-mt, 0px);
+  margin-bottom: var(--sb-mb, 0px);
+}
+
+/* Theme header (components/layout/theme-header.tsx): what it does as the page scrolls.
+   `data-scrolled` and `--sb-hdr-h` come from HeaderScroll. */
+[data-theme-header] { transition: background-color 0.25s, box-shadow 0.25s, color 0.25s; }
+[data-theme-header] [data-hdr-bar] { transition: padding 0.25s; }
+[data-theme-header][data-shrink][data-scrolled] [data-hdr-bar] { padding-block: 0.6rem !important; }
+[data-theme-header][data-scroll-shadow][data-scrolled] { box-shadow: 0 1px 3px rgb(0 0 0 / 0.08), 0 4px 12px rgb(0 0 0 / 0.06); }
+/* Over the page: no background until it scrolls, and the page starts under it. */
+[data-theme-header][data-transparent] { margin-bottom: calc(-1 * var(--sb-hdr-h, 0px)); }
+[data-theme-header][data-transparent]:not([data-scrolled]) {
+  background-color: transparent !important;
+  box-shadow: none !important;
+  color: var(--sb-hdr-over) !important;
+  --sb-foreground: var(--sb-hdr-over);
+}
+
+
 /* The 4-up product / collection grid from Shop All, collapsing on mobile. */
 @utility sb-grid-4 {
   display: grid;
@@ -767,4 +824,22 @@
   [data-admin] [role="button"]:not(:disabled) {
     cursor: pointer;
   }
+}
+
+/* =============================================================================
+   PAGE BUILDER — Scrolling text section
+   ========================================================================== */
+/* The strip is drawn twice; moving it by half its width loops without a seam.
+   The reduced-motion rule above ends it after one 0.01ms run, at rest. */
+@keyframes sb-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@utility sb-marquee {
+  animation: sb-marquee var(--sb-marquee-duration, 45s) linear infinite;
 }

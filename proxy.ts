@@ -37,26 +37,35 @@ const isDevelopment = process.env.NODE_ENV === "development";
  * The panel is full of them, and the failure is invisible: no console error, just
  * a broken layout.
  */
-function adminCsp(nonce: string): string {
+function adminCsp(nonce: string, { preview = false }: { preview?: boolean } = {}): string {
   return [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDevelopment ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' blob: data: https://cdn.shopify.com",
+    // The preview draws storefront sections, and the Instagram one loads from
+    // the hosts `next.config.ts` allows for it. The panel itself never needs them.
+    `img-src 'self' blob: data: https://cdn.shopify.com${preview ? " https://*.cdninstagram.com https://*.fbcdn.net https://behold.pictures https://feeds.behold.so" : ""}`,
     "media-src 'self' https://cdn.shopify.com",
     "font-src 'self' data:",
     "connect-src 'self'",
+    // The builder frames its own preview; the preview's Video section frames the
+    // two players `parseVideoUrl` allows — and only after play is pressed.
+    `frame-src 'self'${preview ? " https://www.youtube-nocookie.com https://player.vimeo.com" : ""}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
-    "frame-ancestors 'none'",
+    // The one difference that matters: the page builder frames its preview, so
+    // the preview may be framed — by this origin and nothing else.
+    `frame-ancestors ${preview ? "'self'" : "'none'"}`,
     "upgrade-insecure-requests",
   ].join("; ");
 }
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const isAdminPage = pathname === "/admin" || pathname.startsWith("/admin/");
+  const isPreview = pathname.startsWith("/preview/");
+  // The page builder's preview renders unpublished drafts — gated exactly like the panel.
+  const isAdminPage = pathname === "/admin" || pathname.startsWith("/admin/") || isPreview;
 
   /**
    * OPTIMISTIC ONLY: this asks whether a staff cookie is PRESENT, never whether
@@ -80,7 +89,7 @@ export function proxy(request: NextRequest) {
   // The storefront branch would go here — its own policy, not a relaxed
   // version of the admin one. Today the matcher below never sends it here.
   const nonce = crypto.randomUUID();
-  const csp = adminCsp(nonce);
+  const csp = adminCsp(nonce, { preview: isPreview });
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nonce", nonce);
@@ -92,7 +101,7 @@ export function proxy(request: NextRequest) {
 
   response.headers.set("Content-Security-Policy", csp);
   // Belt to `frame-ancestors 'none'`'s braces, for anything that predates CSP3.
-  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("X-Frame-Options", isPreview ? "SAMEORIGIN" : "DENY");
   response.headers.set("X-Robots-Tag", "noindex, nofollow");
 
   return response;
@@ -102,11 +111,11 @@ export const config = {
   matcher: [
     {
       /**
-       * Admin pages and the staff login only. `/api/**` is excluded: a JSON
+       * Admin pages, the staff login and the page builder preview only. `/api/**` is excluded: a JSON
        * response needs no CSP, and the API's own guards in `lib/admin/api.ts`
        * are authoritative rather than advisory.
        */
-      source: "/(admin|staff)/:path*",
+      source: "/(admin|staff|preview)/:path*",
       /** A prefetch never executes scripts, so a nonce minted for one is waste. */
       missing: [
         { type: "header", key: "next-router-prefetch" },

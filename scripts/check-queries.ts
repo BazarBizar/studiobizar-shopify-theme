@@ -13,7 +13,7 @@ import {
   getCollectionQuery,
   getCollectionsQuery,
 } from "../lib/shopify/queries/collection";
-import { getMenuQuery, getPageQuery, getShopQuery } from "../lib/shopify/queries/content";
+import { getMenuQuery, getPageQuery, getShopQuery, getThemeLayoutQuery } from "../lib/shopify/queries/content";
 import { getMetaobjectsQuery } from "../lib/shopify/queries/metaobject";
 import {
   getProductQuery,
@@ -95,6 +95,7 @@ async function main() {
     ).ok,
   );
   results.push((await run("getMetaobjects", getMetaobjectsQuery, { type: "designer", first: 3 })).ok);
+  results.push((await run("getThemeLayout", getThemeLayoutQuery)).ok);
   results.push((await run("getPage", getPageQuery, { handle: "our-story" })).ok);
   results.push((await run("getMenu", getMenuQuery, { handle: "desk-primary" })).ok);
   results.push((await run("getShop", getShopQuery)).ok);

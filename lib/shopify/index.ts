@@ -21,7 +21,15 @@ import {
   getCollectionQuery,
   getCollectionsQuery,
 } from "./queries/collection";
-import { getMenuQuery, getPageQuery, getPagesQuery, getShopQuery } from "./queries/content";
+import {
+  getMenuQuery,
+  getPageBuilderDocumentQuery,
+  getPageQuery,
+  getThemeLayoutQuery,
+  getPagesQuery,
+  getShopQuery,
+} from "./queries/content";
+import { parseThemeLayout, type ThemeLayout } from "@/lib/theme-builder/layout";
 import { getMetaobjectQuery, getMetaobjectsQuery } from "./queries/metaobject";
 import {
   getProductQuery,
@@ -196,11 +204,26 @@ export async function getListedCollections(): Promise<CollectionCard[]> {
 
   return page.items
     .filter((collection) => !HIDDEN_COLLECTION_HANDLES.has(collection.handle))
-    .sort((a, b) => {
-      const left = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
-      const right = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
-      return left - right || a.title.localeCompare(b.title);
-    });
+    .sort(byCuratedOrder);
+}
+
+/**
+ * The signature collections, in the same curated order — the landing page's
+ * carousel and the page builder's Collection carousel section.
+ */
+export async function getSignatureCollections(limit = 12): Promise<CollectionCard[]> {
+  const page = await getCollections({ first: 100 });
+
+  return page.items
+    .filter((collection) => collection.isSignature)
+    .sort(byCuratedOrder)
+    .slice(0, limit);
+}
+
+function byCuratedOrder(a: CollectionCard, b: CollectionCard) {
+  const left = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
+  const right = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
+  return left - right || a.title.localeCompare(b.title);
 }
 
 export async function getCollection(handle: string): Promise<Maybe<Collection>> {
@@ -329,6 +352,57 @@ export async function getPage(handle: string): Promise<Maybe<ShopifyPage>> {
   });
 
   return data.page;
+}
+
+/**
+ * What the Storefront API is serving RIGHT NOW for a page's published builder
+ * document — uncached, unlike every other read here, because its one caller is
+ * asking "has my publish landed yet?". `found: false` means Shopify does not
+ * serve the page at all (hidden, deleted, or not yet visible).
+ */
+export async function getLivePageBuilderDocument(
+  handle: string,
+): Promise<{ found: boolean; value: string | null }> {
+  const data = await shopifyFetch<{ page: Maybe<{ id: string; document: Maybe<{ value: string }> }> }>({
+    query: getPageBuilderDocumentQuery,
+    variables: { handle },
+    revalidate: false,
+  });
+
+  return { found: Boolean(data.page), value: data.page?.document?.value ?? null };
+}
+
+/**
+ * The published header and footer layout, or null — null until the Theme Builder
+ * first publishes, and when the stored copy cannot be read. Either way the shell then
+ * draws its original header and footer. Cached with the rest of the content.
+ */
+export async function getThemeLayout(): Promise<ThemeLayout | null> {
+  try {
+    const data = await shopifyFetch<{ shop: { layout: Maybe<{ value: string }> } }>({
+      query: getThemeLayoutQuery,
+      tags: [TAGS.content],
+      revalidate: REVALIDATE.content,
+    });
+    const parsed = parseThemeLayout(data.shop.layout?.value);
+    if (!parsed.ok && parsed.reason === "invalid") {
+      console.error("[theme-builder] the published header and footer are not readable — drawing the original ones.");
+    }
+    return parsed.ok ? parsed.layout : null;
+  } catch {
+    // The shell must render even when Shopify is unreachable.
+    return null;
+  }
+}
+
+/** What the Storefront API serves RIGHT NOW — uncached, for "has my publish landed yet?". */
+export async function getLiveThemeLayoutStamp(): Promise<string | null> {
+  const data = await shopifyFetch<{ shop: { layout: Maybe<{ value: string }> } }>({
+    query: getThemeLayoutQuery,
+    revalidate: false,
+  });
+  const parsed = parseThemeLayout(data.shop.layout?.value);
+  return parsed.ok ? parsed.layout.meta.publishedAt : null;
 }
 
 export async function getPages(first = 50): Promise<ShopifyPage[]> {

@@ -5,6 +5,7 @@ import { AppLink } from "@/components/admin/app-link";
 import { Card, CardContent } from "@/components/admin/ui/card";
 import { Skeleton } from "@/components/admin/ui/skeleton";
 import type { RecentEntry } from "@/lib/admin/dashboard";
+import { EmptyState } from "@/components/admin/empty-state";
 
 /**
  * A short "most recently updated" list. Four rows stay a LIST — a chart over four rows is
@@ -52,7 +53,7 @@ export function RecentPanel({
             ))}
           </ul>
         ) : entries.length === 0 ? (
-          <p className="text-muted-foreground py-6 text-center text-sm">{emptyMessage}</p>
+          <EmptyState title={emptyMessage} className="py-6" />
         ) : (
           <ul className="divide-border divide-y">
             {entries.map((entry) => (
@@ -79,9 +80,9 @@ export function RecentPanel({
 
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium">{entry.title}</span>
-                    <span className="text-muted-foreground block truncate text-xs">
-                      {entry.meta || "—"}
-                    </span>
+                    {entry.meta ? (
+                      <span className="text-muted-foreground block truncate text-xs">{entry.meta}</span>
+                    ) : null}
                   </span>
                 </AppLink>
               </li>

@@ -120,12 +120,30 @@ function safeJson(value: string): unknown {
  * on the server and in the browser, and a value that renders one way in the
  * server-rendered HTML and another after hydration is a React hydration error.
  */
+/**
+ * "2 Sep 2026, 08:38" — how a person reads a date, in the shop's own time zone. A FIXED
+ * zone and locale rather than the viewer's, so the server render and the browser
+ * render agree (no hydration mismatch) and everyone on the team sees the same time.
+ */
+const DATE = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: "Europe/Brussels",
+});
+const DATE_TIME = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: "Europe/Brussels",
+});
+
 export function formatDate(value: string, withTime: boolean): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-
-  const iso = date.toISOString();
-  return withTime ? `${iso.slice(0, 10)} ${iso.slice(11, 16)}` : iso.slice(0, 10);
+  return (withTime ? DATE_TIME : DATE).format(date);
 }
 
 type RichTextNode = { type?: string; value?: string; children?: RichTextNode[] };

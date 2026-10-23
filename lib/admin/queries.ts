@@ -45,9 +45,30 @@ export type PickerEntry = {
   handle: string;
   label: string;
   thumbnail: string | null;
+  /** For an entry that wraps a photo (`captioned_image`): that file's id. */
+  fileId: string | null;
 };
 
 type ApiError = { code?: string; message?: string };
+
+/**
+ * A failed request, with the server's code and body kept for callers that act on
+ * them — the page builder tells a conflict from a publish blocked by empty
+ * fields. Still an `Error`, so every existing `catch` reads `.message` as before.
+ */
+export class RequestError extends Error {
+  readonly code: string | null;
+  readonly status: number;
+  readonly detail: Record<string, unknown>;
+
+  constructor(message: string, status: number, detail: Record<string, unknown> | null) {
+    super(message);
+    this.name = "RequestError";
+    this.status = status;
+    this.code = typeof detail?.code === "string" ? detail.code : null;
+    this.detail = detail ?? {};
+  }
+}
 
 /**
  * `same-origin` is explicit rather than relied upon: the write endpoints reject a
@@ -63,9 +84,9 @@ async function post<T>(url: string, body: unknown): Promise<T> {
   });
 
   if (!response.ok) {
-    const detail = (await response.json().catch(() => null)) as ApiError | null;
+    const detail = (await response.json().catch(() => null)) as (ApiError & Record<string, unknown>) | null;
     // The server has already stripped anything sensitive; this is the safe message.
-    throw new Error(detail?.message ?? `Request failed (${response.status})`);
+    throw new RequestError(detail?.message ?? `Request failed (${response.status})`, response.status, detail);
   }
 
   return (await response.json()) as T;
@@ -219,6 +240,8 @@ export async function updatePageRequest(input: {
   handle?: string;
   body?: string;
   isPublished?: boolean;
+  seoTitle?: string;
+  seoDescription?: string;
   metafields?: { key: string; type: string; value: string }[];
   clearMetafields?: string[];
 }): Promise<PageWriteResult> {
@@ -274,5 +297,89 @@ export async function setFileAltRequest(input: {
   return post<{ id: string; alt: string }>("/api/admin/files/alt", {
     operation: "fileAlt",
     ...input,
+  });
+}
+
+/* -------------------------------------------------------------------------- *
+ * Page builder
+ * -------------------------------------------------------------------------- */
+
+export type CreatedPage = { id: string; title: string; handle: string };
+
+/** From a template, or as a copy of another builder page (`duplicateOf`). */
+export async function createBuilderPageRequest(
+  input: { title: string; handle: string } & ({ template: string } | { duplicateOf: string }),
+): Promise<CreatedPage> {
+  return post<CreatedPage>("/api/admin/pages/create", { operation: "pageCreate", ...input });
+}
+
+export async function deletePageRequest(id: string): Promise<{ id: string; handle: string }> {
+  return post("/api/admin/pages/delete", { operation: "pageDelete", id });
+}
+
+export type BuilderSaveResult = { revision: number; savedAt: string; hasUnpublishedChanges: boolean };
+
+/** The draft content goes in whole; the server validates every section against the registry. */
+export async function saveDraftRequest(input: {
+  id: string;
+  baseRevision: number;
+  content: unknown;
+}): Promise<BuilderSaveResult> {
+  return post<BuilderSaveResult>("/api/admin/pages/builder", { operation: "builderSaveDraft", ...input });
+}
+
+/** The draft revision a page is at now — see `/api/admin/pages/revision`. */
+export async function draftRevisionRequest(id: string): Promise<{ revision: number }> {
+  return post<{ revision: number }>("/api/admin/pages/revision", { id });
+}
+
+/** MVP-2: a hand-built page's first builder draft, from its current content. */
+export async function convertToBuilderRequest(id: string): Promise<{ revision: number }> {
+  return post<{ revision: number }>("/api/admin/pages/builder", { operation: "builderConvert", id });
+}
+
+/** The Theme Builder (header and footer): the draft goes in whole; the server validates it. */
+export async function themeSaveRequest(input: { baseRevision: number; content: unknown }): Promise<{ revision: number }> {
+  return post<{ revision: number }>("/api/admin/theme-builder", { operation: "themeSaveDraft", ...input });
+}
+
+export async function themeActionRequest(
+  operation: "themePublish" | "themeDiscard" | "themeRollback",
+  baseRevision: number,
+): Promise<{ revision: number }> {
+  return post<{ revision: number }>("/api/admin/theme-builder", { operation, baseRevision });
+}
+
+export async function builderActionRequest(
+  operation: "builderPublish" | "builderDiscard" | "builderRollback",
+  input: { id: string; baseRevision: number },
+): Promise<{ revision: number }> {
+  return post<{ revision: number }>("/api/admin/pages/builder", { operation, ...input });
+}
+
+export type ProductOption = { id: string; title: string; handle: string; thumbnail: string | null; status: string };
+
+/**
+ * Products by name, for the pickers — the same list endpoint the Products screen uses.
+ * Active ones by default: a link or a reference to a draft would point at a page
+ * visitors cannot open. A collection can take drafts too
+ * (`includeDrafts`): putting a product in place before it goes on sale is normal.
+ */
+export function useProductSearch(search: string, enabled = true, { includeDrafts = false } = {}) {
+  return useQuery({
+    queryKey: ["admin", "product-search", search, includeDrafts],
+    enabled,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const page = await post<{ products: ProductOption[] }>("/api/admin/products", {
+        operation: "products",
+        first: 20,
+        search: search || null,
+        status: includeDrafts ? ["ACTIVE", "DRAFT"] : ["ACTIVE"],
+        sortKey: "TITLE",
+        reverse: false,
+      });
+      return page.products.map(({ id, title, handle, thumbnail, status }) => ({ id, title, handle, thumbnail, status }));
+    },
   });
 }

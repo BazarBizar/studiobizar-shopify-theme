@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { sendInquiryEmails } from "@/lib/email/send-inquiry";
 import { inquirySubmissionSchema } from "@/lib/inquiry/schema";
 import { saveInquiry } from "@/lib/inquiry/submit";
+import { limitRecipient, readPublicForm } from "@/lib/public-form";
 
 /**
  * 1. Validate with the same schema the form uses.
@@ -11,13 +12,10 @@ import { saveInquiry } from "@/lib/inquiry/submit";
  * 4/5. PDF + email (Step 6) attach here and must never fail the request.
  */
 export async function POST(request: Request) {
-  let payload: unknown;
-
-  try {
-    payload = await request.json();
-  } catch {
-    return NextResponse.json({ message: "Send a JSON body." }, { status: 400 });
-  }
+  // Rate limits and a size cap before anything is read — see lib/public-form.ts.
+  const body = await readPublicForm(request, "inquiry", 128_000);
+  if (!body.ok) return body.response;
+  const payload = body.value;
 
   const parsed = inquirySubmissionSchema.safeParse(payload);
 
@@ -33,6 +31,10 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+
+  // The confirmation goes to the address typed in: a few to one address, then wait.
+  const tooMany = await limitRecipient("inquiry", parsed.data.email);
+  if (tooMany) return tooMany;
 
   try {
     const result = await saveInquiry(parsed.data);

@@ -1,6 +1,10 @@
 "use client";
 
 import { ExternalLinkIcon, Loader2Icon, SaveIcon, TriangleAlertIcon } from "lucide-react";
+
+import { LEAVE_UNSAVED, useConfirm } from "@/components/admin/confirm-dialog";
+import { useUnsavedChangesWarning } from "@/components/admin/save-bar";
+import type { ContentStatus } from "@/lib/admin/page-status";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { Controller, useForm } from "react-hook-form";
@@ -14,8 +18,11 @@ import { Input } from "@/components/admin/ui/input";
 import { Label } from "@/components/admin/ui/label";
 import { Separator } from "@/components/admin/ui/separator";
 import { Switch } from "@/components/admin/ui/switch";
+import { Textarea } from "@/components/admin/ui/textarea";
 import type { FieldSpec } from "@/lib/admin/form-fields";
 import { updatePageRequest } from "@/lib/admin/queries";
+
+import { PageEditorBar } from "./page-editor-bar";
 
 /**
  * The page editor.
@@ -37,6 +44,8 @@ const CORE = {
   title: "__core_title",
   handle: "__core_handle",
   body: "__core_body",
+  seoTitle: "__core_seo_title",
+  seoDescription: "__core_seo_description",
 } as const;
 
 export type EditablePage = {
@@ -45,6 +54,17 @@ export type EditablePage = {
   handle: string;
   body: string;
   isPublished: boolean;
+  /**
+   * Shopify's SEO fields — present only for pages whose route reads them (page
+   * builder pages, the legal pages). A hand-built route that writes its own
+   * metadata would ignore them, so offering them there would be offering nothing.
+   */
+  seo?: { title: string; description: string };
+  /**
+   * The page builder draws this page, so its Shopify body is shown nowhere — the
+   * body field is left out rather than offered as an edit that changes nothing.
+   */
+  contentInBuilder?: boolean;
 };
 
 export function PageEditor({
@@ -52,10 +72,22 @@ export function PageEditor({
   specs,
   /** The route this page's content renders at. */
   publicPath,
+  tabsParam,
+  notice,
+  content,
 }: {
   page: EditablePage;
   specs: FieldSpec[];
   publicPath: string;
+  /**
+   * The page's id segment, when it has a Content tab. The tabs live here, inside
+   * the form, so leaving for Content can first ask about unsaved settings.
+   */
+  tabsParam?: string;
+  /** A line under the tabs, above the fields. */
+  notice?: React.ReactNode;
+  /** Where the page's builder content stands, for the status badge. */
+  content: ContentStatus;
 }) {
   const router = useRouter();
   const [saving, setSaving] = React.useState(false);
@@ -66,6 +98,8 @@ export function PageEditor({
       [CORE.title]: page.title,
       [CORE.handle]: page.handle,
       [CORE.body]: page.body,
+      [CORE.seoTitle]: page.seo?.title ?? "",
+      [CORE.seoDescription]: page.seo?.description ?? "",
       ...Object.fromEntries(specs.map((spec) => [spec.key, spec.initialValue])),
     }),
     [page, specs],
@@ -88,6 +122,12 @@ export function PageEditor({
    */
   const handleChanged = Boolean(dirtyFields[CORE.handle]);
   const dirty = isDirty || published !== page.isPublished;
+
+  // Settings save with Save, not on their own — so leaving with changes asks first,
+  // with the panel's own dialog, and the browser asks on a reload or close.
+  const [leaveDialog, ask] = useConfirm();
+  const onLeave = async () => !dirty || (await ask(LEAVE_UNSAVED));
+  useUnsavedChangesWarning(dirty && !saving);
 
   async function onSubmit(values: Values) {
     setSaving(true);
@@ -136,6 +176,8 @@ export function PageEditor({
       ...(dirtyFields[CORE.title] ? { title: values[CORE.title] } : {}),
       ...(dirtyFields[CORE.handle] ? { handle: values[CORE.handle] } : {}),
       ...(dirtyFields[CORE.body] ? { body: values[CORE.body] } : {}),
+      ...(page.seo && dirtyFields[CORE.seoTitle] ? { seoTitle: values[CORE.seoTitle] ?? "" } : {}),
+      ...(page.seo && dirtyFields[CORE.seoDescription] ? { seoDescription: values[CORE.seoDescription] ?? "" } : {}),
       ...(published !== page.isPublished ? { isPublished: published } : {}),
       ...(metafields.length ? { metafields } : {}),
       ...(clearMetafields.length ? { clearMetafields } : {}),
@@ -157,8 +199,8 @@ export function PageEditor({
 
       toast.success("Saved", {
         description: handleChanged
-          ? "Handle changed — check the storefront route still resolves."
-          : "The storefront cache has been dropped.",
+          ? "The page has a new web address. Update any links that pointed to the old one."
+          : "Your changes are live on the site.",
       });
 
       router.refresh();
@@ -173,11 +215,44 @@ export function PageEditor({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      {leaveDialog}
+      {/* The same bar as the Content tab; full-bleed against the layout's padding. */}
+      <PageEditorBar
+        className="-mx-4 -mt-4 md:-mx-6 md:-mt-6"
+        title={page.title}
+        path={publicPath}
+        param={tabsParam}
+        active="settings"
+        isPublished={page.isPublished}
+        content={content}
+        onLeave={onLeave}
+      >
+        <span className="text-muted-foreground hidden text-xs sm:inline" aria-live="polite">
+          {dirty ? "Unsaved changes" : "All changes saved"}
+        </span>
+        {page.isPublished ? (
+          <Button asChild variant="outline" size="sm">
+            <a href={publicPath} target="_blank" rel="noopener noreferrer">
+              <ExternalLinkIcon />
+              View page
+            </a>
+          </Button>
+        ) : null}
+        <Button type="button" variant="outline" size="sm" disabled={!dirty || saving} onClick={() => { reset(defaults); setPublished(page.isPublished); }}>
+          Discard
+        </Button>
+        <Button type="submit" size="sm" disabled={saving || !dirty}>
+          {saving ? <Loader2Icon className="animate-spin" /> : <SaveIcon />}
+          {saving ? "Saving…" : "Save"}
+        </Button>
+      </PageEditorBar>
+      {notice}
+
       <Card>
         <CardContent className="space-y-5">
           <div className="flex items-start justify-between gap-6">
             <div className="min-w-0 flex-1 space-y-2">
-              <Label htmlFor="page-title">Title</Label>
+              <Label htmlFor="page-title">Page title</Label>
               <Controller
                 control={control}
                 name={CORE.title}
@@ -186,13 +261,16 @@ export function PageEditor({
             </div>
 
             <div className="flex shrink-0 flex-col gap-2">
-              <Label htmlFor="page-published">Published</Label>
+              {/* "Visible", not "Published": Publish is the page builder's word for
+                  putting edited content live. This is whether the page exists for
+                  visitors at all. */}
+              <Label htmlFor="page-published">Show to visitors</Label>
               <Switch id="page-published" checked={published} onCheckedChange={setPublished} />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="page-handle">Handle</Label>
+            <Label htmlFor="page-handle">Web address</Label>
             <Controller
               control={control}
               name={CORE.handle}
@@ -207,17 +285,17 @@ export function PageEditor({
             {handleChanged ? (
               <p className="text-destructive flex items-center gap-1.5 text-xs">
                 <TriangleAlertIcon className="size-3.5 shrink-0" />
-                The storefront finds this page by its handle. Renaming it empties the
-                route that reads it — there is no redirect.
+                Changing the web address breaks every link to the old one, including in
+                menus. Only change it if you are sure.
               </p>
             ) : (
               <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
-                Renders at{" "}
+                Visitors open it at{" "}
                 <a
                   href={publicPath}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 font-mono underline underline-offset-2"
+                  className="inline-flex items-center gap-1 underline underline-offset-2"
                 >
                   {publicPath}
                   <ExternalLinkIcon className="size-3" />
@@ -226,34 +304,72 @@ export function PageEditor({
             )}
           </div>
 
-          <Separator />
+          {!page.contentInBuilder && (
+            <>
+            <Separator />
 
-          <div className="space-y-2">
-            <Label>Body</Label>
-            <Controller
-              control={control}
-              name={CORE.body}
-              render={({ field }) => (
-                <RichTextEditor
-                  value={field.value}
-                  onChange={field.onChange}
-                  ariaLabel="Page body"
-                />
-              )}
-            />
-          </div>
+            <div className="space-y-2">
+              <Label>Body</Label>
+              <Controller
+                control={control}
+                name={CORE.body}
+                render={({ field }) => (
+                  <RichTextEditor
+                    value={field.value}
+                    onChange={field.onChange}
+                    ariaLabel="Page body"
+                    format="html"
+                  />
+                )}
+              />
+            </div>
+            </>
+          )}
         </CardContent>
       </Card>
+
+      {page.seo && (
+        <Card>
+          <CardContent className="space-y-4">
+            <div>
+              <h2 className="text-sm font-semibold">Search engine listing</h2>
+              <p className="text-muted-foreground text-xs">
+                How this page appears in Google. Live as soon as you save.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="page-seo-title">Title</Label>
+              <Controller
+                control={control}
+                name={CORE.seoTitle}
+                render={({ field }) => (
+                  <Input id="page-seo-title" maxLength={70} placeholder={page.title} {...field} />
+                )}
+              />
+              <p className="text-muted-foreground text-xs">Up to 70 characters. Empty uses the page title.</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="page-seo-description">Description</Label>
+              <Controller
+                control={control}
+                name={CORE.seoDescription}
+                render={({ field }) => <Textarea id="page-seo-description" maxLength={320} rows={3} {...field} />}
+              />
+              <p className="text-muted-foreground text-xs">Up to 320 characters. Empty uses the page’s own summary.</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {specs.length > 0 && (
         <Card>
           <CardContent className="space-y-6">
             <div>
-              <h2 className="text-sm font-semibold">Content</h2>
+              <h2 className="text-sm font-semibold">Page details</h2>
               <p className="text-muted-foreground text-xs">
-                Everything the storefront renders around the body. These are page
-                metafields — the list comes from Shopify, so a definition added there
-                appears here.
+                The text and photos this page shows around its main content.
               </p>
             </div>
 
@@ -285,14 +401,6 @@ export function PageEditor({
           </CardContent>
         </Card>
       )}
-
-      <div className="bg-background/80 sticky bottom-0 flex items-center justify-end gap-3 border-t py-3 backdrop-blur">
-        {dirty && <span className="text-muted-foreground text-xs">Unsaved changes</span>}
-        <Button type="submit" disabled={saving || !dirty}>
-          {saving ? <Loader2Icon className="animate-spin" /> : <SaveIcon />}
-          Save
-        </Button>
-      </div>
     </form>
   );
 }

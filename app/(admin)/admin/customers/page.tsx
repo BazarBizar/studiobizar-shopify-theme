@@ -12,7 +12,7 @@ export default async function CustomersPage() {
     <div className="space-y-6">
       <PageHeader
         title="Customers"
-        description="Accounts created on the storefront. Read-only apart from notes and tags."
+        description="People who created an account on the website. You can add notes and tags; the rest is theirs to change."
       />
 
       {/* Stated plainly rather than left as a puzzle: this store cannot have the company

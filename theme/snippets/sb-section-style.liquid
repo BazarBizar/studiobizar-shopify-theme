@@ -1,0 +1,67 @@
+{% comment %}
+  The page builder's Style tab — spacing, lines and colours — as attributes for
+  a section's outer element. The Liquid twin of `frameStyle` in
+  components/page-builder/section-frame.tsx; the two must write the same CSS.
+
+    <div ... {% render 'sb-section-style', settings: s %} {{ section.shopify_attributes }}>
+
+  It also renders `sb-design` — the section's design settings (`d_*`), merged into
+  the same style attribute.
+
+  Colours rebind the same tokens a `data-surface` does, so everything inside
+  follows. "Custom spacing" sets --sb-pad-top/bottom and `data-sb-pad`; the rule
+  in sb-theme.css then makes them REPLACE the section's own band padding.
+
+  Accepts:
+    settings    — the section's settings (required)
+    extra_style — declarations the section already puts in its style attribute
+                  (the banner's aspect-ratio), merged so there is only one
+{% endcomment %}
+
+{%- liquid
+  assign st = settings
+  assign css = extra_style | default: ''
+
+  if st.bg_color != blank
+    assign css = css | append: '--sb-background:' | append: st.bg_color | append: ';--sb-surface:' | append: st.bg_color | append: ';background-color:' | append: st.bg_color | append: ';'
+  endif
+
+  if st.text_color != blank
+    if st.bg_color != blank
+      assign on_primary = st.bg_color
+    else
+      assign on_primary = 'var(--sb-background)'
+    endif
+    assign css = css | append: '--sb-foreground:' | append: st.text_color | append: ';--sb-muted:color-mix(in srgb, ' | append: st.text_color | append: ' 60%, transparent);--sb-border:color-mix(in srgb, ' | append: st.text_color | append: ' 26%, transparent);--sb-primary:' | append: st.text_color | append: ';--sb-primary-foreground:' | append: on_primary | append: ';color:' | append: st.text_color | append: ';'
+  endif
+
+  if st.custom_spacing
+    assign css = css | append: '--sb-pad-top:' | append: st.padding_top | append: 'px;--sb-pad-bottom:' | append: st.padding_bottom | append: 'px;margin-top:' | append: st.margin_top | append: 'px;margin-bottom:' | append: st.margin_bottom | append: 'px;'
+  endif
+
+  if st.border != blank and st.border != 'none'
+    if st.border_color != blank
+      assign line_color = st.border_color
+    else
+      assign line_color = 'var(--sb-border)'
+    endif
+    assign line = st.border_width | append: 'px solid ' | append: line_color
+    case st.border
+      when 'all'
+        assign css = css | append: 'border:' | append: line | append: ';'
+      when 'top'
+        assign css = css | append: 'border-top:' | append: line | append: ';'
+      when 'bottom'
+        assign css = css | append: 'border-bottom:' | append: line | append: ';'
+      when 'y'
+        assign css = css | append: 'border-top:' | append: line | append: ';border-bottom:' | append: line | append: ';'
+    endcase
+  endif
+
+  if st.radius > 0
+    assign css = css | append: 'border-radius:' | append: st.radius | append: 'px;overflow:clip;'
+  endif
+-%}
+
+{%- if st.custom_spacing %} data-sb-pad{% endif -%}
+{%- render 'sb-design', settings: st, prefix: 'd_', css: css -%}

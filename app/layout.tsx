@@ -6,6 +6,23 @@ import { SITE_URL } from "@/lib/site";
 
 import "./globals.css";
 
+/*
+ * The page builder's font choices (`FONTS` in lib/page-builder/design.ts), from the
+ * Fontsource packages — self-hosted like Geist, so builds stay offline-capable.
+ * These are only @font-face declarations: a browser downloads a font file when a
+ * page actually uses that font, so a font nobody picked costs a few lines of CSS.
+ */
+import "@fontsource-variable/inter/index.css";
+import "@fontsource-variable/dm-sans/index.css";
+import "@fontsource-variable/manrope/index.css";
+import "@fontsource-variable/work-sans/index.css";
+import "@fontsource-variable/space-grotesk/index.css";
+import "@fontsource-variable/syne/index.css";
+import "@fontsource-variable/playfair-display/index.css";
+import "@fontsource-variable/cormorant-garamond/index.css";
+import "@fontsource-variable/fraunces/index.css";
+import "@fontsource-variable/eb-garamond/index.css";
+
 /**
  * TYPEFACES
  *

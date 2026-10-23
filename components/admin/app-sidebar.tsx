@@ -1,6 +1,7 @@
 "use client";
 
 import { LogOutIcon } from "lucide-react";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 
 import { AppLink } from "@/components/admin/app-link";
@@ -25,7 +26,6 @@ import { cn } from "@/lib/utils/cn";
 export type SidebarItem = {
   href: string;
   label: string;
-  readOnly: boolean;
   /** Group key. Drives the icon TINT, and the icon itself only as a fallback. */
   group: string;
   /** Metaobject type, or null for a bespoke screen. */
@@ -41,14 +41,14 @@ export type SidebarSection = { key: string; label: string | null; items: Sidebar
 export function AppSidebar({
   sections,
   email,
-  brand = { title: "Studio Bizar", initials: "SB" },
+  brand = { title: "Studio Bizar", subtitle: "Admin", initials: "SB", logoUrl: null },
   loading = false,
   onSignOut,
 }: {
   sections: SidebarSection[];
   email: string;
   /** From `admin_settings`; see `lib/admin/admin-settings.ts`. */
-  brand?: { title: string; initials: string };
+  brand?: { title: string; subtitle: string; initials: string; logoUrl: string | null };
   loading?: boolean;
   onSignOut: () => void;
 }) {
@@ -67,15 +67,28 @@ export function AppSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton asChild size="lg">
               <AppLink href="/admin" showPending={false}>
-                <div
-                  className="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-md text-[11px] font-semibold tracking-tight"
-                  aria-hidden
-                >
-                  {brand.initials}
-                </div>
+                {/* The logo, when one is set, takes the initials' place at the same
+                    size — the square is also what's left when the sidebar collapses. */}
+                {brand.logoUrl ? (
+                  <Image
+                    src={brand.logoUrl}
+                    alt=""
+                    width={32}
+                    height={32}
+                    unoptimized
+                    className="aspect-square size-8 shrink-0 rounded-md object-contain"
+                  />
+                ) : (
+                  <div
+                    className="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-md text-[11px] font-semibold tracking-tight"
+                    aria-hidden
+                  >
+                    {brand.initials}
+                  </div>
+                )}
                 <div className="grid flex-1 text-left leading-tight">
                   <span className="truncate text-sm font-semibold">{brand.title}</span>
-                  <span className="text-muted-foreground truncate text-xs">Admin</span>
+                  <span className="text-muted-foreground truncate text-xs">{brand.subtitle}</span>
                 </div>
               </AppLink>
             </SidebarMenuButton>
@@ -129,10 +142,6 @@ export function AppSidebar({
                               className="ms-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1 text-[11px] font-semibold text-white group-data-[collapsible=icon]:hidden"
                             >
                               {item.badge}
-                            </span>
-                          ) : item.readOnly ? (
-                            <span className="text-muted-foreground ms-auto text-[11px] group-data-[collapsible=icon]:hidden">
-                              read-only
                             </span>
                           ) : null}
                         </AppLink>

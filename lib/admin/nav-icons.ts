@@ -27,6 +27,7 @@ import {
   type LucideIcon,
   MapPinIcon,
   PackageIcon,
+  PanelsTopLeftIcon,
   PencilRulerIcon,
   PhoneIcon,
   SettingsIcon,
@@ -55,6 +56,7 @@ const BY_HREF: Record<string, LucideIcon> = {
   "/admin/collections": BoxIcon,
   "/admin/pages": FileTextIcon,
   "/admin/menus": ListTreeIcon,
+  "/admin/theme-builder": PanelsTopLeftIcon,
   "/admin/media": ImagesIcon,
   "/admin/customers": UsersRoundIcon,
   "/admin/site-wide": GlobeIcon,
@@ -62,6 +64,7 @@ const BY_HREF: Record<string, LucideIcon> = {
 
 /** Last resort, by group, so an unclassified new definition still gets a mark. */
 const BY_GROUP: Record<string, LucideIcon> = {
+  content: LayersIcon,
   catalogue: LayersIcon,
   pages: FileTextIcon,
   library: ImagesIcon,

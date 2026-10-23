@@ -110,7 +110,7 @@ const REFERENCE_SELECTION = `
  * populates one of them. Selecting just `reference` — the obvious thing — leaves
  * every list field looking empty in the form, which reads as data loss.
  */
-const ENTRY_FIELDS = `
+const entryFields = (reference: string) => `
     id
     handle
     type
@@ -126,15 +126,52 @@ const ENTRY_FIELDS = `
       type
       value
       reference {
-${REFERENCE_SELECTION}
+${reference}
       }
       references(first: 50) {
         nodes {
-${REFERENCE_SELECTION}
+${reference}
         }
       }
     }
 `;
+
+/**
+ * A picture for each thing a reference points at, so a form can show "which photo"
+ * rather than a list of titles — a gallery of captioned images, a product, a
+ * collection. Only on the ONE-entry query: on a list of entries this nesting
+ * multiplies the query cost by every row.
+ */
+const REFERENCE_PREVIEW = `
+      ... on Metaobject {
+        fields {
+          reference {
+            ... on MediaImage {
+              image {
+                url
+              }
+            }
+          }
+        }
+      }
+      ... on Product {
+        featuredMedia {
+          preview {
+            image {
+              url
+            }
+          }
+        }
+      }
+      ... on Collection {
+        image {
+          url
+        }
+      }
+`;
+
+const ENTRY_FIELDS = entryFields(REFERENCE_SELECTION);
+const ENTRY_FIELDS_WITH_PREVIEWS = entryFields(REFERENCE_SELECTION + REFERENCE_PREVIEW);
 
 export type OperationKind = "read" | "write";
 
@@ -210,7 +247,7 @@ ${ENTRY_FIELDS}
     document: `
       query AdminMetaobject($id: ID!) {
         metaobject(id: $id) {
-${ENTRY_FIELDS}
+${ENTRY_FIELDS_WITH_PREVIEWS}
         }
       }
     `,
@@ -305,6 +342,22 @@ ${ENTRY_FIELDS}
               }
             }
           }
+        }
+      }
+    `,
+  },
+
+  /**
+   * What a form's references point at — name and picture — for the forms whose values
+   * arrive as bare gids (product and page metafields). One request for the whole form.
+   */
+  referencePreviews: {
+    kind: "read",
+    document: `
+      query AdminReferencePreviews($ids: [ID!]!) {
+        nodes(ids: $ids) {
+${REFERENCE_SELECTION}
+${REFERENCE_PREVIEW}
         }
       }
     `,
@@ -1176,6 +1229,12 @@ ${ENTRY_FIELDS}
             templateSuffix
             isPublished
             updatedAt
+            builderDraft: metafield(namespace: "custom", key: "sections_draft") {
+              id
+            }
+            builderPublished: metafield(namespace: "custom", key: "sections") {
+              id
+            }
           }
         }
       }
@@ -1202,6 +1261,13 @@ ${ENTRY_FIELDS}
           templateSuffix
           isPublished
           updatedAt
+          bodySummary
+          seoTitle: metafield(namespace: "global", key: "title_tag") {
+            value
+          }
+          seoDescription: metafield(namespace: "global", key: "description_tag") {
+            value
+          }
           metafields(first: 50, namespace: "custom") {
             nodes {
               id
@@ -1236,6 +1302,86 @@ ${ENTRY_FIELDS}
             handle
             updatedAt
           }
+          userErrors {
+            field
+            message
+            code
+          }
+        }
+      }
+    `,
+  },
+
+  /**
+   * Every page with its page builder documents, for the Page builder list — the
+   * draft and the live copy, so the list can say which pages have changes waiting
+   * to be published without opening each one. Pages without a document return
+   * nulls; the documents are small (tens of kilobytes at most).
+   */
+  pagesBuilderStatus: {
+    kind: "read",
+    document: `
+      query AdminPagesBuilderStatus($first: Int!, $after: String) {
+        pages(first: $first, after: $after, sortKey: TITLE) {
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+          nodes {
+            id
+            title
+            handle
+            isPublished
+            updatedAt
+            draft: metafield(namespace: "custom", key: "sections_draft") {
+              value
+            }
+            live: metafield(namespace: "custom", key: "sections") {
+              value
+            }
+          }
+        }
+      }
+    `,
+  },
+
+  /**
+   * Creates a PAGE BUILDER page — and only that. The route refuses any handle a
+   * builder page may not take, and always sends the first draft document with it,
+   * so a page made here is reachable at `/<handle>` the moment it is published.
+   * Ordinary pages, whose route is code, are still created by schema-push.
+   */
+  pageCreate: {
+    kind: "write",
+    document: `
+      mutation AdminPageCreate($page: PageCreateInput!) {
+        pageCreate(page: $page) {
+          page {
+            id
+            title
+            handle
+          }
+          userErrors {
+            field
+            message
+            code
+          }
+        }
+      }
+    `,
+  },
+
+  /**
+   * Deletes a page. Reachable only through the page builder's delete route, which
+   * re-reads the page and refuses unless it is a builder page — a page whose route
+   * is code (`home`, `our-story`) cannot be deleted from the panel.
+   */
+  pageDelete: {
+    kind: "write",
+    document: `
+      mutation AdminPageDelete($id: ID!) {
+        pageDelete(id: $id) {
+          deletedPageId
           userErrors {
             field
             message
@@ -1365,6 +1511,56 @@ ${ENTRY_FIELDS}
             id
             handle
             type
+          }
+          userErrors {
+            field
+            message
+            code
+          }
+        }
+      }
+    `,
+  },
+
+  /* ------------------------------------------------------------- theme builder */
+
+  /**
+   * The header and footer layout's three copies, on the SHOP (see
+   * `lib/theme-builder/layout.ts`). The shop id comes back too: it is the owner every
+   * write names.
+   */
+  themeLayout: {
+    kind: "read",
+    document: `
+      query AdminThemeLayout {
+        shop {
+          id
+          published: metafield(namespace: "custom", key: "theme_layout") {
+            value
+          }
+          draft: metafield(namespace: "custom", key: "theme_layout_draft") {
+            value
+          }
+          previous: metafield(namespace: "custom", key: "theme_layout_previous") {
+            value
+          }
+        }
+      }
+    `,
+  },
+
+  /**
+   * Every Theme Builder write: ONE `metafieldsSet`, which Shopify applies all or
+   * nothing — so a publish can never leave the live and previous copies half
+   * swapped.
+   */
+  themeLayoutSet: {
+    kind: "write",
+    document: `
+      mutation AdminThemeLayoutSet($metafields: [MetafieldsSetInput!]!) {
+        metafieldsSet(metafields: $metafields) {
+          metafields {
+            key
           }
           userErrors {
             field

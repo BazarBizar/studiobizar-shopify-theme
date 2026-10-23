@@ -16,13 +16,23 @@ import "server-only";
  * with no code change.
  */
 
-export type GroupKey = "catalogue" | "pages" | "library" | "inbox" | "settings" | "other";
+export type GroupKey = "pages" | "content" | "catalogue" | "library" | "inbox" | "settings" | "other";
 
 type GroupDef = { key: GroupKey; label: string; types: string[] };
 
 const GROUPS: GroupDef[] = [
+  /**
+   * The site itself: its pages (content and settings), its menus and its files.
+   * Bespoke screens only — see `navigation.ts`.
+   */
+  { key: "pages", label: "Website", types: [] },
+  /**
+   * The entries pages draw on — a page's Services list, its FAQ. Edited here once,
+   * shown wherever a section uses them. Locations and contact channels are the same
+   * kind of thing and live on Site-wide.
+   */
+  { key: "content", label: "Content library", types: ["service", "faq_item", "location", "contact_channel"] },
   { key: "catalogue", label: "Catalogue", types: ["designer", "project"] },
-  { key: "pages", label: "Pages", types: ["service", "faq_item", "location", "contact_channel"] },
   { key: "library", label: "Library", types: ["captioned_image"] },
   { key: "inbox", label: "Inbox", types: ["inquiry"] },
   {
@@ -38,7 +48,7 @@ const GROUPS: GroupDef[] = [
  *  has classified still has to be reachable and editable. */
 const OTHER: GroupDef = { key: "other", label: "Other", types: [] };
 
-export const GROUP_ORDER: GroupKey[] = ["catalogue", "pages", "library", "inbox", "settings", "other"];
+export const GROUP_ORDER: GroupKey[] = ["pages", "content", "catalogue", "library", "inbox", "settings", "other"];
 
 const TYPE_TO_GROUP = new Map<string, GroupKey>(
   GROUPS.flatMap((group) => group.types.map((type) => [type, group.key] as const)),

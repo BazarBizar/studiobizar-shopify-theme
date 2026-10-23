@@ -1,0 +1,10 @@
+{% comment %}
+  Heading size → class: h2 (Standard) · h1 (Large) · display (Extra large).
+  Mirrors HEADING in components/sections/landing/shared.tsx.
+{% endcomment %}
+
+{%- case size -%}
+  {%- when 'display' -%}text-display leading-[1.05]
+  {%- when 'h1' -%}text-h1
+  {%- else -%}text-h2
+{%- endcase -%}

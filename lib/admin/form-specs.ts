@@ -6,7 +6,14 @@ import {
   referenceDefinitionId,
   type FieldSpec,
 } from "./form-fields";
-import { listDefinitions, type Definition, type Entry, type EntryReference } from "./metaobjects";
+import { fieldCopy } from "./field-copy";
+import { referenceLabel, referenceThumbnail, withCollectionOptions } from "./reference-previews";
+import {
+  listAllEntries,
+  listDefinitions,
+  type Definition,
+  type Entry,
+} from "./metaobjects";
 import { moduleFor } from "./modules";
 
 /**
@@ -15,20 +22,6 @@ import { moduleFor } from "./modules";
  * Shopify appears on the next page load, with the input its type implies.
  */
 
-function referenceLabel(reference: EntryReference): string {
-  return (
-    reference.displayName ||
-    reference.title ||
-    reference.alt ||
-    reference.handle ||
-    reference.id ||
-    "Untitled"
-  );
-}
-
-function referenceThumbnail(reference: EntryReference): string | null {
-  return reference.image?.url ?? null;
-}
 
 export async function buildFieldSpecs(
   definition: Definition,
@@ -47,7 +40,17 @@ export async function buildFieldSpecs(
     (await listDefinitions()).map((candidate) => [candidate.id, candidate.type]),
   );
 
-  return definition.fieldDefinitions.map((field) => {
+  /**
+   * The manual order is set by dragging rows in the list, so the form never shows it.
+   * A NEW entry still needs a value — it goes to the end of the list.
+   */
+  const orderField = definition.fieldDefinitions.some((field) => field.key === moduleDef.orderField)
+    ? moduleDef.orderField
+    : undefined;
+  const nextPosition =
+    orderField && entry === null ? await nextOrderValue(definition.type, orderField) : null;
+
+  const specs = definition.fieldDefinitions.map((field) => {
     const stored = entry?.fields.find((candidate) => candidate.key === field.key);
 
     const single = stored?.reference ?? null;
@@ -62,11 +65,14 @@ export async function buildFieldSpecs(
      * at all, so every field is locked.
      */
     const editable = !readOnly || (entry !== null && editableFields.has(field.key));
+    const copy = fieldCopy(definition.type, field.key);
 
     return {
       key: field.key,
-      name: field.name,
-      description: field.description,
+      name: copy.label ?? field.name,
+      description: copy.help ?? field.description,
+      hidden: copy.hidden === true || field.key === orderField,
+      choiceLabels: copy.choiceLabels ?? {},
       required: field.required,
       type: field.type,
       choices: choicesFrom(field.validations),
@@ -86,8 +92,25 @@ export async function buildFieldSpecs(
         label: referenceLabel(reference),
         thumbnail: referenceThumbnail(reference),
       })),
+      collectionOptions: [],
       editable,
-      initialValue: stored?.value ?? "",
+      initialValue:
+        stored?.value ?? (field.key === orderField && nextPosition !== null ? String(nextPosition) : ""),
     } satisfies FieldSpec;
   });
+
+  return withCollectionOptions(specs);
+}
+
+/** One past the highest position in use, so a new entry lands at the end of the list. */
+async function nextOrderValue(type: string, key: string): Promise<number> {
+  try {
+    const entries = await listAllEntries(type);
+    const positions = entries
+      .map((entry) => Number(entry.fields.find((field) => field.key === key)?.value))
+      .filter((value) => Number.isFinite(value));
+    return positions.length ? Math.max(...positions) + 1 : 1;
+  } catch {
+    return 1;
+  }
 }

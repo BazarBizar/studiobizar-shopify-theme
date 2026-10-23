@@ -4,7 +4,7 @@ import { AppLink } from "@/components/admin/app-link";
 import { EntryForm } from "@/components/admin/entry-form";
 import { EntryTableShell } from "@/components/admin/entry-table/entry-table-shell";
 import { PageHeader } from "@/components/admin/page-header";
-import { SiteWideTabs } from "@/components/admin/site-wide/site-wide-tabs";
+import { QueryTabs } from "@/components/admin/query-tabs";
 import { Button } from "@/components/admin/ui/button";
 import { buildEntryTableData } from "@/lib/admin/entry-table-data";
 import { formatDate } from "@/lib/admin/field-values";
@@ -40,12 +40,12 @@ export default async function SiteWidePage({ searchParams }: PageProps<"/admin/s
     <div className="space-y-6">
       <PageHeader
         title="Site-wide"
-        description="Settings that belong to the whole site rather than to one page. Each tab is a metaobject in Shopify."
+        description="Settings for the whole website rather than one page. Pick a tab, make your changes and press Save."
       />
 
       {active ? (
         <>
-          <SiteWideTabs
+          <QueryTabs
             tabs={available.map((section) => ({ value: section.type, label: section.label }))}
             active={active.type}
           />
@@ -64,7 +64,7 @@ export default async function SiteWidePage({ searchParams }: PageProps<"/admin/s
         </>
       ) : (
         <p className="text-muted-foreground rounded-md border p-6 text-sm">
-          None of the Site-wide types exist in this store yet.
+          There are no site-wide settings to edit yet. Ask your developer to set them up.
         </p>
       )}
     </div>
@@ -84,12 +84,8 @@ async function SingletonPane({
   if (!first) {
     return (
       <div className="max-w-3xl rounded-md border p-6 text-sm">
-        <p>This setting has no entry yet, so there is nothing to edit.</p>
-        {section.setup ? (
-          <p className="text-muted-foreground mt-2">
-            Create it with <code className="font-mono text-xs">{section.setup}</code>.
-          </p>
-        ) : null}
+        <p>These settings have not been set up yet, so there is nothing to edit.</p>
+        <p className="text-muted-foreground mt-2">Ask your developer to set them up.</p>
       </div>
     );
   }
@@ -102,10 +98,7 @@ async function SingletonPane({
   return (
     <div className="w-full max-w-3xl space-y-4">
       <p className="text-muted-foreground text-xs">
-        Updated {formatDate(entry.updatedAt, true)}
-        {entries.length > 1
-          ? ` · ${entries.length} entries exist; this is the first, and the only one the site reads.`
-          : ""}
+        Last saved {formatDate(entry.updatedAt, true)}
       </p>
 
       <EntryForm
@@ -132,7 +125,7 @@ async function CollectionPane({
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <p className="text-muted-foreground text-xs">
-          {table.rows.length} {table.rows.length === 1 ? "entry" : "entries"}
+          {table.rows.length} {table.rows.length === 1 ? table.singular : table.label.toLowerCase()}
         </p>
         {table.readOnly ? null : (
           <Button asChild size="sm">

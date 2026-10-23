@@ -10,7 +10,9 @@ import { Separator } from "@/components/admin/ui/separator";
 import { proseMirrorToShopify, shopifyToProseMirror } from "@/lib/admin/rich-text";
 
 /**
- * Editor for `rich_text_field`. Reads and writes Shopify's rich text AST, not HTML.
+ * Editor for `rich_text_field`, which is Shopify's rich text AST — or, with
+ * `format="html"`, for a product description, which Shopify stores as HTML. Feeding
+ * HTML to the AST path shows the tags as text, so the caller must say which it has.
  *
  * THE DISABLED EXTENSIONS BELOW ARE NOT A STYLE CHOICE. The storefront renderer
  * (`lib/shopify/transforms.ts`) has a `default` case that returns a node's children
@@ -28,9 +30,16 @@ type Props = {
   onChange: (value: string) => void;
   disabled?: boolean;
   ariaLabel?: string;
+  format?: "shopify" | "html";
 };
 
-export function RichTextEditor({ value, onChange, disabled, ariaLabel }: Props) {
+const HEADINGS = [
+  { level: 2, label: "Heading" },
+  { level: 3, label: "Subheading" },
+  { level: 4, label: "Small heading" },
+] as const;
+
+export function RichTextEditor({ value, onChange, disabled, ariaLabel, format = "shopify" }: Props) {
   const editor = useEditor({
     editable: !disabled,
     // Required with React SSR: rendering the editor during the server pass gives a
@@ -62,8 +71,9 @@ export function RichTextEditor({ value, onChange, disabled, ariaLabel }: Props) 
         trailingNode: false,
       }),
     ],
-    content: shopifyToProseMirror(value),
-    onUpdate: ({ editor: instance }) => onChange(proseMirrorToShopify(instance.getJSON())),
+    content: format === "html" ? value || "" : shopifyToProseMirror(value),
+    onUpdate: ({ editor: instance }) =>
+      onChange(format === "html" ? instance.getHTML() : proseMirrorToShopify(instance.getJSON())),
     editorProps: {
       attributes: {
         class: "sb-admin-prose min-h-32 px-3 py-2 outline-none",
@@ -76,7 +86,10 @@ export function RichTextEditor({ value, onChange, disabled, ariaLabel }: Props) 
     if (!editor) return;
 
     const previous = editor.getAttributes("link").href as string | undefined;
-    const href = window.prompt("Link URL", previous ?? "https://");
+    const href = window.prompt(
+      "Paste the web address this text should link to. Leave it empty to remove the link.",
+      previous ?? "https://",
+    );
 
     // Cancel leaves the document alone; an empty string is a deliberate "unlink".
     if (href === null) return;
@@ -112,6 +125,7 @@ export function RichTextEditor({ value, onChange, disabled, ariaLabel }: Props) 
             onClick={() => editor.chain().focus().toggleBold().run()}
             aria-pressed={editor.isActive("bold")}
             aria-label="Bold"
+            title="Bold"
           >
             <strong>B</strong>
           </Button>
@@ -122,28 +136,25 @@ export function RichTextEditor({ value, onChange, disabled, ariaLabel }: Props) 
             onClick={() => editor.chain().focus().toggleItalic().run()}
             aria-pressed={editor.isActive("italic")}
             aria-label="Italic"
+            title="Italic"
           >
             <em>I</em>
           </Button>
 
           <Separator orientation="vertical" className="mx-1 h-4" />
 
-          {[2, 3, 4].map((level) => (
+          {HEADINGS.map(({ level, label }) => (
             <Button
               key={level}
               type="button"
               size="sm"
               variant={variant("heading", { level })}
-              onClick={() =>
-                editor
-                  .chain()
-                  .focus()
-                  .toggleHeading({ level: level as 2 | 3 | 4 })
-                  .run()
-              }
+              onClick={() => editor.chain().focus().toggleHeading({ level }).run()}
               aria-pressed={editor.isActive("heading", { level })}
+              title={`${label} — click again for normal text`}
+              className="text-xs"
             >
-              H{level}
+              {label}
             </Button>
           ))}
 
@@ -156,6 +167,7 @@ export function RichTextEditor({ value, onChange, disabled, ariaLabel }: Props) 
             onClick={() => editor.chain().focus().toggleBulletList().run()}
             aria-pressed={editor.isActive("bulletList")}
             aria-label="Bulleted list"
+            title="Bulleted list"
           >
             <ListIcon className="size-3.5" />
           </Button>
@@ -166,6 +178,7 @@ export function RichTextEditor({ value, onChange, disabled, ariaLabel }: Props) 
             onClick={() => editor.chain().focus().toggleOrderedList().run()}
             aria-pressed={editor.isActive("orderedList")}
             aria-label="Numbered list"
+            title="Numbered list"
           >
             <ListOrderedIcon className="size-3.5" />
           </Button>
@@ -178,6 +191,7 @@ export function RichTextEditor({ value, onChange, disabled, ariaLabel }: Props) 
             variant={variant("link")}
             onClick={setLink}
             aria-label="Link"
+            title="Make the selected text a link"
           >
             <LinkIcon className="size-3.5" />
           </Button>

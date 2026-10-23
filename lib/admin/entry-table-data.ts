@@ -2,6 +2,7 @@ import "server-only";
 
 import { detectFacetKeys, kindForFieldType } from "@/components/admin/data-table/filters";
 import type { EntryRow, FieldColumn } from "@/components/admin/entry-table/columns";
+import { fieldCopy } from "@/lib/admin/field-copy";
 import { choicesFrom, paramFromEntryId, parseList, toPlainText } from "@/lib/admin/field-values";
 import { resolveColumns, type Definition, type Entry } from "@/lib/admin/metaobjects";
 import { isDeletable, moduleFor } from "@/lib/admin/modules";
@@ -62,10 +63,11 @@ export function buildEntryTableData(definition: Definition, entries: Entry[]): E
 
   const fields: FieldColumn[] = resolved.map((column) => ({
     key: column.key,
-    label: column.label,
+    label: fieldCopy(definition.type, column.key).label ?? column.label,
     kind: kindForFieldType(column.type),
     facetable: facetKeys.has(column.key),
-    visible: column.visible,
+    // The order column only repeats what the drag handles already show.
+    visible: column.visible && column.key !== moduleDef.orderField,
     width: kindForFieldType(column.type) === "media" ? "4rem" : undefined,
   }));
 
@@ -103,9 +105,12 @@ export function buildEntryTableData(definition: Definition, entries: Entry[]): E
 
       const references = field?.references?.nodes ?? (field?.reference ? [field.reference] : []);
 
+      const choiceLabels = fieldCopy(definition.type, column.key).choiceLabels;
+
       cells[column.key] = {
         kind,
-        value: field?.value ?? null,
+        // A stored code like `product_inquiry` is shown by its name.
+        value: (field?.value && choiceLabels?.[field.value]) || (field?.value ?? null),
         // A list of references is labelled by what it points at; a list of plain
         // values — emails, text — by the values themselves.
         labels: references.length
@@ -146,6 +151,6 @@ export function buildEntryTableData(definition: Definition, entries: Entry[]): E
       moduleDef.orderField && byKey.has(moduleDef.orderField) ? moduleDef.orderField : null,
     excelExport: moduleDef.excelExport === true,
     label,
-    singular: label.replace(/s$/, "").toLowerCase(),
+    singular: moduleDef.singular ?? label.replace(/s$/, "").toLowerCase(),
   };
 }

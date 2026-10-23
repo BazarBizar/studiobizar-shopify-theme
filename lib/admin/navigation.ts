@@ -77,6 +77,7 @@ const RESERVED_SLUGS = new Set([
   "products",
   "customers",
   "pages",
+  "page-builder",
   "menus",
   "media",
   "site-wide",
@@ -127,9 +128,8 @@ const BESPOKE: { group: GroupKey; item: NavItem }[] = [
   {
     group: "pages",
     /**
-     * Sits at the top of its group because the metaobjects grouped under "Pages"
-     * are the PARTS of a page — services, FAQ items, locations, contact channels —
-     * while this is the page itself and the metafields that assemble them.
+     * The ONE place a page is managed: each page opens on two tabs, Content (the
+     * page builder) and Settings (title, address, visibility, SEO, delete).
      */
     item: { href: "/admin/pages", label: "Pages", readOnly: false, type: null },
   },
@@ -139,7 +139,12 @@ const BESPOKE: { group: GroupKey; item: NavItem }[] = [
     item: { href: "/admin/menus", label: "Menus", readOnly: false, type: null },
   },
   {
-    group: "library",
+    group: "pages",
+    /** The Theme Builder: the header and footer every page shares. */
+    item: { href: "/admin/theme-builder", label: "Header & footer", readOnly: false, type: null },
+  },
+  {
+    group: "pages",
     /** The files themselves. The `captioned_image` entries that wrap them with a
      *  caption and credit are hidden from the sidebar — see `modules.ts`. */
     item: { href: "/admin/media", label: "Media", readOnly: false, type: null },
@@ -203,11 +208,12 @@ export async function buildNavigation(): Promise<NavGroup[]> {
     if (!items?.length) continue;
 
     // Within a group, the module table's order wins where it has an opinion;
-    // everything else falls back to alphabetical so the list is stable.
+    // everything else falls back to alphabetical so the list is stable. Website keeps
+    // the order its rows are declared in: Pages, Menus, Media.
     groups.push({
       key,
       label: groupLabel(key),
-      items: items.sort((a, b) => a.label.localeCompare(b.label)),
+      items: key === "pages" ? items : items.sort((a, b) => a.label.localeCompare(b.label)),
     });
   }
 

@@ -1,5 +1,8 @@
+import { ExternalLinkIcon, PencilIcon, PlusIcon, SettingsIcon } from "lucide-react";
+
 import { AppLink } from "@/components/admin/app-link";
 import { Badge } from "@/components/admin/ui/badge";
+import { Button } from "@/components/admin/ui/button";
 import {
   Table,
   TableBody,
@@ -8,69 +11,133 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/admin/ui/table";
-import { paramFromPageId, type PageSummary } from "@/lib/admin/pages";
+import { formatDate } from "@/lib/admin/field-values";
+import type { PageRow } from "@/lib/admin/page-builder";
+
+import { PageStatusBadge } from "./page-editor-bar";
+import { paramFromPageId } from "@/lib/admin/pages";
 
 /**
- * A plain server-rendered table, not `DataTable`.
+ * Pages — the one list of the site's pages.
  *
- * The store has eleven pages and no mechanism that creates more — they come from
- * `schema-push`, one per storefront route. Sorting, faceting, column menus,
- * pagination and client-side search are all answers to a problem eleven rows do
- * not have, and every one of them would ship JavaScript to render a list that
- * fits on the screen.
+ * Two questions, two columns, never one word for both:
+ *  - **Visibility**: can visitors reach the page at all (Shopify's own switch).
+ *  - **Content**: is what the page shows up to date with what was last edited.
  *
- * Move this to `DataTable` if pages ever become something people create freely.
- * Today that would be furniture.
+ * Each row offers the page's two tabs: Content (the page builder) and Settings.
+ * A page whose layout is code has Settings only.
+ *
+ * On a phone the action column would sit off-screen, so the row's two buttons move
+ * under the page's name instead.
+ *
+ * A server-rendered table, not `DataTable`: a couple of dozen rows need no
+ * client-side sorting or paging. Work still to do is sorted to the top.
  */
-export function PagesTable({
-  pages,
-  routeFor,
-}: {
-  pages: PageSummary[];
-  /** Handle -> the storefront path that renders it. */
-  routeFor: (handle: string) => string;
-}) {
+
+// The status words and colours are shared with the page editor's bar — see `lib/admin/page-status.ts`.
+
+export function PagesTable({ pages, routeFor }: { pages: PageRow[]; routeFor: (handle: string) => string }) {
   return (
     <div className="rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Page</TableHead>
-            <TableHead>Handle</TableHead>
-            <TableHead>Renders at</TableHead>
-            <TableHead className="w-28">Status</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="hidden lg:table-cell">Last edited</TableHead>
+            <TableHead className="hidden w-0 text-right sm:table-cell">
+              <span className="sr-only">Actions</span>
+            </TableHead>
           </TableRow>
         </TableHeader>
 
         <TableBody>
           {pages.map((page) => {
+            const param = paramFromPageId(page.id);
             const route = routeFor(page.handle);
+            const primary = page.editable ? `/admin/pages/${param}/content` : `/admin/pages/${param}`;
 
             return (
               <TableRow key={page.id}>
                 <TableCell>
-                  <AppLink
-                    href={`/admin/pages/${paramFromPageId(page.id)}`}
-                    className="font-medium underline-offset-4 hover:underline"
-                  >
+                  <AppLink href={primary} className="font-medium underline-offset-4 hover:underline">
                     {page.title}
                   </AppLink>
+                  {/* Its title is the shop's name, so it is otherwise easy to miss. */}
+                  {route === "/" ? (
+                    <Badge variant="secondary" className="ms-2 align-middle text-[11px] font-normal">
+                      Home page
+                    </Badge>
+                  ) : null}
+                  <p className="text-muted-foreground mt-0.5 text-xs">
+                    {page.isPublished ? (
+                      <a
+                        href={route}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 underline-offset-2 hover:underline"
+                      >
+                        {route}
+                        <ExternalLinkIcon className="size-3" />
+                      </a>
+                    ) : (
+                      route
+                    )}
+                  </p>
+                  <div className="mt-2 flex gap-1 sm:hidden">
+                    {page.editable && (
+                      <Button asChild variant="outline" size="xs">
+                        <AppLink href={`/admin/pages/${param}/content`}>
+                          {page.status === "setup" ? <PlusIcon /> : <PencilIcon />}
+                          Edit content
+                        </AppLink>
+                      </Button>
+                    )}
+                    <Button asChild variant="ghost" size="xs">
+                      <AppLink href={`/admin/pages/${param}`}>
+                        <SettingsIcon />
+                        {page.editable ? "Settings" : "Edit"}
+                      </AppLink>
+                    </Button>
+                  </div>
                 </TableCell>
 
-                <TableCell className="text-muted-foreground font-mono text-xs">
-                  {page.handle}
+                <TableCell className="max-w-64">
+                  <PageStatusBadge isPublished={page.isPublished} content={page.status} showHint />
                 </TableCell>
 
-                <TableCell className="text-muted-foreground font-mono text-xs">
-                  {route}
-                </TableCell>
-
-                <TableCell>
-                  {page.isPublished ? (
-                    <Badge variant="secondary">Published</Badge>
+                <TableCell className="text-muted-foreground hidden text-xs lg:table-cell">
+                  {page.savedAt ? (
+                    <>
+                      {formatDate(page.savedAt, true)}
+                      {page.savedBy && (
+                        <span className="block max-w-48 truncate">
+                          {page.savedBy.replace(/\s*\(migration\)$/, "")}
+                        </span>
+                      )}
+                    </>
                   ) : (
-                    <Badge variant="outline">Hidden</Badge>
+                    "—"
                   )}
+                </TableCell>
+
+                <TableCell className="hidden text-right sm:table-cell">
+                  <div className="flex justify-end gap-1">
+                    {page.editable && (
+                      <Button asChild variant="outline" size="sm">
+                        <AppLink href={`/admin/pages/${param}/content`}>
+                          {page.status === "setup" ? <PlusIcon /> : <PencilIcon />}
+                          Edit content
+                        </AppLink>
+                      </Button>
+                    )}
+                    <Button asChild variant="ghost" size="sm">
+                      <AppLink href={`/admin/pages/${param}`} aria-label={`Settings for ${page.title}`}>
+                        <SettingsIcon />
+                        <span className="hidden sm:inline">{page.editable ? "Settings" : "Edit"}</span>
+                      </AppLink>
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             );

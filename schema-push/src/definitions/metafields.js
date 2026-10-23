@@ -1,5 +1,5 @@
 /**
- * Metafield definitions for PRODUCT, COLLECTION and PAGE owners.
+ * Metafield definitions for PRODUCT, COLLECTION, PAGE and SHOP owners.
  *
  * All live in the `custom` namespace so the Liquid theme reads them as
  * `product.metafields.custom.designer`, `collection.metafields.custom.hero_image`,
@@ -136,6 +136,71 @@ const page = [
     type: 'collection_reference',
   },
   { key: 'story_image', name: 'Story Image', type: 'file_reference', validations: [IMAGE_ONLY] },
+
+  /* ------------------------------------------------------------------ *
+   * Page builder (lib/page-builder/document.ts). Three copies of one JSON
+   * document. Only the PUBLISHED copy is readable by the storefront — the
+   * draft and the rollback copy are `storefrontAccess: 'NONE'`, so an
+   * unpublished draft cannot be fetched through the Storefront API at all.
+   * Written only by /api/admin/pages/builder, which validates every section.
+   * ------------------------------------------------------------------ */
+  {
+    key: 'sections',
+    name: 'Page Builder — Published',
+    type: 'json',
+    pin: false,
+    description: 'Managed by the page builder in the admin panel. Do not edit by hand.',
+  },
+  {
+    key: 'sections_draft',
+    name: 'Page Builder — Draft',
+    type: 'json',
+    storefrontAccess: 'NONE',
+    pin: false,
+    description: 'Managed by the page builder in the admin panel. Do not edit by hand.',
+  },
+  {
+    key: 'sections_previous',
+    name: 'Page Builder — Previous version',
+    type: 'json',
+    storefrontAccess: 'NONE',
+    pin: false,
+    description: 'Managed by the page builder in the admin panel. Do not edit by hand.',
+  },
+];
+
+/* -------------------------------------------------------------------- *
+ * E. SHOP — the Theme Builder (lib/theme-builder/layout.ts). The site's header
+ * and footer as one JSON document, three copies like a page's: only the
+ * PUBLISHED copy is storefront-readable; the draft and the rollback copy are
+ * `storefrontAccess: 'NONE'`. Written only by /api/admin/theme-builder.
+ * Until the published copy exists the storefront draws its original header and
+ * footer.
+ * -------------------------------------------------------------------- */
+const shop = [
+  {
+    key: 'theme_layout',
+    name: 'Theme Builder — Published',
+    type: 'json',
+    pin: false,
+    description: 'Header and footer, managed by the Theme Builder in the admin panel. Do not edit by hand.',
+  },
+  {
+    key: 'theme_layout_draft',
+    name: 'Theme Builder — Draft',
+    type: 'json',
+    storefrontAccess: 'NONE',
+    pin: false,
+    description: 'Header and footer, managed by the Theme Builder in the admin panel. Do not edit by hand.',
+  },
+  {
+    key: 'theme_layout_previous',
+    name: 'Theme Builder — Previous version',
+    type: 'json',
+    storefrontAccess: 'NONE',
+    pin: false,
+    description: 'Header and footer, managed by the Theme Builder in the admin panel. Do not edit by hand.',
+  },
 ];
 
 /**
@@ -146,7 +211,8 @@ export const metafieldDefinitions = [
   ...product.map((d) => ({ ...d, ownerType: 'PRODUCT', namespace: NAMESPACE })),
   ...collection.map((d) => ({ ...d, ownerType: 'COLLECTION', namespace: NAMESPACE })),
   ...page.map((d) => ({ ...d, ownerType: 'PAGE', namespace: NAMESPACE })),
+  ...shop.map((d) => ({ ...d, ownerType: 'SHOP', namespace: NAMESPACE })),
 ];
 
 /** Owner types this script touches, in the order they are pushed. */
-export const OWNER_TYPES = ['PRODUCT', 'COLLECTION', 'PAGE'];
+export const OWNER_TYPES = ['PRODUCT', 'COLLECTION', 'PAGE', 'SHOP'];

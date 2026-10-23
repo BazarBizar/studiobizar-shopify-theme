@@ -4,7 +4,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
+import { Honeypot } from "@/components/forms/honeypot";
 import { contactSchema, type ContactSubmission } from "@/lib/contact/schema";
+import { HONEYPOT_FIELD, honeypotValue } from "@/lib/honeypot";
 import { cn } from "@/lib/utils/cn";
 
 const inputClass =
@@ -61,14 +63,14 @@ export function ContactForm({ inquiryTypes }: { inquiryTypes: string[] }) {
     },
   });
 
-  async function onSubmit(values: ContactSubmission) {
+  async function onSubmit(values: ContactSubmission, event?: React.BaseSyntheticEvent) {
     setSubmitError(null);
 
     try {
       const response = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify({ ...values, [HONEYPOT_FIELD]: honeypotValue(event?.target) }),
       });
       const body = (await response.json()) as { message?: string };
       if (!response.ok) throw new Error(body.message ?? "That did not send.");
@@ -99,7 +101,8 @@ export function ContactForm({ inquiryTypes }: { inquiryTypes: string[] }) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-6">
+    <form onSubmit={handleSubmit(onSubmit)} noValidate className="relative flex flex-col gap-6">
+      <Honeypot />
       <h2 className="text-h3">Email Us</h2>
 
       <div className="grid gap-6 sm:grid-cols-2">

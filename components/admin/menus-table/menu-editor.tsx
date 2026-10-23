@@ -17,24 +17,17 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { CornerDownRightIcon, GripVerticalIcon, Loader2Icon, PlusIcon, SaveIcon, Trash2Icon } from "lucide-react";
+import { CornerDownRightIcon, GripVerticalIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
 
+import { DestinationPicker } from "@/components/admin/destination-picker";
+import { SaveBar } from "@/components/admin/save-bar";
 import { Button } from "@/components/admin/ui/button";
 import { Card, CardContent } from "@/components/admin/ui/card";
 import { Input } from "@/components/admin/ui/input";
 import { Label } from "@/components/admin/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/admin/ui/select";
 import type { DestinationOption, Menu, MenuItemNode } from "@/lib/admin/menus";
 import { updateMenuRequest, type MenuItemPayload } from "@/lib/admin/queries";
 import { cn } from "@/lib/utils/cn";
@@ -95,6 +88,15 @@ function parse(destination: string): { type: string; resourceId: string | null }
 
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Where a menu link goes — the panel's shared `DestinationPicker`, the same list
+ * the page builder's buttons use.
+ *
+ * An item can point at something this picker does not offer — a blog, a
+ * customer-account page, a page deleted since. Rather than silently resetting it
+ * to Home, the current value is offered as its own choice so the item keeps its
+ * destination through an unrelated edit.
+ */
 function DestinationSelect({
   value,
   options,
@@ -106,49 +108,9 @@ function DestinationSelect({
   onChange: (value: string) => void;
   id: string;
 }) {
-  const groups = React.useMemo(() => {
-    const map = new Map<string, DestinationOption[]>();
-    for (const option of options) {
-      const list = map.get(option.group) ?? [];
-      list.push(option);
-      map.set(option.group, list);
-    }
-    return [...map];
-  }, [options]);
-
-  /**
-   * An item can point at something this picker does not offer — a blog, a
-   * customer-account page, a page deleted since. Rather than silently resetting
-   * it to Home, the current value is added as its own option so the item keeps
-   * its destination through an unrelated edit.
-   */
   const known = options.some((option) => option.value === value);
-
-  return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger id={id} className="w-full">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {!known && (
-          <SelectGroup>
-            <SelectLabel>Current</SelectLabel>
-            <SelectItem value={value}>{value.split(":")[0]} — kept as is</SelectItem>
-          </SelectGroup>
-        )}
-        {groups.map(([group, list]) => (
-          <SelectGroup key={group}>
-            <SelectLabel>{group}</SelectLabel>
-            {list.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        ))}
-      </SelectContent>
-    </Select>
-  );
+  const all = known ? options : [{ value, label: "The link it has now (kept as is)", group: "Current" }, ...options];
+  return <DestinationPicker id={id} value={value} options={all} onChange={onChange} />;
 }
 
 function Row({
@@ -190,12 +152,12 @@ function Row({
         isDragging && "bg-muted/50 z-10",
       )}
     >
-      <div className="flex items-start gap-3 p-2">
+      <div className="flex items-end gap-3 p-2">
         <button
           type="button"
           aria-label={`Reorder ${draft.title}`}
           title="Drag to reorder"
-          className="text-muted-foreground hover:text-foreground mt-1.5 flex size-6 shrink-0 touch-none items-center justify-center rounded"
+          className="text-muted-foreground hover:text-foreground mb-1.5 flex size-6 shrink-0 cursor-grab touch-none items-center justify-center rounded"
           {...attributes}
           {...listeners}
         >
@@ -204,20 +166,20 @@ function Row({
 
         <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-2">
           <div className="space-y-1">
-            <Label htmlFor={`${draft.key}-title`} className="sr-only">
-              Label
+            <Label htmlFor={`${draft.key}-title`} className="text-muted-foreground text-xs font-normal">
+              Text people see
             </Label>
             <Input
               id={`${draft.key}-title`}
               value={draft.title}
-              placeholder="Label"
+              placeholder="e.g. Our Story"
               onChange={(event) => onChange({ ...draft, title: event.target.value })}
             />
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor={`${draft.key}-destination`} className="sr-only">
-              Destination
+            <Label htmlFor={`${draft.key}-destination`} className="text-muted-foreground text-xs font-normal">
+              Opens
             </Label>
             <DestinationSelect
               id={`${draft.key}-destination`}
@@ -229,13 +191,13 @@ function Row({
 
           {isHttp && (
             <div className="space-y-1 sm:col-span-2">
-              <Label htmlFor={`${draft.key}-url`} className="sr-only">
-                URL
+              <Label htmlFor={`${draft.key}-url`} className="text-muted-foreground text-xs font-normal">
+                Web address
               </Label>
               <Input
                 id={`${draft.key}-url`}
                 value={draft.url}
-                placeholder="https://example.com or /pages/something"
+                placeholder="e.g. https://www.instagram.com/studiobizar"
                 onChange={(event) => onChange({ ...draft, url: event.target.value })}
               />
             </div>
@@ -247,12 +209,13 @@ function Row({
             <Button
               type="button"
               variant="ghost"
-              size="icon"
+              size="sm"
               onClick={onAddChild}
-              aria-label={`Add a link under ${draft.title}`}
-              title="Add a link under this one"
+              aria-label={`Add a dropdown link under ${draft.title}`}
+              title="Add a link that opens from this one"
             >
               <CornerDownRightIcon className="size-4" />
+              Sub-link
             </Button>
           )}
           <Button
@@ -293,6 +256,9 @@ function SortableList({
   depth: 0 | 1;
   onChange: (next: Draft[]) => void;
 }) {
+  // dnd-kit numbers its screen-reader ids from a module counter, which the server and the
+  // browser count differently — a hydration mismatch on every drag handle. A stable id fixes it.
+  const dndId = React.useId();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -314,6 +280,7 @@ function SortableList({
 
   return (
     <DndContext
+      id={dndId}
       sensors={sensors}
       collisionDetection={closestCenter}
       modifiers={[restrictToVerticalAxis, restrictToParentElement]}
@@ -382,7 +349,7 @@ export function MenuEditor({
       (item) => item.destination === "HTTP" && item.url.trim() === "",
     );
     if (badUrl) {
-      toast.error("A custom link has no URL", { description: `"${badUrl.title}" points nowhere.` });
+      toast.error("A link has no web address", { description: `Fill in where "${badUrl.title}" should go.` });
       return;
     }
 
@@ -395,7 +362,7 @@ export function MenuEditor({
         items: items.map(toPayload),
       });
 
-      toast.success("Saved", { description: "The storefront cache has been dropped." });
+      toast.success("Saved", { description: "The menu is updated on the site." });
       router.refresh();
     } catch (error) {
       toast.error("Could not save", {
@@ -423,18 +390,14 @@ export function MenuEditor({
         </CardContent>
       </Card>
 
-      <div className="bg-background/80 sticky bottom-0 flex items-center justify-end gap-3 border-t py-3 backdrop-blur">
-        {items.length === 0 && (
-          <span className="text-destructive text-xs">A menu cannot be saved empty</span>
-        )}
-        {dirty && items.length > 0 && (
-          <span className="text-muted-foreground text-xs">Unsaved changes</span>
-        )}
-        <Button type="button" onClick={onSave} disabled={saving || !dirty || items.length === 0}>
-          {saving ? <Loader2Icon className="animate-spin" /> : <SaveIcon />}
-          Save
-        </Button>
-      </div>
+      <SaveBar
+        dirty={dirty}
+        saving={saving}
+        onSave={() => void onSave()}
+        onDiscard={() => setItems(menu.items.map(toDraft))}
+        note={items.length === 0 ? <span className="text-destructive">A menu cannot be saved empty</span> : undefined}
+        disabled={items.length === 0}
+      />
     </div>
   );
 }

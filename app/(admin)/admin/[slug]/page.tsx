@@ -14,6 +14,7 @@ import {
   type Definition,
   type Entry,
 } from "@/lib/admin/metaobjects";
+import { fieldCopy } from "@/lib/admin/field-copy";
 import { moduleFor } from "@/lib/admin/modules";
 import { labelForDefinition, typeForSlug } from "@/lib/admin/navigation";
 import { isSiteWide, siteWideTabHref } from "@/lib/admin/site-wide";
@@ -57,7 +58,7 @@ export default async function EntryListPage({ params }: PageProps<"/admin/[slug]
   if (isSiteWide(typeForSlug(slug))) redirect(siteWideTabHref(typeForSlug(slug)));
 
   const loaded = await load(slug);
-  if (!loaded) return <ScreenNotFound description="That content type does not exist. It may have been deleted in Shopify." />;
+  if (!loaded) return <ScreenNotFound description="We couldn’t find that list. The link may be wrong." />;
 
   const { definition, entries } = loaded;
   const moduleDef = moduleFor(definition.type);
@@ -67,15 +68,16 @@ export default async function EntryListPage({ params }: PageProps<"/admin/[slug]
     <div className="space-y-6">
       <PageHeader
         title={table.label}
-        meta={definition.type}
         description={
           table.readOnly
             ? `Submitted by customers. ${
                 moduleDef.editableFields?.length
-                  ? `Only ${moduleDef.editableFields.join(", ")} can be changed here.`
-                  : "These entries cannot be edited here."
+                  ? `You can only change the ${moduleDef.editableFields
+                      .map((key) => (fieldCopy(definition.type, key).label ?? key).toLowerCase())
+                      .join(", ")} here.`
+                  : "They can be read here but not changed."
               }`
-            : `${definition.fieldDefinitions.length} fields, edited straight on Shopify.`
+            : (moduleDef.description ?? "Changes you save here go live on the site straight away.")
         }
         actions={
           /* Hidden for read-only types as a courtesy. The refusal that matters is

@@ -14,6 +14,10 @@ import { cn } from "@/lib/utils/cn";
  * submitted (`enquire`, `Send inquiry`) — 48px, so it pairs with an input.
  *
  * `text` is the inline underlined link (`learn more`, `go back`).
+ *
+ * `data-sb-button` marks every one with its variant, so a section's design (Buttons
+ * typography and look — `lib/page-builder/design.ts`) can reach it, and give a
+ * `text` link its colours only.
  */
 
 export type ButtonVariant = "solid" | "outline" | "text";
@@ -56,7 +60,7 @@ export function Button({
   ...props
 }: Common & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
-    <button className={cn(VARIANTS[variant], className)} {...props}>
+    <button data-sb-button={variant} className={cn(VARIANTS[variant], className)} {...props}>
       {children}
     </button>
   );
@@ -68,11 +72,18 @@ export function ButtonLink({
   children,
   href,
   external,
+  reload,
   ...props
 }: Common & {
   href: string;
   /** Renders a plain anchor with the right rel, for an off-site destination. */
   external?: boolean;
+  /**
+   * A full page load in this tab, not a client navigation — for a route that sends the
+   * visitor elsewhere (customer sign-in goes to Shopify). A client navigation would
+   * fetch that redirect, which the storefront's `connect-src 'self'` refuses.
+   */
+  reload?: boolean;
 } & Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, "href">) {
   const classes = cn(VARIANTS[variant], className);
 
@@ -82,6 +93,7 @@ export function ButtonLink({
         href={href}
         target="_blank"
         rel="noopener noreferrer"
+        data-sb-button={variant}
         className={classes}
         {...props}
       >
@@ -90,8 +102,16 @@ export function ButtonLink({
     );
   }
 
+  if (reload) {
+    return (
+      <a href={href} data-sb-button={variant} className={classes} {...props}>
+        {children}
+      </a>
+    );
+  }
+
   return (
-    <Link href={href} className={classes} {...props}>
+    <Link href={href} data-sb-button={variant} className={classes} {...props}>
       {children}
     </Link>
   );

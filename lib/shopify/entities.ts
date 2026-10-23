@@ -116,6 +116,16 @@ export function sortProjects(projects: ProjectCard[]): ProjectCard[] {
   });
 }
 
+/**
+ * The projects to feature: those marked `is_selected`, or — when none is — the
+ * first ones by sort order, so a featured row is never empty for want of a flag.
+ */
+export function featuredProjects(projects: ProjectCard[], limit: number): ProjectCard[] {
+  const sorted = sortProjects(projects);
+  const selected = sorted.filter((project) => project.isSelected);
+  return (selected.length > 0 ? selected : sorted).slice(0, limit);
+}
+
 /* -------------------------------------------------------------------------- *
  * Designer
  * -------------------------------------------------------------------------- */
@@ -146,6 +156,15 @@ export function normalizeDesigner(entry: ShopifyMetaobject): Designer {
     portrait: portrait ? { ...portrait, altText: alt ?? portrait.altText } : null,
     sortOrder: fieldInt(fields, "sort_order"),
   };
+}
+
+/** `metaobjects` has no sort argument, so ordering happens here. */
+export function sortDesigners(designers: Designer[]): Designer[] {
+  return [...designers].sort(
+    (a, b) =>
+      (a.sortOrder ?? Number.MAX_SAFE_INTEGER) - (b.sortOrder ?? Number.MAX_SAFE_INTEGER) ||
+      a.name.localeCompare(b.name),
+  );
 }
 
 /* -------------------------------------------------------------------------- *
@@ -180,6 +199,111 @@ export function normalizeLocation(entry: ShopifyMetaobject): Location {
     mapUrl: fieldText(fields, "map_url"),
     sortOrder: fieldInt(fields, "sort_order"),
   };
+}
+
+/** `metaobjects` has no sort argument; locations order by `sort_order`, unsorted last. */
+export function sortLocations(locations: Location[]): Location[] {
+  return [...locations].sort((a, b) => (a.sortOrder ?? 99) - (b.sortOrder ?? 99));
+}
+
+/* -------------------------------------------------------------------------- *
+ * Contact channel
+ * -------------------------------------------------------------------------- */
+
+export type ContactChannel = {
+  handle: string;
+  label: string;
+  value: string;
+  linkType: Maybe<string>;
+  linkUrl: Maybe<string>;
+  sortOrder: Maybe<number>;
+};
+
+export function normalizeContactChannel(entry: ShopifyMetaobject): ContactChannel {
+  const fields = toFieldMap(entry.fields);
+  return {
+    handle: entry.handle,
+    label: fieldText(fields, "label") ?? "",
+    value: fieldText(fields, "value") ?? "",
+    linkType: fieldText(fields, "link_type"),
+    linkUrl: fieldText(fields, "link_url"),
+    sortOrder: fieldInt(fields, "sort_order"),
+  };
+}
+
+export function sortContactChannels(channels: ContactChannel[]): ContactChannel[] {
+  return [...channels].sort((a, b) => (a.sortOrder ?? 99) - (b.sortOrder ?? 99));
+}
+
+/* -------------------------------------------------------------------------- *
+ * Service
+ * -------------------------------------------------------------------------- */
+
+export type Service = {
+  handle: string;
+  title: string;
+  bodyHtml: string;
+  sortOrder: Maybe<number>;
+};
+
+export function normalizeService(entry: ShopifyMetaobject): Service {
+  const fields = toFieldMap(entry.fields);
+  return {
+    handle: entry.handle,
+    title: fieldText(fields, "title") ?? entry.handle,
+    bodyHtml: fieldRichText(fields, "body"),
+    sortOrder: fieldInt(fields, "sort_order"),
+  };
+}
+
+export function sortServices(services: Service[]): Service[] {
+  return [...services].sort(
+    (a, b) =>
+      (a.sortOrder ?? Number.MAX_SAFE_INTEGER) - (b.sortOrder ?? Number.MAX_SAFE_INTEGER) ||
+      a.title.localeCompare(b.title),
+  );
+}
+
+/* -------------------------------------------------------------------------- *
+ * FAQ
+ * -------------------------------------------------------------------------- */
+
+export type FaqItem = {
+  handle: string;
+  question: string;
+  answer: string;
+  category: Maybe<string>;
+  sortOrder: Maybe<number>;
+};
+
+export type FaqGroup = { category: Maybe<string>; items: FaqItem[] };
+
+export function normalizeFaqItem(entry: ShopifyMetaobject): FaqItem {
+  const fields = toFieldMap(entry.fields);
+  return {
+    handle: entry.handle,
+    question: fieldText(fields, "question") ?? entry.handle,
+    answer: fieldRichText(fields, "answer"),
+    category: fieldText(fields, "category"),
+    sortOrder: fieldInt(fields, "sort_order"),
+  };
+}
+
+/**
+ * Sorted by `sort_order`, then grouped by category in the order the categories
+ * first appear. Uncategorised items fall under `fallback` — "General" on the FAQ
+ * page; null (no heading) for a hand-written list.
+ */
+export function groupFaqItems(items: FaqItem[], fallback: Maybe<string> = "General"): FaqGroup[] {
+  const sorted = [...items].sort((a, b) => (a.sortOrder ?? 99) - (b.sortOrder ?? 99));
+
+  return sorted.reduce<FaqGroup[]>((groups, item) => {
+    const category = item.category ?? fallback;
+    const found = groups.find((group) => group.category === category);
+    if (found) found.items.push(item);
+    else groups.push({ category, items: [item] });
+    return groups;
+  }, []);
 }
 
 /* -------------------------------------------------------------------------- *

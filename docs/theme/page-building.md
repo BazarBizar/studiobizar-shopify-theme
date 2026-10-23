@@ -83,6 +83,14 @@ renders correctly. An editor discovers what a block does by emptying fields and
 seeing what happens, and a section that breaks when a field is blank is a section
 they will stop using.
 
+**4. The Style tab: `render 'sb-section-style', settings: s`.** The builder's Style
+tab (colours, custom spacing, line, corners) is the same set of settings on every
+section, generated into its schema under a "Style" header. One snippet reads them
+all and writes the attributes — put it on the section's outer element, before
+`{{ section.shopify_attributes }}`. A section that already has a `style` attribute
+passes it as `extra_style` so there is only one. `yarn check:liquid` counts the
+Style settings as read only when this exact render is present.
+
 One more, for whoever adds the next section: **classes assembled from a setting
 are invisible to Tailwind.** `section-{{ s.rhythm }}` is never emitted. That is
 what `snippets/sb-section-classes.liquid` is for — write the options out as
@@ -94,7 +102,48 @@ literals in a `case`.
 |---|---|---|
 | `sb-page-content` | Page content | The title and body typed in admin |
 | `sb-rich-text` | Text · Contact call to action | A band of copy with a button |
-| `sb-media-text` | Media and text | Image beside copy, either side |
+| `sb-media-text` | Media and text | Image beside copy, either side — shape, width, alignment, small label |
+
+### The landing sections (page builder parity)
+
+These sixteen are the Liquid halves of the Next page builder's landing sections
+(`lib/page-builder/sections-landing.ts`). Same settings, same presets with the same
+demo copy, same drawing — one band, two renderers.
+
+| Section | Builder type | Presets |
+|---|---|---|
+| `sb-banner` | `image_banner` | Image banner · text in the corner · with text panel · short |
+| `sb-slideshow` | `slideshow` | Slideshow |
+| `sb-cta-banner` | `cta_banner` | Call to action · split · on a photograph |
+| `sb-multicolumn` | `multicolumn` | Columns with images · Icon features · Cards · Text columns |
+| `sb-stats` | `stats` | Numbers |
+| `sb-steps` | `steps` | Steps · Timeline |
+| `sb-tabs` | `tabs` | Tabs |
+| `sb-collapsible` | `collapsible` | Collapsible content |
+| `sb-video` | `video` | Video (nothing loads from YouTube/Vimeo before play) |
+| `sb-marquee` | `marquee` | Scrolling text |
+| `sb-collage` | `collage` | Collage · Image grid with titles |
+| `sb-testimonials` | `testimonials` | Testimonials · Large quote |
+| `sb-logo-list` | `logo_list` | Logo list |
+| `sb-featured-product` | `featured_product` | Featured product |
+| `sb-spacer` | `spacer` | Spacer · Divider |
+| `sb-newsletter` | `newsletter` | Newsletter sign-up |
+
+`sb-banner` is the banner WITH copy; `sb-image-banner` stays the full-bleed image
+alone (the builder's `full_image`).
+
+**Their `{% schema %}` is generated, not written.** `yarn liquid:schemas` derives
+each one from the Next definition and its presets (`scripts/lib/liquid.ts`); only
+the markup above it is hand-written. Behaviour is in `assets/sb-sections.js`
+(slideshow, tabs, video) and the icons in `snippets/sb-section-icon.liquid`,
+generated from lucide by `yarn liquid:icons`.
+
+**Keeping the two in step.** `yarn check:liquid` fails when a theme section is
+missing, its schema is stale, a setting has different options, defaults or
+ranges, a preset is missing, a block type differs, the markup never reads a
+setting it offers, or the icon snippet is out of date. After changing a builder
+section: `yarn liquid:schemas`, update the markup, `yarn theme:build`,
+`yarn check:liquid`.
 
 `sb-rich-text` replaced three hard-coded Next components that differed only in
 their words: `IntroBlock` on the landing page, `ContactCta`, and the lede on half
@@ -107,6 +156,31 @@ collection rail, FAQ accordion, captioned row, Instagram row, contact channels.
 Each is already scoped as a port of its Next component; the change this
 requirement makes is that each one now also needs a preset and must work on a
 page nobody has designed.
+
+## Testing without the store
+
+`shopify theme dev` needs a login to the store, which an agent or CI does not have.
+Everything below runs locally, without Shopify:
+
+| Command | What it proves |
+|---|---|
+| `yarn check:liquid` | Each theme section matches its page-builder twin — schema, options, defaults, blocks, presets, every setting read by the markup, icons, and the generated design snippet, Site style and fonts (`yarn liquid:design`) |
+| `yarn check:liquid-render` | The design snippet writes exactly what the Next builder writes, for every design control; a designed section is drawn right on desktop and phone. Each section **renders**: every preset, and every field empty (live and in the editor). It runs in Chromium with the built CSS and the theme's JS, at 1440px and 390px: no overflow, no console errors, and tabs, video and slideshow working. Screenshots and an `index.html` with all of them are written to the temp folder — open it in a browser to look |
+| `yarn theme:check` | The compiled `assets/sb-theme.css` is up to date with the sections |
+| `yarn theme:lint` | Shopify Theme Check — Liquid syntax, schema validity, missing translations |
+
+`check:liquid-render` uses liquidjs with Shopify's filters and tags stubbed, and
+mock drops (a product, CDN photographs). A missing translation key fails it, as it
+would print "translation missing" on the store. `--only sb-banner,sb-tabs`
+renders just those sections.
+
+What only the store can show: the theme editor's settings panel, real drops
+(metafields, product data), and JSON templates assembled into a page. For that
+without an interactive login, install Shopify's **Theme Access** app, create a
+password for the theme, and run, e.g.
+`SHOPIFY_CLI_THEME_TOKEN=… shopify theme dev --store studio-bizar-be --path theme`.
+That serves an unpublished development theme — the live theme is untouched — and
+the password can be revoked from the app at any time.
 
 ## What does not change
 

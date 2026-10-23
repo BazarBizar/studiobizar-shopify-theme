@@ -175,6 +175,7 @@ async function main() {
   });
 
   await run("pages", { first: 3, after: null });
+  await run("pagesBuilderStatus", { first: 3, after: null });
   /**
    * Page id 0, on the same assumption products and collections rely on: Shopify
    * never issues it, so the document is parsed and validated while resolving
@@ -184,6 +185,13 @@ async function main() {
    */
   await run("page", { id: "gid://shopify/Page/0" });
   await run("pageUpdate", { id: "gid://shopify/Page/0", page: {} });
+  /**
+   * A blank title is refused by Shopify's validation before anything is created,
+   * so the document is parsed and nothing is written. `pageDelete` gets id 0 for
+   * the reason `metaobjectDelete` does: Shopify never issues it.
+   */
+  await run("pageCreate", { page: { title: "" } });
+  await run("pageDelete", { id: "gid://shopify/Page/0" });
   await run("pageMetafieldDefinitions", {});
 
   await run("stagedUploadsCreate", { input: [] });
@@ -202,6 +210,12 @@ async function main() {
 
   /** Entry id 0, which Shopify never issues, so this parses the document and deletes nothing. */
   await run("metaobjectDelete", { id: "gid://shopify/Metaobject/0" });
+
+  // Theme Builder. The write names shop 0, which does not exist, so nothing is set.
+  await run("themeLayout", {});
+  await run("themeLayoutSet", {
+    metafields: [{ ownerId: "gid://shopify/Shop/0", namespace: "custom", key: "theme_layout_draft", type: "json", value: "{}" }],
+  });
 
   /**
    * The count is of what this run actually SENT, not of what the allowlist contains —

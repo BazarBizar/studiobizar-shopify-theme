@@ -1,10 +1,24 @@
-import { FileTextIcon, ImageIcon, InboxIcon, LayersIcon } from "lucide-react";
+import {
+  FileTextIcon,
+  HelpCircleIcon,
+  ImageIcon,
+  InboxIcon,
+  LayoutTemplateIcon,
+  ListIcon,
+  PlusIcon,
+  SettingsIcon,
+} from "lucide-react";
+
+import { AppLink } from "@/components/admin/app-link";
 
 import { PartToWhole } from "@/components/admin/dashboard/part-to-whole";
 import { RecentPanel } from "@/components/admin/dashboard/recent-panel";
 import { StatTile } from "@/components/admin/dashboard/stat-tile";
 import { PageHeader } from "@/components/admin/page-header";
+import { getAdminSettings } from "@/lib/admin/admin-settings";
+import { Card, CardContent } from "@/components/admin/ui/card";
 import { getDashboardData } from "@/lib/admin/dashboard";
+import { listPagesWithContent } from "@/lib/admin/page-builder";
 import { SERIES } from "@/lib/admin/series-colors";
 
 /**
@@ -15,24 +29,59 @@ import { SERIES } from "@/lib/admin/series-colors";
  * one genuine part-to-whole gets the single chart, and short recency lists stay lists.
  */
 export default async function AdminDashboardPage() {
-  const data = await getDashboardData();
+  // The heading's wording comes from Site-wide → Admin appearance.
+  const [data, settings, pages] = await Promise.all([
+    getDashboardData(),
+    getAdminSettings(),
+    listPagesWithContent().catch(() => []),
+  ]);
+  const unpublished = pages.filter((page) => page.status === "changes" || page.status === "draft").length;
+
+  /** The jobs people actually come here to do, one click each. */
+  const shortcuts = [
+    { href: "/admin/pages", label: "Edit a page", icon: LayoutTemplateIcon },
+    { href: "/admin/project/new", label: "Add a project", icon: PlusIcon },
+    { href: "/admin/faq_item/new", label: "Add a question to the FAQ", icon: HelpCircleIcon },
+    { href: "/admin/media", label: "Upload photos", icon: ImageIcon },
+    { href: "/admin/menus", label: "Change the menus", icon: ListIcon },
+    { href: "/admin/site-wide", label: "Footer, contact & social links", icon: SettingsIcon },
+  ];
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Dashboard"
-        description="Everything on this store is edited here and stored in Shopify."
-      />
+      <PageHeader title={settings.dashboardTitle} description={settings.dashboardDescription} />
+
+      <Card className="gap-0 py-4">
+        <CardContent className="space-y-3 px-4">
+          <p className="text-sm font-medium">What would you like to do?</p>
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            {shortcuts.map(({ href, label, icon: Icon }) => (
+              <AppLink
+                key={href}
+                href={href}
+                className="hover:bg-muted flex items-center gap-3 rounded-md border px-3 py-2.5 text-sm transition-colors"
+              >
+                <Icon className="text-muted-foreground size-4 shrink-0" />
+                {label}
+              </AppLink>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatTile
-          label="Content types"
-          href="/admin/project"
-          icon={<LayersIcon className="size-4" />}
+          label="Pages"
+          href="/admin/pages"
+          icon={<LayoutTemplateIcon className="size-4" />}
           tint={SERIES.blue.text}
-          value={data.definitionCount}
-          detail={`${data.fieldCount} fields in total`}
-          note={`${data.contentCount} editable, ${data.readOnlyCount} read-only`}
+          value={pages.length}
+          detail="Pages on the website"
+          attention={
+            unpublished > 0
+              ? `${unpublished} with changes not published yet`
+              : undefined
+          }
         />
 
         <StatTile
@@ -41,7 +90,7 @@ export default async function AdminDashboardPage() {
           icon={<FileTextIcon className="size-4" />}
           tint={SERIES.aqua.text}
           value={data.projectTotal}
-          detail={`${data.projectSplit[0]?.value ?? 0} marked as selected`}
+          detail={`${data.projectSplit[0]?.value ?? 0} shown on the homepage`}
         />
 
         <StatTile
@@ -50,7 +99,7 @@ export default async function AdminDashboardPage() {
           icon={<ImageIcon className="size-4" />}
           tint={SERIES.orange.text}
           value={data.imagesTotal}
-          detail="Captioned images used across the site"
+          detail="Photos used in slideshows and galleries"
         />
 
         <StatTile
@@ -59,7 +108,7 @@ export default async function AdminDashboardPage() {
           icon={<InboxIcon className="size-4" />}
           tint={SERIES.violet.text}
           value={data.inquiriesTotal}
-          detail="Submitted through the storefront"
+          detail="Sent by visitors through the website"
           /* A sentence, not a coloured dot: colour is never the only carrier. */
           attention={
             data.inquiriesNew > 0
@@ -75,8 +124,8 @@ export default async function AdminDashboardPage() {
           noun="projects"
           total={data.projectTotal}
           segments={[
-            { label: "Selected", value: data.projectSplit[0]?.value ?? 0, series: "blue" },
-            { label: "Not selected", value: data.projectSplit[1]?.value ?? 0, series: "orange" },
+            { label: "On the homepage", value: data.projectSplit[0]?.value ?? 0, series: "blue" },
+            { label: "Not on the homepage", value: data.projectSplit[1]?.value ?? 0, series: "orange" },
           ]}
         />
 

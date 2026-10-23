@@ -27,7 +27,8 @@
     },
     "language": {
       "soon": "Soon"
-    }
+    },
+    "go_back": "go back"
   },
   "newsletter": {
     "email_label": "Your email address",
@@ -139,5 +140,18 @@
     "year": "Year",
     "category": "Category",
     "creative_lead": "Creative lead"
+  },
+  "sections": {
+    "slideshow": {
+      "label": "Slideshow",
+      "slide": "Slide {{ index }} of {{ total }}",
+      "previous": "Previous slide",
+      "next": "Next slide",
+      "pause": "Pause the slideshow",
+      "play": "Play the slideshow"
+    },
+    "video": {
+      "play": "Play: {{ name }}"
+    }
   }
 }

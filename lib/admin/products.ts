@@ -8,7 +8,8 @@ import { adminGraphQL, assertNoUserErrors } from "./shopify";
  *
  * WRITE SCOPE: **edit only**. No create, no delete — those stay in Shopify, and
  * `productCreate`/`productDelete` are absent from the operation allowlist entirely, so
- * there is nothing here for a caller to reach for.
+ * there is nothing here for a caller to reach for. Editing includes a product's photos
+ * (link, unlink, order — never deleting a file) and which manual collections it is in.
  *
  * This store has 2027 products, so every list is server-driven: search, filter, sort and
  * paging all happen in Shopify. Nothing here loads the catalogue into memory.
@@ -356,6 +357,65 @@ export async function updateProduct(
   if (!data.productUpdate.product) throw new Error("Shopify updated nothing.");
 
   return data.productUpdate.product;
+}
+
+/* ------------------------------------------------------------------ photos */
+
+/**
+ * A product's photos are FILES in the library that point at the product. So adding one
+ * that is already in the library is linking it (`referencesToAdd`), not uploading it
+ * again, and removing one is unlinking it (`referencesToRemove`): the file stays in
+ * Media, still on any other product that uses it. Nothing here deletes a file.
+ */
+async function linkFiles(productId: string, fileIds: string[], link: boolean) {
+  if (fileIds.length === 0) return;
+  const data = await adminGraphQL<{
+    fileUpdate: { userErrors: { field?: string[] | null; message: string }[] };
+  }>("fileUpdate", OPERATIONS.fileUpdate.document, {
+    files: fileIds.map((id) => (link ? { id, referencesToAdd: [productId] } : { id, referencesToRemove: [productId] })),
+  });
+  assertNoUserErrors(data.fileUpdate.userErrors);
+}
+
+export const addProductPhotos = (productId: string, fileIds: string[]) => linkFiles(productId, fileIds, true);
+export const removeProductPhotos = (productId: string, fileIds: string[]) => linkFiles(productId, fileIds, false);
+
+/**
+ * New positions, 0 = the main photo. Shopify applies them in a BACKGROUND JOB, so the
+ * product read straight after may still show the old order — the editor keeps its own.
+ */
+export async function reorderProductPhotos(productId: string, moves: { id: string; newPosition: number }[]) {
+  if (moves.length === 0) return;
+  const data = await adminGraphQL<{
+    productReorderMedia: { userErrors: { field?: string[] | null; message: string }[] };
+  }>("productReorderMedia", OPERATIONS.productReorderMedia.document, {
+    id: productId,
+    // Shopify's MoveInput takes the position as a string.
+    moves: moves.map((move) => ({ id: move.id, newPosition: String(move.newPosition) })),
+  });
+  assertNoUserErrors(data.productReorderMedia.userErrors);
+}
+
+/* ------------------------------------------------------------------ collections */
+
+/**
+ * Puts a product into (or takes it out of) MANUAL collections. Membership belongs to
+ * the product in this API version (`collectionsToJoin` / `collectionsToLeave`), so a
+ * collection's "Add products" is one product update per product. The caller refuses
+ * smart collections: their rules decide what is in them.
+ */
+export async function setProductCollections(
+  productId: string,
+  change: { join?: string[]; leave?: string[] },
+) {
+  const product: Record<string, unknown> = { id: productId };
+  if (change.join?.length) product.collectionsToJoin = change.join;
+  if (change.leave?.length) product.collectionsToLeave = change.leave;
+
+  const data = await adminGraphQL<{
+    productUpdate: { userErrors: { field?: string[] | null; message: string }[] };
+  }>("productUpdate", OPERATIONS.productUpdate.document, { product, media: null });
+  assertNoUserErrors(data.productUpdate.userErrors);
 }
 
 /**

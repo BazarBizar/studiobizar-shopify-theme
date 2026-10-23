@@ -9,6 +9,10 @@
     outline — the taller bordered control used beside a form field, 48px.
     text    — the inline underlined link (`learn more`, `go back`).
 
+  `data-sb-button` carries the variant, as in Next: a section's design (Buttons
+  typography and look — snippets/sb-design.liquid) reaches every one, and gives a
+  `text` link its colours only.
+
   Accepts:
     label    — the text (required)
     href     — renders an <a>; omit for a <button>
@@ -40,6 +44,7 @@
 {%- if href != blank -%}
   <a
     href="{{ href }}"
+    data-sb-button="{{ variant }}"
     class="{{ classes }}"
     {%- if external %} target="_blank" rel="noopener noreferrer"{% endif %}
     {{ attrs }}
@@ -52,6 +57,7 @@
 {%- else -%}
   <button
     type="{{ type | default: 'button' }}"
+    data-sb-button="{{ variant }}"
     class="{{ classes }}"
     {%- if disabled %} disabled{% endif %}
     {{ attrs }}

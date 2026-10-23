@@ -1,13 +1,12 @@
 "use client";
 
-import { Loader2Icon, SaveIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
 
 import { MediaField } from "@/components/admin/media/media-field";
 import { RichTextEditor } from "@/components/admin/rich-text-editor";
-import { Button } from "@/components/admin/ui/button";
+import { SaveBar } from "@/components/admin/save-bar";
 import { Card, CardContent } from "@/components/admin/ui/card";
 import { Input } from "@/components/admin/ui/input";
 import { Label } from "@/components/admin/ui/label";
@@ -115,7 +114,7 @@ export function CollectionForm({
       const saved = (await response.json()) as { id: string; handle: string };
 
       toast.success("Saved", {
-        description: mode === "create" ? "Collection created." : `${keys.length} field(s) updated.`,
+        description: mode === "create" ? "The new collection is created." : "Your changes are live on the site.",
       });
 
       if (mode === "create") {
@@ -146,7 +145,7 @@ export function CollectionForm({
         <Card className="gap-0 py-0">
           <CardContent className="space-y-6 px-6 py-6">
             <div className="space-y-1.5">
-              <Label htmlFor="title">Title</Label>
+              <Label htmlFor="title">Collection name</Label>
               <Input
                 id="title"
                 value={form.title}
@@ -163,16 +162,18 @@ export function CollectionForm({
             <Separator />
 
             <div className="space-y-1.5">
-              <Label htmlFor="handle">Handle</Label>
-              <Input
-                id="handle"
-                value={form.handle}
-                onChange={(event) => set("handle", event.target.value)}
-                className="font-mono text-xs"
-              />
+              <Label htmlFor="handle">Web address</Label>
+              <div className="flex items-center gap-1">
+                <span className="text-muted-foreground shrink-0 text-sm">/collections/</span>
+                <Input
+                  id="handle"
+                  value={form.handle}
+                  onChange={(event) => set("handle", event.target.value)}
+                />
+              </div>
               <p className="text-muted-foreground text-xs">
-                The storefront URL segment. Leave blank on a new collection and Shopify
-                generates one from the title.
+                Leave empty on a new collection and it is made from the name. Changing it later
+                breaks links to the old address.
               </p>
             </div>
 
@@ -184,6 +185,7 @@ export function CollectionForm({
                 value={form.descriptionHtml}
                 onChange={(value) => set("descriptionHtml", value)}
                 ariaLabel="Description"
+                format="html"
               />
             </div>
 
@@ -198,7 +200,7 @@ export function CollectionForm({
                 onChange={(gid) => set("imageGid", gid)}
               />
               <Label htmlFor="imageAlt" className="pt-2">
-                Image alt text
+                Image description (for Google and screen readers)
               </Label>
               <Input
                 id="imageAlt"
@@ -210,7 +212,7 @@ export function CollectionForm({
             <Separator />
 
             <div className="space-y-1.5">
-              <Label htmlFor="sortOrder">Product sort order</Label>
+              <Label htmlFor="sortOrder">Order of the products</Label>
               <Select value={form.sortOrder} onValueChange={(value) => set("sortOrder", value)}>
                 <SelectTrigger id="sortOrder" className="w-full">
                   <SelectValue />
@@ -229,7 +231,7 @@ export function CollectionForm({
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor="seoTitle">SEO title</Label>
+                <Label htmlFor="seoTitle">Title in Google</Label>
                 <Input
                   id="seoTitle"
                   value={form.seoTitle}
@@ -237,7 +239,7 @@ export function CollectionForm({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="seoDescription">SEO description</Label>
+                <Label htmlFor="seoDescription">Description in Google</Label>
                 <Textarea
                   id="seoDescription"
                   rows={3}
@@ -251,7 +253,7 @@ export function CollectionForm({
               <>
                 <Separator />
                 <div className="space-y-2">
-                  <Label>Rules</Label>
+                  <Label>Which products are in it</Label>
                   {/**
                    * READ-ONLY, and not because a control is disabled: `lib/admin/collections.ts`
                    * has no field for `ruleSet` and the validation schema has no key for it, so
@@ -262,12 +264,12 @@ export function CollectionForm({
                   <div className="bg-muted/40 space-y-1 rounded-md border px-3 py-2">
                     <p className="text-muted-foreground text-xs">
                       Products are chosen automatically when{" "}
-                      {ruleSet.appliedDisjunctively ? "ANY" : "ALL"} of these match. Edit rules in
-                      Shopify.
+                      {ruleSet.appliedDisjunctively ? "any" : "all"} of these match. These rules are
+                      changed in Shopify.
                     </p>
                     <ul className="space-y-0.5">
                       {ruleSet.rules.map((rule, index) => (
-                        <li key={index} className="font-mono text-xs">
+                        <li key={index} className="text-xs">
                           {humanise(rule.column)} {humanise(rule.relation)} “{rule.condition}”
                         </li>
                       ))}
@@ -279,30 +281,12 @@ export function CollectionForm({
           </CardContent>
         </Card>
 
-        <div className="bg-background/95 supports-[backdrop-filter]:bg-background/70 sticky bottom-0 flex items-center justify-between gap-3 border-t py-4 backdrop-blur">
-          <p className="text-muted-foreground text-xs">
-            {isDirty ? `${dirtyKeys.length} unsaved change(s)` : "All changes saved"}
-          </p>
-
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={!isDirty || saving}
-              onClick={() => setForm(initial)}
-            >
-              Discard
-            </Button>
-            <Button type="submit" disabled={saving || (mode === "edit" && !isDirty)}>
-              {saving ? (
-                <Loader2Icon className="size-4 animate-spin" />
-              ) : (
-                <SaveIcon className="size-4" />
-              )}
-              {saving ? "Saving…" : mode === "create" ? "Create collection" : "Save"}
-            </Button>
-          </div>
-        </div>
+        <SaveBar
+          dirty={isDirty || mode === "create"}
+          saving={saving}
+          saveLabel={mode === "create" ? "Create" : "Save"}
+          onDiscard={() => setForm(initial)}
+        />
       </fieldset>
     </form>
   );

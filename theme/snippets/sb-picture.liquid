@@ -1,0 +1,50 @@
+{% comment %}
+  A Shopify image in a box of a given shape — Picture in
+  components/sections/landing/shared.tsx.
+
+  Accepts:
+    image     — an image drop
+    ratio     — portrait (4:5) | square | landscape (4:3) | adapt (the photograph's own)
+    sizes     — the sizes attribute
+    class     — utilities for the box
+    img_class — utilities for the <img>
+
+  An empty image draws Shopify's placeholder in the theme editor only, so the
+  band shows its shape there; on the live store it draws nothing.
+{% endcomment %}
+
+{%- liquid
+  case ratio
+    when 'square'
+      assign ratio_class = 'aspect-square'
+    when 'landscape'
+      assign ratio_class = 'aspect-[4/3]'
+    when 'adapt'
+      assign ratio_class = ''
+      if image == blank
+        assign ratio_class = 'aspect-[4/3]'
+      endif
+    else
+      assign ratio_class = 'aspect-[4/5]'
+  endcase
+
+  assign image_class = 'absolute inset-0 h-full w-full object-cover ' | append: img_class
+-%}
+
+{%- if image != blank or request.design_mode -%}
+  <div
+    class="relative w-full overflow-hidden bg-foreground/5 {{ ratio_class }} {{ class }}"
+    {%- if ratio == 'adapt' and image != blank %} style="aspect-ratio: {{ image.aspect_ratio }};"{% endif %}
+  >
+    {%- if image != blank -%}
+      {%- render 'sb-image',
+        image: image,
+        sizes: sizes,
+        widths: '400, 620, 830, 1240, 1660',
+        class: image_class
+      -%}
+    {%- else -%}
+      {{ 'image' | placeholder_svg_tag: 'absolute inset-0 h-full w-full bg-foreground/10 fill-current opacity-30' }}
+    {%- endif -%}
+  </div>
+{%- endif -%}

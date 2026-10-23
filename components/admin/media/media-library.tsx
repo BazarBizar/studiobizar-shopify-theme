@@ -10,7 +10,6 @@ import {
   ListIcon,
   Loader2Icon,
   SearchIcon,
-  UploadIcon,
 } from "lucide-react";
 import Image from "next/image";
 import * as React from "react";
@@ -31,7 +30,6 @@ import { Skeleton } from "@/components/admin/ui/skeleton";
 import { Switch } from "@/components/admin/ui/switch";
 import {
   setFileAltRequest,
-  uploadFileRequest,
   useFiles,
   type FileKind,
   type FileSort,
@@ -41,6 +39,7 @@ import { cn } from "@/lib/utils/cn";
 
 import { describe, FallbackIcon, formatBytes, formatOf, pixels, sized } from "./media-utils";
 import { MediaViewer, VIEWER_LAST } from "./media-viewer";
+import { UploadButton, useFileUpload } from "./upload";
 
 /**
  * The media library.
@@ -104,7 +103,8 @@ const VIEWS: { value: View; label: string; Icon: typeof ListIcon }[] = [
 
 const PAGE_SIZE = 50;
 
-const formatNumber = (value: number) => new Intl.NumberFormat().format(value);
+// A fixed locale: the viewer's own differs between server and browser render ("2,027" vs "2.027").
+const formatNumber = (value: number) => new Intl.NumberFormat("en-GB").format(value);
 
 function Pagination({
   page,
@@ -218,7 +218,7 @@ function useAltEditor(file: PickerFile, onSaved: (id: string, alt: string) => vo
    * saved value until the next refetch — `file.alt` still carries the OLD text
    * after a successful save, because nothing refetches the list.
    *
-   * Tracking the saved value here keeps `dirty` and the "No alt text" badge
+   * Tracking the saved value here keeps `dirty` and the "No description" badge
    * honest the moment a save lands, with no round trip.
    */
   const [stored, setStored] = React.useState(file.alt ?? "");
@@ -261,7 +261,7 @@ function AltInput({ editor, className }: { editor: AltEditor; className?: string
   return (
     <div className={cn("flex items-center gap-2", className)}>
       <Label htmlFor={`alt-${file.id}`} className="sr-only">
-        Alt text
+        Description
       </Label>
       <Input
         id={`alt-${file.id}`}
@@ -296,7 +296,7 @@ function StatusBadges({ editor }: { editor: AltEditor }) {
     <>
       {!stored && !dirty && (
         <Badge variant="outline" className="text-[11px] font-normal">
-          No alt text
+          No description
         </Badge>
       )}
       {file.status !== "READY" && (
@@ -383,7 +383,7 @@ function Tile({ file, onOpen, onSaved }: ItemProps) {
 function SmallTile({ file, onOpen }: Pick<ItemProps, "file" | "onOpen">) {
   const format = formatOf(file);
   const size = file.size != null ? formatBytes(file.size) : null;
-  const details = [file.filename, describe(file), file.alt ? `Alt: ${file.alt}` : "No alt text"]
+  const details = [file.filename, describe(file), file.alt ? file.alt : "No description yet"]
     .filter(Boolean)
     .join("\n");
 
@@ -481,7 +481,6 @@ export function MediaLibrary() {
   const [sort, setSort] = React.useState<LibrarySort>("newest");
   const [view, setView] = React.useState<View>("list");
   const [onlyMissing, setOnlyMissing] = React.useState(false);
-  const [uploading, setUploading] = React.useState(false);
   /** Index into `shown` of the file open in the viewer. */
   const [viewing, setViewing] = React.useState<number | null>(null);
   /**
@@ -566,31 +565,12 @@ export function MediaLibrary() {
     });
   }, [files, onlyMissing, localSort, sort]);
 
-  async function onUpload(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    // Reset immediately so choosing the same file twice still fires a change event.
-    event.target.value = "";
-    if (!file) return;
-
-    setUploading(true);
-    try {
-      const { processing } = await uploadFileRequest(file);
-      toast.success("Uploaded", {
-        description: processing
-          ? "Added to Shopify Files — the preview appears once processing finishes."
-          : "Added to Shopify Files.",
-      });
-      await refetch();
-      // Newest first is the default order, so the new file is at the top of page 1.
-      goTo(0);
-    } catch (caught) {
-      toast.error("Upload failed", {
-        description: caught instanceof Error ? caught.message : "Shopify did not accept the file.",
-      });
-    } finally {
-      setUploading(false);
-    }
-  }
+  // The shared upload: same request, button and toasts as every media picker.
+  const { uploading, upload } = useFileUpload(async () => {
+    await refetch();
+    // Newest first is the default order, so the new file is at the top of page 1.
+    goTo(0);
+  });
 
   /*
     Said plainly because it would otherwise be a trap. Shopify's file query has no
@@ -661,19 +641,13 @@ export function MediaLibrary() {
 
         <ViewToggle view={view} onChange={setView} />
 
-        <Button asChild variant="outline" disabled={uploading}>
-          <label className="cursor-pointer">
-            {uploading ? <Loader2Icon className="animate-spin" /> : <UploadIcon />}
-            Upload
-            <input type="file" className="sr-only" onChange={onUpload} disabled={uploading} />
-          </label>
-        </Button>
+        <UploadButton uploading={uploading} onFile={(file) => void upload(file)} size="default" />
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
         <Switch id="only-missing" checked={onlyMissing} onCheckedChange={setOnlyMissing} />
         <Label htmlFor="only-missing" className="text-sm font-normal">
-          Only files without alt text
+          Only files without a description
         </Label>
         {localOnly && (
           <span className="text-muted-foreground text-xs">
@@ -696,12 +670,12 @@ export function MediaLibrary() {
       ) : shown.length === 0 ? (
         <p className="text-muted-foreground rounded-md border p-6 text-sm">
           {onlyMissing
-            ? "Every file on this page has alt text."
+            ? "Every file on this page has a description."
             : debounced
               ? "No files match that search."
               : kind === "any"
-                ? "Shopify Files is empty."
-                : `No ${KIND_LABELS[kind].toLowerCase()} in Shopify Files.`}
+                ? "No files uploaded yet."
+                : `No ${KIND_LABELS[kind].toLowerCase()} uploaded yet.`}
         </p>
       ) : view === "grid" ? (
         <ul className={GRID_CLASS.grid}>

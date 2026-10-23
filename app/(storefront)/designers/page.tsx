@@ -1,19 +1,25 @@
 import type { Metadata } from "next";
 
-import { DesignerCard } from "@/components/designer/designer-card";
+import { DesignerGrid } from "@/components/designer/designer-grid";
 import { PageShell } from "@/components/layout/page-shell";
+import { BuilderPage, builderMetadata, publishedDocument } from "@/components/page-builder/builder-page";
 import { ContactCta } from "@/components/sections/contact-cta";
 import { Container } from "@/components/ui/container";
 import { GoBack } from "@/components/ui/go-back";
 import { METAOBJECT_TYPES, getMetaobjects, getPage } from "@/lib/shopify";
-import { normalizeDesigner } from "@/lib/shopify/entities";
+import { normalizeDesigner, sortDesigners } from "@/lib/shopify/entities";
 
-export const metadata: Metadata = {
+const METADATA: Metadata = {
   title: "Our Designers",
   description:
     "The designers and studios behind Studio Bizar — the people who draw the pieces and choose the materials.",
   alternates: { canonical: "/designers" },
 };
+
+/** Shopify's SEO fields once the page builder version is live — see `builderMetadata`. */
+export async function generateMetadata(): Promise<Metadata> {
+  return builderMetadata(await getPage("professionals").catch(() => null), METADATA);
+}
 
 export default async function DesignersPage() {
   const [page, intro] = await Promise.all([
@@ -21,14 +27,12 @@ export default async function DesignersPage() {
     getPage("professionals").catch(() => null),
   ]);
 
-  // `metaobjects` has no sort argument, so ordering happens here.
-  const designers = page.items
-    .map(normalizeDesigner)
-    .sort(
-      (a, b) =>
-        (a.sortOrder ?? Number.MAX_SAFE_INTEGER) - (b.sortOrder ?? Number.MAX_SAFE_INTEGER) ||
-        a.name.localeCompare(b.name),
-    );
+  // MVP-2: the page builder version, once one is published. Until then — and if
+  // it is ever unreadable — the layout below, unchanged.
+  const doc = publishedDocument(intro);
+  if (doc && intro) return <BuilderPage doc={doc} title={intro.title} />;
+
+  const designers = sortDesigners(page.items.map(normalizeDesigner));
 
   return (
     <PageShell surface="mocha">
@@ -41,13 +45,7 @@ export default async function DesignersPage() {
         {designers.length === 0 ? (
           <p className="text-body mt-16 text-muted">No designers published yet.</p>
         ) : (
-          <ul className="sb-grid-4 mt-12 gap-y-12">
-            {designers.map((designer, index) => (
-              <li key={designer.handle}>
-                <DesignerCard designer={designer} priority={index < 4} />
-              </li>
-            ))}
-          </ul>
+          <DesignerGrid designers={designers} className="mt-12" />
         )}
       </Container>
 

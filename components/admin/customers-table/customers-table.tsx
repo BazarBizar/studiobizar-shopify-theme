@@ -53,7 +53,7 @@ function money(value: { amount: string; currencyCode: string } | null) {
   if (!value) return "—";
   const amount = Number(value.amount);
   if (Number.isNaN(amount)) return `${value.amount} ${value.currencyCode}`;
-  return new Intl.NumberFormat(undefined, { style: "currency", currency: value.currencyCode }).format(amount);
+  return new Intl.NumberFormat("en-GB", { style: "currency", currency: value.currencyCode }).format(amount);
 }
 
 export function CustomersTable({ rows }: { rows: CustomerRowData[] }) {
@@ -202,7 +202,7 @@ export function CustomersTable({ rows }: { rows: CustomerRowData[] }) {
         table={table}
         filtered={filtered}
         emptyTitle={filtered ? "No matches" : "No customers yet"}
-        emptyHint="Customers appear here once someone creates an account on the storefront."
+        emptyHint="Customers appear here once someone creates an account on the website."
       />
 
       <DataTablePagination table={table} totalBeforeFilter={rows.length} noun="customers" />

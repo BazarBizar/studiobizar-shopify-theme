@@ -41,7 +41,6 @@ export async function InquiryDetail({ param }: { param: string }) {
         backHref="/admin/inquiry"
         backLabel="Inquiries"
         title={inquiry.reference}
-        meta={inquiry.handle}
         readOnly
       />
 

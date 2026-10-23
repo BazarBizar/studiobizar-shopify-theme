@@ -1,11 +1,15 @@
 import type { MetadataRoute } from "next";
 
+import { BUILDER_METAFIELDS, parsePageDocument } from "@/lib/page-builder/document";
+import { isBuilderHandle } from "@/lib/page-builder/handles";
 import { LEGAL_HANDLES } from "@/lib/routes";
 import {
   METAOBJECT_TYPES,
   getCollections,
   getMetaobjects,
+  getPages,
   getProducts,
+  toMetafieldMap,
 } from "@/lib/shopify";
 import { SITE_URL } from "@/lib/site";
 
@@ -71,13 +75,30 @@ async function allProductHandles(): Promise<string[]> {
   return handles;
 }
 
+/**
+ * Page builder pages — the same two conditions `app/(storefront)/[handle]` serves
+ * one under, so the sitemap never lists a URL that route would 404. The
+ * Storefront API only returns published pages, which covers "hidden".
+ */
+async function builderPageHandles(): Promise<string[]> {
+  const pages = await getPages(250);
+
+  return pages
+    .filter((page) => isBuilderHandle(page.handle))
+    .filter((page) => {
+      const raw = toMetafieldMap(page.metafields)[BUILDER_METAFIELDS.published]?.value;
+      return parsePageDocument(raw).ok;
+    })
+    .map((page) => page.handle);
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   /**
    * Each source is allowed to fail on its own. A sitemap missing its projects is
    * useful; a sitemap that threw is a 500, and a crawler that gets one stops
    * asking for a while.
    */
-  const [products, collections, designers, projects] = await Promise.all([
+  const [products, collections, designers, projects, builderPages] = await Promise.all([
     allProductHandles().catch(() => []),
     getCollections({ first: 100 })
       .then((page) => page.items.map((item) => item.handle))
@@ -88,12 +109,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     getMetaobjects(METAOBJECT_TYPES.project)
       .then((page) => page.items.map((entry) => entry.handle))
       .catch(() => []),
+    builderPageHandles().catch(() => []),
   ]);
 
   const url = (path: string) => ({ url: `${SITE_URL}${path}` });
 
   return [
     ...STATIC_PATHS.map(url),
+    ...builderPages.map((handle) => url(`/${handle}`)),
     ...LEGAL_HANDLES.map((handle) => url(`/legal/${handle}`)),
     ...collections.map((handle) => url(`/collections/${handle}`)),
     ...designers.map((handle) => url(`/designers/${handle}`)),

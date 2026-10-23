@@ -1,6 +1,6 @@
 import { PageHeader } from "@/components/admin/page-header";
 import { MenusTable } from "@/components/admin/menus-table/menus-table";
-import { listMenus } from "@/lib/admin/menus";
+import { listMenus, siteMenus } from "@/lib/admin/menus";
 
 export const metadata = { title: "Menus" };
 
@@ -9,14 +9,13 @@ export const metadata = { title: "Menus" };
  * metaobject type named `menus` would be shadowed and `reservedSlug()` says so.
  */
 export default async function MenusScreen() {
-  const menus = await listMenus();
+  const menus = siteMenus(await listMenus());
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Menus"
-        description="The header and footer navigation. Menus are created by schema-push, because a menu exists to be read by a component that asks for it by handle — a new one would be read by nothing."
-        meta={`${menus.length} menus`}
+        description="The links at the top and bottom of every page. Open a menu to rename, reorder, add or remove its links."
       />
 
       <MenusTable menus={menus} />

@@ -52,13 +52,18 @@ export async function POST(request: Request) {
     return NextResponse.json({
       hasNextPage: page.hasNextPage,
       endCursor: page.endCursor,
-      entries: page.entries.map((entry) => ({
-        id: entry.id,
-        handle: entry.handle,
-        label: entry.displayName || entry.handle,
-        thumbnail:
-          entry.fields.find((field) => field.reference?.image?.url)?.reference?.image?.url ?? null,
-      })),
+      entries: page.entries.map((entry) => {
+        const photo = entry.fields.find((field) => field.reference?.image?.url)?.reference;
+        return {
+          id: entry.id,
+          handle: entry.handle,
+          label: entry.displayName || entry.handle,
+          thumbnail: photo?.image?.url ?? null,
+          // The Shopify file the entry wraps — how the media picker finds the
+          // captioned image that already exists for a photo.
+          fileId: photo?.id ?? null,
+        };
+      }),
     });
   } catch (error) {
     if (error instanceof NotAllowedError) return fail("NOT_ALLOWED", error.message);

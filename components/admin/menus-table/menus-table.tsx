@@ -1,5 +1,4 @@
 import { AppLink } from "@/components/admin/app-link";
-import { Badge } from "@/components/admin/ui/badge";
 import {
   Table,
   TableBody,
@@ -8,16 +7,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/admin/ui/table";
-import { menuUsedBy, paramFromMenuId, type Menu } from "@/lib/admin/menus";
+import { menuDisplayName, menuUsedBy, paramFromMenuId, type Menu } from "@/lib/admin/menus";
 
 /**
  * A plain table, like the Pages list and for the same reason: eight rows, none
  * of which anybody creates.
  *
- * The "Used by" column is what makes the screen usable. Shopify's own defaults
- * sit alongside this site's five menus and look identical; without saying which
- * is which, the fastest way to find out is to edit the wrong one and reload the
- * storefront.
+ * "Where it shows" is what makes the screen usable: the menu titles were named for
+ * the code, and only the place on the page tells a person which one to open.
+ * Shopify's own defaults are filtered out before this — see `siteMenus`.
  */
 export function MenusTable({ menus }: { menus: Menu[] }) {
   const countItems = (menu: Menu) =>
@@ -29,8 +27,7 @@ export function MenusTable({ menus }: { menus: Menu[] }) {
         <TableHeader>
           <TableRow>
             <TableHead>Menu</TableHead>
-            <TableHead>Handle</TableHead>
-            <TableHead>Used by</TableHead>
+            <TableHead>Where it shows</TableHead>
             <TableHead className="w-20 text-right">Links</TableHead>
           </TableRow>
         </TableHeader>
@@ -46,23 +43,13 @@ export function MenusTable({ menus }: { menus: Menu[] }) {
                     href={`/admin/menus/${paramFromMenuId(menu.id)}`}
                     className="font-medium underline-offset-4 hover:underline"
                   >
-                    {menu.title}
+                    {menuDisplayName(menu)}
                   </AppLink>
                 </TableCell>
 
-                <TableCell className="text-muted-foreground font-mono text-xs">
-                  {menu.handle}
-                </TableCell>
+                <TableCell className="text-muted-foreground text-sm">{usedBy}</TableCell>
 
-                <TableCell className="text-muted-foreground text-xs">
-                  {usedBy ?? (
-                    <Badge variant="outline" className="font-normal">
-                      Shopify default — not read by this site
-                    </Badge>
-                  )}
-                </TableCell>
-
-                <TableCell className="text-muted-foreground text-right font-mono text-xs tabular-nums">
+                <TableCell className="text-muted-foreground text-right text-sm tabular-nums">
                   {countItems(menu)}
                 </TableCell>
               </TableRow>

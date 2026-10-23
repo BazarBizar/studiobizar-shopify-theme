@@ -1,12 +1,11 @@
 "use client";
 
-import { InfoIcon, Loader2Icon, SaveIcon } from "lucide-react";
+import { InfoIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-import { Button } from "@/components/admin/ui/button";
 import { Card, CardContent } from "@/components/admin/ui/card";
 import { Label } from "@/components/admin/ui/label";
 import { Separator } from "@/components/admin/ui/separator";
@@ -15,6 +14,7 @@ import type { FieldSpec } from "@/lib/admin/form-fields";
 import { createEntryRequest, updateEntryRequest } from "@/lib/admin/queries";
 
 import { FieldRenderer } from "./field-renderer";
+import { SaveBar } from "./save-bar";
 
 /**
  * The generic entry form. It knows nothing about any particular metaobject type — it
@@ -58,6 +58,9 @@ export function EntryForm({
   } = useForm<Values>({ defaultValues: defaults, mode: "onSubmit" });
 
   const editableSpecs = specs.filter((spec) => spec.editable);
+  // Hidden fields keep their value (and a new entry still sends it); they are just not
+  // something a person needs to see — see `lib/admin/field-copy.ts`.
+  const visibleSpecs = specs.filter((spec) => !spec.hidden);
   const nothingEditable = editableSpecs.length === 0;
 
   async function onSubmit(values: Values) {
@@ -77,7 +80,7 @@ export function EntryForm({
 
     if (keys.length === 0) {
       setSaving(false);
-      toast.info("Nothing to save", { description: "No fields have changed." });
+      toast.info("Nothing to save", { description: "You haven’t changed anything yet." });
       return;
     }
 
@@ -87,14 +90,14 @@ export function EntryForm({
     for (const spec of editableSpecs) {
       const value = values[spec.key] ?? "";
 
-      if (spec.required && value.trim() === "") {
+      if (spec.required && !spec.hidden && value.trim() === "") {
         setError(spec.key, { message: `${spec.name} is required.` });
         invalid = true;
       } else if (spec.type === "json" && value.trim() !== "") {
         try {
           JSON.parse(value);
         } catch {
-          setError(spec.key, { message: `${spec.name} is not valid JSON.` });
+          setError(spec.key, { message: `${spec.name} could not be read. Undo your change and try again.` });
           invalid = true;
         }
       }
@@ -124,7 +127,7 @@ export function EntryForm({
 
       toast.success("Saved", {
         description:
-          mode === "create" ? `${typeLabel} created.` : `${keys.length} field(s) updated.`,
+          mode === "create" ? `The new ${typeLabel} is live on the site.` : "Your changes are live on the site.",
       });
 
       if (mode === "create") {
@@ -147,7 +150,7 @@ export function EntryForm({
       <fieldset disabled={saving}>
         <Card className="gap-0 py-0">
           <CardContent className="space-y-6 px-0 py-6">
-            {specs.map((spec, index) => (
+            {visibleSpecs.map((spec, index) => (
               <React.Fragment key={spec.key}>
                 {index > 0 ? <Separator /> : null}
 
@@ -163,10 +166,6 @@ export function EntryForm({
                       ) : null}
                     </Label>
 
-                    <p className="text-muted-foreground font-mono text-[11px] break-all">
-                      {spec.key}
-                    </p>
-
                     {spec.description ? (
                       <p
                         id={`${spec.key}-description`}
@@ -178,7 +177,7 @@ export function EntryForm({
                     ) : null}
 
                     {!spec.editable ? (
-                      <p className="text-muted-foreground text-xs">Not editable here</p>
+                      <p className="text-muted-foreground text-xs">Can’t be changed here</p>
                     ) : null}
                   </div>
 
@@ -211,34 +210,14 @@ export function EntryForm({
         {/* Sticky at the BOTTOM. `top-14` is for things sticking to the header; this one
             sits against the viewport floor so the save action is reachable on a long
             form without scrolling back. */}
-        <div className="bg-background/95 supports-[backdrop-filter]:bg-background/70 sticky bottom-0 flex items-center justify-between gap-3 border-t py-4 backdrop-blur">
-          <p className="text-muted-foreground text-xs">
-            {nothingEditable
-              ? "Nothing on this record can be changed here"
-              : isDirty
-                ? "Unsaved changes"
-                : "All changes saved"}
-          </p>
-
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={!isDirty || saving}
-              onClick={() => reset(defaults)}
-            >
-              Discard
-            </Button>
-            <Button type="submit" disabled={(!isDirty && mode === "update") || saving || nothingEditable}>
-              {saving ? (
-                <Loader2Icon className="size-4 animate-spin" />
-              ) : (
-                <SaveIcon className="size-4" />
-              )}
-              {saving ? "Saving…" : mode === "create" ? `Create ${typeLabel}` : "Save"}
-            </Button>
-          </div>
-        </div>
+        <SaveBar
+          // A new record is unsaved from the start, so Create is always offered.
+          dirty={isDirty || mode === "create"}
+          saving={saving}
+          disabled={nothingEditable}
+          saveLabel={mode === "create" ? "Create" : "Save"}
+          onDiscard={() => reset(defaults)}
+        />
       </fieldset>
     </form>
   );

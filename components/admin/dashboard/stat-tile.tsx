@@ -5,7 +5,8 @@ import { Card, CardContent } from "@/components/admin/ui/card";
 import { Skeleton } from "@/components/admin/ui/skeleton";
 import { cn } from "@/lib/utils/cn";
 
-export const formatNumber = (value: number) => new Intl.NumberFormat().format(value);
+// A fixed locale: the viewer's own differs between server and browser render ("2,027" vs "2.027").
+export const formatNumber = (value: number) => new Intl.NumberFormat("en-GB").format(value);
 
 /**
  * One KPI. Four of these, not a bar chart: four numbers are four numbers, and a chart for

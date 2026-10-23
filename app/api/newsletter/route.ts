@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { readPublicForm } from "@/lib/public-form";
+
 /**
  * No marketing provider is wired up yet. Following the same convention the
  * brief sets for Resend: when the integration is absent, log and succeed so
@@ -8,15 +10,12 @@ import { NextResponse } from "next/server";
  * Wire the real provider here and the form needs no changes.
  */
 export async function POST(request: Request) {
-  let email: unknown;
+  // Rate limits and a size cap before anything is read — see lib/public-form.ts.
+  const body = await readPublicForm(request, "newsletter", 2_000);
+  if (!body.ok) return body.response;
+  const email = (body.value as { email?: unknown } | null)?.email;
 
-  try {
-    ({ email } = (await request.json()) as { email?: unknown });
-  } catch {
-    return NextResponse.json({ message: "Send a JSON body with an email." }, { status: 400 });
-  }
-
-  if (typeof email !== "string" || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+  if (typeof email !== "string" || email.length > 254 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
     return NextResponse.json({ message: "Enter a valid email address." }, { status: 400 });
   }
 

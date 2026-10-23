@@ -1,0 +1,17 @@
+{% comment %}
+  Where copy sits on an image — the page builder's 3 × 3 "Text position" — as
+  the flex classes that put a column there. Mirrors positionClasses() in
+  components/sections/landing/shared.tsx. Written out in full for Tailwind.
+{% endcomment %}
+
+{%- case position -%}
+  {%- when 'top-left' -%}justify-start items-start
+  {%- when 'top-center' -%}justify-start items-center
+  {%- when 'top-right' -%}justify-start items-end
+  {%- when 'middle-left' -%}justify-center items-start
+  {%- when 'middle-right' -%}justify-center items-end
+  {%- when 'bottom-left' -%}justify-end items-start
+  {%- when 'bottom-center' -%}justify-end items-center
+  {%- when 'bottom-right' -%}justify-end items-end
+  {%- else -%}justify-center items-center
+{%- endcase -%}

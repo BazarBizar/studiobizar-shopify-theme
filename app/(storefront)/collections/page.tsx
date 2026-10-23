@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { CollectionCard } from "@/components/collection/collection-card";
+import { CollectionGrid } from "@/components/collection/collection-grid";
 import { PageShell } from "@/components/layout/page-shell";
 import { Container } from "@/components/ui/container";
 import { getListedCollections, getPage } from "@/lib/shopify";
@@ -29,13 +29,7 @@ export default async function CollectionsPage() {
         {collections.length === 0 ? (
           <p className="text-body mt-16 text-muted">No collections published yet.</p>
         ) : (
-          <ul className="sb-grid-4 mt-12">
-            {collections.map((collection) => (
-              <li key={collection.id}>
-                <CollectionCard collection={collection} />
-              </li>
-            ))}
-          </ul>
+          <CollectionGrid collections={collections} className="mt-12" />
         )}
       </Container>
     </PageShell>

@@ -20,6 +20,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/admin/ui/dialog";
+import { formatDate } from "@/lib/admin/field-values";
 import type { PickerFile } from "@/lib/admin/queries";
 import { cn } from "@/lib/utils/cn";
 
@@ -374,11 +375,8 @@ function Details({ file, alt }: { file: PickerFile; alt: string }) {
     ["Duration", file.duration != null ? formatDuration(file.duration) : null],
     [
       "Uploaded",
-      file.createdAt
-        ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(
-            new Date(file.createdAt),
-          )
-        : null,
+      // The admin's one date format — the shop's zone, the same for everyone on the team.
+      file.createdAt ? formatDate(file.createdAt, true) : null,
     ],
   ];
 
@@ -417,9 +415,9 @@ function Details({ file, alt }: { file: PickerFile; alt: string }) {
       </dl>
 
       <div className="space-y-1">
-        <p className="text-muted-foreground text-xs">Alt text</p>
+        <p className="text-muted-foreground text-xs">Description</p>
         <p className={cn("text-sm", !alt && "text-muted-foreground italic")}>
-          {alt || "No alt text"}
+          {alt || "No description yet"}
         </p>
         <p className="text-muted-foreground text-[11px]">
           Edited in the list or the medium grid.

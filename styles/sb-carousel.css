@@ -1,0 +1,20 @@
+/* =============================================================================
+   CAROUSEL — items across, per device (lib/page-builder/carousel.ts).
+   A row whose operator chose how many items show carries `data-cv` and the counts
+   as custom properties (`--cv-d`, `--cv-t`, `--cv-m`, and how many gaps sit between
+   them); each item is then that share of the row, minus the gaps. A row without
+   `data-cv` keeps its section's own widths. Fractions ("1 and a peek") work the same.
+   SHARED: imported by app/globals.css AND theme-build/sb-theme.css.
+   ============================================================================= */
+
+[data-cv] > * {
+  flex: 0 0 auto;
+  min-width: 0;
+  width: calc((100% - var(--sb-grid-gap) * var(--cv-m-gaps)) / var(--cv-m));
+}
+@media (min-width: 750px) {
+  [data-cv] > * { width: calc((100% - var(--sb-grid-gap) * var(--cv-t-gaps)) / var(--cv-t)); }
+}
+@media (min-width: 1024px) {
+  [data-cv] > * { width: calc((100% - var(--sb-grid-gap) * var(--cv-d-gaps)) / var(--cv-d)); }
+}

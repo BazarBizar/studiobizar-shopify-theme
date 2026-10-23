@@ -3,7 +3,6 @@ import { ExternalLinkIcon } from "lucide-react";
 import { CustomerAnnotations } from "@/components/admin/customers-table/customer-annotations";
 import { ScreenNotFound } from "@/components/admin/screen-not-found";
 import { DetailHeader } from "@/components/admin/detail-header";
-import { Badge } from "@/components/admin/ui/badge";
 import { Button } from "@/components/admin/ui/button";
 import { Card, CardContent } from "@/components/admin/ui/card";
 import { customerIdFromParam, getCustomer } from "@/lib/admin/customers";
@@ -39,7 +38,7 @@ export default async function CustomerDetailPage({ params }: PageProps<"/admin/c
     const amount = Number(value.amount);
     return Number.isNaN(amount)
       ? `${value.amount} ${value.currencyCode}`
-      : new Intl.NumberFormat(undefined, { style: "currency", currency: value.currencyCode }).format(amount);
+      : new Intl.NumberFormat("en-GB", { style: "currency", currency: value.currencyCode }).format(amount);
   };
 
   /**
@@ -71,20 +70,21 @@ export default async function CustomerDetailPage({ params }: PageProps<"/admin/c
         title={customer.name}
         meta={customer.email ?? undefined}
         readOnly
+        actions={
+          shopDomain ? (
+            <Button asChild variant="outline" size="sm">
+              <a
+                href={`https://admin.shopify.com/store/${shopDomain}/customers/${customer.param}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open in Shopify
+                <ExternalLinkIcon className="size-3.5" />
+              </a>
+            </Button>
+          ) : undefined
+        }
       />
-
-      {shopDomain ? (
-        <Button asChild variant="outline" size="sm">
-          <a
-            href={`https://admin.shopify.com/store/${shopDomain}/customers/${customer.param}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Open in Shopify
-            <ExternalLinkIcon className="size-3.5" />
-          </a>
-        </Button>
-      ) : null}
 
       <Card className="gap-0 py-4">
         <CardContent className="px-4">
@@ -110,13 +110,14 @@ export default async function CustomerDetailPage({ params }: PageProps<"/admin/c
         <Card className="gap-0 py-4">
           <CardContent className="space-y-2 px-4">
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold">Metafields</h2>
-              <Badge variant="secondary">Read-only</Badge>
+              <h2 className="text-sm font-semibold">Other details</h2>
             </div>
             <dl className="divide-border divide-y">
               {customer.metafields.map((field) => (
                 <div key={field.id} className="py-2">
-                  <dt className="text-muted-foreground font-mono text-xs">{field.key}</dt>
+                  <dt className="text-muted-foreground text-xs first-letter:uppercase">
+                    {field.key.replace(/[_-]+/g, " ")}
+                  </dt>
                   <dd className="text-sm break-words">{field.value}</dd>
                 </div>
               ))}

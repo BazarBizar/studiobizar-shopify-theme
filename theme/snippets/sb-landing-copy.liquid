@@ -1,0 +1,61 @@
+{% comment %}
+  The copy block of a banner, a slide or a call to action — BannerCopyBlock in
+  components/sections/landing/image-banner.tsx: small label, heading, text and
+  up to two buttons.
+
+  Accepts:
+    eyebrow, heading, body (plain text), heading_size (h2 | h1 | display)
+    primary_label, primary_url, primary_style
+    secondary_label, secondary_url, secondary_style
+    align — left | center | right
+    class — extra utilities for the block (e.g. a panel)
+{% endcomment %}
+
+{%- liquid
+  case align
+    when 'center'
+      assign align_class = 'items-center text-center'
+      assign justify_class = 'justify-center'
+    when 'right'
+      assign align_class = 'items-end text-right'
+      assign justify_class = 'justify-end'
+    else
+      assign align_class = 'items-start text-left'
+      assign justify_class = 'justify-start'
+  endcase
+
+  capture heading_class
+    render 'sb-heading-class', size: heading_size
+  endcapture
+
+  assign has_primary = false
+  if primary_label != blank and primary_url != blank
+    assign has_primary = true
+  endif
+  assign has_secondary = false
+  if secondary_label != blank and secondary_url != blank
+    assign has_secondary = true
+  endif
+-%}
+
+<div class="flex max-w-[46rem] flex-col {{ align_class }} {{ class }}">
+  {%- if eyebrow != blank -%}
+    <p class="text-tertiary mb-3 uppercase tracking-[0.08em] opacity-80">{{ eyebrow }}</p>
+  {%- endif -%}
+  {%- if heading != blank -%}
+    <h2 class="{{ heading_class }}">{{ heading }}</h2>
+  {%- endif -%}
+  {%- if body != blank -%}
+    <p class="text-body mt-5 max-w-[38rem] whitespace-pre-line">{{ body | escape }}</p>
+  {%- endif -%}
+  {%- if has_primary or has_secondary -%}
+    <div data-sb-buttons class="mt-8 flex flex-wrap gap-3 {{ justify_class }}">
+      {%- if has_primary -%}
+        {%- render 'sb-button', label: primary_label, href: primary_url, variant: primary_style -%}
+      {%- endif -%}
+      {%- if has_secondary -%}
+        {%- render 'sb-button', label: secondary_label, href: secondary_url, variant: secondary_style -%}
+      {%- endif -%}
+    </div>
+  {%- endif -%}
+</div>

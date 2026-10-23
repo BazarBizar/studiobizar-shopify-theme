@@ -31,11 +31,16 @@ enforces this on existing definitions.
 
 | Field | Type |
 |---|---|
-| `panel_title`, `panel_initials` (max 3) | `single_line_text_field` |
-| `favicon` | `file_reference` (image) |
+| `panel_title`, `panel_subtitle`, `panel_initials` (max 3) | `single_line_text_field` |
+| `logo`, `favicon` | `file_reference` (image) |
+| `dashboard_title` | `single_line_text_field` |
+| `dashboard_description` | `multi_line_text_field` |
 
-- These fields control the sidebar name, the square with the initials, the browser-tab title
-  (`%s · <title>`) and the admin favicon.
+- These fields control the sidebar name and the line under it (default "Admin"), the square beside it
+  (the logo when set, otherwise the initials), the browser-tab title (`%s · <title>`), the admin
+  favicon, and the heading and sentence on the dashboard (`/admin`).
+- The sign-in page (`/staff/login`) shows the same title and logo.
+- Empty text fields fall back to the old hardcoded wording.
 - The values are cached for 60 seconds, and saving clears the cache on the instance that handled the
   save.
 - On any failure the panel falls back to "Studio Bizar" / "SB" and the site favicon. It never throws.
@@ -52,6 +57,23 @@ enforces this on existing definitions.
    `deletable: false` on a singleton.
 4. If the storefront must not read the type, add it to `PRIVATE_TYPES` in
    `scripts/set-private-access.mjs`.
+5. Give each field a plain label and one line of help in `lib/admin/field-copy.ts` (see below).
+
+## Words on screen (`lib/admin/field-copy.ts`)
+
+The panel is used by people who do not know Shopify's vocabulary, so no screen shows a field key,
+a gid, JSON or a type name.
+
+- **Field labels and help** for every metaobject type and for product metafields (`product`) live in
+  `FIELD_COPY`. A field with no entry falls back to its Shopify name and description, so add one
+  whenever a field is added in Shopify.
+- **`choiceLabels`** gives a stored code a name (`product_inquiry` → "Product inquiries"), in forms
+  and in tables.
+- **`hidden`** keeps a field off the form while still sending its value. A module's `orderField` is
+  always hidden: rows are reordered by dragging in the list, which saves the new positions, and a
+  new entry goes to the end of the list.
+- A module's `singular` and `description` (`lib/admin/modules.ts`) name the "New …" button and the
+  sentence under a list's title.
 
 ## Pitfalls
 

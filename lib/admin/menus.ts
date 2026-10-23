@@ -97,15 +97,43 @@ export async function getMenu(id: string): Promise<Menu> {
  * this from drifting the day one is renamed.
  */
 const USED_BY: Record<string, string> = {
-  [MENUS.primary]: "Header — primary nav",
-  [MENUS.secondary]: "Header — secondary nav and dropdowns",
-  [MENUS.footerAbout]: "Footer — About column",
-  [MENUS.footerInfo]: "Footer — Info column",
-  [MENUS.footerLegal]: "Footer — Legal column",
+  [MENUS.primary]: "Top of every page — the main links",
+  [MENUS.secondary]: "Top of every page — the second row and its dropdowns",
+  [MENUS.footerAbout]: "Bottom of every page — the About column",
+  [MENUS.footerInfo]: "Bottom of every page — the Info column",
+  [MENUS.footerLegal]: "Bottom of every page — the Legal column",
 };
 
 export function menuUsedBy(handle: string): string | null {
   return USED_BY[handle] ?? null;
+}
+
+/**
+ * The name a person sees. The titles stored in Shopify ("DESK primary") were named for
+ * the code; they are still what is saved back, only never shown.
+ */
+const DISPLAY_NAME: Record<string, string> = {
+  [MENUS.primary]: "Main menu",
+  [MENUS.secondary]: "Second menu",
+  [MENUS.footerAbout]: "Footer — About",
+  [MENUS.footerInfo]: "Footer — Info",
+  [MENUS.footerLegal]: "Footer — Legal",
+};
+
+export function menuDisplayName(menu: { handle: string; title: string }): string {
+  return DISPLAY_NAME[menu.handle] ?? menu.title;
+}
+
+/**
+ * Only the menus this site reads, in the order they appear on the page. Shopify's own
+ * defaults (Main menu, Footer menu, …) look identical and change nothing here, so
+ * listing them only invites editing the wrong one.
+ */
+export function siteMenus(menus: Menu[]): Menu[] {
+  const order = Object.keys(USED_BY);
+  return menus
+    .filter((menu) => menu.handle in USED_BY)
+    .sort((a, b) => order.indexOf(a.handle) - order.indexOf(b.handle));
 }
 
 /* -------------------------------------------------------------------------- *
@@ -153,7 +181,7 @@ export async function listMenuDestinations(): Promise<DestinationOption[]> {
     { value: "CATALOG", label: "All products", group: "Store" },
     { value: "COLLECTIONS", label: "All collections", group: "Store" },
     { value: "SEARCH", label: "Search", group: "Store" },
-    { value: "HTTP", label: "Custom URL", group: "Store" },
+    { value: "HTTP", label: "Another website (type the address)", group: "Store" },
 
     ...data.pages.nodes.map((page) => ({
       value: `PAGE:${page.id}`,

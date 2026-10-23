@@ -37,11 +37,11 @@ export const PRODUCT_SECTIONS = [
 export type ProductSectionId = (typeof PRODUCT_SECTIONS)[number];
 
 const SECTION_LABELS: Record<ProductSectionId, string> = {
-  media: "Media",
+  media: "Photos",
   product: "Product",
   specs: "Specifications",
-  seo: "SEO",
-  channels: "Channels",
+  seo: "Google listing",
+  channels: "Where it’s sold",
   details: "Details",
 };
 

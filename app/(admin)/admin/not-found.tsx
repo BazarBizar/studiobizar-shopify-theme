@@ -16,7 +16,7 @@ export default function AdminNotFound() {
     <div className="space-y-6">
       <PageHeader
         title="Not found"
-        description="That content type or entry does not exist. It may have been deleted in Shopify, or the address may be wrong."
+        description="We couldn’t find that. It may have been deleted, or the link may be wrong."
       />
 
       <Button asChild variant="outline" size="sm">

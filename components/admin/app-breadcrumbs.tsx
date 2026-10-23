@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { Fragment } from "react";
 
 import { AppLink } from "@/components/admin/app-link";
+import { useCrumbLabels } from "@/components/admin/crumbs";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -23,17 +24,35 @@ import {
  */
 export function AppBreadcrumbs({ labels }: { labels: Record<string, string> }) {
   const pathname = usePathname();
+  // Names the screens gave their records — see `CrumbLabel`.
+  const named = useCrumbLabels();
 
   const segments = pathname.split("/").filter(Boolean);
   // Everything here lives under /admin, which is the root crumb.
-  const rest = segments.slice(1);
+  // A page's Content tab is the page itself in the trail, as its Settings tab is: the
+  // tabs say which one is open, and a trail that grows and shrinks on a tab click jumps.
+  const rest = segments
+    .slice(1)
+    .filter((segment, index, all) => !(segment === "content" && all[index - 2] === "pages"));
 
   const crumbs = rest.map((segment, index) => {
     const href = `/admin/${rest.slice(0, index + 1).join("/")}`;
 
-    // `new` is a route, not a record; an id is digits and has no useful label.
+    // `new` is a route, not a record; an id is digits and has no useful label. A
+    // page's id opens its Settings, and `content` is its Content tab.
+    const parent = rest[index - 1];
     const label =
-      labels[segment] ?? (segment === "new" ? "New" : /^\d+$/.test(segment) ? "Edit" : segment);
+      named[href] ??
+      labels[segment] ??
+      (segment === "new"
+        ? "New"
+        : segment === "content"
+          ? "Content"
+          : /^\d+$/.test(segment)
+            ? parent === "pages"
+              ? "Page"
+              : "Edit"
+            : segment);
 
     return { href, label, last: index === rest.length - 1 };
   });
