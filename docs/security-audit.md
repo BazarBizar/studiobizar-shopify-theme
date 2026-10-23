@@ -38,6 +38,19 @@ settings, and dependencies. `yarn check:security` keeps the fixes below tested (
 | Rate limits per process | `limit()` in `lib/admin/rate-limit.ts` counts in Upstash Redis when `UPSTASH_REDIS_REST_URL/TOKEN` (or Vercel KV's) are set — every instance shares one count; a Redis that does not answer in 1.5s falls back to the instance's own buckets rather than locking anyone out. Without them, production logs a warning. |
 | No bot challenge | A honeypot field in the three forms (`components/forms/honeypot.tsx`, `lib/honeypot.ts`): off screen, hidden from assistive technology, skipped by Tab. Filled → thanked and dropped, nothing sent or stored. |
 
+## Staff & sign-in (added the same day)
+
+Who may sign in and the password are editable in the panel (Settings → Staff & sign-in),
+not only in `.env`: `lib/admin/staff.ts`, `app/api/admin/staff/route.ts`. Owners
+(`ADMIN_ALLOWED_EMAILS`) can never be removed there, so the panel cannot lock everyone out;
+only owners add or remove staff; each person has their own scrypt-hashed password in a
+private shop metafield (no definition, so no Storefront access); changing a password needs
+the current one and is rate-limited like sign-in; a change or removal ends that person's
+sessions (`signedInAt` vs `validFrom`); writes use `compareDigest`, so two edits cannot
+overwrite each other. `yarn check:staff` (22 checks, against a stand-in for Shopify) covers
+all of it. The panel-set Instagram feed accepts only a Behold id or its feeds.behold.so
+address, and the fetch address is built from the id — no server-side request to a typed URL.
+
 ## Not covered here
 
 - The **Liquid theme** is served by Shopify, which sets its headers; the inquiry App Proxy

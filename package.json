@@ -42,6 +42,7 @@
     "check:page-builder-style": "tsx --conditions=react-server scripts/check-page-builder-style.ts",
     "check:liquid": "tsx scripts/check-liquid-parity.ts",
     "check:security": "tsx --conditions=react-server scripts/check-security.ts",
+    "check:staff": "tsx --conditions=react-server scripts/check-staff.ts",
     "check:liquid-render": "tsx scripts/check-liquid-render.ts",
     "liquid:icons": "tsx scripts/generate-liquid-icons.tsx",
     "liquid:schemas": "tsx scripts/generate-liquid-schemas.ts",

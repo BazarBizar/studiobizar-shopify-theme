@@ -140,6 +140,10 @@ export const FIELD_COPY: Record<string, Record<string, FieldCopy>> = {
     social_five: { label: "Extra social link (5th icon)", help: "Leave empty to hide the icon." },
     social_six: { label: "Extra social link (6th icon)", help: "Leave empty to hide the icon." },
     footer_tagline: { label: "Footer tagline", help: "Beside the logo at the bottom of every page. Line breaks are kept." },
+    instagram_feed: {
+      label: "Instagram feed",
+      help: "The feed ID from your Behold account (behold.so → your feed → Feed ID), or its https://feeds.behold.so/… address. The Instagram row on the site shows these posts; empty keeps the one set on the server.",
+    },
   },
 
   email_notification: {

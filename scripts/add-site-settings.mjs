@@ -115,6 +115,14 @@ const DEFINITIONS = [
         description: "Platform unconfirmed — the glyph was read off the design, not named in it." },
       { key: "social_six", name: "Sixth channel URL", type: "url",
         description: "Platform unconfirmed." },
+
+      /**
+       * The Instagram row's feed (Behold), editable here instead of only as
+       * BEHOLD_FEED_ID in .env — which stays the fallback. lib/instagram/behold.ts
+       * accepts a feed ID or https://feeds.behold.so/<id> and nothing else.
+       */
+      { key: "instagram_feed", name: "Instagram feed (Behold)", type: "single_line_text_field",
+        description: "The feed ID from your Behold dashboard (or its https://feeds.behold.so/… address). Empty uses the server setting." },
     ],
   },
 ];

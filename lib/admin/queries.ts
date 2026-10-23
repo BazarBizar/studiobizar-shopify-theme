@@ -383,3 +383,13 @@ export function useProductSearch(search: string, enabled = true, { includeDrafts
     },
   });
 }
+
+/** Settings → Staff & sign-in (`app/api/admin/staff/route.ts`). */
+export type StaffOperation =
+  | { operation: "staffChangePassword"; current: string; next: string }
+  | { operation: "staffAdd"; email: string; password: string }
+  | { operation: "staffRemove"; email: string };
+
+export async function staffRequest(input: StaffOperation): Promise<{ ok: true }> {
+  return post<{ ok: true }>("/api/admin/staff", input);
+}
