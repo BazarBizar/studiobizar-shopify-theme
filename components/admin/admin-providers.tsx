@@ -5,6 +5,7 @@ import { ThemeProvider } from "next-themes";
 import { useState } from "react";
 
 import { LeaveGuardHost } from "@/components/admin/leave-guard";
+import { SessionKeepAlive } from "@/components/admin/session-keep-alive";
 import { Toaster } from "@/components/admin/ui/sonner";
 import { TooltipProvider } from "@/components/admin/ui/tooltip";
 
@@ -91,6 +92,7 @@ export function AdminProviders({
               positioned top-right per the shared convention. */}
           <Toaster position="top-right" richColors closeButton />
           <LeaveGuardHost />
+          <SessionKeepAlive />
         </TooltipProvider>
       </QueryClientProvider>
     </ThemeProvider>

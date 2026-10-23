@@ -32,6 +32,7 @@ import {
   RequestError,
   saveDraftRequest,
 } from "@/lib/admin/queries";
+import { STAFF_LOGIN_PATH } from "@/lib/admin/cookie";
 import {
   duplicateSection,
   publishProblems,
@@ -70,7 +71,8 @@ import { SectionList } from "./section-list";
  */
 
 type Panel = { kind: "list" } | { kind: "section"; id: string } | { kind: "page" };
-type SaveState = "idle" | "saving" | "error" | "conflict";
+/** `signedOut`: the session ended — saving waits for the editor to sign in again. */
+type SaveState = "idle" | "saving" | "error" | "conflict" | "signedOut";
 type Busy = null | "publish" | "discard" | "rollback";
 type Confirm = null | "discard" | "rollback";
 
@@ -166,6 +168,10 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
   // leave paths below, which run outside render.
   const savedJsonRef = React.useRef(savedJson);
   const conflictRef = React.useRef(false);
+  // The content a save last failed on. Autosave does not send the same content again
+  // by itself — a failure would otherwise retry every 1.2s for as long as it lasts —
+  // but a new change, or "Try again", does.
+  const failedJsonRef = React.useRef<string | null>(null);
   React.useEffect(() => {
     savedJsonRef.current = savedJson;
   }, [savedJson]);
@@ -194,10 +200,14 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
         setHasUnpublished(result.hasUnpublishedChanges);
         setSaveState("idle");
         setSaveError(null);
+        failedJsonRef.current = null;
         return true;
       } catch (error) {
+        failedJsonRef.current = json;
         if (error instanceof RequestError && error.code === "CONFLICT") {
           setSaveState("conflict");
+        } else if (error instanceof RequestError && error.status === 401) {
+          setSaveState("signedOut");
         } else {
           setSaveState("error");
           setSaveError(error instanceof Error ? error.message : "Could not save.");
@@ -268,7 +278,8 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
   // Autosave: a pause after the last change. A conflict stops it — saving over
   // someone else's newer draft is exactly what the conflict is there to prevent.
   React.useEffect(() => {
-    if (!dirty || saveState === "conflict") return;
+    if (!dirty || saveState === "conflict" || saveState === "signedOut") return;
+    if (contentJson === failedJsonRef.current) return;
     const timer = setTimeout(() => void flush(), AUTOSAVE_MS);
     return () => clearTimeout(timer);
   }, [contentJson, dirty, saveState, flush]);
@@ -500,6 +511,8 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
   const status =
     saveState === "conflict"
       ? "Edited elsewhere"
+      : saveState === "signedOut"
+        ? "Signed out — not saved"
       : saveState === "error"
         ? "Not saved"
         : saveState === "saving"
@@ -612,7 +625,11 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
         </PageEditorBar>
 
         {/* ---------------- notices ---------------- */}
-        {(saveState === "conflict" || saveState === "error" || initial.dropped > 0 || initial.publishedInvalid) && (
+        {(saveState === "conflict" ||
+          saveState === "error" ||
+          saveState === "signedOut" ||
+          initial.dropped > 0 ||
+          initial.publishedInvalid) && (
           <div className="space-y-1 border-b px-3 py-2 text-xs">
             {saveState === "conflict" && (
               <p className="text-destructive flex items-center gap-2">
@@ -620,6 +637,25 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
                 This page was saved somewhere else since you opened it. Your last changes were not saved.
                 <Button type="button" size="xs" variant="outline" onClick={() => router.refresh()}>
                   Load latest
+                </Button>
+              </p>
+            )}
+            {saveState === "signedOut" && (
+              <p className="text-destructive flex flex-wrap items-center gap-2">
+                <TriangleAlertIcon className="size-3.5 shrink-0" />
+                You were signed out, so your latest changes are not saved yet. Sign in again in a new tab — this page
+                keeps them — then save.
+                <Button asChild size="xs" variant="outline">
+                  <a
+                    href={`${STAFF_LOGIN_PATH}?from=${encodeURIComponent(window.location.pathname)}`}
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    Sign in again
+                  </a>
+                </Button>
+                <Button type="button" size="xs" onClick={() => void flush()}>
+                  Save now
                 </Button>
               </p>
             )}

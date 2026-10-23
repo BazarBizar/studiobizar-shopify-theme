@@ -28,6 +28,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/admin/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/admin/ui/tabs";
 import { PREVIEW_MESSAGE } from "@/components/page-builder/preview-bridge";
+import { STAFF_LOGIN_PATH } from "@/lib/admin/cookie";
 import { RequestError, themeActionRequest, themeSaveRequest } from "@/lib/admin/queries";
 import type { Device } from "@/lib/page-builder/design";
 import type { ThemeLayoutContent } from "@/lib/theme-builder/layout";
@@ -55,7 +56,8 @@ import { ElementEditor, FooterPanel, GlobalPanel, HeaderPanel, type Edits } from
  */
 
 type History = { past: ThemeLayoutContent[]; present: ThemeLayoutContent; future: ThemeLayoutContent[] };
-type SaveState = "saved" | "saving" | "error" | "conflict";
+/** `signedOut`: the session ended — saving waits for the editor to sign in again. */
+type SaveState = "saved" | "saving" | "error" | "conflict" | "signedOut";
 
 export function ThemeBuilder({
   initial,
@@ -172,6 +174,11 @@ export function ThemeBuilder({
 
   /* ---- saving ---- */
 
+  // The layout a save last failed on: autosave does not resend it by itself (a failure
+  // would otherwise retry every 0.8s for as long as it lasts); a new change, or
+  // "Try again", does.
+  const failedJsonRef = React.useRef<string | null>(null);
+
   const save = React.useCallback(async (): Promise<boolean> => {
     if (inflightRef.current) await inflightRef.current;
     const snapshot = contentRef.current;
@@ -188,10 +195,13 @@ export function ThemeBuilder({
         setSaveState("saved");
         setSaveError(null);
         setUnpublished(true);
+        failedJsonRef.current = null;
         return true;
       } catch (error) {
+        failedJsonRef.current = json;
         const conflict = error instanceof RequestError && error.status === 409;
-        setSaveState(conflict ? "conflict" : "error");
+        const signedOut = error instanceof RequestError && error.status === 401;
+        setSaveState(conflict ? "conflict" : signedOut ? "signedOut" : "error");
         setSaveError(error instanceof Error ? error.message : "Could not save.");
         return false;
       }
@@ -213,7 +223,8 @@ export function ThemeBuilder({
   }, [content, sendContent]);
 
   React.useEffect(() => {
-    if (!dirty || saveState === "conflict") return;
+    if (!dirty || saveState === "conflict" || saveState === "signedOut") return;
+    if (JSON.stringify(content) === failedJsonRef.current) return;
     const timer = window.setTimeout(() => void save(), 800);
     return () => window.clearTimeout(timer);
   }, [content, dirty, saveState, save]);
@@ -257,6 +268,8 @@ export function ThemeBuilder({
   const status =
     saveState === "conflict"
       ? "Edited elsewhere"
+      : saveState === "signedOut"
+        ? "Signed out — not saved"
       : saveState === "error"
         ? "Not saved"
         : saveState === "saving"
@@ -351,7 +364,11 @@ export function ThemeBuilder({
           </div>
 
           {/* ---------------- notices ---------------- */}
-          {!hasPublished || saveState === "conflict" || saveState === "error" || initial.publishedInvalid ? (
+          {!hasPublished ||
+          saveState === "conflict" ||
+          saveState === "error" ||
+          saveState === "signedOut" ||
+          initial.publishedInvalid ? (
             <div className="space-y-1 border-b px-3 py-2 text-xs">
               {!hasPublished ? (
                 <p className="text-muted-foreground flex items-center gap-2">
@@ -365,6 +382,21 @@ export function ThemeBuilder({
                   The header and footer were saved somewhere else since you opened them. Your last changes were not saved.
                   <Button type="button" size="xs" variant="outline" onClick={() => router.refresh()}>
                     Load latest
+                  </Button>
+                </p>
+              ) : null}
+              {saveState === "signedOut" ? (
+                <p className="text-destructive flex flex-wrap items-center gap-2">
+                  <TriangleAlertIcon className="size-3.5 shrink-0" />
+                  You were signed out, so your latest changes are not saved yet. Sign in again in a new tab — this page
+                  keeps them — then save.
+                  <Button asChild size="xs" variant="outline">
+                    <a href={`${STAFF_LOGIN_PATH}?from=${encodeURIComponent(window.location.pathname)}`} target="_blank" rel="noopener">
+                      Sign in again
+                    </a>
+                  </Button>
+                  <Button type="button" size="xs" onClick={() => void save()}>
+                    Save now
                   </Button>
                 </p>
               ) : null}
