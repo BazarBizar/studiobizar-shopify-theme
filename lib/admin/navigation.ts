@@ -81,6 +81,7 @@ const RESERVED_SLUGS = new Set([
   "menus",
   "media",
   "site-wide",
+  "staff",
 ]);
 
 export function reservedSlug(type: string): boolean {
@@ -163,6 +164,11 @@ const BESPOKE: { group: GroupKey; item: NavItem }[] = [
       type: null,
       matches: SITE_WIDE_SECTIONS.map((section) => `/admin/${section.type}`),
     },
+  },
+  {
+    group: "settings",
+    /** Who may sign in, and each person's own password — see `lib/admin/staff.ts`. */
+    item: { href: "/admin/staff", label: "Staff & sign-in", readOnly: false, type: null },
   },
   {
     group: "inbox",

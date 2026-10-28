@@ -1,13 +1,20 @@
 import "server-only";
 
+import { getSiteSettings } from "@/lib/shopify";
+
+import { beholdFeedId } from "./feed-id";
+
 /**
  * Instagram feed via Behold (behold.so).
  *
  * Behold proxies the Instagram Graph API and serves a plain JSON feed, so no
  * Instagram token lives in this app and there is nothing to refresh.
  *
- * Set `BEHOLD_FEED_ID` in `.env` — the id from the feed's Behold dashboard, or
- * the full `https://feeds.behold.so/…` URL, either is accepted.
+ * The feed is set in the panel (Site-wide → Site settings → Instagram feed), with
+ * `BEHOLD_FEED_ID` in `.env` as the fallback — the id from the feed's Behold
+ * dashboard, or the full `https://feeds.behold.so/…` URL. Nothing else is fetched:
+ * the address is built here from the id, so a value typed into the panel can never
+ * point the server at another host.
  *
  * With the variable unset this returns an empty array rather than throwing, and
  * the landing page falls back to the images on the page's `gallery` metafield —
@@ -40,14 +47,14 @@ type BeholdPost = {
 /** Behold has shipped both a bare array and a `{ posts }` envelope. */
 type BeholdResponse = BeholdPost[] | { posts?: BeholdPost[] };
 
-function feedUrl(): string | null {
-  const configured = process.env.BEHOLD_FEED_ID?.trim();
-  if (!configured) return null;
-  return configured.startsWith("http") ? configured : `https://feeds.behold.so/${configured}`;
+async function feedUrl(): Promise<string | null> {
+  const fromPanel = beholdFeedId((await getSiteSettings()).instagramFeed);
+  const id = fromPanel ?? beholdFeedId(process.env.BEHOLD_FEED_ID);
+  return id ? `https://feeds.behold.so/${id}` : null;
 }
 
-export function instagramConfigured(): boolean {
-  return Boolean(feedUrl());
+export async function instagramConfigured(): Promise<boolean> {
+  return Boolean(await feedUrl());
 }
 
 /**
@@ -64,10 +71,10 @@ function imageFor(post: BeholdPost): string | null {
 }
 
 export async function getInstagramPosts(limit = 5): Promise<InstagramPost[]> {
-  const url = feedUrl();
+  const url = await feedUrl();
 
   if (!url) {
-    console.warn("[instagram] BEHOLD_FEED_ID is not set — falling back to the gallery metafield.");
+    console.warn("[instagram] No Instagram feed set (Site settings, or BEHOLD_FEED_ID) — falling back to the gallery.");
     return [];
   }
 

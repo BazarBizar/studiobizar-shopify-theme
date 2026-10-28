@@ -1,6 +1,7 @@
 import "server-only";
 
 import { CtaBanner } from "@/components/sections/landing/cta-banner";
+import { CustomSection } from "@/components/sections/landing/custom-section";
 import { Collage } from "@/components/sections/landing/collage";
 import { Collapsible } from "@/components/sections/landing/collapsible";
 import { FeaturedProduct } from "@/components/sections/landing/featured-product";
@@ -19,7 +20,8 @@ import { Testimonials } from "@/components/sections/landing/testimonials";
 import { VideoEmbed } from "@/components/sections/landing/video-embed";
 import { carouselView, DESIGNED } from "@/lib/page-builder/carousel";
 import { isSafeHref, parseVideoUrl, type LinkValue } from "@/lib/page-builder/fields";
-import { getProduct } from "@/lib/shopify";
+import { getProduct, getProductsByIds } from "@/lib/shopify";
+import type { ProductCard } from "@/lib/shopify/types";
 import { richTextToHtml } from "@/lib/shopify/transforms";
 
 import { renderer } from "./renderer-kit";
@@ -357,5 +359,18 @@ export const LANDING_RENDERERS = {
 
   newsletter: renderer<"newsletter">({
     render: (s, _, { id }) => <NewsletterBand id={id} title={s.title} body={s.body} align={s.align} style={s.style} />,
+  }),
+
+  custom_section: renderer<"custom_section", Record<string, ProductCard>>({
+    // One request for every Product block in the section.
+    load: async (s) => {
+      const ids = [
+        ...new Set(s.blocks.flatMap((item) => (item.type === "product" && item.settings.product ? [item.settings.product.id] : []))),
+      ];
+      if (ids.length === 0) return {};
+      const found = await getProductsByIds(ids);
+      return Object.fromEntries(found.map((item) => [item.id, item]));
+    },
+    render: (s, products, { preview }) => <CustomSection settings={s} products={products} placeholder={preview} />,
   }),
 };

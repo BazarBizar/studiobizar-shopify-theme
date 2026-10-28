@@ -1571,6 +1571,44 @@ ${REFERENCE_PREVIEW}
       }
     `,
   },
+
+  /**
+   * Who may sign in besides the owners (`lib/admin/staff.ts`): one json metafield in a
+   * private namespace — no definition, so the Storefront API cannot read it. The
+   * digest makes a write refuse to overwrite a change it did not see.
+   */
+  staffAccounts: {
+    kind: "read",
+    document: `
+      query AdminStaffAccounts {
+        shop {
+          id
+          staff: metafield(namespace: "studio_admin", key: "staff_accounts") {
+            value
+            compareDigest
+          }
+        }
+      }
+    `,
+  },
+
+  staffAccountsSet: {
+    kind: "write",
+    document: `
+      mutation AdminStaffAccountsSet($metafields: [MetafieldsSetInput!]!) {
+        metafieldsSet(metafields: $metafields) {
+          metafields {
+            key
+          }
+          userErrors {
+            field
+            message
+            code
+          }
+        }
+      }
+    `,
+  },
 } as const satisfies Record<string, Operation>);
 
 export type OperationName = keyof typeof OPERATIONS;

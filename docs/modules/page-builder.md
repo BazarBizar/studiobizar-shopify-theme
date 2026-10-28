@@ -333,6 +333,53 @@ props, so a Liquid section can be written from the same settings.
 | Layout | `spacer` | rhythm-scale height, optional hairline | — |
 | Site | `newsletter` | the footer sign-up as a band | — |
 
+### Custom section (build your own)
+
+`custom_section` (`lib/page-builder/sections-custom.ts`, component
+`components/sections/landing/custom-section.tsx`, theme `sb-custom.liquid`) is the one section an
+editor builds block by block, like an Elementor container. First in Add section, under **Build your
+own**, with four ready-made presets (photo beside text, three features, four cards, questions).
+
+| Block | What it is | Its own settings |
+|---|---|---|
+| Heading · Small label · Text | words | size (5 heading sizes; text small/normal/large), heading level for search engines, short lines |
+| Button | one or two buttons | style each, full width on phones, Button look (Next only) |
+| Image · Card · Icon & text | a photo; photo + heading + text + link; icon + heading + text + link | shape, width in the column, caption and link; card style; icon above/beside, icon size |
+| List · Quote · Fold-out text | one item per line; a quote with name; a title that opens | dots/ticks/numbers/dashes; size; open at first |
+| Video · Product | YouTube/Vimeo behind a cover; a product card | shape |
+| Line · Empty space | a rule; room | length, thickness, colour; height on desktop and on phones |
+| **Column** | starts a column: the blocks after it, up to the next Column, sit in it | width on desktop / tablets / phones (Auto shares the row), content position, show first on phones, background colour, space inside, line, corners |
+
+Every content block also has, under *Position & style*: **Alignment** (as the section / left / centre /
+right), **Space above** and **Show on**, and a **Typography** of its own (fonts, sizes, colours — Next
+only, `nextOnly`, like a section's design). The section's Layout: alignment, width (page, medium,
+narrow, edge to edge), space between blocks, space between columns; Style's Text alignment is not
+offered (`textAlign: false`) because Alignment is here.
+
+**Columns without nesting.** The document stays a flat block list — what a Shopify section's blocks
+are — so the theme renders the same document: `groupColumns` (Next) and the column loop in
+`sb-custom.liquid` both turn it into columns; blocks before the first Column fill the width. Widths,
+spaces and hiding are data attributes drawn by the shared `styles/sb-blocks.css` (imported by both
+builds; unlayered, so hiding is `data-hide`, not a Tailwind class).
+
+**In the editor** (generic `BlocksField`, so every section with blocks benefits): blocks after a Column
+are drawn indented under it; the Column's **+** adds a block at the end of that column; moving,
+duplicating or deleting a Column takes its blocks with it (delete offers Undo). With five or more
+block types, **Add block** opens a picker — tiles with an icon and one line each, a search box (Enter
+adds the first match) and **Ready-made layouts** (`blocks({ layouts })`). Rows are dragged by their grip (or
+lifted with Space and moved with the arrow keys); a dragged Column takes its blocks and lands between
+columns, never splitting one or swallowing the blocks above the first column.
+
+**Turn into Custom section.** Text, Text blocks, Image with text, Columns, Numbers, Steps, Collapsible
+content, Video, Call to action (not on a photograph), Testimonials and Logo list offer, at the foot of
+their Content tab, to become a Custom section (`lib/page-builder/convert-custom.ts`): same id, visibility
+and Style tab; content rebuilt as blocks (columns stay columns, Image with text becomes photo beside
+text). The toast's Undo (and the editor's) puts the original back. Sections drawn from the catalogue or a
+content library, and those whose photograph is their ground, are not offered it. `check:page-builder`
+converts every preset of those types and requires a valid result that keeps every sentence. A new block arrives filled
+with example words and the shop's own photos (`blockWithExamples`). A block's design field may name
+`targets` (heading / text / button), so its Typography offers only what the block draws.
+
 ### Presets and Add section
 
 Add section lists PRESETS (`presets.ts`), not bare types: “Icon features”, “Cards” and “Text
@@ -442,7 +489,8 @@ yarn check:liquid             # the Liquid theme matches the builder: schemas, o
 yarn check:liquid-render      # the theme sections RENDERED locally (liquidjs + Chromium), no Shopify:
                               # every preset, every field empty, overflow, console, tabs/video/slideshow
 yarn check:page-builder-ui    # needs `yarn dev`; the editor in a real browser (Playwright): autosave,
-                              # undo, preview, leaving mid-edit, Back, publish, delete. Localhost only.
+                              # undo, preview, leaving mid-edit, Back, publish, delete, the Custom
+                              # section's layouts, column "+" and widths. Localhost only.
                               # First run: npx playwright install chromium
 ```
 

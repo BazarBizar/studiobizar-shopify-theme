@@ -42,6 +42,7 @@ import {
 import { designStyle, type Device } from "@/lib/page-builder/design";
 import type { UniversalSettings } from "@/lib/page-builder/define-section";
 import { frameStyle } from "@/components/page-builder/section-frame";
+import { canConvertToCustom, convertToCustom } from "@/lib/page-builder/convert-custom";
 import { NO_EXAMPLE_MEDIA, withExamples } from "@/lib/page-builder/examples";
 import { findTextPath, withText } from "@/lib/page-builder/inline-edit";
 import { sectionFromPreset, type SectionPreset } from "@/lib/page-builder/presets";
@@ -411,6 +412,29 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
     setPanel({ kind: "section", id: copy.id });
   };
 
+  /**
+   * "Turn into Custom section": the same section, rebuilt as blocks the editor can add
+   * to. Its form remounts (a new kind of section), and the toast's Undo puts it back.
+   */
+  const convertToCustomSection = (id: string) => {
+    const section = content.sections.find((item) => item.id === id);
+    const converted = section ? convertToCustom(section) : null;
+    if (!section || !converted) return;
+    dispatch({ kind: "swap", section: converted });
+    setEpoch((value) => value + 1);
+    setEditorTab("content");
+    toast.success("Now a Custom section", {
+      description: "Its content is kept as blocks. Add more with Add block.",
+      action: {
+        label: "Undo",
+        onClick: () => {
+          dispatch({ kind: "swap", section });
+          setEpoch((value) => value + 1);
+        },
+      },
+    });
+  };
+
   /** No confirmation dialog — a toast with Undo is faster and just as safe. */
   const remove = (id: string) => {
     const index = content.sections.findIndex((section) => section.id === id);
@@ -736,6 +760,9 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
                   onToggle={() => dispatch({ kind: "toggle", id: selectedSection.id })}
                   onDuplicate={() => duplicate(selectedSection.id)}
                   onRemove={() => remove(selectedSection.id)}
+                  onConvert={
+                    canConvertToCustom(selectedSection) ? () => convertToCustomSection(selectedSection.id) : undefined
+                  }
                 />
               ) : (
                 <SectionList

@@ -335,6 +335,8 @@ export type SiteSettings = {
   contactCtaLabel: Maybe<string>;
   /** Keyed by the metaobject field key, e.g. `social_instagram`. */
   social: Record<string, Maybe<string>>;
+  /** The Instagram row's Behold feed — see lib/instagram/behold.ts. */
+  instagramFeed: Maybe<string>;
 };
 
 const SOCIAL_KEYS = [
@@ -356,6 +358,7 @@ export function normalizeSiteSettings(entry: ShopifyMetaobject): SiteSettings {
     contactCtaBody: fieldText(fields, "contact_cta_body"),
     contactCtaLabel: fieldText(fields, "contact_cta_label"),
     social: Object.fromEntries(SOCIAL_KEYS.map((key) => [key, fieldText(fields, key)])),
+    instagramFeed: fieldText(fields, "instagram_feed"),
   };
 }
 
@@ -367,4 +370,5 @@ export const EMPTY_SITE_SETTINGS: SiteSettings = {
   contactCtaBody: null,
   contactCtaLabel: null,
   social: {},
+  instagramFeed: null,
 };

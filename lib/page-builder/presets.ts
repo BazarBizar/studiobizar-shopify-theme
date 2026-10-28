@@ -44,6 +44,95 @@ const repeat = (count: number, block: (index: number) => PresetBlock) => Array.f
 
 /** Alternative set-ups of a section, beyond the one its own defaults give. Listed after it. */
 const VARIANTS: SectionPreset[] = [
+  /* ---------------- Build your own ---------------- */
+  {
+    id: "custom_section",
+    type: "custom_section",
+    label: "Custom section",
+    description: "Starts with a heading, text and a button — then add any block you like, stacked or in columns.",
+    category: "Build your own",
+    settings: {
+      blocks: [
+        { type: "heading", settings: { title: "Your heading here" } },
+        { type: "text", settings: { body: para("Write a few lines here. Add photos, buttons, icons, a video or a list with Add block — and put them side by side with Column blocks.") } },
+        { type: "button", settings: { link: { label: "learn more", href: "/shop" } } },
+      ],
+    },
+  },
+  {
+    id: "custom_section.photo",
+    type: "custom_section",
+    label: "Photo beside text",
+    description: "A photograph on one side; a label, heading, text and button on the other. Every block can be changed.",
+    category: "Build your own",
+    settings: {
+      columnGap: "lg",
+      blocks: [
+        { type: "column" },
+        { type: "image", settings: { ratio: "portrait" } },
+        { type: "column", settings: { position: "middle" } },
+        { type: "eyebrow", settings: { eyebrow: "The workshop" } },
+        { type: "heading", settings: { title: "Made by hand, made to last" } },
+        { type: "text", settings: { body: para("A few lines on how the pieces are made, by whom, and why it matters.") } },
+        { type: "button", settings: { link: { label: "our story", href: "/our-story" }, style: "outline" } },
+      ],
+    },
+  },
+  {
+    id: "custom_section.features",
+    type: "custom_section",
+    label: "Heading and three features",
+    description: "A centred heading over three icons with a short text each.",
+    category: "Build your own",
+    settings: {
+      align: "center",
+      blocks: [
+        { type: "heading", settings: { title: "Why clients choose us" } },
+        { type: "column" },
+        { type: "icon", settings: { icon: "hammer", title: "Made by hand", body: para("By the workshops that design them.") } },
+        { type: "column" },
+        { type: "icon", settings: { icon: "truck", title: "White-glove delivery", body: para("Placed in the room, packaging taken away.") } },
+        { type: "column" },
+        { type: "icon", settings: { icon: "shield", title: "Five-year guarantee", body: para("On every frame and every joint.") } },
+      ],
+    },
+  },
+  {
+    id: "custom_section.cards",
+    type: "custom_section",
+    label: "Four cards",
+    description: "Four photo cards in a row — two on tablets, one under the other on phones.",
+    category: "Build your own",
+    settings: {
+      blocks: [
+        { type: "heading", settings: { title: "Ways to work with us" } },
+        ...["Shop the collection", "Made to order", "Interior projects", "Visit a showroom"].flatMap((title) => [
+          { type: "column", settings: { width: "25", widthTablet: "50" } },
+          { type: "card", settings: { title, body: para("A sentence on what this means for the client."), link: { label: "learn more", href: "/contact" } } },
+        ]),
+      ],
+    },
+  },
+  {
+    id: "custom_section.questions",
+    type: "custom_section",
+    label: "Questions and answers",
+    description: "A heading with questions that open to show their answer, on a narrow column.",
+    category: "Build your own",
+    settings: {
+      width: "narrow",
+      gap: "none",
+      blocks: [
+        { type: "heading", settings: { title: "Good to know", space: "none" } },
+        { type: "space", settings: { height: 24, heightMobile: 16 } },
+        ...["How long does delivery take?", "Can I change the size or material?", "Do you deliver abroad?"].map((title) => ({
+          type: "fold",
+          settings: { title, body: para("The answer, in a few clear sentences.") },
+        })),
+      ],
+    },
+  },
+
   /* ---------------- Banners ---------------- */
   {
     id: "image_banner",

@@ -43,6 +43,7 @@ import {
   testimonials,
   videoSection,
 } from "./sections-landing";
+import { customSection } from "./sections-custom";
 
 /**
  * THE list of sections the builder offers. The panel's Add section menu, the
@@ -94,6 +95,8 @@ export const SECTIONS = {
   [featuredProduct.type]: featuredProduct,
   [spacer.type]: spacer,
   [newsletter.type]: newsletter,
+  // Built block by block — see sections-custom.ts.
+  [customSection.type]: customSection,
 } as const;
 
 export type SectionType = keyof typeof SECTIONS;
@@ -102,6 +105,7 @@ export type SettingsFor<T extends SectionType> = ReturnType<(typeof SECTIONS)[T]
 
 /** The order categories appear in Add section. */
 export const SECTION_CATEGORIES: readonly SectionCategory[] = [
+  "Build your own",
   "Banners",
   "Intro",
   "Text & media",

@@ -101,7 +101,13 @@ export type LeafFieldDef<K extends string = string> =
   | (Base<K> & { kind: "products"; max: number })
   | (Base<K> & { kind: "collection" })
   | (Base<K> & { kind: "collections"; max: number })
-  | (Base<K> & { kind: "design"; parts: readonly DesignPart[] });
+  | (Base<K> & { kind: "design"; parts: readonly DesignPart[]; targets?: readonly DesignTarget[] });
+
+/**
+ * What a block's Typography styles — a Heading block has only a heading, so offering
+ * "Text" and "Buttons" there would be offering controls that do nothing. Absent: all.
+ */
+export type DesignTarget = "heading" | "text" | "button";
 
 /**
  * The parts of the design panel a `design` field offers. A section offers them all;
@@ -143,6 +149,15 @@ export type BlockDef = {
   fields: readonly LeafFieldDef[];
   /** The field whose value labels the block in the list. */
   summaryKey?: string;
+  /** One line under the label in the block picker. */
+  description?: string;
+  /**
+   * A COLUMN: it holds no content itself but starts a column, and the blocks after
+   * it — up to the next column — sit in it. Still one flat list (so it stays a
+   * Shopify block list, and blocks still do not nest); the editor draws the blocks
+   * under their column, indented.
+   */
+  column?: boolean;
 };
 
 export type BlocksFieldDef<K extends string = string> = Base<K> & {
@@ -151,6 +166,16 @@ export type BlocksFieldDef<K extends string = string> = Base<K> & {
   max: number;
   /** Block types a new section starts with, in order. */
   defaults: readonly string[];
+  /** Several blocks added at once from the picker — "Two columns", "Photo beside text". */
+  layouts?: readonly BlockLayout[];
+};
+
+/** A ready-made run of blocks the block picker offers. Values over each block's defaults. */
+export type BlockLayout = {
+  id: string;
+  label: string;
+  description: string;
+  blocks: readonly { type: string; settings?: Record<string, unknown> }[];
 };
 
 export type FieldDef<K extends string = string> = LeafFieldDef<K> | BlocksFieldDef<K>;
@@ -334,20 +359,20 @@ export const collections = <K extends string>(key: K, label: string, opts: Opts 
 export const design = <K extends string>(
   key: K,
   label: string,
-  opts: Opts & { parts?: readonly DesignPart[] } = {},
+  opts: Opts & { parts?: readonly DesignPart[]; targets?: readonly DesignTarget[] } = {},
 ) => ({ ...opts, key, label, kind: "design" as const, parts: opts.parts ?? ALL_DESIGN_PARTS });
 
 export const block = <const T extends string, const F extends readonly LeafFieldDef[]>(
   type: T,
   label: string,
   fields: F,
-  opts: { summaryKey?: F[number]["key"] } = {},
+  opts: { summaryKey?: F[number]["key"]; description?: string; column?: boolean } = {},
 ) => ({ type, label, fields, ...opts });
 
 export const blocks = <K extends string, const B extends readonly BlockDef[]>(
   key: K,
   label: string,
-  opts: Opts & { blocks: B; max: number; defaults?: readonly B[number]["type"][] },
+  opts: Opts & { blocks: B; max: number; defaults?: readonly B[number]["type"][]; layouts?: readonly BlockLayout[] },
 ) => ({ ...opts, key, label, kind: "blocks" as const, defaults: opts.defaults ?? [] });
 
 /* -------------------------------------------------------------------------- *

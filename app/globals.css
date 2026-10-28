@@ -4,6 +4,7 @@
 /* The page builder's design value — shared with the Liquid theme (theme-build/sb-theme.css). */
 @import "../styles/sb-design.css";
 @import "../styles/sb-carousel.css";
+@import "../styles/sb-blocks.css";
 
 /* next-themes writes `.dark` on <html>, which is a GLOBAL class: it stays there
    when the operator leaves /admin, so anything the storefront renders that reads a

@@ -217,6 +217,14 @@ async function main() {
     metafields: [{ ownerId: "gid://shopify/Shop/0", namespace: "custom", key: "theme_layout_draft", type: "json", value: "{}" }],
   });
 
+  // Staff & sign-in. The same: the write names shop 0, so nothing is set.
+  await run("staffAccounts", {});
+  await run("staffAccountsSet", {
+    metafields: [
+      { ownerId: "gid://shopify/Shop/0", namespace: "studio_admin", key: "staff_accounts", type: "json", value: "{}", compareDigest: null },
+    ],
+  });
+
   /**
    * The count is of what this run actually SENT, not of what the allowlist contains —
    * an operation nobody exercises here has not been checked, and saying otherwise would

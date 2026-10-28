@@ -5,10 +5,11 @@ import Credentials from "next-auth/providers/credentials";
 
 import { audit } from "./audit";
 import { STAFF_BASE_PATH, STAFF_COOKIE, STAFF_LOGIN_PATH } from "./cookie";
-import { adminEnv, allowedEmails } from "./env";
+import { adminEnv } from "./env";
 import { dummyHash, verifyPassword } from "./password";
 import { limit } from "./rate-limit";
 import { clientIp } from "./request";
+import { isAllowed, sessionAllowed, signInTarget } from "./staff";
 
 /**
  * Staff authentication — entirely separate from the storefront's customer
@@ -98,7 +99,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
           return null;
         }
 
-        const allowed = allowedEmails().has(email);
+        // The owners (ADMIN_ALLOWED_EMAILS) and the staff added in the panel, each
+        // against their own password — see lib/admin/staff.ts.
+        const who = await signInTarget(email, adminEnv().ADMIN_PASSWORD_HASH);
+        const allowed = who.allowed && who.hash !== null;
 
         /**
          * Derive even for an email that is not on the allowlist, against a
@@ -106,7 +110,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
          * instead of the ~100ms a real attempt costs, and that difference is a
          * reliable oracle for which addresses are staff addresses.
          */
-        const target = allowed ? adminEnv().ADMIN_PASSWORD_HASH : await dummyHash();
+        const target = allowed ? who.hash! : await dummyHash();
         const passwordMatches = await verifyPassword(password, target);
 
         if (!allowed || !passwordMatches) {
@@ -133,18 +137,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
      * ones that skip the provider, and it is the hook Auth.js documents for
      * refusing a user outright.
      */
-    signIn({ user }) {
+    async signIn({ user }) {
       const email = user?.email?.trim().toLowerCase();
-      return Boolean(email && allowedEmails().has(email));
+      return Boolean(email && (await isAllowed(email)));
     },
 
     jwt({ token, user }) {
-      if (user?.email) token.email = user.email.toLowerCase();
+      if (user?.email) {
+        token.email = user.email.toLowerCase();
+        // When this sign-in happened: a password change or a removal after it ends it.
+        token.signedInAt = Date.now();
+      }
       return token;
     },
 
     session({ session, token }) {
       if (session.user && typeof token.email === "string") session.user.email = token.email;
+      (session as { signedInAt?: number }).signedInAt = typeof token.signedInAt === "number" ? token.signedInAt : undefined;
       return session;
     },
   },
@@ -154,8 +163,9 @@ export type StaffSession = { email: string };
 
 /**
  * The authoritative gate. Verifies the cookie's signature (via `auth()`) AND
- * that the email is still on the allowlist, so removing someone from
- * `ADMIN_ALLOWED_EMAILS` locks them out on their next request instead of when
+ * that the email is still allowed (an owner, or on the staff list — lib/admin/staff.ts)
+ * and the session began after their last password change, so removing someone locks
+ * them out on their next request instead of when
  * their eight-hour session happens to expire.
  *
  * Every admin page and every admin route handler goes through this. The check in
@@ -165,7 +175,9 @@ export async function currentStaff(): Promise<StaffSession | null> {
   const session = await auth();
   const email = session?.user?.email?.trim().toLowerCase();
   if (!email) return null;
-  if (!allowedEmails().has(email)) return null;
+  // Still an owner or on the staff list, and signed in since their last password change.
+  const signedInAt = (session as { signedInAt?: number } | null)?.signedInAt ?? null;
+  if (!(await sessionAllowed(email, signedInAt))) return null;
 
   return { email };
 }

@@ -67,10 +67,15 @@ yarn admin:credentials              # generates a password too
 yarn admin:credentials "a password" # or hash one you have chosen
 ```
 
-All staff share `ADMIN_PASSWORD_HASH`; `ADMIN_ALLOWED_EMAILS` decides who may use
-it. Removing an address locks that person out on their next request — the
-allowlist is re-checked on every page view and every API call, not just at
-sign-in.
+`ADMIN_ALLOWED_EMAILS` are the **owners**: they always keep access and sign in with
+`ADMIN_PASSWORD_HASH` until they set their own password. Everyone else is managed in
+the panel — **Settings → Staff & sign-in**: an owner adds someone with a first
+password, removes them again, and everyone changes their own password there
+(`lib/admin/staff.ts`; stored as scrypt hashes in a private shop metafield the
+storefront cannot read). A removal or a password change ends that person's
+sessions on their next request — access is re-checked on every page view and every
+API call, not just at sign-in. Forgot an owner password: delete the shop metafield
+`studio_admin.staff_accounts` in Shopify admin, and `ADMIN_PASSWORD_HASH` works again.
 
 ### Required Admin API scopes
 
@@ -193,7 +198,8 @@ a filesystem path. For authenticated pages set `ADMIN_COOKIE` to the staff sessi
 - [ ] No secret appears in the client bundle:
       `grep -r "$SHOPIFY_ADMIN_API_ACCESS_TOKEN" .next/static` finds nothing.
 - [ ] `AUTH_SECRET` is at least 32 characters and unique to this deployment.
-- [ ] `ADMIN_ALLOWED_EMAILS` lists only people who should have access today.
+- [ ] `ADMIN_ALLOWED_EMAILS` lists only the owners, and Settings → Staff & sign-in
+      lists only people who should have access today.
 - [ ] `REVALIDATE_SECRET` is set, or `/api/revalidate` will refuse everything.
 - [ ] On a host that runs more than one instance (serverless), `UPSTASH_REDIS_REST_URL`
       and `UPSTASH_REDIS_REST_TOKEN` are set, so rate limits are shared — the log says
