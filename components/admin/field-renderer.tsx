@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { Button } from "@/components/admin/ui/button";
 import { Input } from "@/components/admin/ui/input";
 import {
   Select,
@@ -285,6 +286,38 @@ export function FieldRenderer({ spec, value, onChange, invalid }: Props) {
         aria-describedby={describedBy}
         onChange={(event) => onChange(event.target.value)}
       />
+    );
+  }
+
+  if (spec.type === "color") {
+    // A swatch to pick with, and the hex beside it for pasting a brand colour exactly.
+    const hex = /^#[0-9a-f]{6}$/i.test(value) ? value : "#ffffff";
+    return (
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          aria-label={`${spec.name} — pick a colour`}
+          value={hex}
+          disabled={disabled}
+          onChange={(event) => onChange(event.target.value.toUpperCase())}
+          className="border-input size-8 shrink-0 cursor-pointer rounded-md border bg-transparent p-0.5 disabled:cursor-not-allowed"
+        />
+        <Input
+          id={spec.key}
+          value={value}
+          placeholder="#RRGGBB"
+          disabled={disabled}
+          aria-invalid={invalid}
+          aria-describedby={describedBy}
+          onChange={(event) => onChange(event.target.value.trim())}
+          className="max-w-36 font-mono"
+        />
+        {value && !disabled ? (
+          <Button type="button" variant="ghost" size="sm" onClick={() => onChange("")}>
+            Clear
+          </Button>
+        ) : null}
+      </div>
     );
   }
 

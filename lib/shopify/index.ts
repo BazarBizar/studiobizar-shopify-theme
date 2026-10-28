@@ -4,6 +4,8 @@ import { shopifyFetch } from "./client";
 import {
   PRODUCTS_PER_PAGE,
   REVALIDATE,
+  SITE_IDENTITY_HANDLE,
+  SITE_IDENTITY_TYPE,
   SITE_SETTINGS_HANDLE,
   SITE_SETTINGS_TYPE,
   TAGS,
@@ -11,8 +13,11 @@ import {
   resolveSort,
 } from "./constants";
 import {
+  EMPTY_SITE_IDENTITY,
   EMPTY_SITE_SETTINGS,
+  normalizeSiteIdentity,
   normalizeSiteSettings,
+  type SiteIdentity,
   type SiteSettings,
 } from "./entities";
 import {
@@ -336,6 +341,21 @@ export async function getSiteSettings(): Promise<SiteSettings> {
     return entry ? normalizeSiteSettings(entry) : EMPTY_SITE_SETTINGS;
   } catch {
     return EMPTY_SITE_SETTINGS;
+  }
+}
+
+/**
+ * The `site_identity` singleton — logo, browser-tab icon, name, search and share
+ * defaults (Site-wide → Logo, icon & SEO). NEVER THROWS, for the same reason as
+ * `getSiteSettings`: it is read on every page, so a missing entry or a Shopify hiccup
+ * gives the original logo and name rather than a broken page.
+ */
+export async function getSiteIdentity(): Promise<SiteIdentity> {
+  try {
+    const entry = await getMetaobject(SITE_IDENTITY_TYPE, SITE_IDENTITY_HANDLE);
+    return entry ? normalizeSiteIdentity(entry) : EMPTY_SITE_IDENTITY;
+  } catch {
+    return EMPTY_SITE_IDENTITY;
   }
 }
 

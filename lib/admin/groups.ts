@@ -34,13 +34,13 @@ const GROUPS: GroupDef[] = [
   { key: "content", label: "Content library", types: ["service", "faq_item", "location", "contact_channel"] },
   { key: "catalogue", label: "Catalogue", types: ["designer", "project"] },
   { key: "library", label: "Library", types: ["captioned_image"] },
-  { key: "inbox", label: "Inbox", types: ["inquiry"] },
+  { key: "inbox", label: "Inbox", types: ["inquiry", "contact_message", "newsletter_subscriber"] },
   {
     key: "settings",
     label: "Settings",
     // Classifying a type here is a convenience only — an unlisted one is already
     // reachable under "Other".
-    types: ["site_settings", "email_notification", "admin_settings"],
+    types: ["site_settings", "site_identity", "email_notification", "admin_settings"],
   },
 ];
 

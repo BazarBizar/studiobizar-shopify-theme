@@ -22,7 +22,7 @@
 const DRY_RUN = process.argv.includes("--dry-run");
 
 /** Every type the storefront must NOT be able to read. */
-const PRIVATE_TYPES = ["inquiry", "email_notification", "admin_settings"];
+const PRIVATE_TYPES = ["inquiry", "email_notification", "admin_settings", "contact_message", "newsletter_subscriber"];
 
 const domain = process.env.SHOPIFY_STORE_DOMAIN;
 const token = process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN;

@@ -1609,6 +1609,40 @@ ${REFERENCE_PREVIEW}
       }
     `,
   },
+
+  /** How the site sends email — see `lib/email/settings.ts`. Same shape as the staff list. */
+  emailSettings: {
+    kind: "read",
+    document: `
+      query AdminEmailSettings {
+        shop {
+          id
+          settings: metafield(namespace: "studio_admin", key: "email_settings") {
+            value
+            compareDigest
+          }
+        }
+      }
+    `,
+  },
+
+  emailSettingsSet: {
+    kind: "write",
+    document: `
+      mutation AdminEmailSettingsSet($metafields: [MetafieldsSetInput!]!) {
+        metafieldsSet(metafields: $metafields) {
+          metafields {
+            key
+          }
+          userErrors {
+            field
+            message
+            code
+          }
+        }
+      }
+    `,
+  },
 } as const satisfies Record<string, Operation>);
 
 export type OperationName = keyof typeof OPERATIONS;

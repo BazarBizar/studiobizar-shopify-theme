@@ -32,7 +32,8 @@ import {
 } from "@/lib/shopify/transforms";
 
 const METADATA: Metadata = {
-  title: "Studio Bizar — Designed for life, inspired by the world",
+  // Absolute: it already says "Studio Bizar"; the template would add it again.
+  title: { absolute: "Studio Bizar — Designed for life, inspired by the world" },
   description:
     "Furniture, lighting and objects made by hand in Bali and Java, for interiors that are meant to last.",
   alternates: { canonical: "/" },

@@ -3,25 +3,44 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="{{ settings.meta_theme_color }}">
+
+    {% comment %}
+      Site-wide → Logo, icon & SEO in the admin panel (the `site_identity` metaobject),
+      the same values the Next build reads. Each falls back to the theme setting or the
+      shop's own, so an empty field changes nothing.
+    {% endcomment %}
+    {%- liquid
+      assign identity = shop.metaobjects.site_identity['site-identity']
+      assign site_name = identity.site_name.value | default: shop.name
+      assign theme_color = identity.theme_color.value | default: settings.meta_theme_color
+      assign favicon = identity.favicon.value | default: settings.favicon
+      assign description = page_description | default: identity.meta_description.value
+    -%}
+
+    <meta name="theme-color" content="{{ theme_color }}">
     <link rel="canonical" href="{{ canonical_url }}">
 
-    {%- if settings.favicon != blank -%}
-      <link rel="icon" type="image/png" href="{{ settings.favicon | image_url: width: 32, height: 32 }}">
+    {%- if favicon != blank -%}
+      <link rel="icon" type="image/png" href="{{ favicon | image_url: width: 64, height: 64 }}">
+      <link rel="apple-touch-icon" href="{{ favicon | image_url: width: 180, height: 180 }}">
+    {%- endif -%}
+
+    {%- if identity.google_verification.value != blank -%}
+      <meta name="google-site-verification" content="{{ identity.google_verification.value | split: 'content="' | last | split: '"' | first | escape }}">
     {%- endif -%}
 
     <title>
       {{- page_title -}}
       {%- if current_tags %} &middot; {{ 'general.meta.tags' | t: tags: current_tags | join: ', ' }}{% endif -%}
       {%- if current_page != 1 %} &middot; {{ 'general.meta.page' | t: page: current_page }}{% endif -%}
-      {%- unless page_title contains shop.name %} &middot; {{ shop.name }}{% endunless -%}
+      {%- unless page_title contains site_name %} &middot; {{ site_name }}{% endunless -%}
     </title>
 
-    {%- if page_description -%}
-      <meta name="description" content="{{ page_description | escape }}">
+    {%- if description != blank -%}
+      <meta name="description" content="{{ description | escape }}">
     {%- endif -%}
 
-    {%- render 'sb-meta-tags' -%}
+    {%- render 'sb-meta-tags', identity: identity, site_name: site_name -%}
 
     {{ 'sb-theme.css' | asset_url | stylesheet_tag }}
     {%- render 'sb-css-variables' -%}

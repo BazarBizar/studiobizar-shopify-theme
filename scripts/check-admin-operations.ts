@@ -225,6 +225,14 @@ async function main() {
     ],
   });
 
+  // Settings → Email. The same again: shop 0.
+  await run("emailSettings", {});
+  await run("emailSettingsSet", {
+    metafields: [
+      { ownerId: "gid://shopify/Shop/0", namespace: "studio_admin", key: "email_settings", type: "json", value: "{}", compareDigest: null },
+    ],
+  });
+
   /**
    * The count is of what this run actually SENT, not of what the allowlist contains —
    * an operation nobody exercises here has not been checked, and saying otherwise would

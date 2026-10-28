@@ -2,6 +2,7 @@ import { InquiryDrawer } from "@/components/inquiry/inquiry-drawer";
 import { BackToTop } from "@/components/layout/back-to-top";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
+import { SiteIdentityStyle } from "@/components/layout/site-identity-style";
 import { SearchOverlay } from "@/components/search/search-overlay";
 import { designStyle } from "@/lib/page-builder/design";
 import { getThemeLayout } from "@/lib/shopify";
@@ -46,6 +47,8 @@ export async function PageShell({
       style={Object.keys(site.style).length ? (site.style as React.CSSProperties) : undefined}
       className="flex min-h-full flex-col bg-background text-foreground"
     >
+      {/* An uploaded logo, for every <Logo> below — see site-identity-style.tsx. */}
+      <SiteIdentityStyle />
       <Header theme={layout} />
       <main id="main" className="flex-1">
         {children}
