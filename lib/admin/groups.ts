@@ -40,7 +40,7 @@ const GROUPS: GroupDef[] = [
     label: "Settings",
     // Classifying a type here is a convenience only — an unlisted one is already
     // reachable under "Other".
-    types: ["site_settings", "email_notification", "admin_settings"],
+    types: ["site_settings", "site_identity", "email_notification", "admin_settings"],
   },
 ];
 

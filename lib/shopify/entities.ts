@@ -372,3 +372,67 @@ export const EMPTY_SITE_SETTINGS: SiteSettings = {
   social: {},
   instagramFeed: null,
 };
+
+/* -------------------------------------------------------------------------- *
+ * Site identity — logo, icon, name, search and share defaults
+ * -------------------------------------------------------------------------- */
+
+/** Kept in step with the `choices` in `scripts/add-site-identity.mjs`. */
+export const LOGO_COLOURS = ["text", "original"] as const;
+
+/**
+ * Site-wide → Logo, icon & SEO. Like SiteSettings, every field may be empty and every
+ * reader falls back to what the site showed before: the vector lockup in
+ * `public/brand`, `/favicon.ico`, "Studio Bizar".
+ */
+export type SiteIdentity = {
+  siteName: string;
+  logo: Maybe<ShopifyImage>;
+  logoMark: Maybe<ShopifyImage>;
+  /** "text": drawn in the text colour (a mask), "original": the picture as it is. */
+  logoColour: (typeof LOGO_COLOURS)[number];
+  favicon: Maybe<ShopifyImage>;
+  metaDescription: Maybe<string>;
+  shareImage: Maybe<ShopifyImage>;
+  themeColor: Maybe<string>;
+  /** Just the code, whether the whole `<meta>` tag or only its content was pasted. */
+  googleVerification: Maybe<string>;
+};
+
+export const DEFAULT_SITE_NAME = "Studio Bizar";
+
+export const EMPTY_SITE_IDENTITY: SiteIdentity = {
+  siteName: DEFAULT_SITE_NAME,
+  logo: null,
+  logoMark: null,
+  logoColour: "text",
+  favicon: null,
+  metaDescription: null,
+  shareImage: null,
+  themeColor: null,
+  googleVerification: null,
+};
+
+export function googleVerificationCode(raw: Maybe<string>): Maybe<string> {
+  const value = raw?.trim();
+  if (!value) return null;
+  const code = /contents*=s*["']([^"']+)["']/i.exec(value)?.[1] ?? value;
+  return /^[A-Za-z0-9_-]{10,100}$/.test(code) ? code : null;
+}
+
+export function normalizeSiteIdentity(entry: ShopifyMetaobject): SiteIdentity {
+  const fields = toFieldMap(entry.fields);
+  const colour = fieldText(fields, "logo_colour");
+  const theme = fieldText(fields, "theme_color");
+  return {
+    siteName: fieldText(fields, "site_name")?.trim() || DEFAULT_SITE_NAME,
+    logo: fieldImage(fields, "logo"),
+    logoMark: fieldImage(fields, "logo_mark"),
+    logoColour: colour === "original" ? "original" : "text",
+    favicon: fieldImage(fields, "favicon"),
+    metaDescription: fieldText(fields, "meta_description")?.trim() || null,
+    shareImage: fieldImage(fields, "share_image"),
+    themeColor: theme && /^#[0-9a-f]{6}$/i.test(theme) ? theme : null,
+    googleVerification: googleVerificationCode(fieldText(fields, "google_verification")),
+  };
+}

@@ -54,6 +54,12 @@ export const metadata: Metadata = {
     template: "%s · Studio Bizar",
   },
   description: "Designed for life, inspired by the world.",
+  /**
+   * The file lives in `public/`, not `app/`: a favicon in `app/` is file-based
+   * metadata, which always wins — so neither the storefront's icon (Site-wide → Logo,
+   * icon & SEO) nor the admin's own (Admin appearance) could ever replace it.
+   */
+  icons: { icon: "/favicon.ico" },
 };
 
 /**

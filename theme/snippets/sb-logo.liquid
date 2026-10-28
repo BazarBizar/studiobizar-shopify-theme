@@ -8,6 +8,10 @@
   `full` is the lockup with the wordmark (183.5 × 20); `mark` is the stone glyph
   alone (15 × 15).
 
+  A logo uploaded under Site-wide → Logo, icon & SEO (the site_identity metaobject)
+  replaces the lockup, as in the Next build (styles/sb-logo.css): drawn in the text
+  colour too, or — "The logo's own colours" — as the picture it is.
+
   Accepts:
     variant — full | mark, default full
     class   — utilities for the mask box
@@ -25,18 +29,46 @@
     assign ratio = '183.5 / 20'
   endif
   assign klass = class | default: 'h-5 w-[11.47rem]'
+
+  assign identity = shop.metaobjects.site_identity['site-identity']
+  if variant == 'mark'
+    assign uploaded = identity.logo_mark.value
+  else
+    assign uploaded = identity.logo.value
+  endif
+  assign own_colours = false
+  assign box = ''
+  if uploaded != blank
+    assign src = uploaded | image_url: width: 800
+    assign ratio = uploaded.preview_image.aspect_ratio | default: 4
+    if identity.logo_colour.value == 'original'
+      assign own_colours = true
+    endif
+    if variant != 'mark'
+      assign box = 'width: auto; max-width: min(100%, 24rem);'
+    endif
+  endif
 -%}
 
 {%- capture mark -%}
-  <span
-    aria-hidden="true"
-    class="block bg-current {{ klass }}"
-    style="aspect-ratio: {{ ratio }};
-           -webkit-mask-image: url({{ src }}); mask-image: url({{ src }});
-           -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
-           -webkit-mask-size: contain; mask-size: contain;
-           -webkit-mask-position: center; mask-position: center;"
-  ></span>
+  {%- if own_colours -%}
+    <span
+      aria-hidden="true"
+      class="block {{ klass }}"
+      style="aspect-ratio: {{ ratio }}; {{ box }}
+             background: url({{ src }}) center / contain no-repeat;"
+    ></span>
+  {%- else -%}
+    <span
+      aria-hidden="true"
+      class="block bg-current {{ klass }}"
+      style="aspect-ratio: {{ ratio }}; {{ box }}
+             -webkit-mask-image: url({{ src }}); mask-image: url({{ src }});
+             -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+             -webkit-mask-size: contain; mask-size: contain;
+             -webkit-mask-position: center; mask-position: center;"
+    ></span>
+  {%- endif -%}
 {%- endcapture -%}
 
 {%- liquid
@@ -51,7 +83,7 @@
   <a
     href="{{ destination }}"
     class="inline-block shrink-0"
-    aria-label="{{ shop.name }} — {{ 'general.accessibility.home' | t }}"
+    aria-label="{{ identity.site_name.value | default: shop.name }} — {{ 'general.accessibility.home' | t }}"
   >
     {{ mark }}
   </a>

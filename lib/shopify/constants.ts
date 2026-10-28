@@ -73,6 +73,13 @@ export const PAGE_METAFIELDS = [
 export const SITE_SETTINGS_TYPE = "site_settings";
 export const SITE_SETTINGS_HANDLE = "site-settings";
 
+/**
+ * The `site_identity` singleton (`scripts/add-site-identity.mjs`): logo, browser-tab
+ * icon, name and search/share defaults. Asked for by handle, like site_settings.
+ */
+export const SITE_IDENTITY_TYPE = "site_identity";
+export const SITE_IDENTITY_HANDLE = "site-identity";
+
 /** Metaobject types provisioned by schema-push. */
 export const METAOBJECT_TYPES = {
   captionedImage: "captioned_image",

@@ -211,6 +211,14 @@ export const MODULES: Record<string, ModuleDef> = {
     load: "client",
   },
 
+  site_identity: {
+    label: "Logo, icon & SEO",
+    columns: ["site_name", "logo", "favicon"],
+    /** A singleton both storefronts read on every page; see `site_settings` above. */
+    deletable: false,
+    load: "client",
+  },
+
   admin_settings: {
     label: "Admin appearance",
     columns: ["panel_title", "logo", "favicon"],

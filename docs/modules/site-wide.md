@@ -6,6 +6,7 @@ definition and renders the form or table from it.
 
 | Tab | Metaobject type | Kind | Storefront access | Read by |
 |---|---|---|---|---|
+| Logo, icon & SEO | `site_identity` | singleton | `PUBLIC_READ` | Both storefronts: Next (`getSiteIdentity`) and Liquid (`shop.metaobjects.site_identity`) |
 | Site settings | `site_settings` | singleton | `PUBLIC_READ` | Storefront (footer, CTA, socials, featured collections) |
 | Locations | `location` | collection | `PUBLIC_READ` | Storefront (Our Locations, page metafields) |
 | Contact channels | `contact_channel` | collection | `PUBLIC_READ` | Storefront (Contact page) |
@@ -26,6 +27,39 @@ enforces this on existing definitions.
 - The old list URL `/admin/<type>` redirects to the tab, so breadcrumbs and bookmarks still work.
 - These types are hidden from the sidebar. The **Site-wide** row stays highlighted on their entry
   screens.
+
+## Logo, icon & SEO (`site_identity`)
+
+Created by `scripts/add-site-identity.mjs` (`yarn setup:site-identity`). The script is idempotent. The entry `site-identity` is seeded with the name and description the site already used.
+
+| Field | Type | Used for |
+|---|---|---|
+| `site_name` | text (required) | Title template `%s · <name>`, `og:site_name`, `application-name`; in Liquid, the `<title>` suffix |
+| `logo`, `logo_mark` | image | Replace `public/brand/logo.svg` / `mark.svg` everywhere `<Logo>` / `sb-logo` is drawn |
+| `logo_colour` | `text` / `original` | `text` draws the upload as a mask in the text colour, like the original. `original` draws it as a picture. |
+| `favicon` | image | `<link rel=icon>` (64 px) and `apple-touch-icon` (180 px), via the Shopify CDN |
+| `meta_description` | multi-line text | `<meta name=description>` for pages without their own |
+| `share_image` | image | `og:image` for pages without their own photo; switches the Twitter card to `summary_large_image` |
+| `theme_color` | color | `<meta name=theme-color>` |
+| `google_verification` | text | `google-site-verification`. Either the code or the whole pasted tag is accepted. |
+
+Every field may be empty, and an empty field changes nothing.
+
+**Next**
+- **Metadata:** `app/(storefront)/layout.tsx` builds it in `generateMetadata` / `generateViewport`.
+- **No og title or description in the layout:** the layout does not set `og:title` or `og:description`. Next derives them from each page, and a fixed value would override them. Pages that set their own `openGraph` (product, project, designer, collection) replace the default as a whole, photo included.
+- **Logo:** `<SiteIdentityStyle>` in `PageShell` writes custom properties that `styles/sb-logo.css` reads. `<Logo>` itself stays a plain component that client components can render too. Only a plain https URL is ever written into that `<style>`.
+- **Favicon file:** the favicon moved from `app/favicon.ico` to `public/favicon.ico`. A favicon in `app/` is file-based metadata, which always wins, so no setting could replace it.
+
+**Liquid**
+- `theme.liquid` reads the entry for the icon, theme colour, verification tag, title suffix and description.
+- `sb-meta-tags` reads it for the site name, share image and description.
+- `sb-logo` reads it for the logo.
+- Each falls back to the theme setting or `shop.name`.
+
+**Timing:** a save reaches the storefront in about 40 seconds. That is Shopify's Storefront API catching up, behind the panel's second cache drop.
+
+Checks: `yarn check:site-identity` (offline: reading, the logo stylesheet, refusal of unsafe URLs, Google's code).
 
 ## Admin panel (`admin_settings`)
 

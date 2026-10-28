@@ -146,6 +146,46 @@ export const FIELD_COPY: Record<string, Record<string, FieldCopy>> = {
     },
   },
 
+  site_identity: {
+    site_name: {
+      label: "Website name",
+      help: "Shown after each page’s title in the browser tab and in Google, e.g. “Our Story · Studio Bizar”.",
+    },
+    logo: {
+      label: "Logo",
+      help: "Replaces the Studio Bizar logo in the header and footer. An SVG or a PNG with a transparent background works best. Empty keeps the original.",
+    },
+    logo_mark: {
+      label: "Small logo (symbol)",
+      help: "Used where the site shows only the symbol, like the large mark in the footer. Empty keeps the original.",
+    },
+    logo_colour: {
+      label: "Logo colours",
+      help: "“Same colour as the text” suits a one-colour logo: it turns light on dark backgrounds by itself. Choose “The logo’s own colours” for a logo with several colours.",
+      choiceLabels: { text: "Same colour as the text", original: "The logo’s own colours" },
+    },
+    favicon: {
+      label: "Browser tab icon",
+      help: "The small icon in the browser tab and on a phone’s home screen. A square image, at least 180 × 180 pixels. Empty keeps the original.",
+    },
+    meta_description: {
+      label: "Description for search engines",
+      help: "One or two sentences Google may show under the website’s name. Used for every page that has no description of its own. Up to about 155 characters shows in full.",
+    },
+    share_image: {
+      label: "Share image",
+      help: "The picture shown when someone shares a link to the website on WhatsApp, Facebook or LinkedIn. 1200 × 630 pixels works best. Product, project and designer pages use their own photo.",
+    },
+    theme_color: {
+      label: "Browser colour on phones",
+      help: "Colours the address bar in some phone browsers. Leave empty for the browser’s own.",
+    },
+    google_verification: {
+      label: "Google Search Console code",
+      help: "Only if Google asks you to prove you own the website: paste the code from the “HTML tag” method (the part in content=\"…\"), or the whole tag.",
+    },
+  },
+
   email_notification: {
     name: { label: "Name" },
     notification_type: {

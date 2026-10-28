@@ -1,0 +1,42 @@
+/*
+ * The logo, as a box whose artwork comes from custom properties.
+ *
+ * By default it is the vector lockup in public/brand, drawn as a MASK over the text
+ * colour, so one file recolours itself on every surface. An uploaded logo
+ * (Site-wide → Logo, icon & SEO) replaces it through the --sb-logo-full-* /
+ * --sb-logo-mark-* properties that <SiteIdentityStyle> writes on :root: either as the
+ * mask too ("Same colour as the text") or as a plain picture ("The logo's own colours").
+ *
+ * In a layer, so a component's size utilities (h-5, w-auto …) still win.
+ */
+@layer components {
+  .sb-logo {
+    display: block;
+    aspect-ratio: var(--sb-logo-ratio);
+    background-color: var(--sb-logo-fill, currentColor);
+    background-image: var(--sb-logo-picture, none);
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    -webkit-mask-image: var(--sb-logo-shape);
+    mask-image: var(--sb-logo-shape);
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+  }
+  .sb-logo[data-variant="full"] {
+    --sb-logo-ratio: var(--sb-logo-full-ratio, 183.5 / 20);
+    --sb-logo-shape: var(--sb-logo-full-shape, url("/brand/logo.svg"));
+    --sb-logo-picture: var(--sb-logo-full-picture, none);
+    --sb-logo-fill: var(--sb-logo-full-fill, currentColor);
+  }
+  .sb-logo[data-variant="mark"] {
+    --sb-logo-ratio: var(--sb-logo-mark-ratio, 1 / 1);
+    --sb-logo-shape: var(--sb-logo-mark-shape, url("/brand/mark.svg"));
+    --sb-logo-picture: var(--sb-logo-mark-picture, none);
+    --sb-logo-fill: var(--sb-logo-mark-fill, currentColor);
+  }
+}

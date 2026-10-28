@@ -10,6 +10,12 @@
   is a catalogue, and a price leaking into a link preview would contradict every
   page it points at. scripts/check-no-price.ts enforces the same rule on the
   Next side — see the note at the top of lib/shopify/fragments.ts.
+
+  Accepts (from theme.liquid):
+    identity  — the site_identity metaobject (Site-wide → Logo, icon & SEO)
+    site_name — its website name, or shop.name
+  A page without a photo of its own is shared with identity's share image, and one
+  without a description with identity's description — as in the Next build.
 {% endcomment %}
 
 {%- liquid
@@ -34,10 +40,12 @@
     assign og_description = page_description
   endif
 
-  assign og_description = og_description | default: shop.description | default: shop.name
+  assign og_site_name = site_name | default: shop.name
+  assign og_image = og_image | default: identity.share_image.value
+  assign og_description = og_description | default: identity.meta_description.value | default: shop.description | default: og_site_name
 -%}
 
-<meta property="og:site_name" content="{{ shop.name }}">
+<meta property="og:site_name" content="{{ og_site_name | escape }}">
 <meta property="og:url" content="{{ canonical_url }}">
 <meta property="og:title" content="{{ og_title | escape }}">
 <meta property="og:type" content="{{ og_type }}">
@@ -53,6 +61,6 @@
   {%- endif -%}
 {%- endif -%}
 
-<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:card" content="{% if og_image %}summary_large_image{% else %}summary{% endif %}">
 <meta name="twitter:title" content="{{ og_title | escape }}">
 <meta name="twitter:description" content="{{ og_description | escape }}">

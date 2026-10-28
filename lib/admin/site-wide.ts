@@ -31,6 +31,14 @@ export type SiteWideSection = {
 /** Tab order. */
 export const SITE_WIDE_SECTIONS: SiteWideSection[] = [
   {
+    type: "site_identity",
+    label: "Logo, icon & SEO",
+    kind: "singleton",
+    description:
+      "The logo on every page, the icon in the browser tab, and what Google and link previews (WhatsApp, Facebook, LinkedIn) show about the website.",
+    setup: "node --env-file=.env scripts/add-site-identity.mjs",
+  },
+  {
     type: "site_settings",
     label: "Site settings",
     kind: "singleton",
