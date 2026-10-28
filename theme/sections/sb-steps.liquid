@@ -63,7 +63,7 @@
                   <div class="sb-prose mt-3" style="font-size: var(--fs-secondary);">{{ b.body }}</div>
                 {%- endif -%}
               </div>
-              {%- if s.show_images -%}
+              {%- if b.image != blank -%}
                 {%- render 'sb-picture', image: b.image, ratio: 'landscape', sizes: '(max-width: 749px) 90vw, 16rem' -%}
               {%- endif -%}
             </li>
@@ -77,7 +77,7 @@
             {%- if b.title == blank -%}{%- continue -%}{%- endif -%}
             {%- assign n = n | plus: 1 -%}
             <li class="border-foreground flex flex-col border-t pt-5" {{ block.shopify_attributes }}>
-              {%- if s.show_images -%}
+              {%- if b.image != blank -%}
                 {%- render 'sb-picture', image: b.image, ratio: 'landscape', sizes: '(max-width: 749px) 90vw, 25vw', class: 'mb-6' -%}
               {%- endif -%}
               {%- if s.numbered -%}
@@ -152,12 +152,6 @@
       "id": "numbered",
       "label": "Number the steps",
       "default": true
-    },
-    {
-      "type": "checkbox",
-      "id": "show_images",
-      "label": "Show images",
-      "default": false
     },
     {
       "type": "select",

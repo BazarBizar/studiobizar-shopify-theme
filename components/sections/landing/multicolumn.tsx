@@ -82,7 +82,9 @@ export function Multicolumn({
               style === "lines" && "sm:px-8 sm:first:pl-0",
             )}
           >
-            {media === "image" && (column.image || placeholder) && (
+            {/* A column's own image always shows — Media only decides what fills a column
+                without one: an icon, or (in the preview) an empty frame. */}
+            {(column.image || (media === "image" && placeholder)) && (
               <Picture
                 image={column.image}
                 ratio={ratio}
@@ -91,7 +93,7 @@ export function Multicolumn({
                 className="mb-6"
               />
             )}
-            {media === "icon" && column.icon !== "none" && <SectionIcon name={column.icon} className="mb-5 size-9" />}
+            {!column.image && media === "icon" && column.icon !== "none" && <SectionIcon name={column.icon} className="mb-5 size-9" />}
             {column.title.trim() && <h3 className="text-h3">{column.title}</h3>}
             <Prose html={column.html} size="secondary" className="mt-3" />
             {column.link?.href && column.link.label && (

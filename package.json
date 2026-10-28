@@ -51,7 +51,8 @@
     "setup:inbox": "node --env-file=.env scripts/add-inbox-types.mjs",
     "check:email-ui": "tsx --conditions=react-server scripts/check-email-ui.ts",
     "check:site-identity": "tsx --conditions=react-server scripts/check-site-identity.ts",
-    "setup:site-identity": "node --env-file=.env scripts/add-site-identity.mjs"
+    "setup:site-identity": "node --env-file=.env scripts/add-site-identity.mjs",
+    "audit:page-builder": "tsx scripts/audit-page-builder.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

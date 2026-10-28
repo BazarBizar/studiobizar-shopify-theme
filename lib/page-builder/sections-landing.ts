@@ -349,10 +349,10 @@ export const multicolumn = defineSection({
           "column",
           "Column",
           [
-            image("image", "Image", { help: "Shown when the section's media is set to images." }),
+            image("image", "Image", { help: "Shown above the heading. A column’s image always shows, whatever Media is set to." }),
             select("icon", "Icon", SECTION_ICONS, {
               display: "icons",
-              help: "Shown when the section's media is set to icons.",
+              help: "Shown when Media is set to Icons and this column has no image.",
             }),
             text("title", "Heading", { max: 120 }),
             richText("body", "Text"),
@@ -371,9 +371,13 @@ export const multicolumn = defineSection({
         { value: "icon", label: "Icons" },
         { value: "none", label: "None" },
       ],
-      { group: "layout" },
+      {
+        group: "layout",
+        help: "An image added to a column always shows. Icons: an icon in the columns without one. Images: an empty frame in the preview where an image is still missing.",
+      },
     ),
-    select("ratio", "Image shape", IMAGE_RATIOS, { default: "portrait", group: "layout", when: { field: "media", is: ["image"] } }),
+    // Not tied to Media: a column's own image shows whatever Media says, so its shape always matters.
+    select("ratio", "Image shape", IMAGE_RATIOS, { default: "portrait", group: "layout" }),
     select(
       "columnsDesktop",
       "Columns on desktop",
@@ -483,7 +487,6 @@ export const steps = defineSection({
       { group: "layout" },
     ),
     toggle("numbered", "Number the steps", { default: true, group: "layout" }),
-    toggle("showImages", "Show images", { group: "layout" }),
   ],
   summaryKey: "title",
 });

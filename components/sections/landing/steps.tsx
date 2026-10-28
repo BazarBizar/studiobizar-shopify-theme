@@ -20,7 +20,6 @@ export function Steps({
   items,
   layout,
   numbered,
-  showImages,
   placeholder,
 }: {
   title: string;
@@ -29,11 +28,13 @@ export function Steps({
   items: Step[];
   layout: "row" | "timeline";
   numbered: boolean;
-  showImages: boolean;
   placeholder?: boolean;
 }) {
   if (items.length === 0) return null;
   const number = (index: number) => String(index + 1).padStart(2, "0");
+  // A step's own image always shows. In the preview, once one step has an image, the
+  // others show an empty frame so the row stays even and the missing ones are obvious.
+  const withImages = items.some((item) => item.image);
 
   if (layout === "timeline") {
     return (
@@ -48,7 +49,7 @@ export function Steps({
                 <h3 className="text-h3">{item.title}</h3>
                 <Prose html={item.html} size="secondary" className="mt-3" />
               </div>
-              {showImages && (item.image || placeholder) && (
+              {(item.image || (placeholder && withImages)) && (
                 <Picture image={item.image} ratio="landscape" placeholder={placeholder} sizes="(max-width: 749px) 90vw, 16rem" />
               )}
             </li>
@@ -64,7 +65,7 @@ export function Steps({
       <ol className={cn("grid gap-x-[var(--sb-grid-gap)] gap-y-12", ROW[Math.min(items.length, 4)], items.length > 4 && "lg:grid-cols-4")}>
         {items.map((item, index) => (
           <li key={item.id} className="border-foreground flex flex-col border-t pt-5">
-            {showImages && (item.image || placeholder) && (
+            {(item.image || (placeholder && withImages)) && (
               <Picture image={item.image} ratio="landscape" placeholder={placeholder} sizes="(max-width: 749px) 90vw, 25vw" className="mb-6" />
             )}
             {numbered && <p className="text-h2 mb-4 tabular-nums">{number(index)}</p>}

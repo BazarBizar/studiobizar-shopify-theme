@@ -198,7 +198,6 @@ export const LANDING_RENDERERS = {
           }))}
         layout={s.layout}
         numbered={s.numbered}
-        showImages={s.showImages}
         placeholder={preview}
       />
     ),

@@ -168,7 +168,7 @@ const CONVERTERS: Record<string, (s: S) => Converted | null> = {
 
   steps: (s) => {
     const items = list(s.items).map((item, index): Draft[] => [
-      ...(s.showImages && item.settings.image ? [{ type: "image", settings: { image: item.settings.image, ratio: "landscape" } }] : []),
+      ...(item.settings.image ? [{ type: "image", settings: { image: item.settings.image, ratio: "landscape" } }] : []),
       ...(s.numbered !== false ? [{ type: "eyebrow", settings: { eyebrow: String(index + 1).padStart(2, "0") } }] : []),
       { type: "heading", settings: { title: str(item.settings.title), size: "h3" } },
       ...(hasRich(item.settings.body) ? [{ type: "text", settings: { body: item.settings.body, size: "small" } }] : []),
