@@ -17,6 +17,7 @@ import {
   sameContent,
 } from "../lib/page-builder/document";
 import { isSafeHref, parseVideoUrl } from "../lib/page-builder/fields";
+import { canConvertToCustom, convertToCustom, CONVERTIBLE_TYPES } from "../lib/page-builder/convert-custom";
 import { withExamples } from "../lib/page-builder/examples";
 import { findTextPath, withText } from "../lib/page-builder/inline-edit";
 import { presetById, SECTION_PRESETS, sectionFromPreset } from "../lib/page-builder/presets";
@@ -504,6 +505,42 @@ check(
   check("in place: rich text is not offered", findTextPath(settings, '{"type":"root","children":[]}') === null);
   const changed = withText(settings, ["slides", 0, "settings", "title"], "New");
   check("in place: the new value lands at its path, the old settings untouched", changed.slides[0]!.settings.title === "New" && settings.slides[0]!.settings.title === "Second  slide\n");
+}
+
+/* ---------------- Turn into Custom section ---------------- */
+{
+  // Every preset of a type that can become a Custom section: the result passes the
+  // write schema, keeps its id, and still says what the original said.
+  const words = (value: unknown): string[] =>
+    typeof value === "string"
+      ? value.startsWith("{")
+        ? [...value.matchAll(/"value":"([^"]+)"/g)].map((match) => match[1]!.trim())
+        : [value.trim()]
+      : Array.isArray(value)
+        ? value.flatMap(words)
+        : value && typeof value === "object"
+          ? Object.entries(value)
+              .filter(([key]) => !["href", "id", "url", "handle"].includes(key))
+              .flatMap(([, inner]) => words(inner))
+          : [];
+  for (const preset of SECTION_PRESETS.filter((item) => CONVERTIBLE_TYPES.includes(item.type))) {
+    const section = withExamples(sectionFromPreset(preset), { images: [], products: [], collections: [] });
+    if (!canConvertToCustom(section)) continue;
+    const converted = convertToCustom(section)!;
+    const valid = SECTIONS.custom_section.strict.safeParse(converted.settings);
+    check(`custom: "${preset.label}" becomes a valid Custom section`, valid.success && converted.id === section.id);
+    const after = JSON.stringify(converted.settings);
+    // Only sentences (content) must survive — single words are option values.
+    const lost = [...new Set(words(section.settings))].filter(
+      (word) => /\s/.test(word) && !after.includes(JSON.stringify(word).slice(1, -1)),
+    );
+    check(`custom: "${preset.label}" keeps its words${lost.length ? ` (lost: ${lost.slice(0, 2).join(" | ")})` : ""}`, lost.length === 0);
+  }
+  check(
+    "custom: a call to action on a photograph is not offered the change",
+    !canConvertToCustom(sectionFromPreset(presetById("cta_banner.image")!)),
+  );
+  check("custom: a catalogue section is not offered the change", !canConvertToCustom(sectionFromPreset(presetById("product_grid")!)));
 }
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll page builder checks passed.");

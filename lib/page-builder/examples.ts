@@ -2,6 +2,7 @@ import type { SectionInstance } from "./document";
 import {
   blockDefinition,
   isFieldActive,
+  type BlockDef,
   isFieldFilled,
   type BlockValue,
   type FieldDef,
@@ -49,6 +50,7 @@ const WORDS: Record<string, string> = {
   label: "Example label",
   item: "Example phrase",
   buttonLabel: "learn more",
+  items: ["A first point", "A second point", "A third point"].join("\n"),
 };
 
 /** Shopify's rich text AST, one paragraph — what the rich text editor writes. */
@@ -115,6 +117,15 @@ function fill(fields: readonly FieldDef[], settings: Record<string, unknown>, me
     if (value !== undefined) out[field.key] = value;
   }
   return out;
+}
+
+/**
+ * A block just added in the editor, filled the same way — so a new Heading block says
+ * "Your heading here" in the preview instead of adding nothing visible.
+ */
+export function blockWithExamples(definition: BlockDef, block: BlockValue, media: ExampleMedia): BlockValue {
+  const offset = media.images.length ? Math.floor(Math.random() * media.images.length) : 0;
+  return { ...block, settings: fill(definition.fields, block.settings, media, { image: offset, product: 0, collection: 0 }) };
 }
 
 /** The section with its empty content filled with examples. */

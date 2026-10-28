@@ -150,6 +150,7 @@ export type UniversalSettings = SettingsOf<typeof UNIVERSAL_FIELDS> & StyleSetti
  * -------------------------------------------------------------------------- */
 
 export type SectionCategory =
+  | "Build your own"
   | "Banners"
   | "Intro"
   | "Text & media"

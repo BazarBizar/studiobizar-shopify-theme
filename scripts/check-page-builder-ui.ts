@@ -612,6 +612,103 @@ async function main() {
       await shot("06c-button-look");
       await aside.getByRole("tab", { name: "Content" }).click();
       await aside.getByRole("button", { name: "Delete section" }).click();
+
+      // Custom section: blocks of the editor's own choosing, and columns made from Column blocks.
+      const custom = page.frameLocator("iframe[title^='Preview']").locator('[data-section-type="custom_section"]');
+      const picker = page.locator("[data-radix-popper-content-wrapper]");
+      await page.getByRole("button", { name: "Add section" }).click();
+      await page.locator("[cmdk-item]").filter({ hasText: "Starts with a heading, text and a button" }).first().click();
+      await custom.getByText("Your heading here").first().waitFor({ timeout: 20000 });
+      check("Custom section: arrives with a heading, text and a button", (await custom.locator(".sb-bk").count()) === 3);
+
+      await aside.getByRole("button", { name: "Add block", exact: true }).click();
+      await picker.getByPlaceholder(/Search/).fill("photo");
+      await picker.getByRole("button", { name: /^Photo beside text/ }).click();
+      await page.waitForTimeout(2500);
+      const columns = await custom.locator(".sb-bk-col").evaluateAll((cols) => cols.map((col) => col.getBoundingClientRect().toJSON()));
+      check(
+        "Custom section: a ready-made layout puts two columns side by side",
+        columns.length === 3 && Math.abs(columns[1]!.top - columns[2]!.top) < 2 && columns[2]!.left > columns[1]!.right - 1,
+        JSON.stringify(columns.map((c) => [Math.round(c.left), Math.round(c.top)])),
+      );
+      check(
+        "Custom section: the list shows the blocks under their column",
+        (await aside.getByRole("button", { name: /^Column 1/ }).count()) === 1 && (await aside.getByRole("button", { name: /^Column 2/ }).count()) === 1,
+      );
+
+      // "+" on a column adds into that column, not at the end.
+      await aside.getByRole("button", { name: "Add a block to Column 1" }).click();
+      await picker.getByRole("button", { name: /^Quote/ }).click();
+      await page.waitForTimeout(2500);
+      check(
+        "Custom section: + on Column 1 puts the new block in Column 1",
+        (await custom.locator(".sb-bk-col").nth(1).locator("blockquote").count()) === 1 &&
+          (await custom.locator(".sb-bk-col").nth(2).locator("blockquote").count()) === 0,
+      );
+
+      // Dragging a Column (here with the keyboard: Space lifts, an arrow moves, Space drops)
+      // takes its blocks along, and lands before the column above — not inside it.
+      await aside.getByRole("button", { name: "Drag Column 2 to reorder" }).focus();
+      await page.keyboard.press("Space");
+      await page.waitForTimeout(200);
+      await page.keyboard.press("ArrowUp");
+      await page.waitForTimeout(200);
+      await page.keyboard.press("Space");
+      await page.waitForTimeout(2500);
+      check(
+        "Custom section: dragging Column 2 up swaps the columns, each with its blocks",
+        (await custom.locator(".sb-bk-col").nth(1).locator("blockquote").count()) === 0 &&
+          (await custom.locator(".sb-bk-col").nth(2).locator("blockquote").count()) === 1 &&
+          (await custom.locator(".sb-bk-col").nth(2).locator("img, [aria-hidden]").count()) > 0,
+      );
+
+      // A column's width on desktop.
+      await aside.getByRole("button", { name: /^Column 1/ }).click();
+      await aside.getByRole("radiogroup").first().getByRole("radio", { name: "33%" }).click();
+      await page.waitForTimeout(2500);
+      const share = await custom.locator(".sb-blocks").first().evaluate((row) => {
+        const col = row.children[1] as HTMLElement;
+        const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
+        return (col.getBoundingClientRect().width + gap) / (row.getBoundingClientRect().width + gap);
+      });
+      check("Custom section: Column 1 set to 33% takes a third of the row", Math.abs(share - 1 / 3) < 0.02, share);
+      await shot("06e-custom-section");
+
+      // Deleting a column takes its blocks with it.
+      await aside.getByRole("button", { name: "Delete Column 2" }).click();
+      await page.waitForTimeout(2500);
+      check("Custom section: deleting a column removes it and its blocks", (await custom.locator(".sb-bk-col").count()) === 2);
+      await aside.getByRole("button", { name: "Delete section" }).click();
+
+      // An existing section becomes a Custom section — its words kept — and Undo brings it back.
+      await page.getByRole("button", { name: "Add section" }).click();
+      await page.getByRole("dialog").locator("[cmdk-item]").filter({ hasText: "Icon features" }).click();
+      const framed = page.frameLocator("iframe[title^='Preview']");
+      await framed.locator('[data-section-type="multicolumn"]').getByText("White-glove delivery").first().waitFor({ timeout: 20000 });
+      await aside.getByRole("button", { name: "Turn into Custom section" }).click();
+      await custom.getByText("White-glove delivery").first().waitFor({ timeout: 20000 });
+      check(
+        "Turn into Custom section: the section is rebuilt as blocks, its text kept",
+        (await custom.locator(".sb-bk-col").count()) >= 4 && (await aside.getByRole("button", { name: "Add block", exact: true }).count()) === 1,
+      );
+      await shot("06f-converted");
+      await page.locator("[data-sonner-toast]").filter({ hasText: "Now a Custom section" }).getByRole("button", { name: "Undo" }).click();
+      await framed.locator('[data-section-type="multicolumn"]').getByText("White-glove delivery").first().waitFor({ timeout: 20000 });
+      await page.waitForTimeout(2000);
+      await shot("06g-converted-undone");
+      check("Turn into Custom section: Undo puts the original section back", (await custom.count()) === 0, await custom.count());
+      await aside.getByRole("button", { name: "Delete section" }).click();
+      check(
+        "Turn into Custom section: not offered on a section that cannot become one",
+        await (async () => {
+          await page.getByRole("button", { name: "Add section" }).click();
+          await page.getByRole("dialog").locator("[cmdk-item]").filter({ hasText: "Starts with a heading, text and a button" }).click();
+          await page.waitForTimeout(1000);
+          const offered = await aside.getByRole("button", { name: "Turn into Custom section" }).count();
+          await aside.getByRole("button", { name: "Delete section" }).click();
+          return offered === 0;
+        })(),
+      );
     });
 
     /* ---------------- Publish ---------------- */

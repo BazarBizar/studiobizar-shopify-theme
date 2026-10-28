@@ -7,6 +7,7 @@
    (app/globals.css), drawn here from what snippets/sb-design.liquid writes. */
 @import "../styles/sb-design.css";
 @import "../styles/sb-carousel.css";
+@import "../styles/sb-blocks.css";
 @source "../theme/**/*.liquid";
 @source "../theme/**/*.json";
 

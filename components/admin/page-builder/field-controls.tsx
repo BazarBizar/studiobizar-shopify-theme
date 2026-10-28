@@ -4,11 +4,48 @@ import {
   ArrowDownIcon,
   ArrowUpIcon,
   ChevronRightIcon,
+  Columns2Icon,
+  Columns3Icon,
   CopyIcon,
+  GripVerticalIcon,
+  HeadingIcon,
+  ImageIcon,
+  ListCollapseIcon,
+  ListIcon,
+  MinusIcon,
+  MousePointerClickIcon,
+  MoveVerticalIcon,
+  PanelTopIcon,
+  PilcrowIcon,
   PlusIcon,
+  QuoteIcon,
+  ShoppingBagIcon,
+  SparklesIcon,
+  SquareIcon,
+  TagIcon,
   Trash2Icon,
+  VideoIcon,
   XIcon,
+  type LucideIcon,
 } from "lucide-react";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import { restrictToParentElement, restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import * as React from "react";
 import { toast } from "sonner";
 
@@ -27,6 +64,7 @@ import {
 } from "@/components/admin/ui/dropdown-menu";
 import { Input } from "@/components/admin/ui/input";
 import { Label } from "@/components/admin/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/admin/ui/popover";
 import {
   Select,
   SelectContent,
@@ -47,6 +85,7 @@ import {
   newBlockId,
   parseVideoUrl,
   type BlockDef,
+  type BlockLayout,
   type BlocksFieldDef,
   type BlockValue,
   type CaptionedImageValue,
@@ -57,7 +96,7 @@ import {
   type SelectDisplay,
 } from "@/lib/page-builder/fields";
 import type { DesignValue } from "@/lib/page-builder/design";
-import type { ExampleMedia } from "@/lib/page-builder/examples";
+import { blockWithExamples, NO_EXAMPLE_MEDIA, type ExampleMedia } from "@/lib/page-builder/examples";
 import { cdnImage } from "@/lib/shopify/transforms";
 import { cn } from "@/lib/utils/cn";
 
@@ -215,6 +254,16 @@ export function FieldControl({ field, value, onChange, inputId, collections }: C
           value={(value as DesignValue | undefined) ?? {}}
           parts={field.parts}
           onChange={(next) => onChange(next)}
+          {...(field.targets
+            ? {
+                align: false,
+                contents: {
+                  heading: field.targets.includes("heading"),
+                  text: field.targets.includes("text"),
+                  button: field.targets.includes("button"),
+                },
+              }
+            : {})}
         />
       );
 
@@ -853,17 +902,81 @@ function blockSummary(definition: BlockDef, settings: Record<string, unknown>): 
     if (value && typeof value === "object" && "label" in value && typeof value.label === "string" && value.label) {
       return value.label;
     }
+    if (value && typeof value === "object" && "title" in value && typeof value.title === "string" && value.title) {
+      return value.title;
+    }
   }
   return "";
 }
+
+/** The picture beside each block type in the list and the picker. */
+const BLOCK_ICONS: Record<string, LucideIcon> = {
+  heading: HeadingIcon,
+  eyebrow: TagIcon,
+  text: PilcrowIcon,
+  button: MousePointerClickIcon,
+  image: ImageIcon,
+  icon: SparklesIcon,
+  card: PanelTopIcon,
+  list: ListIcon,
+  quote: QuoteIcon,
+  fold: ListCollapseIcon,
+  video: VideoIcon,
+  product: ShoppingBagIcon,
+  line: MinusIcon,
+  space: MoveVerticalIcon,
+  column: Columns2Icon,
+};
+
+const blockIcon = (type: string) => BLOCK_ICONS[type] ?? SquareIcon;
+
+const WIDTH_WORDS: Record<string, string> = {
+  equal: "auto width",
+  "100": "full width",
+  "75": "75%",
+  "67": "66%",
+  "50": "half",
+  "33": "a third",
+  "25": "a quarter",
+  "20": "a fifth",
+};
+
+/** "Half · full width on phones" — what a Column is, in the list. */
+function columnSummary(settings: Record<string, unknown>): string {
+  const desktop = WIDTH_WORDS[String(settings.width)] ?? "";
+  const phones = WIDTH_WORDS[String(settings.widthMobile)] ?? "";
+  return [desktop && `${desktop[0]!.toUpperCase()}${desktop.slice(1)}`, phones && `${phones} on phones`]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/** Where a run of blocks starting at `index` ends: at the next Column, or the end. */
+function runEnd(value: BlockValue[], field: BlocksFieldDef, index: number): number {
+  let end = index + 1;
+  while (end < value.length && !blockDefinition(field, value[end]!.type)?.column) end += 1;
+  return end;
+}
+
+const withFreshIds = (items: BlockValue[]) =>
+  items.map((item) => ({ ...item, id: newBlockId(), settings: structuredClone(item.settings) }));
 
 /**
  * The blocks inside a section, edited in place: each is a row that opens to its
  * own fields, with move, duplicate and delete beside it. One row is open at a
  * time, so a long FAQ stays scannable.
  *
- * Reordering is by button, as for image lists — this sits inside the section
- * list's drag context, and a nested one fights it.
+ * Where the section has COLUMN blocks (the Custom section), the blocks after a
+ * Column are drawn under it, indented, and the Column row has its own "+" that adds
+ * a block at the end of that column. Moving, duplicating or deleting a Column takes
+ * its blocks with it.
+ *
+ * A new block arrives filled with example words and the shop's own photos, so it
+ * shows in the preview at once.
+ *
+ * Reordering: drag a row by its grip (or lift it with Space and move it with the
+ * arrow keys), or use the arrows. The section list is not on screen while a section
+ * is open, so this drag context never sits inside its own. A Column dragged takes
+ * its blocks along and lands between columns — never splitting another one.
  */
 function BlocksField({
   field,
@@ -876,19 +989,73 @@ function BlocksField({
   onChange: (value: BlockValue[]) => void;
   collections: CollectionOption[];
 }) {
+  const { examples } = React.useContext(EditorLookupsContext);
   const [openId, setOpenId] = React.useState<string | null>(value.length === 1 ? (value[0]?.id ?? null) : null);
   const full = value.length >= field.max;
+  const isColumn = (item: BlockValue | undefined) => Boolean(item && blockDefinition(field, item.type)?.column);
+  const dndId = React.useId();
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const [dragging, setDragging] = React.useState<string | null>(null);
 
-  const add = (definition: BlockDef) => {
-    const created = createBlock(definition);
-    onChange([...value, created]);
-    setOpenId(created.id);
+  const fresh = (definition: BlockDef, settings?: Record<string, unknown>): BlockValue => {
+    const filled = blockWithExamples(definition, createBlock(definition), examples ?? NO_EXAMPLE_MEDIA);
+    return settings ? { ...filled, settings: { ...filled.settings, ...settings } } : filled;
   };
+
+  const insert = (items: BlockValue[], at = value.length) => {
+    const room = field.max - value.length;
+    if (room <= 0) return;
+    const kept = items.slice(0, room);
+    const next = [...value];
+    next.splice(at, 0, ...kept);
+    onChange(next);
+    // Open the first block that says something — a Column's own settings can wait.
+    setOpenId(kept.find((item) => !isColumn(item))?.id ?? kept[0]?.id ?? null);
+    if (kept.length < items.length) toast(`Only ${kept.length} added — a section holds at most ${field.max} blocks.`);
+  };
+
+  const add = (definition: BlockDef, at?: number) => insert([fresh(definition)], at);
+
+  const addLayout = (layout: BlockLayout) =>
+    insert(
+      layout.blocks.flatMap((item) => {
+        const definition = blockDefinition(field, item.type);
+        return definition ? [fresh(definition, item.settings)] : [];
+      }),
+    );
 
   const update = (id: string, key: string, next: unknown) =>
     onChange(value.map((item) => (item.id === id ? { ...item, settings: { ...item.settings, [key]: next } } : item)));
 
+  /**
+   * Where a Column moves to: the start of the column before it, or the end of the
+   * one after it — never above blocks that are in no column, which would pull them in.
+   */
+  const columnTarget = (index: number, delta: number): number | null => {
+    if (delta < 0) {
+      let start = index - 1;
+      while (start >= 0 && !isColumn(value[start])) start -= 1;
+      return start >= 0 ? start : null;
+    }
+    const end = runEnd(value, field, index);
+    return end < value.length ? runEnd(value, field, end) : null;
+  };
+
   const move = (index: number, delta: number) => {
+    if (isColumn(value[index])) {
+      const target = columnTarget(index, delta);
+      if (target === null) return;
+      const end = runEnd(value, field, index);
+      const run = value.slice(index, end);
+      const rest = [...value.slice(0, index), ...value.slice(end)];
+      // Moving down, the target was measured with this column still in place.
+      rest.splice(delta < 0 ? target : target - run.length, 0, ...run);
+      onChange(rest);
+      return;
+    }
     const target = index + delta;
     if (target < 0 || target >= value.length) return;
     const next = [...value];
@@ -896,38 +1063,131 @@ function BlocksField({
     onChange(next);
   };
 
-  const duplicate = (index: number) => {
-    if (full) return;
-    const copy = { ...value[index]!, id: newBlockId(), settings: structuredClone(value[index]!.settings) };
-    const next = [...value];
-    next.splice(index + 1, 0, copy);
-    onChange(next);
-    setOpenId(copy.id);
+  /**
+   * A drop. A block simply goes where it is dropped — into whichever column that is.
+   * A Column goes with its blocks, to a boundary between columns: dropped on a block
+   * further down, after that block's column; further up, before it; and never above
+   * the blocks that are in no column, which it would otherwise take in.
+   */
+  const drop = ({ active, over }: DragEndEvent) => {
+    setDragging(null);
+    if (!over || active.id === over.id) return;
+    const from = value.findIndex((item) => item.id === active.id);
+    const to = value.findIndex((item) => item.id === over.id);
+    if (from < 0 || to < 0) return;
+    if (!isColumn(value[from])) {
+      onChange(arrayMove(value, from, to));
+      return;
+    }
+    const end = runEnd(value, field, from);
+    if (to > from && to < end) return; // onto one of its own blocks
+    const run = value.slice(from, end);
+    const rest = [...value.slice(0, from), ...value.slice(end)];
+    const target = rest.findIndex((item) => item.id === over.id);
+    let start = target;
+    while (start >= 0 && !isColumn(rest[start])) start -= 1;
+    const firstColumn = rest.findIndex((item) => isColumn(item));
+    const at =
+      to > from
+        ? start < 0
+          ? Math.max(firstColumn, 0)
+          : runEnd(rest, field, start)
+        : start < 0
+          ? firstColumn < 0
+            ? rest.length
+            : firstColumn
+          : start;
+    rest.splice(at, 0, ...run);
+    onChange(rest);
   };
 
-  const remove = (id: string) => {
-    onChange(value.filter((item) => item.id !== id));
-    if (openId === id) setOpenId(null);
+  /** While a Column is dragged, the blocks it takes along are dimmed. */
+  const draggingRun = (() => {
+    const index = value.findIndex((item) => item.id === dragging);
+    if (index < 0 || !isColumn(value[index])) return new Set<string>();
+    return new Set(value.slice(index + 1, runEnd(value, field, index)).map((item) => item.id));
+  })();
+
+  const duplicate = (index: number) => {
+    const end = isColumn(value[index]) ? runEnd(value, field, index) : index + 1;
+    if (value.length + (end - index) > field.max) {
+      toast(`A section holds at most ${field.max} blocks.`);
+      return;
+    }
+    const copies = withFreshIds(value.slice(index, end));
+    const next = [...value];
+    next.splice(end, 0, ...copies);
+    onChange(next);
+    setOpenId(copies[0]!.id);
   };
+
+  const remove = (index: number) => {
+    const before = value;
+    const end = isColumn(value[index]) ? runEnd(value, field, index) : index + 1;
+    const inside = end - index - 1;
+    onChange([...value.slice(0, index), ...value.slice(end)]);
+    if (value.slice(index, end).some((item) => item.id === openId)) setOpenId(null);
+    if (inside > 0) {
+      toast(`Column deleted, with the ${inside} block${inside > 1 ? "s" : ""} in it.`, {
+        action: { label: "Undo", onClick: () => onChange(before) },
+      });
+    }
+  };
+
+  // Which column each block sits in, for the indent and the "Column 2" names.
+  const rows = value.map((item, index) => {
+    const column = isColumn(item);
+    const number = value.slice(0, index + 1).filter(isColumn).length;
+    return { item, index, column, number, inColumn: !column && number > 0 };
+  });
 
   return (
     <div className="space-y-2">
       {value.length > 0 && (
+        <DndContext
+          id={dndId}
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+          onDragStart={({ active }) => setDragging(String(active.id))}
+          onDragCancel={() => setDragging(null)}
+          onDragEnd={drop}
+        >
+        <SortableContext items={value.map((item) => item.id)} strategy={verticalListSortingStrategy}>
         <ul className="space-y-1.5">
-          {value.map((item, index) => {
+          {rows.map(({ item, index, column, number, inColumn }) => {
             const definition = blockDefinition(field, item.type);
             if (!definition) return null;
 
             const open = openId === item.id;
-            const summary = blockSummary(definition, item.settings);
+            const summary = column ? columnSummary(item.settings) : blockSummary(definition, item.settings);
             const incomplete = definition.fields.some(
               (child) =>
                 child.required && isFieldActive(child, item.settings) && !isFieldFilled(child, item.settings[child.key]),
             );
+            const Icon = blockIcon(item.type);
+            const label = column ? `${definition.label} ${number}` : definition.label;
+            const name = column ? label : `${label} ${index + 1}`;
+            const end = column ? runEnd(value, field, index) : index + 1;
+            const upDisabled = column ? columnTarget(index, -1) === null : index === 0;
+            const downDisabled = column ? columnTarget(index, 1) === null : index === value.length - 1;
 
             return (
-              <li key={item.id} className="rounded-md border">
-                <div className="flex items-center gap-1 px-1 py-1">
+              <SortableRow
+                key={item.id}
+                id={item.id}
+                label={name}
+                dimmed={draggingRun.has(item.id)}
+                className={cn(
+                  "rounded-md border",
+                  column && "bg-muted/60 mt-3 first:mt-0",
+                  inColumn && "border-l-primary/40 ml-3 border-l-2",
+                )}
+              >
+                {(grip) => (
+                <>
+                <div className="flex items-center gap-0.5 px-1 py-1">
+                  {grip}
                   <button
                     type="button"
                     aria-expanded={open}
@@ -937,18 +1197,38 @@ function BlocksField({
                     <ChevronRightIcon
                       className={cn("text-muted-foreground size-3.5 shrink-0 transition-transform", open && "rotate-90")}
                     />
+                    <Icon className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
                     <span className="min-w-0">
-                      <span className="block truncate text-xs font-medium">{definition.label}</span>
+                      <span className="block truncate text-xs font-medium">{label}</span>
                       {summary && <span className="text-muted-foreground block truncate text-xs">{summary}</span>}
                     </span>
                   </button>
 
+                  {column && (
+                    <BlockPicker
+                      field={field}
+                      disabled={full}
+                      onPick={(picked) => add(picked, end)}
+                      trigger={
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-xs"
+                          aria-label={`Add a block to ${label}`}
+                          title="Add a block to this column"
+                          disabled={full}
+                        >
+                          <PlusIcon />
+                        </Button>
+                      }
+                    />
+                  )}
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon-xs"
-                    aria-label={`Move ${definition.label} ${index + 1} up`}
-                    disabled={index === 0}
+                    aria-label={`Move ${name} up`}
+                    disabled={upDisabled}
                     onClick={() => move(index, -1)}
                   >
                     <ArrowUpIcon />
@@ -957,8 +1237,8 @@ function BlocksField({
                     type="button"
                     variant="ghost"
                     size="icon-xs"
-                    aria-label={`Move ${definition.label} ${index + 1} down`}
-                    disabled={index === value.length - 1}
+                    aria-label={`Move ${name} down`}
+                    disabled={downDisabled}
                     onClick={() => move(index, 1)}
                   >
                     <ArrowDownIcon />
@@ -967,7 +1247,7 @@ function BlocksField({
                     type="button"
                     variant="ghost"
                     size="icon-xs"
-                    aria-label={`Duplicate ${definition.label} ${index + 1}`}
+                    aria-label={`Duplicate ${name}`}
                     disabled={full}
                     onClick={() => duplicate(index)}
                   >
@@ -978,8 +1258,8 @@ function BlocksField({
                     variant="ghost"
                     size="icon-xs"
                     className="text-destructive"
-                    aria-label={`Delete ${definition.label} ${index + 1}`}
-                    onClick={() => remove(item.id)}
+                    aria-label={`Delete ${name}`}
+                    onClick={() => remove(index)}
                   >
                     <Trash2Icon />
                   </Button>
@@ -990,6 +1270,9 @@ function BlocksField({
                     Has an empty required field — needed before publishing.
                   </p>
                 )}
+                {column && end === index + 1 && !open && (
+                  <p className="text-muted-foreground px-3 pb-1.5 text-xs">Empty — use + to put a block in it.</p>
+                )}
 
                 {open && (
                   <BlockFields
@@ -999,10 +1282,14 @@ function BlocksField({
                     onChange={(key, next) => update(item.id, key, next)}
                   />
                 )}
-              </li>
+                </>
+                )}
+              </SortableRow>
             );
           })}
         </ul>
+        </SortableContext>
+        </DndContext>
       )}
 
       <div className="flex items-center gap-2">
@@ -1011,6 +1298,19 @@ function BlocksField({
             <PlusIcon className="size-3.5" />
             Add {field.blocks[0]!.label.toLowerCase()}
           </Button>
+        ) : field.blocks.length >= 5 ? (
+          <BlockPicker
+            field={field}
+            disabled={full}
+            onPick={(picked) => add(picked)}
+            onLayout={addLayout}
+            trigger={
+              <Button type="button" variant="outline" size="sm" disabled={full}>
+                <PlusIcon className="size-3.5" />
+                Add block
+              </Button>
+            }
+          />
         ) : (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -1033,6 +1333,152 @@ function BlocksField({
         </span>
       </div>
     </div>
+  );
+}
+
+/** One block's row: dnd-kit's sortable item, with a grip handed to its header. */
+function SortableRow({
+  id,
+  label,
+  dimmed,
+  className,
+  children,
+}: {
+  id: string;
+  label: string;
+  dimmed: boolean;
+  className: string;
+  children: (grip: React.ReactNode) => React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const grip = (
+    <button
+      type="button"
+      aria-label={`Drag ${label} to reorder`}
+      title="Drag to reorder"
+      className="text-muted-foreground hover:text-foreground flex size-6 shrink-0 cursor-grab touch-none items-center justify-center rounded active:cursor-grabbing"
+      {...attributes}
+      {...listeners}
+    >
+      <GripVerticalIcon className="size-3.5" />
+    </button>
+  );
+  return (
+    <li
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform ? { ...transform, x: 0, scaleX: 1, scaleY: 1 } : null),
+        transition,
+      }}
+      className={cn(className, isDragging && "bg-background relative z-10 shadow-md", dimmed && "opacity-40")}
+    >
+      {children(grip)}
+    </li>
+  );
+}
+
+/**
+ * Every block type as a tile — its picture, its name and one line on what it is —
+ * and below them the ready-made layouts. Typing narrows the tiles, and Enter adds
+ * the first one left, so the block you want is two keys away.
+ */
+function BlockPicker({
+  field,
+  disabled,
+  onPick,
+  onLayout,
+  trigger,
+}: {
+  field: BlocksFieldDef;
+  disabled: boolean;
+  onPick: (definition: BlockDef) => void;
+  /** Absent where a layout makes no sense — adding into one column. */
+  onLayout?: (layout: BlockLayout) => void;
+  trigger: React.ReactNode;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const [query, setQuery] = React.useState("");
+  const words = query.trim().toLowerCase();
+  const matches = (label: string, description = "") => !words || `${label} ${description}`.toLowerCase().includes(words);
+  // Inside a column, a Column block would start a new one — not what "+" on a column means.
+  const tiles = field.blocks.filter(
+    (definition) => (onLayout || !definition.column) && matches(definition.label, definition.description),
+  );
+  const layouts = onLayout ? (field.layouts ?? []).filter((layout) => matches(layout.label, layout.description)) : [];
+
+  const pick = (action: () => void) => {
+    action();
+    setOpen(false);
+    setQuery("");
+  };
+
+  const tile = (key: string, Icon: LucideIcon, label: string, description: string | undefined, action: () => void) => (
+    <button
+      key={key}
+      type="button"
+      onClick={() => pick(action)}
+      className="hover:bg-muted focus-visible:bg-muted flex items-start gap-2 rounded-md p-2 text-left outline-none"
+    >
+      <span className="bg-muted text-foreground flex size-7 shrink-0 items-center justify-center rounded">
+        <Icon className="size-3.5" aria-hidden />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-xs font-medium">{label}</span>
+        {description && (
+          <span className="text-muted-foreground line-clamp-2 block text-[11px] leading-snug">{description}</span>
+        )}
+      </span>
+    </button>
+  );
+
+  return (
+    <Popover open={open && !disabled} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      <PopoverContent align="start" className="w-[22rem] p-0">
+        <div className="border-b p-2">
+          <Input
+            autoFocus
+            value={query}
+            aria-label="Search blocks"
+            placeholder="Search — heading, photo, button…"
+            className="h-8 text-xs"
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter") return;
+              event.preventDefault();
+              if (tiles[0]) pick(() => onPick(tiles[0]!));
+              else if (layouts[0]) pick(() => onLayout!(layouts[0]!));
+            }}
+          />
+        </div>
+        <div className="max-h-[min(26rem,60svh)] overflow-y-auto p-2">
+          {tiles.length > 0 && (
+            <div className="grid grid-cols-2 gap-1">
+              {tiles.map((definition) =>
+                tile(definition.type, blockIcon(definition.type), definition.label, definition.description, () =>
+                  onPick(definition),
+                ),
+              )}
+            </div>
+          )}
+          {layouts.length > 0 && (
+            <>
+              <p className="text-muted-foreground mt-3 mb-1 px-2 text-[11px] font-medium tracking-wide uppercase">
+                Ready-made layouts
+              </p>
+              <div className="grid grid-cols-2 gap-1">
+                {layouts.map((layout) =>
+                  tile(layout.id, Columns3Icon, layout.label, layout.description, () => onLayout!(layout)),
+                )}
+              </div>
+            </>
+          )}
+          {tiles.length === 0 && layouts.length === 0 && (
+            <p className="text-muted-foreground p-4 text-center text-xs">No block matches “{query}”.</p>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 

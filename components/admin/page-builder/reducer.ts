@@ -20,6 +20,8 @@ export type BuilderAction =
   | { kind: "toggle"; id: string }
   | { kind: "setting"; id: string; key: string; value: unknown }
   | { kind: "page"; key: keyof PageSettings; value: string }
+  /** The section with this id, replaced whole — "Turn into Custom section", and its Undo. */
+  | { kind: "swap"; section: SectionInstance }
   | { kind: "replace"; content: DocumentContent };
 
 export function builderReducer(state: DocumentContent, action: BuilderAction): DocumentContent {
@@ -63,6 +65,12 @@ export function builderReducer(state: DocumentContent, action: BuilderAction): D
 
     case "page":
       return { ...state, page: { ...state.page, [action.key]: action.value } };
+
+    case "swap":
+      return {
+        ...state,
+        sections: sections.map((section) => (section.id === action.section.id ? action.section : section)),
+      };
 
     case "replace":
       return action.content;

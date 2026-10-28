@@ -92,7 +92,75 @@ const Card = ({ x, y, w, h }: Box) => (
   </>
 );
 
+/** A block in the Custom section's wireframes: a dashed outline. */
+const Slot = ({ x, y, w, h }: Box) => (
+  <rect x={x + 0.4} y={y + 0.4} width={w - 0.8} height={h - 0.8} rx={1.5} fill="none" strokeWidth={0.7} strokeDasharray="2 1.5" className="stroke-current opacity-50" />
+);
+
 const THUMBNAILS: Record<string, React.ReactNode> = {
+  /* Build your own */
+  custom_section: (
+    <>
+      <Slot x={24} y={14} w={112} h={14} />
+      <H x={30} y={18.5} w={60} />
+      <Slot x={24} y={32} w={112} h={26} />
+      <Lines x={30} y={38} w={98} n={3} />
+      <Slot x={24} y={62} w={112} h={14} />
+      <Btn x={30} y={66} w={26} filled />
+      <path d="M80 84 v8 M76 88 h8" strokeWidth={1} className="stroke-current opacity-70" />
+    </>
+  ),
+  "custom_section.photo": (
+    <>
+      <Slot x={8} y={8} w={70} h={84} />
+      <Img x={12} y={12} w={62} h={76} />
+      <Slot x={82} y={8} w={70} h={84} />
+      <T x={88} y={32} w={20} />
+      <H x={88} y={38} w={52} />
+      <Lines x={88} y={50} w={56} n={3} />
+      <Btn x={88} y={68} w={26} />
+    </>
+  ),
+  "custom_section.features": (
+    <>
+      <H x={45} y={12} w={70} />
+      {[8, 56, 104].map((x) => (
+        <React.Fragment key={x}>
+          <Slot x={x} y={28} w={48} h={60} />
+          <Icon cx={x + 24} cy={42} />
+          <H x={x + 9} y={53} w={30} h={3.5} />
+          <Lines x={x + 6} y={62} w={36} n={2} center />
+        </React.Fragment>
+      ))}
+    </>
+  ),
+  "custom_section.cards": (
+    <>
+      <H x={8} y={10} w={60} />
+      {[8, 45, 82, 119].map((x) => (
+        <React.Fragment key={x}>
+          <Slot x={x} y={22} w={33} h={70} />
+          <Img x={x + 3} y={25} w={27} h={34} />
+          <H x={x + 3} y={64} w={20} h={3} />
+          <Lines x={x + 3} y={71} w={26} n={2} />
+          <T x={x + 3} y={84} w={12} />
+        </React.Fragment>
+      ))}
+    </>
+  ),
+  "custom_section.questions": (
+    <>
+      <H x={40} y={14} w={50} />
+      {[30, 46, 62, 78].map((y) => (
+        <React.Fragment key={y}>
+          <T x={40} y={y} w={66} />
+          <path d={`M118 ${y + 1} h5 M120.5 ${y - 1.5} v5`} strokeWidth={0.8} className="stroke-current opacity-60" />
+          <rect x={40} y={y + 8} width={84} height={0.6} className="fill-current opacity-25" />
+        </React.Fragment>
+      ))}
+    </>
+  ),
+
   /* ---------------- Banners ---------------- */
   image_banner: (
     <>

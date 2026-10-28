@@ -2,6 +2,7 @@
 
 import {
   ArrowLeftIcon,
+  BlocksIcon,
   ChevronRightIcon,
   CopyIcon,
   ExternalLinkIcon,
@@ -103,6 +104,7 @@ export function SectionEditor({
   onToggle,
   onDuplicate,
   onRemove,
+  onConvert,
   contents = null,
 }: {
   section: SectionInstance;
@@ -118,6 +120,8 @@ export function SectionEditor({
   onToggle: () => void;
   onDuplicate: () => void;
   onRemove: () => void;
+  /** Rebuilds the section as a Custom section — absent where it cannot become one. */
+  onConvert?: () => void;
   /** What the section draws, from the preview — null until it has said. */
   contents?: SectionContents | null;
 }) {
@@ -304,6 +308,21 @@ export function SectionEditor({
               ))}
             </div>
           </details>
+        )}
+
+        {onConvert && (
+          <div className="bg-muted/40 space-y-2 rounded-md border border-dashed p-3">
+            <p className="text-xs font-medium">Want to add your own blocks here?</p>
+            <p className="text-muted-foreground text-xs">
+              Turn it into a Custom section: its words, photos and style stay, and you can then add any block —
+              photos, buttons, icons, video, a list — and arrange them in columns. It may look a little different;
+              Undo puts it back.
+            </p>
+            <Button type="button" variant="outline" size="sm" onClick={onConvert}>
+              <BlocksIcon />
+              Turn into Custom section
+            </Button>
+          </div>
         )}
       </div>
       )}

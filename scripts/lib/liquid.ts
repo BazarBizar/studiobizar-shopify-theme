@@ -48,6 +48,7 @@ export const LIQUID_SECTIONS: Partial<Record<SectionType, string>> = {
   featured_product: "sb-featured-product",
   spacer: "sb-spacer",
   newsletter: "sb-newsletter",
+  custom_section: "sb-custom",
 };
 
 export const snake = (key: string) => key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
