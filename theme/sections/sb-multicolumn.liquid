@@ -70,7 +70,8 @@
             class="flex flex-col {{ item_align }}{% if s.columns_mobile == 'scroll' %} max-sm:w-[78%] max-sm:shrink-0 max-sm:snap-start{% endif %}{% if s.style == 'cards' %} bg-foreground/[0.04] p-6 sm:p-8{% endif %}{% if s.style == 'lines' %} sm:px-8 sm:first:pl-0{% unless forloop.first %} border-border sm:border-l{% endunless %}{% endif %}"
             {{ block.shopify_attributes }}
           >
-            {%- if s.media == 'image' -%}
+            {%- comment -%} A column's own image always shows; Media fills the columns without one. {%- endcomment -%}
+            {%- if b.image != blank or s.media == 'image' -%}
               {%- render 'sb-picture', image: b.image, ratio: s.ratio, sizes: '(max-width: 749px) 80vw, 30vw', class: 'mb-6' -%}
             {%- elsif s.media == 'icon' and b.icon != 'none' -%}
               {%- render 'sb-section-icon', icon: b.icon, class: 'mb-5 size-9' -%}
@@ -160,7 +161,8 @@
           "label": "None"
         }
       ],
-      "default": "image"
+      "default": "image",
+      "info": "An image added to a column always shows. Icons: an icon in the columns without one. Images: an empty frame in the preview where an image is still missing."
     },
     {
       "type": "select",
@@ -1212,7 +1214,7 @@
           "type": "image_picker",
           "id": "image",
           "label": "Image",
-          "info": "Shown when the section's media is set to images."
+          "info": "Shown above the heading. A column’s image always shows, whatever Media is set to."
         },
         {
           "type": "select",
@@ -1317,7 +1319,7 @@
             }
           ],
           "default": "none",
-          "info": "Shown when the section's media is set to icons."
+          "info": "Shown when Media is set to Icons and this column has no image."
         },
         {
           "type": "text",

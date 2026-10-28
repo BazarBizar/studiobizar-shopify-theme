@@ -41,3 +41,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# yarn audit:page-builder writes its full report here
+.audit-page-builder.json

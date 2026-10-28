@@ -582,3 +582,37 @@ Revision history beyond one step (a `page_revision` metaobject written at publis
 publishing, global/reusable sections, a hero with text and a button over it, video in sections,
 an OG image per page, section anchors, translated documents, a redirect when a handle changes,
 converting the remaining hand-built pages, and a Liquid renderer reading the same document.
+
+## Audit: every setting, on both storefronts
+
+`yarn audit:page-builder` (optionally `yarn audit:page-builder multicolumn,steps`) runs offline in about two minutes. It reads a few product and collection ids from the store, read-only.
+
+**What it does.** For every preset, it sets every field of the section and of each kind of block the way an editor would:
+- a text with a marker;
+- a photograph with its own address;
+- every other choice of a select;
+- the switch flipped;
+- a number at both ends of its range.
+
+It then draws the section again with the **Next renderer and the Liquid theme section**. A field must then **show** (the text, photograph or link appears) or **change** something.
+
+**Visibility.** A field is only tried while the editor shows it. The field its `when` depends on is set first, and what that reveals gets example content.
+
+**What is not covered.** The Style tab and the universal settings are covered by `check:page-builder-style` instead.
+
+**Expected behaviour.** Settings that do nothing in the page HTML by design are listed under "Explained", each with its reason, in `EXPLAINED` in the script. Examples:
+- a carousel step runs in the browser;
+- a video loads only on play;
+- a limit above what the store holds.
+
+**Report.** The full report goes to `.audit-page-builder.json`, which git ignores.
+
+**First run (2026-10-28).** It found two places where **an image added to a block did not appear**:
+- **Columns:** the column image showed only when the section's Media was "Images". Three of the four presets (Icon features, Cards, Text columns) set it otherwise.
+- **Steps:** the step image showed only with a "Show images" switch that was off by default.
+
+**Rule since then: an image someone added always shows.**
+- **Columns:** "Media" now only decides what fills a column *without* an image: an icon, or an empty frame in the preview. "Image shape" is always offered.
+- **Steps:** the switch is gone. In the preview, once one step has an image, the others show an empty frame.
+
+Both storefronts changed together.
