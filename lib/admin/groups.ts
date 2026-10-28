@@ -34,7 +34,7 @@ const GROUPS: GroupDef[] = [
   { key: "content", label: "Content library", types: ["service", "faq_item", "location", "contact_channel"] },
   { key: "catalogue", label: "Catalogue", types: ["designer", "project"] },
   { key: "library", label: "Library", types: ["captioned_image"] },
-  { key: "inbox", label: "Inbox", types: ["inquiry"] },
+  { key: "inbox", label: "Inbox", types: ["inquiry", "contact_message", "newsletter_subscriber"] },
   {
     key: "settings",
     label: "Settings",

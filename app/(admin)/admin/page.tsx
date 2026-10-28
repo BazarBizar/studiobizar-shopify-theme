@@ -5,8 +5,11 @@ import {
   InboxIcon,
   LayoutTemplateIcon,
   ListIcon,
+  MailOpenIcon,
+  MessageSquareTextIcon,
   PlusIcon,
   SettingsIcon,
+  TriangleAlertIcon,
 } from "lucide-react";
 
 import { AppLink } from "@/components/admin/app-link";
@@ -16,6 +19,7 @@ import { RecentPanel } from "@/components/admin/dashboard/recent-panel";
 import { StatTile } from "@/components/admin/dashboard/stat-tile";
 import { PageHeader } from "@/components/admin/page-header";
 import { getAdminSettings } from "@/lib/admin/admin-settings";
+import { Button } from "@/components/admin/ui/button";
 import { Card, CardContent } from "@/components/admin/ui/card";
 import { getDashboardData } from "@/lib/admin/dashboard";
 import { listPagesWithContent } from "@/lib/admin/page-builder";
@@ -50,6 +54,20 @@ export default async function AdminDashboardPage() {
   return (
     <div className="space-y-6">
       <PageHeader title={settings.dashboardTitle} description={settings.dashboardDescription} />
+
+      {/* Offered with the fix, not as a dead end: one button to the Email screen. */}
+      {data.emailReady ? null : (
+        <div className="flex flex-wrap items-center gap-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
+          <TriangleAlertIcon className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+          <p className="min-w-0 flex-1">
+            <span className="font-medium">The website is not sending emails yet.</span>{" "}
+            <span className="text-muted-foreground">Messages are still kept under Inbox, but nobody is emailed about them.</span>
+          </p>
+          <Button asChild size="sm">
+            <AppLink href="/admin/email">Set up email</AppLink>
+          </Button>
+        </div>
+      )}
 
       <Card className="gap-0 py-4">
         <CardContent className="space-y-3 px-4">
@@ -117,6 +135,32 @@ export default async function AdminDashboardPage() {
           }
         />
       </div>
+
+      {data.messages || data.subscribers !== null ? (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {data.messages ? (
+            <StatTile
+              label="Messages"
+              href="/admin/contact_message"
+              icon={<MessageSquareTextIcon className="size-4" />}
+              tint={SERIES.blue.text}
+              value={data.messages.total}
+              detail="Sent through the Contact page"
+              attention={data.messages.fresh > 0 ? `${data.messages.fresh} still marked new` : undefined}
+            />
+          ) : null}
+          {data.subscribers !== null ? (
+            <StatTile
+              label="Subscribers"
+              href="/admin/newsletter_subscriber"
+              icon={<MailOpenIcon className="size-4" />}
+              tint={SERIES.aqua.text}
+              value={data.subscribers}
+              detail="Signed up for the newsletter"
+            />
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="grid gap-3 lg:grid-cols-2">
         <PartToWhole

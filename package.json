@@ -46,7 +46,10 @@
     "check:liquid-render": "tsx scripts/check-liquid-render.ts",
     "liquid:icons": "tsx scripts/generate-liquid-icons.tsx",
     "liquid:schemas": "tsx scripts/generate-liquid-schemas.ts",
-    "liquid:design": "tsx scripts/generate-liquid-design.ts"
+    "liquid:design": "tsx scripts/generate-liquid-design.ts",
+    "check:email": "tsx --conditions=react-server scripts/check-email.ts",
+    "setup:inbox": "node --env-file=.env scripts/add-inbox-types.mjs",
+    "check:email-ui": "tsx --conditions=react-server scripts/check-email-ui.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

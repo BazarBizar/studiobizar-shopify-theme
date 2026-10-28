@@ -1,5 +1,8 @@
 import "server-only";
 
+import { emailConfig } from "@/lib/email/settings";
+
+import { CONTACT_MESSAGE_TYPE, countNewMessages, countSubscribers, SUBSCRIBER_TYPE } from "./messages";
 import { listAllEntries, listDefinitions, type Entry } from "./metaobjects";
 import { isTrue } from "./field-values";
 
@@ -38,6 +41,11 @@ export type DashboardData = {
   inquiriesNew: number;
   inquiriesTotal: number;
   imagesTotal: number;
+  /** Null when the type does not exist in this store (see `scripts/add-inbox-types.mjs`). */
+  messages: { total: number; fresh: number } | null;
+  subscribers: number | null;
+  /** Whether the site can send email at all — a key and a sender address. */
+  emailReady: boolean;
   recentProjects: RecentEntry[];
   recentImages: RecentEntry[];
 };
@@ -79,6 +87,13 @@ export async function getDashboardData(): Promise<DashboardData> {
     }),
   );
 
+  const has = (type: string) => definitions.some((definition) => definition.type === type);
+  const [messages, subscribers, email] = await Promise.all([
+    has(CONTACT_MESSAGE_TYPE) ? countNewMessages() : null,
+    has(SUBSCRIBER_TYPE) ? countSubscribers() : null,
+    emailConfig(),
+  ]);
+
   const projects = loaded.get("project") ?? [];
   const images = loaded.get("captioned_image") ?? [];
   const inquiries = loaded.get("inquiry") ?? [];
@@ -101,6 +116,9 @@ export async function getDashboardData(): Promise<DashboardData> {
     inquiriesNew,
     inquiriesTotal: inquiries.length,
     imagesTotal: images.length,
+    messages,
+    subscribers,
+    emailReady: Boolean(email.apiKey && email.from),
     recentProjects: [...projects]
       .sort(byUpdatedDesc)
       .slice(0, 4)

@@ -24,6 +24,9 @@ import {
   InboxIcon,
   LayersIcon,
   LayoutDashboardIcon,
+  MailIcon,
+  MailOpenIcon,
+  MessageSquareTextIcon,
   ListTreeIcon,
   type LucideIcon,
   MapPinIcon,
@@ -47,6 +50,8 @@ const BY_TYPE: Record<string, LucideIcon> = {
   location: MapPinIcon,
   contact_channel: PhoneIcon,
   inquiry: InboxIcon,
+  contact_message: MessageSquareTextIcon,
+  newsletter_subscriber: MailOpenIcon,
   site_settings: SettingsIcon,
 };
 
@@ -62,6 +67,7 @@ const BY_HREF: Record<string, LucideIcon> = {
   "/admin/customers": UsersRoundIcon,
   "/admin/site-wide": GlobeIcon,
   "/admin/staff": KeyRoundIcon,
+  "/admin/email": MailIcon,
 };
 
 /** Last resort, by group, so an unclassified new definition still gets a mark. */

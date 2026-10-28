@@ -4,14 +4,14 @@ import { BRAND } from "@/lib/brand";
 import { contactSchema } from "@/lib/contact/schema";
 import { sendEmail } from "@/lib/email/client";
 import { notificationRecipients } from "@/lib/email/notification-recipients";
+import { saveContactMessage } from "@/lib/inbox/save";
 import { readPublicForm } from "@/lib/public-form";
 
 /**
- * The Contact page form. Unlike an inquiry there is nothing to store — the
- * message only needs to reach a person — so this is email-only.
- *
- * Follows the same degradation rule as the rest: with no Resend key the send is
- * logged and reported as success, so development runs without credentials.
+ * The Contact page form: emailed to the team (Settings → Email notifications) and
+ * kept in the panel (Inbox → Messages) — each with the other as its safety net. The
+ * visitor is thanked when at least one of the two worked; only when both failed is
+ * the message lost, and then they are told so.
  */
 export async function POST(request: Request) {
   // Rate limits and a size cap before anything is read — see lib/public-form.ts.
@@ -51,25 +51,52 @@ export async function POST(request: Request) {
     </div>
   `;
 
-  try {
-    if (!notify.to.length) {
-      console.warn(`[contact] message from ${email} was not delivered: ${notify.source}.`);
+  // 1. The team's email. Its outcome is recorded on the saved message, in words.
+  let emailed = false;
+  let emailStatus: string;
+  if (!notify.to.length) {
+    emailStatus = "Not sent: nobody is set to receive contact messages.";
+    console.warn(`[contact] message from ${email} was not emailed: ${notify.source}.`);
+  } else {
+    const result = await sendEmail({
+      to: notify.to,
+      subject: `${inquiryType} — ${firstName} ${lastName}`,
+      html,
+      text: `${rows.map(([l, v]) => `${l}: ${v}`).join("\n")}\n\n${message}`,
+      // "Reply" in the team's mailbox answers the visitor, not the website.
+      replyTo: email,
+    }).catch((error: unknown) => ({ ok: false as const, skipped: false as const, error: String(error) }));
+    if (result.ok && !result.skipped) {
+      emailed = true;
+      emailStatus = `Sent to ${notify.to.join(", ")}`;
     } else {
-      const result = await sendEmail({
-        to: notify.to,
-        subject: `${inquiryType} — ${firstName} ${lastName}`,
-        html,
-        text: `${rows.map(([l, v]) => `${l}: ${v}`).join("\n")}\n\n${message}`,
-      });
-      if (!result.ok) throw new Error(result.error);
+      emailStatus = result.ok ? `Not sent: email is not set up (${result.reason}).` : `Not sent: ${result.error}`;
+      console.error(`[contact] message from ${email} was not emailed: ${emailStatus}`);
     }
-
-    return NextResponse.json({ message: "Thanks — we'll be in touch." });
-  } catch (error) {
-    console.error("[api/contact]", error);
-    return NextResponse.json(
-      { message: "We could not send that just now. Please email us directly." },
-      { status: 502 },
-    );
   }
+
+  // 2. The panel's copy (Inbox → Messages), so nothing depends on the email arriving.
+  let saved = false;
+  try {
+    await saveContactMessage({
+      name: `${firstName} ${lastName}`,
+      email,
+      phone,
+      company: company ?? "",
+      topic: inquiryType,
+      message,
+      receivedAt: new Date(),
+      emailStatus,
+    });
+    saved = true;
+  } catch (error) {
+    console.error("[api/contact] could not save the message", error);
+  }
+
+  // Either one is enough for the message to reach someone.
+  if (saved || emailed) return NextResponse.json({ message: "Thanks — we'll be in touch." });
+  return NextResponse.json(
+    { message: "We could not send that just now. Please email us directly." },
+    { status: 502 },
+  );
 }

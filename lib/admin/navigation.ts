@@ -2,6 +2,7 @@ import "server-only";
 
 import { GROUP_ORDER, groupFor, groupLabel, type GroupKey } from "./groups";
 import { countUnreadInquiries, INQUIRY_TYPE } from "./inquiries";
+import { CONTACT_MESSAGE_TYPE, countNewMessages } from "./messages";
 import { listDefinitions, type Definition } from "./metaobjects";
 import { moduleFor } from "./modules";
 import { isSiteWide, SITE_WIDE_HREF, SITE_WIDE_SECTIONS } from "./site-wide";
@@ -82,6 +83,7 @@ const RESERVED_SLUGS = new Set([
   "media",
   "site-wide",
   "staff",
+  "email",
 ]);
 
 export function reservedSlug(type: string): boolean {
@@ -171,6 +173,11 @@ const BESPOKE: { group: GroupKey; item: NavItem }[] = [
     item: { href: "/admin/staff", label: "Staff & sign-in", readOnly: false, type: null },
   },
   {
+    group: "settings",
+    /** How the site sends email: the Resend key, sender and a test — see `lib/email/settings.ts`. */
+    item: { href: "/admin/email", label: "Email", readOnly: false, type: null },
+  },
+  {
     group: "inbox",
     // Read-only apart from the panel's own note and tags.
     item: { href: "/admin/customers", label: "Customers", readOnly: true, type: null },
@@ -188,6 +195,9 @@ export async function buildNavigation(): Promise<NavGroup[]> {
   const unread = definitions.some((definition) => definition.type === INQUIRY_TYPE)
     ? await countUnreadInquiries()
     : 0;
+  const messages = definitions.some((definition) => definition.type === CONTACT_MESSAGE_TYPE)
+    ? (await countNewMessages()).fresh
+    : 0;
 
   const byGroup = new Map<GroupKey, NavItem[]>();
   for (const definition of definitions) {
@@ -195,6 +205,7 @@ export async function buildNavigation(): Promise<NavGroup[]> {
     const items = byGroup.get(key) ?? [];
     const item = toItem(definition);
     if (definition.type === INQUIRY_TYPE && unread > 0) item.badge = unread;
+    if (definition.type === CONTACT_MESSAGE_TYPE && messages > 0) item.badge = messages;
     items.push(item);
     byGroup.set(key, items);
   }

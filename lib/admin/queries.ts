@@ -393,3 +393,12 @@ export type StaffOperation =
 export async function staffRequest(input: StaffOperation): Promise<{ ok: true }> {
   return post<{ ok: true }>("/api/admin/staff", input);
 }
+
+export type EmailOperation =
+  | { operation: "emailSave"; fromName: string; fromEmail: string; replyTo: string; apiKey?: string; removeKey?: boolean }
+  | { operation: "emailTest"; to: string };
+
+/** Settings → Email (`app/api/admin/email/route.ts`). */
+export async function emailRequest(input: EmailOperation): Promise<{ ok: true; id?: string | null }> {
+  return post<{ ok: true; id?: string | null }>("/api/admin/email", input);
+}

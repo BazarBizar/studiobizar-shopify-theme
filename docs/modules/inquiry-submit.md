@@ -189,10 +189,9 @@ the PDF and email code is covered too.
 
 ## Still open
 
-- **Nothing has actually been emailed.** The path is exercised only in its skipped branch, because
-  no Resend key exists. Set `RESEND_API_KEY` and `RESEND_FROM_EMAIL` in `.env`, add a `default`
-  entry under Site-wide → Email notifications, and re-run a submission to confirm delivery and the
-  attachment.
+- **Nothing has actually been emailed yet.** The key and sender are now set under Settings → Email
+  (see `email-notifications.md`). The Resend key's domain is not verified yet. Once it is, set the
+  sender there, press Send test, and re-run a submission to confirm delivery and the attachment.
 - **No logo in the PDF.** `doc.embedPng()` would take one; `public/brand/mark.svg` is vector, so it
   needs rasterising first.
 - Seed 10 dummy inquiries (S3).

@@ -190,6 +190,32 @@ export const FIELD_COPY: Record<string, Record<string, FieldCopy>> = {
     },
   },
 
+  contact_message: {
+    name: { label: "Name" },
+    email: { label: "Email" },
+    phone: { label: "Phone" },
+    company: { label: "Company" },
+    topic: { label: "About" },
+    message: { label: "Message" },
+    received_at: { label: "Received" },
+    status: {
+      label: "Status",
+      choiceLabels: { new: "New", replied: "Replied", closed: "Closed" },
+    },
+    email_status: { label: "Email to the team", help: "Whether the team was emailed about this message." },
+  },
+
+  newsletter_subscriber: {
+    email: { label: "Email" },
+    subscribed_at: { label: "Signed up" },
+    source: { label: "Signed up on", help: "The page the form was sent from." },
+    status: {
+      label: "Status",
+      help: "Set to Unsubscribed when someone asks to be taken off the list.",
+      choiceLabels: { subscribed: "Subscribed", unsubscribed: "Unsubscribed" },
+    },
+  },
+
   /** Product metafields, by key without the `custom.` namespace. */
   product: {
     designer: { label: "Designer", help: "Who designed this piece." },

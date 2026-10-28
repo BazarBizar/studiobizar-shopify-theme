@@ -271,6 +271,33 @@ export const MODULES: Record<string, ModuleDef> = {
      */
     load: "client",
   },
+
+  contact_message: {
+    label: "Messages",
+    singular: "message",
+    description: "Messages sent through the Contact page form. Mark one Replied once you have answered it.",
+    /** Read-only like an inquiry: the visitor's own words; `status` is the team's note. */
+    readOnly: true,
+    editableFields: ["status"],
+    columns: ["received_at", "name", "email", "topic", "status", "email_status"],
+    facets: ["status", "topic"],
+    neverColumn: ["message"],
+    searchFields: ["name", "email", "company", "topic"],
+    /** Client-side for the same reason as inquiries: the status filter must see every row. */
+    load: "client",
+  },
+
+  newsletter_subscriber: {
+    label: "Subscribers",
+    singular: "subscriber",
+    description: "Addresses signed up through the newsletter form. Export the list to send a newsletter.",
+    readOnly: true,
+    editableFields: ["status"],
+    columns: ["email", "subscribed_at", "source", "status"],
+    facets: ["status"],
+    searchFields: ["email"],
+    load: "client",
+  },
 };
 
 /**
