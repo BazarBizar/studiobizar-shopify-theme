@@ -2,7 +2,7 @@ import type { Surface } from "@/components/layout/page-shell";
 import { Container } from "@/components/ui/container";
 import { designStyle } from "@/lib/page-builder/design";
 import { HEX_COLOR } from "@/lib/page-builder/fields";
-import { ZONES, type FooterLayout, type MenuKey, type ThemeLayoutContent } from "@/lib/theme-builder/layout";
+import { ZONES, type FooterLayout, type MenuRef, type ThemeLayoutContent } from "@/lib/theme-builder/layout";
 import { cn } from "@/lib/utils/cn";
 
 import { ElementRun, responsivePadding } from "./theme-elements";
@@ -15,9 +15,9 @@ import { loadThemeData } from "./theme-header";
  * is chosen, as the original.
  */
 
-export function footerMenus(footer: FooterLayout): MenuKey[] {
+export function footerMenus(footer: FooterLayout): MenuRef[] {
   const all = [...footer.columns.flatMap((column) => column.elements), ...ZONES.flatMap((zone) => footer.bottom[zone])];
-  return [...new Set(all.filter((element) => element.type === "menu").map((element) => element.settings.menu as MenuKey))];
+  return [...new Set(all.filter((element) => element.type === "menu").map((element) => element.settings.menu as MenuRef))];
 }
 
 export async function ThemeFooter({ content, surface }: { content: ThemeLayoutContent; surface: Surface }) {

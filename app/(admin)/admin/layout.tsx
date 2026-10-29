@@ -78,6 +78,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
     .map((group) => ({
       key: group.key,
       label: group.label,
+      menu: group.menu ?? false,
       items: group.items
         .filter((item) => !item.hidden)
         .map((item) => ({

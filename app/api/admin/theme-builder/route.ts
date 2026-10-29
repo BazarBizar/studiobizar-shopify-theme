@@ -20,7 +20,8 @@ import { MAX_THEME_BYTES, themeContentSchema, type ThemeLayoutContent } from "@/
  *
  * `content` is validated against the strict layout schema — unknown elements,
  * unknown settings, unsafe links and colours that are not `#rrggbb` are refused
- * here, whatever the editor sent.
+ * here, whatever the editor sent. The announcement bar and the pop-ups are part of
+ * that content (`lib/theme-builder/promo.ts`), checked the same way.
  *
  * Only Publish drops the storefront cache, and it drops it twice: at once, and again
  * once the Storefront API serves the new layout (Shopify caches it for about half a

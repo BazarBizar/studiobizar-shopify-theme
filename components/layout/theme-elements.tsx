@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AccountLink, InquiryBagButton, SearchButton } from "@/components/layout/header-actions";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { Logo } from "@/components/layout/logo";
+import { MenuDropdown, menuHostClass, menuLinkClass } from "@/components/layout/menu-dropdown";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { NewsletterForm } from "@/components/layout/newsletter-form";
 import { SocialLinks } from "@/components/layout/social-links";
@@ -12,7 +13,7 @@ import type { LinkValue } from "@/lib/page-builder/fields";
 import type { SiteSettings } from "@/lib/shopify/entities";
 import type { MenuLink } from "@/lib/shopify/types";
 import { resolveSocialLinks } from "@/lib/social";
-import type { MenuKey, ThemeElement } from "@/lib/theme-builder/layout";
+import type { MenuRef, ThemeElement } from "@/lib/theme-builder/layout";
 import { cn } from "@/lib/utils/cn";
 
 /**
@@ -23,7 +24,7 @@ import { cn } from "@/lib/utils/cn";
  */
 
 export type ThemeData = {
-  menus: Partial<Record<MenuKey, MenuLink[]>>;
+  menus: Partial<Record<MenuRef, MenuLink[]>>;
   settings: SiteSettings;
   /** For the menu button: what the phone drawer lists. */
   drawer: { primary: MenuLink[]; secondary: MenuLink[] };
@@ -119,7 +120,7 @@ export function ThemeElementView({
     }
 
     case "menu": {
-      const items = data.menus[s.menu as MenuKey] ?? [];
+      const items = data.menus[s.menu as MenuRef] ?? [];
       const column = s.direction === "column";
       const size = TEXT_SIZES[String(s.size)] ?? "text-secondary";
       const title = String(s.title ?? "").trim();
@@ -130,30 +131,18 @@ export function ThemeElementView({
             className={cn("flex", column ? "flex-col gap-3" : "flex-wrap items-center gap-y-2")}
             style={column ? undefined : { columnGap: `${Number(s.linkGap ?? 36)}px` }}
           >
-            {items.map((item) => (
-              <li key={item.id} className={cn(!column && s.dropdowns === true && item.items.length > 0 && "group relative")}>
-                <Link href={item.href} className={cn(size, "sb-underline")}>
-                  {item.title}
-                </Link>
-                {!column && s.dropdowns === true && item.items.length > 0 ? (
-                  <ul
-                    className={cn(
-                      "invisible absolute top-full left-0 z-10 mt-3 min-w-48 border border-border py-2 opacity-0 shadow-sm transition-[opacity,visibility] duration-150",
-                      "bg-[var(--sb-dd-bg,var(--sb-background))] text-[var(--sb-dd-fg,var(--sb-foreground))]",
-                      "group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100",
-                    )}
-                  >
-                    {item.items.map((child) => (
-                      <li key={child.id}>
-                        <Link href={child.href} className="text-secondary block px-4 py-2 whitespace-nowrap hover:bg-foreground/5">
-                          {child.title}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </li>
-            ))}
+            {items.map((item) => {
+              // A dropdown (or, with a third level, a mega menu) — see `MenuDropdown`.
+              const opens = !column && s.dropdowns === true && item.items.length > 0;
+              return (
+                <li key={item.id} className={opens ? menuHostClass(item) : undefined}>
+                  <Link href={item.href} className={cn(size, "sb-underline", opens && menuLinkClass(item))}>
+                    {item.title}
+                  </Link>
+                  {opens ? <MenuDropdown item={item} /> : null}
+                </li>
+              );
+            })}
           </ul>
         </nav>
       );

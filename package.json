@@ -35,6 +35,7 @@
     "seed:nav-pages": "tsx scripts/seed-nav-pages.ts",
     "theme:lint": "shopify theme check --path theme",
     "check:page-builder": "tsx scripts/check-page-builder.ts",
+    "check:menus": "tsx scripts/check-menus.ts",
     "check:handles": "tsx scripts/check-reserved-handles.ts",
     "check:page-builder-live": "tsx --conditions=react-server scripts/check-page-builder-live.ts",
     "check:page-builder-ui": "tsx --conditions=react-server scripts/check-page-builder-ui.ts",

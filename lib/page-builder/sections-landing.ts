@@ -159,8 +159,8 @@ export const imageBanner = defineSection({
   // The photograph is the ground; a Background setting would change nothing.
   universal: ["hideOn"],
   omitStyle: OWN_GROUND,
-  // Its height is the photograph's (or the Height choice), so space inside changes nothing.
-  innerSpacing: false,
+  // Space inside, top and bottom, is the text's distance from the photo's edges: the
+  // text block is the band (`py-section`), and the height stays the Height choice.
   summaryKey: "title",
 });
 
@@ -288,8 +288,9 @@ export const slideshow = defineSection({
   omitStyle: OWN_GROUND,
   // Each slide places its text with "Text position".
   textAlign: false,
-  // Its height is the Height choice, so space inside changes nothing.
-  innerSpacing: false,
+  // Space inside, top and bottom, is each slide's text distance from the edges, as on
+  // the image banner; the height stays the Height choice. Below about 64px the text
+  // can meet the arrows and dots at the foot.
 });
 
 export const ctaBanner = defineSection({
@@ -612,7 +613,14 @@ export const marquee = defineSection({
       max: 12,
       required: true,
       defaults: ["item", "item", "item"],
-      blocks: [block("item", "Phrase", [text("text", "Text", { max: 80, required: true })], { summaryKey: "text" })],
+      blocks: [
+        block(
+          "item",
+          "Phrase",
+          [text("text", "Text", { max: 80, required: true }), url("href", "Link to", { help: "Optional — makes the phrase a link." })],
+          { summaryKey: "text" },
+        ),
+      ],
     }),
     select(
       "size",

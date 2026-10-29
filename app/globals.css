@@ -845,3 +845,22 @@
 @utility sb-marquee {
   animation: sb-marquee var(--sb-marquee-duration, 45s) linear infinite;
 }
+
+/* =============================================================================
+   POP-UPS — Header & footer → Pop-ups (components/layout/popups.tsx)
+   ========================================================================== */
+/* A short rise and fade as one opens; the reduced-motion rule above skips it. */
+@keyframes sb-popup-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility sb-popup-in {
+  animation: sb-popup-in 0.35s ease-out both;
+}

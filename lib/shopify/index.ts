@@ -247,11 +247,14 @@ export async function getCollectionProducts({
   first = PRODUCTS_PER_PAGE,
   after,
   sort,
+  filters,
 }: {
   handle: string;
   first?: number;
   after?: string;
   sort?: string | null;
+  /** Storefront `ProductFilter`s — a menu's "filtered by tag" (`catalogueProductFilters`). */
+  filters?: Record<string, string>[];
 }): Promise<Paginated<ProductCard>> {
   const { sortKey, reverse } = resolveCollectionSort(sort);
 
@@ -259,7 +262,7 @@ export async function getCollectionProducts({
     collection: Maybe<{ products: Connection<ShopifyProductCard> }>;
   }>({
     query: getCollectionProductsQuery,
-    variables: { handle, first, after: after ?? null, sortKey, reverse },
+    variables: { handle, first, after: after ?? null, sortKey, reverse, filters: filters?.length ? filters : null },
     tags: [TAGS.collections, TAGS.products],
     revalidate: REVALIDATE.products,
   });

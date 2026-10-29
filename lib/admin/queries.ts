@@ -2,6 +2,8 @@
 
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
+import type { StoredMenuItem } from "./menu-tree";
+
 /**
  * Client hooks for the admin read endpoints.
  *
@@ -251,24 +253,15 @@ export async function updatePageRequest(input: {
   });
 }
 
-export type MenuItemPayload = {
-  id?: string;
-  title: string;
-  type: string;
-  url?: string | null;
-  resourceId?: string | null;
-  items?: Omit<MenuItemPayload, "items">[];
-};
+/** A link and what is under it, as the menu routes take it — see `lib/admin/menu-tree.ts`. */
+export type MenuItemPayload = StoredMenuItem;
 
 export type MenuWriteResult = { id: string; handle: string; title: string };
 
 /**
- * EDIT ONLY, and it sends the WHOLE tree.
- *
- * `menuUpdate` replaces rather than patches, so an item missing from `items` is
- * deleted. The editor therefore holds the complete list and posts all of it; the
- * route refuses an empty one, which is what stops a truncated payload from
- * quietly emptying the site's navigation.
+ * Sends the WHOLE tree. `menuUpdate` replaces rather than patches, so an item missing
+ * from `items` is deleted; the editor therefore holds the complete tree and posts all
+ * of it. The server refuses to empty one of the site's own menus.
  */
 export async function updateMenuRequest(input: {
   id: string;
@@ -276,10 +269,16 @@ export async function updateMenuRequest(input: {
   handle: string;
   items: MenuItemPayload[];
 }): Promise<MenuWriteResult> {
-  return post<MenuWriteResult>("/api/admin/menus/update", {
-    operation: "menuUpdate",
-    ...input,
-  });
+  return post<MenuWriteResult>("/api/admin/menus/update", { operation: "menuUpdate", ...input });
+}
+
+/** An empty menu, to fill in the editor it opens on. */
+export async function createMenuRequest(input: { title: string; handle: string }): Promise<MenuWriteResult> {
+  return post<MenuWriteResult>("/api/admin/menus/create", { operation: "menuCreate", ...input });
+}
+
+export async function deleteMenuRequest(id: string): Promise<{ id: string; handle: string }> {
+  return post("/api/admin/menus/delete", { operation: "menuDelete", id });
 }
 
 /**
@@ -381,6 +380,40 @@ export function useProductSearch(search: string, enabled = true, { includeDrafts
       });
       return page.products.map(({ id, title, handle, thumbnail, status }) => ({ id, title, handle, thumbnail, status }));
     },
+  });
+}
+
+/**
+ * EVERY active product by name, fifty at a time — for a list a person scrolls through
+ * (the menu link picker's Products folder) rather than one they search. The first page
+ * carries the total, so the list can say how many there are.
+ */
+export function useProductPages(search: string, enabled = true) {
+  return useInfiniteQuery({
+    queryKey: ["admin", "product-pages", search],
+    enabled,
+    staleTime: 30_000,
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam }) =>
+      post<{
+        products: ProductOption[];
+        hasNextPage: boolean;
+        endCursor: string | null;
+        total: { count: number; exact: boolean } | null;
+      }>(
+        "/api/admin/products",
+        {
+          operation: "products",
+          first: 50,
+          after: pageParam,
+          search: search || null,
+          status: ["ACTIVE"],
+          sortKey: "TITLE",
+          reverse: false,
+          withCount: pageParam === null,
+        },
+      ),
+    getNextPageParam: (lastPage) => (lastPage.hasNextPage ? lastPage.endCursor : undefined),
   });
 }
 

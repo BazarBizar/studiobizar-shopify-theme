@@ -1,21 +1,27 @@
 import { ThemeBuilder } from "@/components/admin/theme-builder/theme-builder";
 import { listCollections } from "@/lib/admin/collections";
 import { linkTargetsFrom } from "@/lib/admin/link-targets";
+import { listMenus, menuChoices } from "@/lib/admin/menus";
 import { listPages } from "@/lib/admin/pages";
 import { getThemeState } from "@/lib/admin/theme-builder";
 
-export const metadata = { title: "Header & footer" };
+export const metadata = { title: "Appearance" };
 
 /**
- * Website → Header & footer: the Theme Builder. Reads the layout's three copies and
- * what the pickers offer, then hands them to the client editor.
+ * Website → Appearance: the Theme Builder — header, footer, site style and pop-ups. Reads the layout's three
+ * copies and what the pickers offer, then hands them to the client editor.
  *
  * `key` is the draft revision, as on a page's Content tab: after a discard, a restore
  * or "load latest", the refreshed render mounts a fresh editor rather than one that
  * would have to reconcile its state with a layout it did not write.
  */
 export default async function ThemeBuilderScreen() {
-  const [state, pages, collections] = await Promise.all([getThemeState(), listPages(), listCollections()]);
+  const [state, pages, collections, menus] = await Promise.all([
+    getThemeState(),
+    listPages(),
+    listCollections(),
+    listMenus().catch(() => []),
+  ]);
 
   // The preview can show any visible page; the home page first.
   const visible = pages.filter((page) => page.isPublished);
@@ -28,7 +34,7 @@ export default async function ThemeBuilderScreen() {
     <ThemeBuilder
       key={state.draft.meta.revision}
       initial={{
-        content: { header: state.draft.header, footer: state.draft.footer, global: state.draft.global },
+        content: { header: state.draft.header, footer: state.draft.footer, global: state.draft.global, popups: state.draft.popups },
         revision: state.draft.meta.revision,
         hasPublished: state.published !== null,
         hasUnpublishedChanges: state.hasUnpublishedChanges,
@@ -36,7 +42,7 @@ export default async function ThemeBuilderScreen() {
         publishedInvalid: state.publishedInvalid,
       }}
       previewPages={previewPages}
-      lookups={{ linkTargets: linkTargetsFrom(pages, collections), faqCategories: [] }}
+      lookups={{ linkTargets: linkTargetsFrom(pages, collections), faqCategories: [], menus: menuChoices(menus) }}
     />
   );
 }

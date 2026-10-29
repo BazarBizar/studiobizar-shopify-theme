@@ -12,6 +12,9 @@
 
   What lib/routes.ts did — rewriting Shopify's absolute menu URLs onto the Next
   app's routes — is gone. In a theme the menu URLs are already the right ones.
+
+  Each top-level link opens a dropdown, or with a third level a mega menu across
+  the header — `sb-menu-dropdown`, the twin of components/layout/menu-dropdown.tsx.
 {% endcomment %}
 
 {%- liquid
@@ -20,7 +23,7 @@
 -%}
 
 <header
-  class="{% if section.settings.sticky %}sticky top-0 {% endif %}z-40 bg-background text-foreground"
+  class="{% if section.settings.sticky %}sticky top-0{% else %}relative{% endif %} z-40 bg-background text-foreground"
   data-sb-header
 >
   <div class="sb-container flex items-center gap-4 py-5 lg:gap-13">
@@ -30,15 +33,7 @@
       <nav aria-label="{{ 'general.navigation.primary' | t }}" class="hidden lg:block">
         <ul class="flex items-center gap-9">
           {%- for link in primary.links -%}
-            <li>
-              <a
-                href="{{ link.url }}"
-                class="text-secondary sb-underline"
-                {% if link.current %}aria-current="page"{% endif %}
-              >
-                {{ link.title }}
-              </a>
-            </li>
+            {%- render 'sb-menu-dropdown', link: link, link_class: 'text-secondary sb-underline' -%}
           {%- endfor -%}
         </ul>
       </nav>
@@ -49,35 +44,7 @@
         <nav aria-label="{{ 'general.navigation.secondary' | t }}" class="hidden lg:block">
           <ul class="flex items-center gap-5">
             {%- for link in secondary.links -%}
-              <li class="group relative">
-                <a
-                  href="{{ link.url }}"
-                  class="text-tertiary sb-underline"
-                  {% if link.current %}aria-current="page"{% endif %}
-                >
-                  {{ link.title }}
-                </a>
-
-                {%- if link.links.size > 0 -%}
-                  {% comment %}
-                    Hover and focus-within only — no JS. `invisible` rather than
-                    `hidden` so the submenu stays in the tab order and a keyboard
-                    user can reach it, which display:none would prevent.
-                  {% endcomment %}
-                  <ul class="invisible absolute top-full left-0 z-10 mt-3 min-w-48 border border-border bg-background py-2 opacity-0 shadow-sm transition-[opacity,visibility] duration-150 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
-                    {%- for child in link.links -%}
-                      <li>
-                        <a
-                          href="{{ child.url }}"
-                          class="text-secondary block px-4 py-2 whitespace-nowrap hover:bg-foreground/5"
-                        >
-                          {{ child.title }}
-                        </a>
-                      </li>
-                    {%- endfor -%}
-                  </ul>
-                {%- endif -%}
-              </li>
+              {%- render 'sb-menu-dropdown', link: link, link_class: 'text-tertiary sb-underline' -%}
             {%- endfor -%}
           </ul>
         </nav>

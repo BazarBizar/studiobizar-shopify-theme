@@ -122,6 +122,8 @@ export type EditorLookups = {
   faqCategories: string[];
   /** The shop's photographs and products a newly added section is filled with — see `lib/page-builder/examples.ts`. */
   examples?: ExampleMedia;
+  /** Menus a Theme Builder menu element can show: the site's own by key, others by handle. */
+  menus?: { value: string; label: string }[];
   /** The site's saved colours (Header & footer → Site style), offered in every colour picker. */
   savedColours?: { name: string; value: string }[];
 };
@@ -1576,11 +1578,14 @@ function SuggestField({
 }: {
   inputId: string;
   value: string;
-  kind: "faqCategories";
+  kind: "faqCategories" | "menus";
   onChange: (value: string) => void;
 }) {
   const lookups = React.useContext(EditorLookupsContext);
-  const known = kind === "faqCategories" ? lookups.faqCategories : [];
+  const choices =
+    kind === "menus" ? (lookups.menus ?? []) : lookups.faqCategories.map((category) => ({ value: category, label: category }));
+  const known = choices.map((choice) => choice.value);
+  const labelOf = (option: string) => choices.find((choice) => choice.value === option)?.label ?? option;
   // A stored value no longer in use stays selectable, so opening the form never
   // silently changes it.
   const options = value && !known.includes(value) ? [value, ...known] : known;
@@ -1592,13 +1597,13 @@ function SuggestField({
   return (
     <Select value={value || undefined} onValueChange={onChange}>
       <SelectTrigger id={inputId} className="w-full">
-        <SelectValue placeholder="Choose a category" />
+        <SelectValue placeholder={kind === "menus" ? "Choose a menu" : "Choose a category"} />
       </SelectTrigger>
       <SelectContent>
         {options.map((option) => (
           <SelectItem key={option} value={option}>
-            {option}
-            {!known.includes(option) ? " (no longer used)" : ""}
+            {labelOf(option)}
+            {!known.includes(option) ? (kind === "menus" ? " (deleted)" : " (no longer used)") : ""}
           </SelectItem>
         ))}
       </SelectContent>

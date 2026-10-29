@@ -24,22 +24,32 @@ export const getPagesQuery = withFragments(
   PAGE_DEPS,
 );
 
+/**
+ * Three levels — Shopify's limit, and what the header's mega menu and the phone drawer
+ * draw. `tags` is a collection link's "filtered by tag", which its url only carries as
+ * a handle (see `normalizeMenuItem`).
+ */
 export const getMenuQuery = /* GraphQL */ `
+  fragment MenuItemParts on MenuItem {
+    id
+    title
+    url
+    type
+    tags
+  }
+
   query GetMenu($handle: String!) {
     menu(handle: $handle) {
       id
       handle
       title
       items {
-        id
-        title
-        url
-        type
+        ...MenuItemParts
         items {
-          id
-          title
-          url
-          type
+          ...MenuItemParts
+          items {
+            ...MenuItemParts
+          }
         }
       }
     }

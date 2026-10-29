@@ -856,6 +856,9 @@
   .grid-cols-\[10rem_1fr\] {
     grid-template-columns: 10rem 1fr;
   }
+  .grid-cols-\[repeat\(auto-fill\,minmax\(11rem\,1fr\)\)\] {
+    grid-template-columns: repeat(auto-fill,minmax(11rem,1fr));
+  }
   .flex-col {
     flex-direction: column;
   }
@@ -937,6 +940,9 @@
   .gap-x-8 {
     column-gap: calc(var(--spacing) * 8);
   }
+  .gap-x-10 {
+    column-gap: calc(var(--spacing) * 10);
+  }
   .gap-x-\[0\.45rem\] {
     column-gap: 0.45rem;
   }
@@ -945,6 +951,9 @@
   }
   .gap-y-3 {
     row-gap: calc(var(--spacing) * 3);
+  }
+  .gap-y-8 {
+    row-gap: calc(var(--spacing) * 8);
   }
   .gap-y-10 {
     row-gap: calc(var(--spacing) * 10);
@@ -1013,6 +1022,9 @@
     @supports (color: color-mix(in lab, red, red)) {
       border-color: color-mix(in oklab, var(--sb-foreground) 20%, transparent);
     }
+  }
+  .bg-\[var\(--sb-dd-bg\,var\(--sb-background\)\)\] {
+    background-color: var(--sb-dd-bg,var(--sb-background));
   }
   .bg-background {
     background-color: var(--sb-background);
@@ -1151,6 +1163,9 @@
   }
   .py-5 {
     padding-block: calc(var(--spacing) * 5);
+  }
+  .py-8 {
+    padding-block: calc(var(--spacing) * 8);
   }
   .py-16 {
     padding-block: calc(var(--spacing) * 16);
@@ -1303,6 +1318,9 @@
   }
   .whitespace-pre-line {
     white-space: pre-line;
+  }
+  .text-\[var\(--sb-dd-fg\,var\(--sb-foreground\)\)\] {
+    color: var(--sb-dd-fg,var(--sb-foreground));
   }
   .text-background {
     color: var(--sb-background);
@@ -1481,6 +1499,9 @@
   .group-open\:rotate-180:is(:where(.group):is([open], :popover-open, :open) *) {
     rotate: 180deg;
   }
+  .group-open\/drawer\:rotate-180:is(:where(.group\/drawer):is([open], :popover-open, :open) *) {
+    rotate: 180deg;
+  }
   .group-focus-within\:visible:is(:where(.group):focus-within *) {
     visibility: visible;
   }
@@ -1521,13 +1542,25 @@
     content: var(--tw-content);
     position: absolute;
   }
+  .before\:inset-x-0::before {
+    content: var(--tw-content);
+    inset-inline: 0px;
+  }
   .before\:top-1\/2::before {
     content: var(--tw-content);
     top: calc(1 / 2 * 100%);
   }
+  .before\:top-full::before {
+    content: var(--tw-content);
+    top: 100%;
+  }
   .before\:left-0::before {
     content: var(--tw-content);
     left: 0px;
+  }
+  .before\:h-10::before {
+    content: var(--tw-content);
+    height: calc(var(--spacing) * 10);
   }
   .before\:h-px::before {
     content: var(--tw-content);
@@ -1545,6 +1578,10 @@
   .before\:bg-current::before {
     content: var(--tw-content);
     background-color: currentcolor;
+  }
+  .before\:content-\[\'\'\]::before {
+    --tw-content: '';
+    content: var(--tw-content);
   }
   .after\:absolute::after {
     content: var(--tw-content);
@@ -1633,6 +1670,9 @@
     }
     .hover\:opacity-100:hover {
       opacity: 100%;
+    }
+    .hover\:\[animation-play-state\:paused\]:hover {
+      animation-play-state: paused;
     }
   }
   .focus\:outline-none:focus {

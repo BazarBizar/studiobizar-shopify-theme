@@ -196,6 +196,20 @@ async function main() {
     await saved();
     check("Undo removes the footer text again", (await preview.locator("#site-footer").getByText("UI footer text").count()) === 0);
 
+    // Pop-ups: a ready-made one, opened in the preview while it is being edited.
+    await page.getByRole("tab", { name: "Pop-ups" }).click();
+    await aside.getByRole("button", { name: "Add a pop-up" }).click();
+    await page.getByRole("menuitem", { name: /^Event or news/ }).click();
+    await aside.getByRole("textbox", { name: "Heading" }).fill("UI test pop-up");
+    await saved();
+    const popup = preview.locator("dialog[open]");
+    check("The preview opens the pop-up being edited", (await popup.getByText("UI test pop-up").count()) === 1);
+    check("A box in the middle is modal, over a dimmed page", await popup.evaluate((dialog) => dialog.matches(":modal")).catch(() => false));
+    await shot("03b-popup");
+    await aside.getByRole("button", { name: "Back" }).click();
+    await page.waitForTimeout(1000);
+    check("Back to the list closes it in the preview", (await preview.locator("dialog[open]").count()) === 0);
+
     // Site style: a heading font for the whole site, and a saved colour every picker offers.
     await page.getByRole("tab", { name: "Site style" }).click();
     await aside.getByRole("combobox").filter({ hasText: "Default (Helvetica Neue)" }).first().click();

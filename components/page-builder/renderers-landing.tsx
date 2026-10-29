@@ -265,7 +265,7 @@ export const LANDING_RENDERERS = {
   marquee: renderer<"marquee">({
     render: (s) => (
       <Marquee
-        items={s.items.map((item) => ({ id: item.id, text: item.settings.text }))}
+        items={s.items.map((item) => ({ id: item.id, text: item.settings.text, href: hrefOf(item.settings.href) }))}
         size={s.size}
         speed={s.speed}
         direction={s.direction}

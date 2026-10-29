@@ -48,9 +48,28 @@ export type NavItem = {
   matches?: string[];
 };
 
-/** `key` is the group key from `lib/admin/groups.ts` — the sidebar uses it to pick
- *  the icon and the series tint, so presentation stays out of `groups.ts`. */
-export type NavGroup = { key: string; label: string | null; items: NavItem[] };
+/**
+ * `key` is the group key from `lib/admin/groups.ts` — the sidebar uses it to pick
+ * the icon and the series tint, so presentation stays out of `groups.ts`.
+ *
+ * `menu`: drawn as ONE row that opens to its items (Inbox, Settings) rather than a
+ * heading over a list — screens visited now and then, folded away so the sidebar
+ * stays short. Open by itself while one of its screens is the page.
+ */
+export type NavGroup = { key: string; label: string | null; items: NavItem[]; menu?: boolean };
+
+const MENU_GROUPS: readonly GroupKey[] = ["inbox", "settings", "other"];
+
+/**
+ * A group's order where it matters, by href; anything not named (a new definition)
+ * follows, alphabetically. Content: the catalogue, then the lists sections draw on.
+ * Inbox: what asks for an answer first. Settings: the site before the panel.
+ */
+const ORDER: Partial<Record<GroupKey, string[]>> = {
+  content: ["/admin/products", "/admin/collections", "/admin/designer", "/admin/project", "/admin/service", "/admin/faq_item"],
+  inbox: ["/admin/inquiry", "/admin/contact_message", "/admin/newsletter_subscriber", "/admin/customers"],
+  settings: [SITE_WIDE_HREF, "/admin/email", "/admin/staff"],
+};
 
 /**
  * The URL segment for a type.
@@ -121,11 +140,11 @@ function toItem(definition: Definition): NavItem {
  */
 const BESPOKE: { group: GroupKey; item: NavItem }[] = [
   {
-    group: "catalogue",
+    group: "content",
     item: { href: "/admin/products", label: "Products", readOnly: false, type: null },
   },
   {
-    group: "catalogue",
+    group: "content",
     item: { href: "/admin/collections", label: "Collections", readOnly: false, type: null },
   },
   {
@@ -143,8 +162,8 @@ const BESPOKE: { group: GroupKey; item: NavItem }[] = [
   },
   {
     group: "pages",
-    /** The Theme Builder: the header and footer every page shares. */
-    item: { href: "/admin/theme-builder", label: "Header & footer", readOnly: false, type: null },
+    /** The Theme Builder: the header, footer and pop-ups every page shares. */
+    item: { href: "/admin/theme-builder", label: "Appearance", readOnly: false, type: null },
   },
   {
     group: "pages",
@@ -224,13 +243,15 @@ export async function buildNavigation(): Promise<NavGroup[]> {
     const items = byGroup.get(key);
     if (!items?.length) continue;
 
-    // Within a group, the module table's order wins where it has an opinion;
-    // everything else falls back to alphabetical so the list is stable. Website keeps
-    // the order its rows are declared in: Pages, Menus, Media.
+    // Website keeps the order its rows are declared in: Pages, Menus, Appearance, Media.
+    // Others follow ORDER, then the alphabet, so the list is stable.
+    const order = ORDER[key] ?? [];
+    const rank = (item: NavItem) => (order.includes(item.href) ? order.indexOf(item.href) : order.length);
     groups.push({
       key,
       label: groupLabel(key),
-      items: key === "pages" ? items : items.sort((a, b) => a.label.localeCompare(b.label)),
+      items: key === "pages" ? items : items.sort((a, b) => rank(a) - rank(b) || a.label.localeCompare(b.label)),
+      ...(MENU_GROUPS.includes(key) ? { menu: true } : {}),
     });
   }
 

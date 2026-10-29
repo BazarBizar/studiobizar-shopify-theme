@@ -20,7 +20,8 @@
       "secondary": "Secondary",
       "menu": "Menu",
       "open_menu": "Open menu",
-      "close_menu": "Close menu"
+      "close_menu": "Close menu",
+      "view_all": "All {{ title }}"
     },
     "social": {
       "follow": "Follow {{ name }}"
@@ -59,6 +60,8 @@
   },
   "collection": {
     "all": "all",
+    "showing": "Showing",
+    "show_everything": "show everything",
     "sort_by": "sort by",
     "apply": "Apply",
     "item_count": {

@@ -93,6 +93,20 @@
       <h1 class="text-h1">{{ collection.title }}</h1>
     {%- endif -%}
 
+    {% comment %}
+      A menu link "filtered by tag" (/collections/chairs/oak) says what it narrows to,
+      as /shop?tag= does in the Next build. Shopify filters the products itself; a
+      product-type or vendor link (/collections/types?q=…) is titled by the type.
+    {% endcomment %}
+    {%- if current_tags.size > 0 -%}
+      <p class="text-secondary mt-6">
+        {{ 'collection.showing' | t }}
+        <span class="font-medium">{{ current_tags | join: ' · ' }}</span>
+        ·
+        <a href="{{ collection.url }}" class="sb-underline">{{ 'collection.show_everything' | t }}</a>
+      </p>
+    {%- endif -%}
+
     {%- paginate collection.products by per_page -%}
       <div class="mt-8 flex flex-col gap-6">
         {%- if s.show_filters and collection.filters.size > 0 -%}

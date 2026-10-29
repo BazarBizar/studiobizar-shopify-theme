@@ -31,11 +31,11 @@ type Series = {
 };
 
 export const SERIES: Record<SeriesKey, Series> = {
-  /** slot 1 — active products, Catalogue */
+  /** slot 1 — active products, Content (the catalogue and the lists pages draw on) */
   blue: { text: "text-[#2a78d6] dark:text-[#3987e5]", bg: "bg-[#2a78d6] dark:bg-[#3987e5]" },
   /** slot 2 — drafts, Customers */
   orange: { text: "text-[#eb6834] dark:text-[#d95926]", bg: "bg-[#eb6834] dark:bg-[#d95926]" },
-  /** slot 3 — Content. See the contrast caveat above. */
+  /** slot 3 — Website. See the contrast caveat above. */
   aqua: { text: "text-[#1baf7a] dark:text-[#199e70]", bg: "bg-[#1baf7a] dark:bg-[#199e70]" },
   /** slot 7 — Inbox */
   violet: { text: "text-[#4a3aa7] dark:text-[#9085e9]", bg: "bg-[#4a3aa7] dark:bg-[#9085e9]" },
@@ -48,10 +48,8 @@ export const SERIES: Record<SeriesKey, Series> = {
  * here rather than there so the grouping logic carries no presentation.
  */
 export const GROUP_SERIES: Record<string, SeriesKey> = {
-  catalogue: "blue",
   pages: "aqua",
-  /** The same family as Website — it is what pages are filled with. */
-  content: "aqua",
+  content: "blue",
   library: "orange",
   inbox: "violet",
   other: "grey",

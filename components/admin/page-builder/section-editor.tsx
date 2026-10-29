@@ -212,7 +212,6 @@ export function SectionEditor({
           joined={joined}
           category={definition.category}
           textAlign={definition.textAlign}
-          innerSpacing={definition.innerSpacing}
           contents={contents}
           sectionId={section.id}
           settings={settings}
@@ -488,26 +487,23 @@ function SpacingBox({
   title,
   values,
   placeholders,
-  disabled = {},
   hint,
   onChange,
 }: {
   title: string;
   values: Record<BoxSide, number | undefined>;
   placeholders: Record<BoxSide, string>;
-  disabled?: Partial<Record<BoxSide, boolean>>;
   hint?: string;
   onChange: (changes: Partial<Record<BoxSide, number | undefined>>) => void;
 }) {
   const { device } = useEditorDevice();
   const [linked, setLinked] = React.useState(false);
   const DeviceGlyph = DEVICE_ICONS[device];
-  const open = BOX_SIDES.filter((side) => !disabled[side]);
 
   const type = (side: BoxSide, raw: string) => {
     const next = raw === "" ? undefined : Math.max(0, Math.min(SPACE_MAX, Math.round(Number(raw))));
     if (next !== undefined && !Number.isFinite(next)) return;
-    onChange(linked ? Object.fromEntries(open.map((each) => [each, next])) : { [side]: next });
+    onChange(linked ? Object.fromEntries(BOX_SIDES.map((each) => [each, next])) : { [side]: next });
   };
 
   return (
@@ -537,10 +533,9 @@ function SpacingBox({
               inputMode="numeric"
               min={0}
               max={SPACE_MAX}
-              disabled={disabled[side]}
               aria-label={`${title} ${side} (px)`}
               value={values[side] === undefined ? "" : String(values[side])}
-              placeholder={disabled[side] ? "–" : placeholders[side]}
+              placeholder={placeholders[side]}
               onChange={(event) => type(side, event.target.value)}
               className="h-8 [appearance:textfield] px-1.5 text-center text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             />
@@ -565,15 +560,13 @@ function SpacingBox({
  *   then the design's Typography, Buttons, Images, Width & height, Show on devices.
  *
  * Only what does something is offered: a section whose own photograph or band is its
- * ground gets no background photo or gradient (they would sit behind it, unseen), and a
- * section whose height is fixed gets no space inside.
+ * ground gets no background photo or gradient (they would sit behind it, unseen).
  */
 function StyleTab({
   fields,
   joined,
   category,
   textAlign,
-  innerSpacing,
   contents,
   sectionId,
   settings,
@@ -586,7 +579,6 @@ function StyleTab({
   /** Where the section sits in Add section — a banner's photograph is its ground. */
   category: string;
   textAlign: boolean;
-  innerSpacing: boolean;
   contents: SectionContents | null;
   onOpenHeading: () => void;
   sectionId: string;
@@ -648,7 +640,7 @@ function StyleTab({
     // switching to numbers changes nothing until a number is changed.
     const now = device === "d" && contents ? contents : null;
     onChange("customSpacing", true);
-    if (now && innerSpacing) {
+    if (now) {
       onChange("paddingTop", Math.min(SPACE_MAX, now.padTop));
       onChange("paddingBottom", Math.min(SPACE_MAX, now.padBottom));
     }
@@ -826,12 +818,7 @@ function StyleTab({
                     title="Padding"
                     values={padding.values}
                     placeholders={padding.placeholders}
-                    disabled={innerSpacing ? {} : { top: true, bottom: true }}
-                    hint={
-                      innerSpacing
-                        ? "Space inside. Empty left and right keep the design’s own side margin."
-                        : "Space inside, at the sides — this section’s height comes from its photo and Height choice."
-                    }
+                    hint="Space inside. On a banner or slider, top and bottom move the text away from the photo’s edges — the height stays its Height choice. Empty left and right keep the design’s own side margin."
                     onChange={padding.change}
                   />
                   <SpacingBox

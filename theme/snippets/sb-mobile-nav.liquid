@@ -47,44 +47,15 @@
 
     {%- if primary != blank and primary.links.size > 0 -%}
       <nav aria-label="{{ 'general.navigation.primary' | t }}" class="px-gutter pt-6">
-        <ul class="flex flex-col gap-5">
-          {%- for link in primary.links -%}
-            <li>
-              <a href="{{ link.url }}" class="text-h3">{{ link.title }}</a>
-            </li>
-          {%- endfor -%}
-        </ul>
+        {%- render 'sb-drawer-list', links: primary.links, level: 'primary' -%}
       </nav>
     {%- endif -%}
 
     {%- if secondary != blank and secondary.links.size > 0 -%}
       <nav aria-label="{{ 'general.navigation.secondary' | t }}" class="mt-auto px-gutter pb-10">
-        <ul class="flex flex-col gap-3 border-t border-border pt-6">
-          {%- for link in secondary.links -%}
-            <li>
-              {%- if link.links.size > 0 -%}
-                <details class="group">
-                  <summary class="sb-summary text-secondary flex items-center justify-between opacity-80">
-                    {{ link.title }}
-                    {%- render 'sb-icon',
-                      icon: 'chevron-down',
-                      class: 'size-4 transition-transform group-open:rotate-180'
-                    -%}
-                  </summary>
-                  <ul class="mt-3 flex flex-col gap-3 pl-4">
-                    {%- for child in link.links -%}
-                      <li>
-                        <a href="{{ child.url }}" class="text-secondary opacity-70">{{ child.title }}</a>
-                      </li>
-                    {%- endfor -%}
-                  </ul>
-                </details>
-              {%- else -%}
-                <a href="{{ link.url }}" class="text-secondary opacity-80">{{ link.title }}</a>
-              {%- endif -%}
-            </li>
-          {%- endfor -%}
-        </ul>
+        <div class="border-t border-border pt-6">
+          {%- render 'sb-drawer-list', links: secondary.links, level: 'secondary' -%}
+        </div>
       </nav>
     {%- endif -%}
   </div>
