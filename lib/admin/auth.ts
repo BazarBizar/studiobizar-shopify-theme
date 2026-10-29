@@ -168,7 +168,8 @@ export type StaffSession = { email: string };
  * them out on their next request instead of when
  * their eight-hour session happens to expire.
  *
- * Every admin page and every admin route handler goes through this. The check in
+ * Every admin page and every admin route handler goes through this, and so does every
+ * Admin API call (`adminGraphQL` in `shopify.ts`) — the one gate a page cannot skip. The check in
  * `proxy.ts` is optimistic only — it sees a cookie, not a valid one.
  */
 export async function currentStaff(): Promise<StaffSession | null> {

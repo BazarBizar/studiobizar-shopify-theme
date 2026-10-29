@@ -7,11 +7,16 @@
 
 import Module from "node:module";
 
+/** `lib/admin/shopify.ts` redirects a request with no staff session — never a script. */
+const STUB_REDIRECT = () => {
+  throw new Error("redirect() called outside Next");
+};
+
 // `lib/admin/shopify.ts` re-throws Next's control-flow errors with `next/navigation`,
 // which only loads inside Next. Outside it there is nothing to re-throw.
 const load = (Module as unknown as { _load: (request: string, ...rest: unknown[]) => unknown })._load;
 (Module as unknown as { _load: typeof load })._load = function (this: unknown, request: string, ...rest: unknown[]) {
-  if (request === "next/navigation") return { unstable_rethrow: () => undefined };
+  if (request === "next/navigation") return { unstable_rethrow: () => undefined, redirect: STUB_REDIRECT };
   return load.call(this, request, ...rest);
 };
 

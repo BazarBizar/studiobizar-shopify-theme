@@ -101,7 +101,7 @@
     {%- if current_tags.size > 0 -%}
       <p class="text-secondary mt-6">
         {{ 'collection.showing' | t }}
-        <span class="font-medium">{{ current_tags | join: ' · ' }}</span>
+        <span class="font-medium">{{ current_tags | join: ' · ' | escape }}</span>
         ·
         <a href="{{ collection.url }}" class="sb-underline">{{ 'collection.show_everything' | t }}</a>
       </p>

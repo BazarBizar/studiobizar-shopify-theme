@@ -23,6 +23,11 @@ import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import { resolve } from "node:path";
 
+/** `lib/admin/shopify.ts` redirects a request with no staff session — never a script. */
+const STUB_REDIRECT = () => {
+  throw new Error("redirect() called outside Next");
+};
+
 const ROOT = resolve(__dirname, "..");
 const BASE = process.env.CHECK_BASE_URL ?? "http://localhost:3000";
 
@@ -36,7 +41,7 @@ for (const line of readFileSync(resolve(ROOT, ".env"), "utf8").split(/\r?\n/)) {
 {
   const require = createRequire(resolve(ROOT, "package.json"));
   const resolved = require.resolve("next/navigation");
-  require.cache[resolved] = { id: resolved, filename: resolved, loaded: true, exports: { unstable_rethrow: () => {} } } as never;
+  require.cache[resolved] = { id: resolved, filename: resolved, loaded: true, exports: { unstable_rethrow: () => {}, redirect: STUB_REDIRECT } } as never;
 }
 
 const load = (path: string) => import(pathToFileURL(resolve(ROOT, path)).href);

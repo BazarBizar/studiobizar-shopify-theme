@@ -1,6 +1,7 @@
 import "server-only";
 
 import { listAllEntries } from "./metaobjects";
+import { withoutStaffSession } from "./shopify";
 
 /**
  * Branding for the admin panel itself, from the `admin_settings` singleton
@@ -48,7 +49,10 @@ export async function getAdminSettings(): Promise<AdminSettings> {
   if (cache && Date.now() - cache.at < TTL_MS) return cache.value;
 
   try {
-    const [entry] = await listAllEntries("admin_settings");
+    // The sign-in page shows the panel's name and icon too, before anyone is signed in.
+    const [entry] = await withoutStaffSession("the sign-in page shows the panel's name", () =>
+      listAllEntries("admin_settings"),
+    );
     const field = (key: string) => entry?.fields.find((candidate) => candidate.key === key);
 
     const text = (key: string) => field(key)?.value?.trim() || "";

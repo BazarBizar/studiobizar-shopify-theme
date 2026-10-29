@@ -51,6 +51,13 @@ overwrite each other. `yarn check:staff` (22 checks, against a stand-in for Shop
 all of it. The panel-set Instagram feed accepts only a Behold id or its feeds.behold.so
 address, and the fetch address is built from the id — no server-side request to a typed URL.
 
+## Third pass — 2026-10-29
+
+| Was open | Now |
+|---|---|
+| **Admin pages readable without signing in.** The session was checked only in the admin layout, and `proxy.ts` only looks for a cookie with the right name. A soft-navigation request (`RSC: 1` + a `Next-Router-State-Tree` claiming the admin layout is already on screen) makes Next render the page alone, so the layout's check never ran — customers, inquiries, contact messages, newsletter subscribers, drafts were in the response. Reproduced against `yarn dev`. | The data is gated where it is fetched: `adminGraphQL` (`lib/admin/shopify.ts`) checks `currentStaff()` before every Admin API call and redirects to sign-in otherwise, so every page, action and route — and any screen added later — is covered. Only sign-in's own reads opt out, by name (`withoutStaffSession`: the staff list in `staff.ts`, the panel's name on the sign-in page in `admin-settings.ts`); scripts run outside Next (no `NEXT_RUNTIME`). `yarn check:security` sends the crafted request to three screens and expects the sign-in redirect. |
+| Liquid: the tag filter's "Showing …" printed `current_tags` unescaped | `| escape` (`sb-main-collection.liquid`). |
+
 ## Not covered here
 
 - The **Liquid theme** is served by Shopify, which sets its headers; the inquiry App Proxy
