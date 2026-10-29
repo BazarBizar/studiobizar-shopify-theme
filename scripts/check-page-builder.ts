@@ -447,6 +447,31 @@ check(
   twice.popups[1]!.id = twice.popups[0]!.id;
   check("two pop-ups with one id are refused on write", !themeContentSchema.safeParse(twice).success);
 
+  const styled = structuredClone(withPromo);
+  Object.assign(styled.popups[0]!.settings, {
+    width: "custom",
+    customWidth: 640,
+    radius: 16,
+    borderWidth: 2,
+    borderColor: "#302f2d",
+    shadow: "strong",
+    overlay: "#1a2b3c",
+    overlayOpacity: 70,
+    animation: "zoom",
+    design: { heading: { size: { d: 40, m: 28 }, color: "#aa3300" }, buttonLook: { radius: 100 } },
+  });
+  check("a styled pop-up passes the write schema", themeContentSchema.safeParse(styled).success);
+  for (const [label, change] of [
+    ["a line colour that is not a colour", { borderColor: "red;background:url(x)" }],
+    ["a width past 1200px", { customWidth: 5000 }],
+    ["an unknown animation", { animation: "spin" }],
+    ["a design part that does not exist", { design: { script: "x" } }],
+  ] as const) {
+    const bad = structuredClone(styled);
+    Object.assign(bad.popups[0]!.settings, change);
+    check(`pop-up style: ${label} is refused on write`, !themeContentSchema.safeParse(bad).success);
+  }
+
   const broken = JSON.parse(JSON.stringify(withPromo));
   broken.popups.push({ id: "nope", settings: {} });
   broken.popups[0].settings.trigger = "teleport";

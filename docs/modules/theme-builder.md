@@ -53,8 +53,13 @@ so drafted, previewed, published and rolled back with the header and footer.
 - **Pop-ups** (Pop-ups tab): up to 10, in priority order — **at most one opens per page**, the first
   whose moment comes. Each: switched on or off, a name only the editor sees, photograph, heading,
   text, button, newsletter sign-up; shape (box in the middle — modal `<dialog>`, Escape and a click
-  outside close it — small box in a corner, bar along the bottom), size, photograph above or beside,
-  alignment, colours, darkened page; opens after N seconds, after scrolling N% or when the pointer
+  outside close it — small box in a corner, bar along the bottom), size (or a custom width in px),
+  top / middle / bottom of the screen, photograph above or beside and its shape, alignment (left,
+  centre, right), colours, space inside; **Corners, line & shadow**: rounded corners, a line and its
+  colour, shadow, the darkened page's colour and darkness (the backdrop reads
+  `--sb-popup-backdrop`), the close button's style and colour, how it appears (rise, fade, zoom,
+  slide, at once); **Text & buttons**: the page builder's own Typography and Buttons panels (a
+  `design` field — `designStyle` on the `<dialog>`, applied by `sb-design.css`); opens after N seconds, after scrolling N% or when the pointer
   leaves through the top (never on touch screens); how often (once per visit — `sessionStorage`,
   every N days, only once, every page — `localStorage` `sb-popup-<id>`); which pages (every, home
   only, only / except a list; `/products/*` covers everything under it); devices; dates. Four
@@ -67,7 +72,10 @@ Pop-ups render nothing until one opens.
 
 **Preview**: in `/preview/…` nothing opens by itself and nothing is remembered. The editor puts the
 pop-up being edited in the iframe's hash (`#popup-<id>`); `Popups` opens that one at once, switched
-off or not. Every announcement message shows there, dated or not.
+off or not. It keeps the id, not the pop-up, so one just added opens when it reaches the preview a
+moment later. After every change the editor also posts `sb-preview:popup`, so a pop-up closed in
+the preview opens again as soon as it is edited; **Show in preview** in its editor does the same.
+Every announcement message shows there, dated or not.
 
 ## Data
 

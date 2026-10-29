@@ -41,6 +41,8 @@ export const PREVIEW_MESSAGE = {
   editable: "sb-preview:editable",
   edit: "sb-preview:edit",
   contents: "sb-preview:contents",
+  /** Theme Builder → preview: open this pop-up (again) — see `Popups`. */
+  popup: "sb-preview:popup",
 } as const;
 
 /** Dispatched on the preview's window when an in-place text edit ends. */

@@ -864,3 +864,43 @@
 @utility sb-popup-in {
   animation: sb-popup-in 0.35s ease-out both;
 }
+
+/* The other ways in (a pop-up's "How it appears"). */
+@keyframes sb-popup-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes sb-popup-zoom {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes sb-popup-slide {
+  from {
+    opacity: 0;
+    transform: translateY(40%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility sb-popup-fade {
+  animation: sb-popup-fade 0.35s ease-out both;
+}
+@utility sb-popup-zoom {
+  animation: sb-popup-zoom 0.3s ease-out both;
+}
+@utility sb-popup-slide {
+  animation: sb-popup-slide 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}

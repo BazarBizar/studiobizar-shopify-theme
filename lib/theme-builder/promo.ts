@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { Device } from "@/lib/page-builder/design";
 import {
   color,
+  design,
   fieldDefault,
   fieldSchema,
   HEX_COLOR,
@@ -223,8 +224,20 @@ export const POPUP_FIELDS = [
       { value: "small", label: "Small" },
       { value: "medium", label: "Medium" },
       { value: "large", label: "Large" },
+      { value: "custom", label: "Custom" },
     ],
     { default: "medium", group: "style", when: { field: "layout", is: ["center"] }, display: "buttons" },
+  ),
+  number("customWidth", "Width (px)", { min: 280, max: 1200, default: 520, group: "style", when: { field: "width", is: ["custom"] } }),
+  select(
+    "vertical",
+    "Position on the screen",
+    [
+      { value: "top", label: "Top" },
+      { value: "middle", label: "Middle" },
+      { value: "bottom", label: "Bottom" },
+    ],
+    { default: "middle", group: "style", when: { field: "layout", is: ["center"] }, display: "buttons" },
   ),
   select(
     "imagePosition",
@@ -236,17 +249,75 @@ export const POPUP_FIELDS = [
     { group: "style", when: { field: "layout", is: ["center"] }, display: "buttons" },
   ),
   select(
+    "imageRatio",
+    "Photograph's shape",
+    [
+      { value: "auto", label: "To suit the layout" },
+      { value: "landscape", label: "Landscape" },
+      { value: "square", label: "Square" },
+      { value: "portrait", label: "Tall" },
+      { value: "adapt", label: "As the photograph is" },
+    ],
+    { default: "auto", group: "style", when: { field: "layout", is: ["center", "corner"] } },
+  ),
+  select(
     "align",
     "Text",
     [
       { value: "center", label: "Centred" },
-      { value: "left", label: "On the left" },
+      { value: "left", label: "Left" },
+      { value: "right", label: "Right" },
     ],
     { group: "style", display: "buttons" },
   ),
   color("background", "Background", { group: "style", help: "Empty: the site's light background." }),
   color("color", "Text colour", { group: "style" }),
+  number("padding", "Space inside (px)", { min: 0, max: 96, default: 32, group: "style" }),
+
+  // Corners, line & shadow — the second fold of the look (`POPUP_EFFECTS`)
+  number("radius", "Rounded corners (px)", { min: 0, max: 48, default: 0, group: "style" }),
+  number("borderWidth", "Line around it (px)", { min: 0, max: 8, default: 0, group: "style", help: "0: no line." }),
+  color("borderColor", "Line colour", { group: "style", help: "Empty: the text colour." }),
+  select(
+    "shadow",
+    "Shadow",
+    [
+      { value: "default", label: "Default" },
+      { value: "none", label: "None" },
+      { value: "soft", label: "Soft" },
+      { value: "medium", label: "Medium" },
+      { value: "strong", label: "Strong" },
+    ],
+    { default: "default", group: "style", display: "buttons" },
+  ),
   toggle("dim", "Darken the page behind it", { default: true, group: "style", when: { field: "layout", is: ["center"] } }),
+  color("overlay", "Colour behind it", { group: "style", when: { field: "dim", is: [true] }, help: "Empty: black." }),
+  number("overlayOpacity", "How dark (%)", { min: 0, max: 90, default: 50, group: "style", when: { field: "dim", is: [true] } }),
+  select(
+    "closeStyle",
+    "Close button",
+    [
+      { value: "circle", label: "On a circle" },
+      { value: "plain", label: "Plain" },
+    ],
+    { default: "circle", group: "style", display: "buttons" },
+  ),
+  color("closeColor", "Close button colour", { group: "style", help: "Empty: the text colour." }),
+  select(
+    "animation",
+    "How it appears",
+    [
+      { value: "rise", label: "Rise and fade in" },
+      { value: "fade", label: "Fade in" },
+      { value: "zoom", label: "Zoom in" },
+      { value: "slide", label: "Slide up from below" },
+      { value: "none", label: "At once" },
+    ],
+    { default: "rise", group: "style" },
+  ),
+
+  // Headings, text and buttons inside — the page builder's own design panel
+  design("design", "Text & buttons", { parts: ["typography", "buttons"], targets: ["heading", "text", "button"], group: "style" }),
 
   // When it opens
   select(
@@ -274,6 +345,23 @@ export const POPUP_FIELDS = [
   ),
   number("days", "Days before it shows again", { min: 1, max: 365, default: 7, group: "advanced", when: { field: "frequency", is: ["days"] } }),
 ] as const satisfies readonly LeafFieldDef[];
+
+/** The look's second fold in the editor: everything but the box itself. */
+export const POPUP_EFFECTS: ReadonlySet<string> = new Set([
+  "radius",
+  "borderWidth",
+  "borderColor",
+  "shadow",
+  "dim",
+  "overlay",
+  "overlayOpacity",
+  "closeStyle",
+  "closeColor",
+  "animation",
+]);
+
+/** Shown only for the box in the middle — the darkened page has no corner or bar. */
+export const POPUP_CENTER_ONLY: ReadonlySet<string> = new Set(["overlay", "overlayOpacity"]);
 
 export type PopupPages = {
   /** Every page, the home page only, only the listed pages, or every page but those. */

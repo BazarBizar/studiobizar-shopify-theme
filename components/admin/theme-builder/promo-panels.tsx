@@ -6,6 +6,7 @@ import {
   ArrowUpIcon,
   ChevronRightIcon,
   CopyIcon,
+  EyeIcon,
   MoreHorizontalIcon,
   PlusIcon,
   Trash2Icon,
@@ -20,7 +21,7 @@ import { Input } from "@/components/admin/ui/input";
 import { Label } from "@/components/admin/ui/label";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/admin/ui/select";
 import { Switch } from "@/components/admin/ui/switch";
-import { isFieldActive, newBlockId, type FieldGroup, type LeafFieldDef } from "@/lib/page-builder/fields";
+import { isFieldActive, newBlockId, type LeafFieldDef } from "@/lib/page-builder/fields";
 import {
   createMessage,
   createPopup,
@@ -28,6 +29,8 @@ import {
   MAX_POPUP_PATHS,
   MAX_POPUPS,
   MESSAGE_MAX,
+  POPUP_CENTER_ONLY,
+  POPUP_EFFECTS,
   POPUP_FIELDS,
   popupHasContent,
   scheduleNote,
@@ -493,20 +496,36 @@ function PopupMenu({ edits, popup, onRemoved }: { edits: Edits; popup: Popup; on
  * One pop-up's settings
  * -------------------------------------------------------------------------- */
 
-const FOLDS: { group: FieldGroup; title: string }[] = [
-  { group: "content", title: "What it says" },
-  { group: "style", title: "Look" },
-  { group: "advanced", title: "When it opens" },
+/** The editor's folds, each with the fields it holds. */
+const FOLDS: { key: string; title: string; holds: (field: LeafFieldDef) => boolean }[] = [
+  { key: "content", title: "What it says", holds: (field) => field.group === "content" },
+  { key: "look", title: "Look", holds: (field) => field.group === "style" && field.kind !== "design" && !POPUP_EFFECTS.has(field.key) },
+  { key: "effects", title: "Corners, line & shadow", holds: (field) => POPUP_EFFECTS.has(field.key) },
+  { key: "type", title: "Text & buttons", holds: (field) => field.kind === "design" },
+  { key: "advanced", title: "When it opens", holds: (field) => field.group === "advanced" },
 ];
 
-export function PopupEditor({ id, edits, onBack }: { id: string; edits: Edits; onBack: () => void }) {
+export function PopupEditor({
+  id,
+  edits,
+  onBack,
+  onPreview,
+}: {
+  id: string;
+  edits: Edits;
+  onBack: () => void;
+  /** Opens it in the preview again — after it was closed there, say. */
+  onPreview: () => void;
+}) {
   const popup = edits.content.popups.find((candidate) => candidate.id === id);
   if (!popup) return null;
 
   const set = (change: Partial<Popup>) =>
     edits.change({ ...edits.content, popups: edits.content.popups.map((other) => (other.id === id ? { ...other, ...change } : other)) });
   const setSetting = (key: string, value: unknown) => set({ settings: { ...popup.settings, [key]: value } });
-  const fields = (POPUP_FIELDS as readonly LeafFieldDef[]).filter((field) => isFieldActive(field, popup.settings));
+  const fields = (POPUP_FIELDS as readonly LeafFieldDef[]).filter(
+    (field) => isFieldActive(field, popup.settings) && (!POPUP_CENTER_ONLY.has(field.key) || popup.settings.layout === "center"),
+  );
 
   return (
     <div className="flex h-full flex-col">
@@ -518,6 +537,10 @@ export function PopupEditor({ id, edits, onBack }: { id: string; edits: Edits; o
           <h2 className="truncate text-sm font-medium">{popup.name || "Pop-up"}</h2>
           <p className="text-muted-foreground truncate text-[11px]">Pop-up · {popupSummary(popup)}</p>
         </div>
+        <Button type="button" variant="ghost" size="sm" onClick={onPreview} disabled={!popupHasContent(popup)}>
+          <EyeIcon />
+          Show in preview
+        </Button>
         <PopupMenu edits={edits} popup={popup} onRemoved={onBack} />
       </div>
 
@@ -541,12 +564,25 @@ export function PopupEditor({ id, edits, onBack }: { id: string; edits: Edits; o
         ) : null}
 
         {FOLDS.map((fold) => (
-          <Group key={fold.group} title={fold.title} defaultOpen={fold.group === "content"}>
+          <Group key={fold.key} title={fold.title} defaultOpen={fold.key === "content"}>
             {fields
-              .filter((field) => field.group === fold.group)
+              .filter(fold.holds)
               .map((field) => {
                 const inputId = `${id}-${field.key}`;
                 const inline = field.kind === "toggle";
+                // The design panel names its own parts (Typography, Buttons).
+                if (field.kind === "design") {
+                  return (
+                    <FieldControl
+                      key={field.key}
+                      field={field}
+                      value={popup.settings[field.key]}
+                      inputId={inputId}
+                      collections={[]}
+                      onChange={(next) => setSetting(field.key, next)}
+                    />
+                  );
+                }
                 return (
                   <div key={field.key} className={inline ? "flex items-center justify-between gap-4" : "space-y-1.5"}>
                     <Label htmlFor={inputId} className="text-xs">
@@ -563,12 +599,12 @@ export function PopupEditor({ id, edits, onBack }: { id: string; edits: Edits; o
                   </div>
                 );
               })}
-            {fold.group === "advanced" && popup.settings.trigger === "exit" ? (
+            {fold.key === "advanced" && popup.settings.trigger === "exit" ? (
               <p className="text-muted-foreground text-xs">
                 When the pointer heads for the tabs or the address bar. Phones and tablets have no pointer, so there it does not open.
               </p>
             ) : null}
-            {fold.group === "advanced" ? (
+            {fold.key === "advanced" ? (
               <p className="text-muted-foreground text-xs">Closing it, or pressing its button, counts as seen.</p>
             ) : null}
           </Group>
