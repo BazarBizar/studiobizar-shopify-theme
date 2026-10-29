@@ -28,6 +28,11 @@ import { chromium, type Page } from "playwright";
 
 import { STAFF_COOKIE } from "../lib/admin/cookie";
 
+/** `lib/admin/shopify.ts` redirects a request with no staff session — never a script. */
+const STUB_REDIRECT = () => {
+  throw new Error("redirect() called outside Next");
+};
+
 const ROOT = resolve(__dirname, "..");
 const BASE = process.env.CHECK_BASE_URL ?? "http://localhost:3000";
 const SHOTS = join(tmpdir(), "email-ui");
@@ -42,7 +47,7 @@ for (const line of readFileSync(resolve(ROOT, ".env"), "utf8").split(/\r?\n/)) {
 {
   const require = createRequire(resolve(ROOT, "package.json"));
   const resolved = require.resolve("next/navigation");
-  require.cache[resolved] = { id: resolved, filename: resolved, loaded: true, exports: { unstable_rethrow: () => {} } } as never;
+  require.cache[resolved] = { id: resolved, filename: resolved, loaded: true, exports: { unstable_rethrow: () => {}, redirect: STUB_REDIRECT } } as never;
 }
 
 let failures = 0;

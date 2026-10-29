@@ -5,7 +5,7 @@ import { z } from "zod";
 import { allowedEmails } from "./env";
 import { OPERATIONS } from "./operations";
 import { hashPassword } from "./password";
-import { adminGraphQL, assertNoUserErrors } from "./shopify";
+import { adminGraphQL, assertNoUserErrors, withoutStaffSession } from "./shopify";
 
 /**
  * WHO MAY SIGN IN — editable from the panel (Settings → Staff), not only in `.env`.
@@ -57,10 +57,13 @@ let cache: { at: number; state: State } | null = null;
 
 async function readState(): Promise<State> {
   if (cache && Date.now() - cache.at < CACHE_MS) return cache.state;
-  const data = await adminGraphQL<{ shop: { id: string; staff: { value: string; compareDigest: string } | null } }>(
-    "staffAccounts",
-    OPERATIONS.staffAccounts.document,
-    {},
+  // Read to decide whether someone IS signed in — so it cannot ask for a session itself.
+  const data = await withoutStaffSession("sign-in checks the staff list", () =>
+    adminGraphQL<{ shop: { id: string; staff: { value: string; compareDigest: string } | null } }>(
+      "staffAccounts",
+      OPERATIONS.staffAccounts.document,
+      {},
+    ),
   );
   let accounts: StaffAccount[] = [];
   if (data.shop.staff?.value) {

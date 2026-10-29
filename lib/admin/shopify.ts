@@ -1,9 +1,12 @@
 import "server-only";
 
-import { unstable_rethrow } from "next/navigation";
+import { AsyncLocalStorage } from "node:async_hooks";
+
+import { redirect, unstable_rethrow } from "next/navigation";
 
 import { adminEnv } from "./env";
 import { logInternalError } from "./audit";
+import { STAFF_LOGIN_PATH } from "./cookie";
 
 /**
  * The admin panel's Admin GraphQL client.
@@ -75,6 +78,42 @@ async function respectThrottle(body: GraphQLResponse<unknown>) {
 }
 
 /**
+ * THE STAFF GATE, on the data itself: no Admin API call without a signed-in staff member.
+ *
+ * The admin layout checks the session too, but a layout is not a gate. A client can tell
+ * Next that the layout is already on its screen (the `Next-Router-State-Tree` header of a
+ * soft navigation), and Next then renders only the page below it — the layout's check
+ * never runs, and `proxy.ts` only sees that a cookie with the right NAME exists. So every
+ * read and write checks here, whichever page, action or route asked for it; a screen
+ * added later is covered without remembering to.
+ *
+ * The few callers that run before anyone is signed in say so with `withoutStaffSession`:
+ * the staff list that sign-in itself is checked against (`staff.ts`) and the panel's
+ * name and icon on the sign-in page (`admin-settings.ts`). Nothing else may.
+ */
+const withoutSession = new AsyncLocalStorage<string>();
+
+/** Runs `work` without asking for a staff session. `reason` is for whoever reads this. */
+export function withoutStaffSession<T>(reason: string, work: () => Promise<T>): Promise<T> {
+  return withoutSession.run(reason, work);
+}
+
+async function assertStaff(scope: string) {
+  if (withoutSession.getStore()) return;
+  // Not inside Next at all: a `yarn check:*` or seed script, run with tsx and the token
+  // from `.env`. Next sets NEXT_RUNTIME in every server it runs (and inlines it into
+  // the server bundle), so no request can arrive here without it.
+  if (!process.env.NEXT_RUNTIME) return;
+
+  // Imported here: `auth.ts` reads the staff list through this module.
+  const { currentStaff } = await import("./auth");
+  if (await currentStaff()) return;
+
+  logInternalError(`shopify.${scope}.unauthenticated`, new Error("Admin API call without a staff session"));
+  redirect(STAFF_LOGIN_PATH);
+}
+
+/**
  * `scope` is a static label for the log line — the operation name, normally.
  * The GraphQL document itself always comes from `lib/admin/operations.ts`; this
  * function takes a string because it is the transport, but nothing outside that
@@ -85,6 +124,8 @@ export async function adminGraphQL<T>(
   query: string,
   variables?: Record<string, unknown>,
 ): Promise<T> {
+  await assertStaff(scope);
+
   const { SHOPIFY_STORE_DOMAIN, SHOPIFY_ADMIN_API_ACCESS_TOKEN, apiVersion } = adminEnv();
   const url = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${apiVersion}/graphql.json`;
 

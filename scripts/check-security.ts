@@ -142,6 +142,30 @@ async function main() {
     const admin = await post("/api/admin/pages/update", "{}");
     check("admin API: no session is refused", admin.status === 401 || admin.status === 403, admin.status);
 
+    // A soft navigation that claims the admin layout is already on screen skips the
+    // layout's sign-in check; the data must still refuse (`adminGraphQL`'s gate).
+    for (const path of ["/admin/customers", "/admin/contact_message", "/admin/theme-builder"]) {
+      const tree = ["", { children: ["(admin)", { children: ["admin", { children: ["elsewhere", {}] }] }] }];
+      const headers = {
+        RSC: "1",
+        // Any value: `proxy.ts` only looks for a cookie of this name.
+        Cookie: `${process.env.NODE_ENV === "production" ? "__Secure-" : ""}sb_staff.session-token=forged`,
+        "Next-Router-State-Tree": encodeURIComponent(JSON.stringify(tree)),
+      };
+      let response = await fetch(BASE + path, { headers, redirect: "manual" });
+      // Next answers the first try with the cache-busting `_rsc` it wants.
+      const busted = response.headers.get("location");
+      if (response.status === 307 && busted?.includes("_rsc=")) {
+        response = await fetch(new URL(busted, BASE), { headers, redirect: "manual" });
+      }
+      const body = await response.text();
+      check(
+        `admin page: ${path} skipping the layout without a session gets the sign-in page, not the screen`,
+        /NEXT_REDIRECT;replace;\/staff\/login/.test(body) || (response.headers.get("location") ?? "").includes("/staff/login"),
+        `${response.status} ${body.slice(0, 120)}`,
+      );
+    }
+
     const statuses: number[] = [];
     for (let i = 0; i < 6; i++) statuses.push((await post("/api/contact", JSON.stringify({ firstName: "" }))).status);
     check("contact: invalid bodies are refused (400), not sent", statuses.slice(0, 5).every((status) => status === 400), statuses);

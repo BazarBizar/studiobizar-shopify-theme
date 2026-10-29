@@ -40,11 +40,16 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /**
- * THE AUTHORITATIVE AUTH GATE.
+ * THE AUTH GATE FOR THE PANEL'S FRAME — not the only one.
+ *
+ * A layout can be skipped: a soft navigation tells Next the layout is already on screen
+ * (`Next-Router-State-Tree`), and a crafted request can claim that too, so Next renders
+ * only the page. The data is therefore gated where it is fetched — `adminGraphQL`
+ * (`lib/admin/shopify.ts`) refuses any call without a staff session.
  *
  * `proxy.ts` only checks that a staff cookie exists — it cannot verify a signature
- * without loading Auth.js into the proxy runtime. This layout is where the cookie is
- * actually verified AND where the email is re-checked against
+ * without loading Auth.js into the proxy runtime. Here (and in `adminGraphQL`) the cookie
+ * is actually verified AND the email is re-checked against
  * `ADMIN_ALLOWED_EMAILS`, so removing someone from the allowlist locks them out on
  * their next page view rather than whenever their session happens to expire.
  *
