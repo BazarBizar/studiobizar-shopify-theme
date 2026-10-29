@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 
 import { categoryQuery, findCategory } from "@/lib/shopify/categories";
 import {
+  catalogueFilterQuery,
+  catalogueProductFilters,
+  combineQueries,
+  readCatalogueFilter,
+} from "@/lib/shopify/catalogue-filter";
+import {
   PRODUCTS_PER_PAGE,
   getCollectionProducts,
   getProducts,
@@ -16,6 +22,7 @@ import {
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const category = findCategory(params.get("category"));
+  const filter = readCatalogueFilter((key) => params.get(key));
 
   const collection = params.get("collection");
   const search = params.get("q")?.trim();
@@ -35,12 +42,13 @@ export async function GET(request: Request) {
             first: PRODUCTS_PER_PAGE,
             after: params.get("after") ?? undefined,
             sort: params.get("sort"),
+            filters: catalogueProductFilters(filter),
           })
         : await getProducts({
             first: PRODUCTS_PER_PAGE,
             after: params.get("after") ?? undefined,
             sort: params.get("sort"),
-            query: categoryQuery(category),
+            query: combineQueries(categoryQuery(category), catalogueFilterQuery(filter)),
           });
 
     return NextResponse.json(page);

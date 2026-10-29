@@ -38,7 +38,6 @@ import {
 } from "@/components/admin/ui/dropdown-menu";
 import { Input } from "@/components/admin/ui/input";
 import { Label } from "@/components/admin/ui/label";
-import { Switch } from "@/components/admin/ui/switch";
 import { DEVICE_LABELS, DEVICES, SHADOWS, type DesignValue } from "@/lib/page-builder/design";
 import { isFieldActive, isFieldFilled, type LeafFieldDef, type LinkValue } from "@/lib/page-builder/fields";
 import { newBlockId } from "@/lib/page-builder/fields";
@@ -61,10 +60,12 @@ import {
 import { cn } from "@/lib/utils/cn";
 
 import { DesignControls, ResponsiveSlider, Row, Segmented, Slider } from "../page-builder/design-controls";
-import { DEVICE_ICONS, useEditorDevice } from "../page-builder/editor-device";
-import { ColorField, FieldControl } from "../page-builder/field-controls";
+import { useEditorDevice } from "../page-builder/editor-device";
+import { ColorField, EditorLookupsContext, FieldControl } from "../page-builder/field-controls";
 
+import { Group, ShowOn, Toggle } from "./controls";
 import { listAt, locate, locationLabel, placeElement, type Location } from "./ops";
+import { AnnouncementGroup } from "./promo-panels";
 
 /**
  * The Theme Builder's panels: where elements sit, and how each looks. Written for
@@ -85,11 +86,11 @@ export type Edits = {
 };
 
 /** What a row says under an element's name — enough to tell two menus apart. */
-function summary(element: ThemeElement): string {
+function summary(element: ThemeElement, menus: { value: string; label: string }[] = []): string {
   const s = element.settings;
   switch (element.type) {
     case "menu":
-      return MENU_CHOICES.find((choice) => choice.value === s.menu)?.label ?? "";
+      return (menus.find((choice) => choice.value === s.menu) ?? MENU_CHOICES.find((choice) => choice.value === s.menu))?.label ?? String(s.menu ?? "");
     case "logo":
       return s.variant === "mark" ? "Symbol" : "Name";
     case "text":
@@ -229,7 +230,7 @@ function ElementRow({
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: element.id });
   const hidden = DEVICES.filter((device) => element.hide?.[device]);
-  const note = summary(element);
+  const note = summary(element, React.useContext(EditorLookupsContext).menus);
   const label = ELEMENTS[element.type].label;
 
   return (
@@ -427,29 +428,6 @@ export function ElementEditor({ id, edits, onBack }: { id: string; edits: Edits;
  * Header
  * -------------------------------------------------------------------------- */
 
-function Group({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
-  return (
-    <details className="group rounded-md border" open={defaultOpen || undefined}>
-      <summary className="flex cursor-pointer list-none items-center gap-1.5 px-3 py-2 text-xs font-medium [&::-webkit-details-marker]:hidden">
-        <ChevronRightIcon className="text-muted-foreground size-3.5 transition-transform group-open:rotate-90" />
-        {title}
-      </summary>
-      <div className="space-y-4 border-t px-3 py-3">{children}</div>
-    </details>
-  );
-}
-
-function Toggle({ id, label, checked, onChange }: { id: string; label: string; checked: boolean; onChange: (next: boolean) => void }) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <Label htmlFor={id} className="text-xs">
-        {label}
-      </Label>
-      <Switch id={id} checked={checked} onCheckedChange={onChange} />
-    </div>
-  );
-}
-
 export function HeaderPanel({ edits }: { edits: Edits }) {
   const { device, setDevice } = useEditorDevice();
   const arrangement = device === "d" ? "desktop" : "mobile";
@@ -457,8 +435,6 @@ export function HeaderPanel({ edits }: { edits: Edits }) {
   const setHeader = (change: (header: HeaderLayout) => HeaderLayout) => edits.change({ ...edits.content, header: change(header) });
   const setStyle = <K extends keyof HeaderLayout["style"]>(key: K, value: HeaderLayout["style"][K]) =>
     setHeader((current) => ({ ...current, style: { ...current.style, [key]: value } }));
-  const setAnnouncement = <K extends keyof HeaderLayout["announcement"]>(key: K, value: HeaderLayout["announcement"][K]) =>
-    setHeader((current) => ({ ...current, announcement: { ...current.announcement, [key]: value } }));
 
   return (
     <div className="space-y-4">
@@ -492,52 +468,7 @@ export function HeaderPanel({ edits }: { edits: Edits }) {
         ))}
       </ZonesDnd>
 
-      <Group title="Announcement bar">
-        <Toggle
-          id="ann-on"
-          label="Show a bar above the header"
-          checked={header.announcement.enabled}
-          onChange={(next) => setAnnouncement("enabled", next)}
-        />
-        {header.announcement.enabled ? (
-          <>
-            <div className="space-y-1.5">
-              <Label htmlFor="ann-text" className="text-xs">
-                Text
-              </Label>
-              <Input
-                id="ann-text"
-                value={header.announcement.text}
-                maxLength={200}
-                placeholder="e.g. Free delivery in Belgium"
-                onChange={(event) => setAnnouncement("text", event.target.value)}
-                className="h-8 text-xs"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Link</Label>
-              <FieldControl
-                field={{ kind: "link", key: "link", label: "Link" }}
-                value={header.announcement.link}
-                inputId="ann-link"
-                collections={[]}
-                onChange={(next) => setAnnouncement("link", next as LinkValue | null)}
-              />
-            </div>
-            <Row label="Background" onReset={header.announcement.background ? () => setAnnouncement("background", "") : undefined}>
-              <ColorField
-                inputId="ann-bg"
-                value={header.announcement.background}
-                onChange={(next) => setAnnouncement("background", String(next))}
-              />
-            </Row>
-            <Row label="Text colour" onReset={header.announcement.color ? () => setAnnouncement("color", "") : undefined}>
-              <ColorField inputId="ann-fg" value={header.announcement.color} onChange={(next) => setAnnouncement("color", String(next))} />
-            </Row>
-            <ShowOn id="ann" hide={header.announcement.hide} onChange={(hide) => setAnnouncement("hide", hide)} />
-          </>
-        ) : null}
-      </Group>
+      <AnnouncementGroup edits={edits} />
 
       <Group title="Look">
         <Toggle
@@ -645,42 +576,6 @@ export function HeaderPanel({ edits }: { edits: Edits }) {
       </Group>
 
       <DesignControls value={header.style.design} parts={["typography"]} onChange={(next: DesignValue) => setStyle("design", next)} />
-    </div>
-  );
-}
-
-function ShowOn({
-  id,
-  hide,
-  onChange,
-}: {
-  id: string;
-  hide: Partial<Record<"d" | "t" | "m", boolean>> | undefined;
-  onChange: (hide: Partial<Record<"d" | "t" | "m", boolean>> | undefined) => void;
-}) {
-  return (
-    <div className="space-y-3">
-      <span className="text-xs font-medium">Show on</span>
-      {DEVICES.map((device) => {
-        const Icon = DEVICE_ICONS[device];
-        return (
-          <div key={device} className="flex items-center justify-between gap-3">
-            <Label htmlFor={`${id}-show-${device}`} className="flex items-center gap-2 text-xs font-normal">
-              <Icon className="text-muted-foreground size-3.5" />
-              {DEVICE_LABELS[device]}
-            </Label>
-            <Switch
-              id={`${id}-show-${device}`}
-              checked={!hide?.[device]}
-              onCheckedChange={(show) => {
-                const next = { ...hide, [device]: show ? undefined : true };
-                for (const key of DEVICES) if (!next[key]) delete next[key];
-                onChange(Object.keys(next).length ? next : undefined);
-              }}
-            />
-          </div>
-        );
-      })}
     </div>
   );
 }

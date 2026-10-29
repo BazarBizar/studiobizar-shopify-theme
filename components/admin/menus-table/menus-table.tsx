@@ -7,19 +7,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/admin/ui/table";
-import { menuDisplayName, menuUsedBy, paramFromMenuId, type Menu } from "@/lib/admin/menus";
+import { menuDisplayName, menuUsedBy, paramFromMenuId, type Menu, type MenuItemNode } from "@/lib/admin/menus";
 
 /**
- * A plain table, like the Pages list and for the same reason: eight rows, none
- * of which anybody creates.
+ * A plain table, like the Pages list: a handful of rows.
  *
- * "Where it shows" is what makes the screen usable: the menu titles were named for
- * the code, and only the place on the page tells a person which one to open.
- * Shopify's own defaults are filtered out before this — see `siteMenus`.
+ * "Where it shows" is what makes the screen usable: the site's menu titles were named
+ * for the code, and only the place on the page tells a person which one to open. A
+ * menu made here shows where Appearance puts it — `shown` holds the handles a Theme
+ * Builder layout uses. Shopify's own defaults are filtered out before this.
  */
-export function MenusTable({ menus }: { menus: Menu[] }) {
-  const countItems = (menu: Menu) =>
-    menu.items.length + menu.items.reduce((total, item) => total + item.items.length, 0);
+export function MenusTable({ menus, shown }: { menus: Menu[]; shown?: Set<string> }) {
+  const countItems = (items: MenuItemNode[]): number => items.reduce((total, item) => total + 1 + countItems(item.items), 0);
 
   return (
     <div className="rounded-md border">
@@ -34,7 +33,9 @@ export function MenusTable({ menus }: { menus: Menu[] }) {
 
         <TableBody>
           {menus.map((menu) => {
-            const usedBy = menuUsedBy(menu.handle);
+            const usedBy =
+              menuUsedBy(menu.handle) ??
+              (shown?.has(menu.handle) ? "In Appearance (header or footer)" : "Not shown yet — choose it in Appearance");
 
             return (
               <TableRow key={menu.id}>
@@ -50,7 +51,7 @@ export function MenusTable({ menus }: { menus: Menu[] }) {
                 <TableCell className="text-muted-foreground text-sm">{usedBy}</TableCell>
 
                 <TableCell className="text-muted-foreground text-right text-sm tabular-nums">
-                  {countItems(menu)}
+                  {countItems(menu.items)}
                 </TableCell>
               </TableRow>
             );

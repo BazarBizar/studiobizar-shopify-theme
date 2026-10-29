@@ -4,9 +4,18 @@ import { HEX_COLOR } from "@/lib/page-builder/fields";
 import { FALLBACK_NAV, MENUS } from "@/lib/navigation";
 import { getMenu, getSiteSettings } from "@/lib/shopify";
 import type { MenuLink } from "@/lib/shopify/types";
-import { ZONES, type HeaderLayout, type MenuKey, type ThemeElement, type ThemeLayoutContent, type Zones } from "@/lib/theme-builder/layout";
+import {
+  isMenuKey,
+  ZONES,
+  type HeaderLayout,
+  type MenuRef,
+  type ThemeElement,
+  type ThemeLayoutContent,
+  type Zones,
+} from "@/lib/theme-builder/layout";
 import { cn } from "@/lib/utils/cn";
 
+import { AnnouncementBar } from "./announcement-bar";
 import { HeaderScroll } from "./header-scroll";
 import { ElementRun, hideClasses, responsivePadding, type ThemeData } from "./theme-elements";
 
@@ -19,17 +28,19 @@ import { ElementRun, hideClasses, responsivePadding, type ThemeData } from "./th
  * ground unless a background is chosen.
  */
 
-async function menuOrFallback(key: MenuKey): Promise<MenuLink[]> {
+/** One of the site's menus by key (with its fallback links), or another menu by handle. */
+async function menuOrFallback(ref: MenuRef): Promise<MenuLink[]> {
+  const fallback = isMenuKey(ref) ? FALLBACK_NAV[ref] : [];
   try {
-    const items = await getMenu(MENUS[key]);
-    return items.length ? items : FALLBACK_NAV[key];
+    const items = await getMenu(isMenuKey(ref) ? MENUS[ref] : ref);
+    return items.length ? items : fallback;
   } catch {
-    return FALLBACK_NAV[key];
+    return fallback;
   }
 }
 
 /** Only the menus the layout uses, fetched once each. */
-export async function loadThemeData(content: ThemeLayoutContent, keys: MenuKey[]): Promise<ThemeData> {
+export async function loadThemeData(content: ThemeLayoutContent, keys: MenuRef[]): Promise<ThemeData> {
   const [entries, settings] = await Promise.all([
     Promise.all(keys.map(async (key) => [key, await menuOrFallback(key)] as const)),
     getSiteSettings(),
@@ -38,14 +49,17 @@ export async function loadThemeData(content: ThemeLayoutContent, keys: MenuKey[]
   // The phone drawer lists the menus the DESKTOP header shows, in order.
   const desktopMenus = ZONES.flatMap((zone) => content.header.desktop[zone])
     .filter((element) => element.type === "menu")
-    .map((element) => menus[element.settings.menu as MenuKey] ?? []);
+    .map((element) => menus[element.settings.menu as MenuRef] ?? []);
   return { menus, settings, drawer: { primary: desktopMenus[0] ?? [], secondary: desktopMenus.slice(1).flat() } };
 }
 
-export function headerMenus(header: HeaderLayout): MenuKey[] {
+export function headerMenus(header: HeaderLayout): MenuRef[] {
   const all = ZONES.flatMap((zone) => [...header.desktop[zone], ...header.mobile[zone]]);
-  return [...new Set(all.filter((element) => element.type === "menu").map((element) => element.settings.menu as MenuKey))];
+  return [...new Set(all.filter((element) => element.type === "menu").map((element) => element.settings.menu as MenuRef))];
 }
+
+/** When this page was drawn — the announcement bar's dates start from it (see `AnnouncementBar`). */
+const renderedAt = () => Date.now();
 
 const ZONE_CLASS = { left: "justify-start", center: "justify-center", right: "justify-end" } as const;
 
@@ -99,26 +113,19 @@ export async function ThemeHeader({ content }: { content: ThemeLayoutContent }) 
   const scrolls = header.style.transparent || header.style.shrink || header.style.scrollShadow;
 
   const announcement = header.announcement;
-  const announcementText = announcement.text.trim();
 
   return (
     <>
-      {announcement.enabled && announcementText ? (
-        <div
-          className={cn("bg-off-black text-earth text-tertiary px-4 py-2 text-center", hideClasses(announcement.hide))}
+      {announcement.enabled ? (
+        <AnnouncementBar
+          announcement={announcement}
+          renderedAt={renderedAt()}
+          className={hideClasses(announcement.hide)}
           style={{
             ...(color(announcement.background) ? { backgroundColor: announcement.background } : {}),
             ...(color(announcement.color) ? { color: announcement.color } : {}),
           }}
-        >
-          {announcement.link?.href ? (
-            <a href={announcement.link.href} className="sb-underline">
-              {announcementText}
-            </a>
-          ) : (
-            announcementText
-          )}
-        </div>
+        />
       ) : null}
 
       {/* z-40 keeps it under the two drawers at z-50, which are meant to cover it. */}
@@ -129,7 +136,8 @@ export async function ThemeHeader({ content }: { content: ThemeLayoutContent }) 
         data-transparent={header.style.transparent ? "" : undefined}
         data-shrink={header.style.shrink ? "" : undefined}
         data-scroll-shadow={header.style.scrollShadow ? "" : undefined}
-        className={cn("z-40 bg-background text-foreground", header.sticky && "sticky top-0")}
+        // Positioned either way: a mega menu's panel spans the header (see `MenuDropdown`).
+        className={cn("z-40 bg-background text-foreground", header.sticky ? "sticky top-0" : "relative")}
         style={style as React.CSSProperties}
       >
         <Container>

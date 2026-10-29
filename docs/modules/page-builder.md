@@ -26,8 +26,11 @@ Words are kept apart on purpose: **Publish** only ever means putting edited cont
 whether a page exists for visitors is **Visible / Hidden**. Publishing never changes visibility,
 except that a page's first publish makes it visible.
 
-The sidebar groups: **Website** (Pages, Menus, Media), **Content library** (Services, FAQ — the
-entries sections draw on; locations and contact channels are on Site-wide).
+The sidebar groups: **Website** (Pages, Menus, Appearance, Media), **Content** (Products,
+Collections, Designers, Projects, then Services and FAQ — the entries sections draw on; locations
+and contact channels are on Site-wide). **Inbox**, **Settings** and **Other** are one row each that
+opens to its screens (open by itself on one of them; a menu beside it when the sidebar is folded to
+icons) — `menu` on `NavGroup` in `lib/admin/navigation.ts`.
 
 ### In the editor
 
@@ -116,8 +119,9 @@ everything of one kind, wherever it is stored — a section setting or the desig
   (banners, slideshow, hero, full image, collection carousel, Instagram) — and with them the
   background photo and gradient, which would sit behind that ground unseen.
 - The sides are `design.sides` (`padLeft`/`padRight`/`marginLeft`/`marginRight`, each `{ d, t, m }`), drawn by `styles/sb-design.css` only while Custom spacing is on — like the top and bottom. Inside sets the padding of the section's `.sb-container` (or the section itself where there is none); the Liquid theme has the same settings (`d_pad_left` …).
-- `defineSection({ innerSpacing: false })` (image banner, slideshow): the height is the photo's or
-  the Height choice, so Spacing offers only the space above and below.
+- Image banner and Hero slider: their text block is the band (`py-section`), so space inside top
+  and bottom moves the text away from the photo's edges while the height stays the Height choice
+  (Next and Liquid alike — the same `[data-sb-pad]` rule).
 - `yarn check:page-builder-style` (with `yarn dev` running) measures every section type in a real
   browser: margin, padding, colour, line, corners, stored Vertical spacing, and that a section joined to the
   page heading does not inherit the heading's spacing. It builds hidden test pages and deletes them.
@@ -325,7 +329,7 @@ props, so a Liquid section can be written from the same settings.
 | | `tabs` | WAI-ARIA tabs, image side, underline · buttons | tab |
 | | `collapsible` | native `<details>`, optional image, first open | row |
 | | `video` | YouTube/Vimeo behind a cover; nothing loads before play | — |
-| | `marquee` | CSS-only, size, speed, direction, separator; stops under reduced motion | phrase |
+| | `marquee` | CSS-only, size, speed, direction, separator; stops under reduced motion; a phrase can link (the strip then stops under the pointer) | phrase |
 | Images | `collage` | large left/right or even; titles under or on the image | image |
 | Social proof | `testimonials` | grid · carousel · one large quote | quote |
 | | `logo_list` | per row, size, softened (grey until hover) | logo |

@@ -11,7 +11,9 @@ const SEPARATOR = { dot: "·", dash: "—", star: "✦", none: "" } as const;
  * prefer reduced motion get the global rule in globals.css, which stops it.
  *
  * The moving copy is hidden from assistive technology; the phrases are read once,
- * as a plain list, from the visually hidden copy.
+ * as a plain list, from the visually hidden copy. A phrase can be a link: the strip
+ * then stops under the pointer so it can be clicked, and the keyboard reaches each
+ * link once, in the hidden list.
  */
 export function Marquee({
   items,
@@ -21,7 +23,7 @@ export function Marquee({
   separator,
   lines,
 }: {
-  items: { id: string; text: string }[];
+  items: { id: string; text: string; href: string }[];
   size: HeadingSize;
   speed: keyof typeof DURATION;
   direction: "left" | "right";
@@ -31,6 +33,7 @@ export function Marquee({
   const phrases = items.filter((item) => item.text.trim());
   if (phrases.length === 0) return null;
   const mark = SEPARATOR[separator];
+  const linked = phrases.some((item) => item.href);
 
   const strip = (copy: number) => (
     <ul aria-hidden className="flex shrink-0 items-center" key={copy}>
@@ -38,7 +41,13 @@ export function Marquee({
       {Array.from({ length: Math.max(2, Math.ceil(8 / phrases.length)) }, (_, round) =>
         phrases.map((item) => (
           <li key={`${round}-${item.id}`} className="flex items-center whitespace-nowrap">
-            <span className="px-6 sm:px-10">{item.text}</span>
+            {item.href ? (
+              <a href={item.href} tabIndex={-1} className="px-6 transition-opacity hover:opacity-70 sm:px-10">
+                {item.text}
+              </a>
+            ) : (
+              <span className="px-6 sm:px-10">{item.text}</span>
+            )}
             {mark && <span className="opacity-50">{mark}</span>}
           </li>
         )),
@@ -50,11 +59,16 @@ export function Marquee({
     <div className={cn("py-section-xs overflow-hidden", lines && "border-border border-y")}>
       <ul className="sr-only">
         {phrases.map((item) => (
-          <li key={item.id}>{item.text}</li>
+          <li key={item.id}>{item.href ? <a href={item.href}>{item.text}</a> : item.text}</li>
         ))}
       </ul>
       <div
-        className={cn("sb-marquee flex w-max", HEADING[size], direction === "right" && "[animation-direction:reverse]")}
+        className={cn(
+          "sb-marquee flex w-max",
+          HEADING[size],
+          direction === "right" && "[animation-direction:reverse]",
+          linked && "hover:[animation-play-state:paused]",
+        )}
         style={{ "--sb-marquee-duration": DURATION[speed] } as React.CSSProperties}
       >
         {[0, 1].map(strip)}

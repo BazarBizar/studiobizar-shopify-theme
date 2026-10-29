@@ -14,8 +14,9 @@ import {
   textarea,
   toggle,
   type LeafFieldDef,
-  type LinkValue,
 } from "@/lib/page-builder/fields";
+
+import { announcementSchema, defaultAnnouncement, popupsSchema, readAnnouncement, readPopups, type Announcement, type Popup } from "./promo";
 
 /**
  * THE THEME LAYOUT — the site's header and footer, as the Theme Builder edits them.
@@ -59,6 +60,14 @@ export const MENU_CHOICES = [
 
 export type MenuKey = (typeof MENU_CHOICES)[number]["value"];
 
+/**
+ * A menu element's `menu`: one of the site's own menus by its key ("primary"), or any
+ * other menu by its Shopify handle — a menu made under Menus. Resolved by `menuHandle`.
+ */
+export type MenuRef = string;
+
+export const isMenuKey = (ref: string): ref is MenuKey => MENU_CHOICES.some((choice) => choice.value === ref);
+
 const BUTTON_STYLES = [
   { value: "solid", label: "Filled" },
   { value: "outline", label: "Outlined" },
@@ -93,7 +102,7 @@ export const ELEMENTS = {
     description: "One of the site's menus — edited under Menus.",
     places: ["header", "footer"],
     fields: [
-      select("menu", "Which menu", MENU_CHOICES),
+      text("menu", "Which menu", { max: 255, default: "primary", suggest: "menus" }),
       text("title", "Heading above the links", { max: 60, help: "Optional — footer columns show it above the links." }),
       select("direction", "Links", [
         { value: "row", label: "Side by side" },
@@ -197,15 +206,8 @@ export type Zone = (typeof ZONES)[number];
 export type Zones = Record<Zone, ThemeElement[]>;
 
 export type HeaderLayout = {
-  announcement: {
-    enabled: boolean;
-    text: string;
-    link: LinkValue | null;
-    /** `#rrggbb`, "" for the brand's off-black / earth. */
-    background: string;
-    color: string;
-    hide?: Partial<Record<Device, boolean>>;
-  };
+  /** The bar above the header — see `promo.ts`. */
+  announcement: Announcement;
   /** Stays at the top while the page scrolls. */
   sticky: boolean;
   /** 1024px and wider. */
@@ -284,7 +286,8 @@ export type ThemeMeta = {
   publishedBy: string | null;
 };
 
-export type ThemeLayoutContent = { header: HeaderLayout; footer: FooterLayout; global: GlobalStyle };
+/** `popups`: what opens over the pages — see `promo.ts`. */
+export type ThemeLayoutContent = { header: HeaderLayout; footer: FooterLayout; global: GlobalStyle; popups: Popup[] };
 export type ThemeLayout = ThemeLayoutContent & { version: number; meta: ThemeMeta };
 
 export const MAX_ELEMENTS_PER_ZONE = 12;
@@ -299,12 +302,12 @@ export function defaultLayoutContent(): ThemeLayoutContent {
   const menu = (key: MenuKey, extra: Record<string, unknown> = {}) => createElement("menu", { menu: key, ...extra });
   return {
     header: {
-      announcement: { enabled: false, text: "", link: null, background: "", color: "" },
+      announcement: defaultAnnouncement(),
       sticky: true,
       // Spacing as the original header measures: 52px logo → menu, 36px between its
       // links; 20px between the second menu's, 69px to the icons, 16px between those.
       desktop: {
-        left: [createElement("logo"), { ...menu("primary", { dropdowns: false }), spaceBefore: 52 }],
+        left: [createElement("logo"), { ...menu("primary"), spaceBefore: 52 }],
         center: [],
         right: [
           menu("secondary", { linkGap: 20, size: "tertiary" }),
@@ -376,6 +379,7 @@ export function defaultLayoutContent(): ThemeLayoutContent {
       },
     },
     global: { design: {}, colors: [] },
+    popups: [],
   };
 }
 
@@ -415,14 +419,7 @@ const zone = z.array(elementSchemaAny).max(MAX_ELEMENTS_PER_ZONE);
 const zones = z.strictObject({ left: zone, center: zone, right: zone });
 
 const headerSchema = z.strictObject({
-  announcement: z.strictObject({
-    enabled: z.boolean(),
-    text: z.string().max(200),
-    link: fieldSchema(link("link", "Link")),
-    background: hex,
-    color: hex,
-    hide: hide.optional(),
-  }),
+  announcement: announcementSchema,
   sticky: z.boolean(),
   desktop: zones,
   mobile: zones,
@@ -475,7 +472,12 @@ const globalSchema = z.strictObject({
 });
 
 /** What a WRITE must satisfy — the whole content, every value checked. */
-export const themeContentSchema = z.strictObject({ header: headerSchema, footer: footerSchema, global: globalSchema });
+export const themeContentSchema = z.strictObject({
+  header: headerSchema,
+  footer: footerSchema,
+  global: globalSchema,
+  popups: popupsSchema,
+});
 
 /** A read element: unknown types dropped, each setting falling back to its default alone. */
 function readElement(input: unknown): ThemeElement | null {
@@ -523,7 +525,7 @@ function pick<T>(schema: z.ZodType<T>, value: unknown, fallback: T): T {
  */
 export function readThemeContent(input: unknown): ThemeLayoutContent {
   const base = defaultLayoutContent();
-  const value = (input && typeof input === "object" ? input : {}) as { header?: unknown; footer?: unknown; global?: unknown };
+  const value = (input && typeof input === "object" ? input : {}) as { header?: unknown; footer?: unknown; global?: unknown; popups?: unknown };
   const header = (value.header && typeof value.header === "object" ? value.header : {}) as Record<string, unknown>;
   const footer = (value.footer && typeof value.footer === "object" ? value.footer : {}) as Record<string, unknown>;
   const headerStyle = (header.style && typeof header.style === "object" ? header.style : {}) as Record<string, unknown>;
@@ -561,7 +563,7 @@ export function readThemeContent(input: unknown): ThemeLayoutContent {
   return {
     global: { design: readDesign(global.design), colors },
     header: {
-      announcement: pick(headerSchema.shape.announcement as z.ZodType<HeaderLayout["announcement"]>, header.announcement, base.header.announcement),
+      announcement: readAnnouncement(header.announcement),
       sticky: pick(z.boolean(), header.sticky, base.header.sticky),
       desktop: readZones(header.desktop, "header", base.header.desktop),
       mobile: readZones(header.mobile, "header", base.header.mobile),
@@ -572,6 +574,7 @@ export function readThemeContent(input: unknown): ThemeLayoutContent {
       bottom: readZones(footer.bottom, "footer", base.footer.bottom),
       style: styleOf(footerSchema.shape.style, footerStyle, base.footer.style),
     },
+    popups: readPopups(value.popups),
   };
 }
 
@@ -608,15 +611,16 @@ export function parseThemeLayout(raw: string | null | undefined): ThemeParse {
 /** Same content, ignoring meta — for "are there unpublished changes". */
 export function sameThemeContent(a: ThemeLayoutContent | null, b: ThemeLayoutContent | null): boolean {
   if (!a || !b) return a === b;
-  const content = (layout: ThemeLayoutContent) => JSON.stringify({ header: layout.header, footer: layout.footer, global: layout.global });
+  const content = (layout: ThemeLayoutContent) =>
+    JSON.stringify({ header: layout.header, footer: layout.footer, global: layout.global, popups: layout.popups });
   return content(a) === content(b);
 }
 
 /** The menus a layout uses, so the storefront fetches only those. */
-export function menusIn(content: ThemeLayoutContent): MenuKey[] {
+export function menusIn(content: ThemeLayoutContent): MenuRef[] {
   const all = [
     ...ZONES.flatMap((zone) => [...content.header.desktop[zone], ...content.header.mobile[zone], ...content.footer.bottom[zone]]),
     ...content.footer.columns.flatMap((column) => column.elements),
   ];
-  return [...new Set(all.filter((element) => element.type === "menu").map((element) => element.settings.menu as MenuKey))];
+  return [...new Set(all.filter((element) => element.type === "menu").map((element) => element.settings.menu as MenuRef))];
 }

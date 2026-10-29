@@ -38,12 +38,13 @@ export const getCollectionProductsQuery = withFragments(
       $after: String
       $sortKey: ProductCollectionSortKeys
       $reverse: Boolean
+      $filters: [ProductFilter!]
     ) {
       collection(handle: $handle) {
         id
         handle
         title
-        products(first: $first, after: $after, sortKey: $sortKey, reverse: $reverse) {
+        products(first: $first, after: $after, sortKey: $sortKey, reverse: $reverse, filters: $filters) {
           nodes {
             ...ProductCardParts
           }

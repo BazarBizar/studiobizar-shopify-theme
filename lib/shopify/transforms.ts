@@ -1,4 +1,4 @@
-import { shopifyUrlToRoute } from "../routes";
+import { collectionTagRoute, shopifyUrlToRoute } from "../routes";
 
 import type {
   Collection,
@@ -396,15 +396,24 @@ export function normalizeCollection(collection: ShopifyCollection): Collection {
  */
 export const menuHref = (url: Maybe<string>): string => shopifyUrlToRoute(url);
 
+/**
+ * A collection "filtered by tag" carries the tag in its url only as Shopify's handle
+ * of it (`/collections/chairs/solid-oak`); the item's own `tags` are the real ones,
+ * which is what the shop's `?tag=` filter matches.
+ */
+function menuItemHref(item: ShopifyMenuItem): string {
+  if (item.type === "COLLECTION" && item.tags?.length && item.url) {
+    const handle = new URL(item.url, "https://shop.invalid").pathname.split("/").filter(Boolean)[1];
+    if (handle) return collectionTagRoute(handle, item.tags);
+  }
+  return menuHref(item.url);
+}
+
 export function normalizeMenuItem(item: ShopifyMenuItem): MenuLink {
   return {
     id: item.id,
     title: item.title,
-    href: menuHref(item.url),
-    items: (item.items ?? []).map((child) => ({
-      id: child.id,
-      title: child.title,
-      href: menuHref(child.url),
-    })),
+    href: menuItemHref(item),
+    items: (item.items ?? []).map(normalizeMenuItem),
   };
 }

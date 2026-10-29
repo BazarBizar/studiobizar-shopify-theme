@@ -26,9 +26,9 @@ export const FALLBACK_NAV: Record<keyof typeof MENUS, MenuLink[]> = {
       title: "About",
       href: "/our-story",
       items: [
-        { id: "f-our-story-sub", title: "Our Story", href: "/our-story" },
-        { id: "f-our-artisans", title: "Our Artisans", href: "/our-artisans" },
-        { id: "f-our-locations", title: "Our Locations", href: "/our-locations" },
+        { id: "f-our-story-sub", title: "Our Story", href: "/our-story", items: [] },
+        { id: "f-our-artisans", title: "Our Artisans", href: "/our-artisans", items: [] },
+        { id: "f-our-locations", title: "Our Locations", href: "/our-locations", items: [] },
       ],
     },
     {
@@ -36,10 +36,10 @@ export const FALLBACK_NAV: Record<keyof typeof MENUS, MenuLink[]> = {
       title: "Info",
       href: "/faq",
       items: [
-        { id: "f-care-maintenance", title: "Care & Maintenance", href: "/care-maintenance" },
-        { id: "f-faq-sub", title: "FAQ", href: "/faq" },
-        { id: "f-careers-sub", title: "Careers", href: "/careers" },
-        { id: "f-contact-sub", title: "Contact", href: "/contact" },
+        { id: "f-care-maintenance", title: "Care & Maintenance", href: "/care-maintenance", items: [] },
+        { id: "f-faq-sub", title: "FAQ", href: "/faq", items: [] },
+        { id: "f-careers-sub", title: "Careers", href: "/careers", items: [] },
+        { id: "f-contact-sub", title: "Contact", href: "/contact", items: [] },
       ],
     },
     { id: "f-professionals", title: "Professionals", href: "/professionals", items: [] },

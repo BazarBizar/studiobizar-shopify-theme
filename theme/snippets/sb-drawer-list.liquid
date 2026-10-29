@@ -1,0 +1,58 @@
+{% comment %}
+  One level of the phone drawer — `DrawerList` in components/layout/mobile-nav.tsx.
+  A link with links under it opens in place, up to Shopify's three levels (this
+  snippet renders itself for the level below). The row only opens and closes, so its
+  own address is offered first inside, as "All …" — unless a link inside already goes
+  there (About → Our Story).
+
+  Params: links, level ('primary', 'secondary' or 'nested').
+{% endcomment %}
+
+{%- liquid
+  case level
+    when 'primary'
+      assign link_class = 'text-h3'
+      assign list_class = 'flex flex-col gap-5'
+    when 'secondary'
+      assign link_class = 'text-secondary opacity-80'
+      assign list_class = 'flex flex-col gap-3'
+    else
+      assign link_class = 'text-secondary opacity-70'
+      assign list_class = 'flex flex-col gap-3 mt-3 pl-4'
+  endcase
+-%}
+
+<ul class="{{ list_class }}">
+  {%- for link in links -%}
+    <li>
+      {%- if link.links.size > 0 -%}
+        {%- liquid
+          assign covered = false
+          assign all_title = link.title | downcase
+          for child in link.links
+            if child.url == link.url
+              assign covered = true
+            endif
+          endfor
+        -%}
+        <details class="group/drawer">
+          <summary class="sb-summary {{ link_class }} flex items-center justify-between">
+            {{ link.title }}
+            {%- render 'sb-icon',
+              icon: 'chevron-down',
+              class: 'size-4 shrink-0 transition-transform group-open/drawer:rotate-180'
+            -%}
+          </summary>
+          {%- unless covered -%}
+            <a href="{{ link.url }}" class="text-secondary opacity-70 mt-3 block pl-4">
+              {{- 'general.navigation.view_all' | t: title: all_title -}}
+            </a>
+          {%- endunless -%}
+          {%- render 'sb-drawer-list', links: link.links, level: 'nested' -%}
+        </details>
+      {%- else -%}
+        <a href="{{ link.url }}" class="{{ link_class }}">{{ link.title }}</a>
+      {%- endif -%}
+    </li>
+  {%- endfor -%}
+</ul>

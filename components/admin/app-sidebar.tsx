@@ -1,12 +1,21 @@
 "use client";
 
-import { LogOutIcon } from "lucide-react";
+import { ChevronRightIcon, LogOutIcon } from "lucide-react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { Collapsible } from "radix-ui";
+import * as React from "react";
 
 import { AppLink } from "@/components/admin/app-link";
 import { ThemeToggle } from "@/components/admin/theme-toggle";
 import { Button } from "@/components/admin/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/admin/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -18,6 +27,10 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSkeleton,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+  useSidebar,
 } from "@/components/admin/ui/sidebar";
 import { navIconName } from "@/lib/admin/nav-icons";
 import { seriesFor } from "@/lib/admin/series-colors";
@@ -36,7 +49,118 @@ export type SidebarItem = {
   matches?: string[];
 };
 
-export type SidebarSection = { key: string; label: string | null; items: SidebarItem[] };
+/** `menu`: one row that opens to its items, instead of a heading over a list — see `NavGroup`. */
+export type SidebarSection = { key: string; label: string | null; items: SidebarItem[]; menu?: boolean };
+
+/** Amber and a number, and the aria-label spells it out — the colour is never the only carrier. */
+function CountBadge({ count, className }: { count: number; className?: string }) {
+  return (
+    <span
+      aria-label={`${count} unread`}
+      className={cn(
+        "ms-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1 text-[11px] font-semibold text-white group-data-[collapsible=icon]:hidden",
+        className,
+      )}
+    >
+      {count}
+    </span>
+  );
+}
+
+/**
+ * A section drawn as ONE row — Inbox, Settings — that opens to its screens. Open by
+ * itself when one of them is the page, so the current place is never folded away;
+ * closed, it carries its items' unread count. With the sidebar folded to icons there
+ * is no room for a list, so the row opens a menu beside it instead.
+ */
+function NavMenu({ section, isActive }: { section: SidebarSection; isActive: (item: SidebarItem) => boolean }) {
+  const { state, isMobile } = useSidebar();
+  const active = section.items.some(isActive);
+  const [open, setOpen] = React.useState(active);
+  // Arriving on one of its screens (from a link elsewhere) opens it; leaving does not close it.
+  const [wasActive, setWasActive] = React.useState(active);
+  if (active !== wasActive) {
+    setWasActive(active);
+    if (active) setOpen(true);
+  }
+
+  const label = section.label ?? "";
+  // An element, not a component: the icon is looked up, not made here.
+  const icon = React.createElement(navIconName("", null, section.key), {
+    className: cn("size-4 shrink-0", seriesFor(section.key).text),
+  });
+  const count = section.items.reduce((sum, item) => sum + (item.badge ?? 0), 0);
+  const closedCount = !open && count > 0;
+
+  if (state === "collapsed" && !isMobile) {
+    return (
+      <SidebarMenuItem>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <SidebarMenuButton isActive={active} tooltip={label}>
+              {icon}
+              <span className="truncate">{label}</span>
+            </SidebarMenuButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="right" align="start" className="w-48">
+            <DropdownMenuLabel className="text-xs">{label}</DropdownMenuLabel>
+            {section.items.map((item) => (
+              <DropdownMenuItem key={item.href} asChild>
+                <AppLink href={item.href} showPending={false} className={cn(isActive(item) && "font-medium")}>
+                  <span className="truncate">{item.label}</span>
+                  {item.badge ? <CountBadge count={item.badge} /> : null}
+                </AppLink>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarMenuItem>
+    );
+  }
+
+  return (
+    <Collapsible.Root asChild open={open} onOpenChange={setOpen}>
+      <SidebarMenuItem>
+        <Collapsible.Trigger asChild>
+          {/* Marked as the current place only while closed — open, the item inside is. */}
+          <SidebarMenuButton isActive={active && !open} tooltip={label}>
+            {icon}
+            <span className="truncate">{label}</span>
+            {closedCount ? <CountBadge count={count} /> : null}
+            <ChevronRightIcon
+              className={cn("size-4 shrink-0 opacity-60 transition-transform", !closedCount && "ms-auto", open && "rotate-90")}
+            />
+          </SidebarMenuButton>
+        </Collapsible.Trigger>
+        <Collapsible.Content>
+          <SidebarMenuSub>
+            {section.items.map((item) => (
+              <SidebarMenuSubItem key={item.href}>
+                <SidebarMenuSubButton asChild isActive={isActive(item)}>
+                  <AppLink href={item.href} showPending={false}>
+                    <span className="truncate">{item.label}</span>
+                    {item.badge ? <CountBadge count={item.badge} className="h-4 min-w-4 text-[10px]" /> : null}
+                  </AppLink>
+                </SidebarMenuSubButton>
+              </SidebarMenuSubItem>
+            ))}
+          </SidebarMenuSub>
+        </Collapsible.Content>
+      </SidebarMenuItem>
+    </Collapsible.Root>
+  );
+}
+
+/** Sections in order, with neighbouring menus gathered into one group — two rows, not two headed groups. */
+function runs(sections: SidebarSection[]): (SidebarSection | SidebarSection[])[] {
+  const out: (SidebarSection | SidebarSection[])[] = [];
+  for (const section of sections) {
+    const last = out.at(-1);
+    if (section.menu && Array.isArray(last)) last.push(section);
+    else out.push(section.menu ? [section] : section);
+  }
+  return out;
+}
 
 export function AppSidebar({
   sections,
@@ -110,48 +234,45 @@ export function AppSidebar({
             </SidebarMenu>
           </SidebarGroup>
         ) : (
-          sections.map((section) => (
-            <SidebarGroup key={section.key}>
-              {section.label ? <SidebarGroupLabel>{section.label}</SidebarGroupLabel> : null}
+          runs(sections).map((run) =>
+            Array.isArray(run) ? (
+              <SidebarGroup key={run.map((section) => section.key).join("+")}>
+                <SidebarMenu>
+                  {run.map((section) => (
+                    <NavMenu key={section.key} section={section} isActive={isActive} />
+                  ))}
+                </SidebarMenu>
+              </SidebarGroup>
+            ) : (
+              <SidebarGroup key={run.key}>
+                {run.label ? <SidebarGroupLabel>{run.label}</SidebarGroupLabel> : null}
 
-              <SidebarMenu>
-                {section.items.map((item) => {
-                  // Matched to what the row IS, falling back to the group for a
-                  // definition nobody has given an icon yet.
-                  const Icon = navIconName(item.href, item.type ?? null, item.group);
-                  const tint = seriesFor(item.group).text;
+                <SidebarMenu>
+                  {run.items.map((item) => {
+                    // Matched to what the row IS, falling back to the group for a
+                    // definition nobody has given an icon yet.
+                    const Icon = navIconName(item.href, item.type ?? null, item.group);
+                    const tint = seriesFor(item.group).text;
 
-                  return (
-                    <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={isActive(item)}
-                        tooltip={item.label}
-                      >
-                        <AppLink href={item.href} showPending={false}>
-                          {/* The tint lives ONLY on the icon, and the icon always
-                              has this label beside it — which is what makes the
-                              aqua group legitimate at its contrast ratio. */}
-                          <Icon className={cn("size-4 shrink-0", tint)} />
-                          <span className="truncate">{item.label}</span>
-                          {item.badge ? (
-                            <span
-                              // Amber and a number, and the aria-label spells it out — the
-                              // colour is never the only carrier.
-                              aria-label={`${item.badge} unread`}
-                              className="ms-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1 text-[11px] font-semibold text-white group-data-[collapsible=icon]:hidden"
-                            >
-                              {item.badge}
-                            </span>
-                          ) : null}
-                        </AppLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroup>
-          ))
+                    return (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton asChild isActive={isActive(item)} tooltip={item.label}>
+                          <AppLink href={item.href} showPending={false}>
+                            {/* The tint lives ONLY on the icon, and the icon always
+                                has this label beside it — which is what makes the
+                                aqua group legitimate at its contrast ratio. */}
+                            <Icon className={cn("size-4 shrink-0", tint)} />
+                            <span className="truncate">{item.label}</span>
+                            {item.badge ? <CountBadge count={item.badge} /> : null}
+                          </AppLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroup>
+            ),
+          )
         )}
       </SidebarContent>
 

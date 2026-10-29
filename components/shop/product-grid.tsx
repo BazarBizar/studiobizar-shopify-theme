@@ -27,14 +27,16 @@ async function fetchPage({
   sort,
   collection,
   search,
+  filter,
 }: {
   pageParam?: string;
   category?: string;
   sort?: string;
   collection?: string;
   search?: string;
+  filter?: string;
 }): Promise<Paginated<ProductCardType>> {
-  const params = new URLSearchParams();
+  const params = new URLSearchParams(filter);
   if (pageParam) params.set("after", pageParam);
   if (category) params.set("category", category);
   if (sort) params.set("sort", sort);
@@ -57,6 +59,7 @@ export function ProductGrid({
   sort,
   collection,
   search,
+  filter,
 }: {
   initial: Paginated<ProductCardType>;
   category?: string;
@@ -65,6 +68,8 @@ export function ProductGrid({
   collection?: string;
   /** Pages through search results for this query, in relevance order. */
   search?: string;
+  /** A menu link's type / vendor / tag, as query params (`catalogueFilterKey`). */
+  filter?: string;
 }) {
   const sentinel = useRef<HTMLDivElement>(null);
   // Density is purely visual, so it never touches the query key or the server.
@@ -76,8 +81,8 @@ export function ProductGrid({
       // The key carries the filters, so switching category starts a fresh list.
       queryKey: search
         ? ["products", "search", search]
-        : ["products", collection ?? category ?? "all", sort ?? DEFAULT_SORT],
-      queryFn: ({ pageParam }) => fetchPage({ pageParam, category, sort, collection, search }),
+        : ["products", collection ?? category ?? "all", filter ?? "", sort ?? DEFAULT_SORT],
+      queryFn: ({ pageParam }) => fetchPage({ pageParam, category, sort, collection, search, filter }),
       initialPageParam: undefined as string | undefined,
       getNextPageParam: (last) => (last.pageInfo.hasNextPage ? last.pageInfo.endCursor ?? undefined : undefined),
       initialData: { pages: [initial], pageParams: [undefined] },

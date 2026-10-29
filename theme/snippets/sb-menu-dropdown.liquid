@@ -1,0 +1,70 @@
+{% comment %}
+  One top-level header link and what opens under it — components/layout/menu-dropdown.tsx.
+  Pure CSS (hover and focus-within), no script.
+
+  - Links under it, none deeper: a DROPDOWN, a short list beside the link.
+  - A third level anywhere under it: a MEGA MENU, a panel the width of the header —
+    each second-level link a column heading, its own links beneath. Its <li> is not
+    positioned, so the panel measures itself against the header (sticky, or
+    relative) and spans it; an invisible strip under the link keeps it open while
+    the pointer crosses to it.
+
+  `invisible` rather than `hidden`, so the links stay in the tab order and a keyboard
+  user can reach them, which display:none would prevent.
+
+  Params: link (a linklist link), link_class (the top-level link's own classes).
+{% endcomment %}
+
+{%- liquid
+  assign mega = false
+  for child in link.links
+    if child.links.size > 0
+      assign mega = true
+    endif
+  endfor
+-%}
+
+<li class="{% if link.links.size > 0 %}group{% unless mega %} relative{% endunless %}{% endif %}">
+  <a
+    href="{{ link.url }}"
+    class="{{ link_class }}{% if mega %} relative before:absolute before:inset-x-0 before:top-full before:h-10 before:content-['']{% endif %}"
+    {% if link.current %}aria-current="page"{% endif %}
+  >
+    {{- link.title -}}
+  </a>
+
+  {%- if link.links.size > 0 -%}
+    {%- if mega -%}
+      <div class="invisible z-10 opacity-0 shadow-sm transition-[opacity,visibility] duration-150 bg-[var(--sb-dd-bg,var(--sb-background))] text-[var(--sb-dd-fg,var(--sb-foreground))] group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100 absolute inset-x-0 top-full border-y border-border">
+        <div class="sb-container grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-x-10 gap-y-8 py-8">
+          {%- for column in link.links -%}
+            <div>
+              <a href="{{ column.url }}" class="text-secondary sb-underline font-medium">{{ column.title }}</a>
+              {%- if column.links.size > 0 -%}
+                <ul class="mt-3 flex flex-col gap-2">
+                  {%- for item in column.links -%}
+                    <li>
+                      <a href="{{ item.url }}" class="text-tertiary opacity-80 transition-opacity hover:opacity-100">
+                        {{- item.title -}}
+                      </a>
+                    </li>
+                  {%- endfor -%}
+                </ul>
+              {%- endif -%}
+            </div>
+          {%- endfor -%}
+        </div>
+      </div>
+    {%- else -%}
+      <ul class="invisible z-10 opacity-0 shadow-sm transition-[opacity,visibility] duration-150 bg-[var(--sb-dd-bg,var(--sb-background))] text-[var(--sb-dd-fg,var(--sb-foreground))] group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100 absolute top-full left-0 mt-3 min-w-48 border border-border py-2">
+        {%- for child in link.links -%}
+          <li>
+            <a href="{{ child.url }}" class="text-secondary block px-4 py-2 whitespace-nowrap hover:bg-foreground/5">
+              {{- child.title -}}
+            </a>
+          </li>
+        {%- endfor -%}
+      </ul>
+    {%- endif -%}
+  {%- endif -%}
+</li>

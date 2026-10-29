@@ -64,7 +64,7 @@ type Base<K extends string> = {
    * A text field whose sensible values already exist elsewhere — offered as a
    * pick-list of them, so a typo cannot quietly match nothing.
    */
-  suggest?: "faqCategories";
+  suggest?: "faqCategories" | "menus";
   /**
    * Rendered by the Next storefront only, for now: the Liquid theme does not draw
    * it yet (by decision — Next first). The schema generator and `check:liquid` skip

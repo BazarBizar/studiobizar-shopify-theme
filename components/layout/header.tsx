@@ -3,6 +3,7 @@ import Link from "next/link";
 import { HeaderActions } from "@/components/layout/header-actions";
 import { ThemeHeader } from "@/components/layout/theme-header";
 import { Logo } from "@/components/layout/logo";
+import { MenuDropdown, menuHostClass, menuLinkClass } from "@/components/layout/menu-dropdown";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { Container } from "@/components/ui/container";
 import { FALLBACK_NAV, MENUS } from "@/lib/navigation";
@@ -53,10 +54,11 @@ export async function Header({ theme }: { theme?: ThemeLayoutContent | null } = 
         <nav aria-label="Primary" className="hidden lg:block">
           <ul className="flex items-center gap-9">
             {primary.map((item) => (
-              <li key={item.id}>
-                <Link href={item.href} className="text-secondary sb-underline">
+              <li key={item.id} className={menuHostClass(item)}>
+                <Link href={item.href} className={cn("text-secondary sb-underline", menuLinkClass(item))}>
                   {item.title}
                 </Link>
+                <MenuDropdown item={item} />
               </li>
             ))}
           </ul>
@@ -66,30 +68,11 @@ export async function Header({ theme }: { theme?: ThemeLayoutContent | null } = 
           <nav aria-label="Secondary" className="hidden lg:block">
             <ul className="flex items-center gap-5">
               {secondary.map((item) => (
-                <li key={item.id} className="group relative">
-                  <Link href={item.href} className="text-tertiary sb-underline">
+                <li key={item.id} className={menuHostClass(item)}>
+                  <Link href={item.href} className={cn("text-tertiary sb-underline", menuLinkClass(item))}>
                     {item.title}
                   </Link>
-
-                  {item.items.length > 0 && (
-                    <ul
-                      className={cn(
-                        "invisible absolute top-full left-0 z-10 mt-3 min-w-48 border border-border bg-background py-2 opacity-0 shadow-sm transition-[opacity,visibility] duration-150",
-                        "group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100",
-                      )}
-                    >
-                      {item.items.map((child) => (
-                        <li key={child.id}>
-                          <Link
-                            href={child.href}
-                            className="text-secondary block px-4 py-2 whitespace-nowrap hover:bg-foreground/5"
-                          >
-                            {child.title}
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                  <MenuDropdown item={item} />
                 </li>
               ))}
             </ul>

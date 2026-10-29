@@ -2,11 +2,13 @@ import { InquiryDrawer } from "@/components/inquiry/inquiry-drawer";
 import { BackToTop } from "@/components/layout/back-to-top";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
+import { Popups } from "@/components/layout/popups";
 import { SiteIdentityStyle } from "@/components/layout/site-identity-style";
 import { SearchOverlay } from "@/components/search/search-overlay";
 import { designStyle } from "@/lib/page-builder/design";
 import { getThemeLayout } from "@/lib/shopify";
 import type { ThemeLayoutContent } from "@/lib/theme-builder/layout";
+import { popupHasContent } from "@/lib/theme-builder/promo";
 
 /** The grounds the designs actually use. See `globals.css` section H. */
 export type Surface = "light" | "dark" | "olive" | "blue" | "mocha" | "black";
@@ -39,6 +41,10 @@ export async function PageShell({
   // Site style (Theme Builder → Site style): fonts and sizes for every page, as the
   // same custom properties a section's design uses — a section's own still wins.
   const site = designStyle(layout?.global.design);
+  // Pop-ups that are switched on and say something; where, when and how often each
+  // opens is decided in the browser (see `Popups`). The editor's preview (a `theme`
+  // passed in) offers the switched-off ones too, so one can be checked before it goes on.
+  const popups = (layout?.popups ?? []).filter((popup) => (popup.enabled || theme !== undefined) && popupHasContent(popup));
 
   return (
     <div
@@ -57,6 +63,7 @@ export async function PageShell({
       <BackToTop />
       <InquiryDrawer />
       <SearchOverlay />
+      {popups.length ? <Popups popups={popups} /> : null}
     </div>
   );
 }

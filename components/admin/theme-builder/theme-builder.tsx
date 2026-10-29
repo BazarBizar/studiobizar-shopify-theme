@@ -39,6 +39,9 @@ import { EditorLookupsContext, type EditorLookups } from "../page-builder/field-
 
 import * as ops from "./ops";
 import { ElementEditor, FooterPanel, GlobalPanel, HeaderPanel, type Edits } from "./panels";
+import { PopupEditor, PopupsPanel } from "./promo-panels";
+
+export type ThemeTab = "header" | "footer" | "site" | "popups";
 
 /**
  * THE THEME BUILDER — the site's header and footer, composed from elements, edited
@@ -79,8 +82,10 @@ export function ThemeBuilder({
   const [history, setHistory] = React.useState<History>({ past: [], present: initial.content, future: [] });
   const content = history.present;
 
-  const [tab, setTab] = React.useState<"header" | "footer" | "site">("header");
+  const [tab, setTab] = React.useState<ThemeTab>("header");
   const [selected, setSelected] = React.useState<string | null>(null);
+  // The pop-up being edited — the preview opens it (`#popup-<id>`, see `Popups`).
+  const [popup, setPopup] = React.useState<string | null>(null);
   const [device, setDevice] = React.useState<Device>("d");
   // Below 1024px: the settings or the preview, one at a time (`PaneSwitch`).
   const [pane, setPane] = React.useState<"edit" | "preview">("edit");
@@ -239,7 +244,7 @@ export function ThemeBuilder({
       revisionRef.current = result.revision;
       setHasPublished(true);
       setUnpublished(false);
-      toast.success("Published", { description: "The new header and footer reach every page within about half a minute." });
+      toast.success("Published", { description: "Your changes reach every page within about half a minute." });
     } catch (error) {
       toast.error("Could not publish", { description: error instanceof Error ? error.message : "Something went wrong." });
     } finally {
@@ -284,7 +289,9 @@ export function ThemeBuilder({
       ? { label: "Changes not published", tone: "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300" }
       : { label: "Live", tone: "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-300" };
 
-  const previewSrc = `/preview/theme?page=${encodeURIComponent(previewPage)}#${tab === "footer" ? "site-footer" : "site-header"}`;
+  const editingPopup = tab === "popups" && popup && content.popups.some((candidate) => candidate.id === popup) ? popup : null;
+  const previewHash = editingPopup ? `popup-${editingPopup}` : tab === "footer" ? "site-footer" : "site-header";
+  const previewSrc = `/preview/theme?page=${encodeURIComponent(previewPage)}#${previewHash}`;
 
   return (
     <EditorLookupsContext.Provider value={liveLookups}>
@@ -293,8 +300,8 @@ export function ThemeBuilder({
           {/* ---------------- top bar ---------------- */}
           <div className="bg-background flex flex-wrap items-center gap-2 border-b px-3 py-2">
             <div className="min-w-0">
-              <h1 className="truncate text-sm font-semibold">Header &amp; footer</h1>
-              <p className="text-muted-foreground truncate text-[11px]">On every page of the site</p>
+              <h1 className="truncate text-sm font-semibold">Appearance</h1>
+              <p className="text-muted-foreground truncate text-[11px]">Header, footer, site style and pop-ups</p>
             </div>
             <Badge variant="outline" className={badge.tone}>
               {badge.label}
@@ -373,13 +380,13 @@ export function ThemeBuilder({
               {!hasPublished ? (
                 <p className="text-muted-foreground flex items-center gap-2">
                   <InfoIcon className="size-3.5 shrink-0" />
-                  Visitors still see the original header and footer. What you arrange here goes live when you press Publish.
+                  Visitors still see the original header and footer, and no pop-ups. What you arrange here goes live when you press Publish.
                 </p>
               ) : null}
               {saveState === "conflict" ? (
                 <p className="text-destructive flex items-center gap-2">
                   <TriangleAlertIcon className="size-3.5 shrink-0" />
-                  The header and footer were saved somewhere else since you opened them. Your last changes were not saved.
+                  The header, footer and pop-ups were saved somewhere else since you opened them. Your last changes were not saved.
                   <Button type="button" size="xs" variant="outline" onClick={() => router.refresh()}>
                     Load latest
                   </Button>
@@ -423,10 +430,12 @@ export function ThemeBuilder({
             <aside className={cn("bg-background flex min-h-0 flex-col border-r", pane === "preview" && "max-lg:hidden")}>
               {selected && ops.locate(content, selected) ? (
                 <ElementEditor id={selected} edits={edits} onBack={() => setSelected(null)} />
+              ) : editingPopup ? (
+                <PopupEditor id={editingPopup} edits={edits} onBack={() => setPopup(null)} />
               ) : (
                 <>
                   <div className="border-b px-4 py-2">
-                    <Tabs value={tab} onValueChange={(next) => setTab(next as "header" | "footer" | "site")}>
+                    <Tabs value={tab} onValueChange={(next) => setTab(next as ThemeTab)}>
                       <TabsList className="w-full">
                         <TabsTrigger value="header" className="flex-1">
                           Header
@@ -437,12 +446,17 @@ export function ThemeBuilder({
                         <TabsTrigger value="site" className="flex-1">
                           Site style
                         </TabsTrigger>
+                        <TabsTrigger value="popups" className="flex-1">
+                          Pop-ups
+                        </TabsTrigger>
                       </TabsList>
                     </Tabs>
                   </div>
                   <div className="min-h-0 flex-1 overflow-y-auto p-4">
                     {tab === "header" ? (
                       <HeaderPanel edits={edits} />
+                    ) : tab === "popups" ? (
+                      <PopupsPanel edits={edits} onOpen={setPopup} />
                     ) : tab === "site" ? (
                       <GlobalPanel edits={edits} />
                     ) : (
@@ -468,7 +482,7 @@ export function ThemeBuilder({
                   <iframe
                     ref={iframeRef}
                     src={previewSrc}
-                    title="Preview of the header and footer"
+                    title="Preview of the header, footer and pop-ups"
                     onLoad={sendContent}
                     className={cn("border-0 bg-white", device !== "d" && "rounded-lg border shadow-sm")}
                     style={style}
@@ -486,10 +500,10 @@ export function ThemeBuilder({
             title={confirm === "rollback" ? "Load the previously published version?" : "Discard unpublished changes?"}
             description={
               confirm === "rollback"
-                ? "Your draft is replaced by the header and footer that were live before the last publish. Nothing changes on the site until you publish."
+                ? "Your draft is replaced by the header, footer and pop-ups that were live before the last publish. Nothing changes on the site until you publish."
                 : hasPublished
                   ? "Your draft goes back to what is live now. Changes since the last publish are lost."
-                  : "Your draft goes back to the original header and footer. Your changes are lost."
+                  : "Your draft goes back to the original header and footer, with no pop-ups. Your changes are lost."
             }
             confirmLabel={confirm === "rollback" ? "Load it" : "Discard changes"}
             destructive={confirm === "discard"}

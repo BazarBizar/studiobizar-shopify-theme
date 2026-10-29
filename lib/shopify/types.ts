@@ -154,7 +154,9 @@ export type ShopifyMenuItem = {
   title: string;
   url: Maybe<string>;
   type: string;
-  items: Omit<ShopifyMenuItem, "items">[];
+  tags?: string[];
+  /** Absent on the third level, which Shopify does not nest further. */
+  items?: ShopifyMenuItem[];
 };
 
 export type ShopifyMenu = {
@@ -237,5 +239,6 @@ export type MenuLink = {
   title: string;
   /** Rewritten to a storefront-relative path where possible. */
   href: string;
-  items: Omit<MenuLink, "items">[];
+  /** Up to three levels deep; the third level's `items` is always empty. */
+  items: MenuLink[];
 };

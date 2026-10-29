@@ -7,6 +7,66 @@ import { useEffect, useState } from "react";
 
 import { Logo } from "@/components/layout/logo";
 import type { MenuLink } from "@/lib/shopify/types";
+import { cn } from "@/lib/utils/cn";
+
+const LINK = {
+  primary: "text-h3",
+  secondary: "text-secondary opacity-80",
+  nested: "text-secondary opacity-70",
+} as const;
+
+/**
+ * One level of the drawer. A link with links under it opens in place (up to Shopify's
+ * three levels). The row itself only opens and closes, so its own address is offered
+ * first inside, as "All …" — unless a link inside already goes there (About → Our Story).
+ */
+function DrawerList({
+  items,
+  level,
+  onNavigate,
+}: {
+  items: MenuLink[];
+  level: keyof typeof LINK;
+  onNavigate: () => void;
+}) {
+  return (
+    <ul className={cn("flex flex-col", level === "primary" ? "gap-5" : "gap-3", level === "nested" && "mt-3 pl-4")}>
+      {items.map((item) =>
+        item.items.length > 0 ? (
+          <li key={item.id}>
+            <details className="group/drawer">
+              <summary
+                className={cn(LINK[level], "flex cursor-pointer list-none items-center justify-between marker:content-none")}
+              >
+                {item.title}
+                <ChevronDown
+                  className="size-4 shrink-0 transition-transform group-open/drawer:rotate-180"
+                  strokeWidth={1.5}
+                  aria-hidden
+                />
+              </summary>
+              <DrawerList
+                items={
+                  item.items.some((child) => child.href === item.href)
+                    ? item.items
+                    : [{ ...item, id: `${item.id}-all`, title: `All ${item.title.toLowerCase()}`, items: [] }, ...item.items]
+                }
+                level="nested"
+                onNavigate={onNavigate}
+              />
+            </details>
+          </li>
+        ) : (
+          <li key={item.id}>
+            <Link href={item.href} onClick={onNavigate} className={LINK[level]}>
+              {item.title}
+            </Link>
+          </li>
+        ),
+      )}
+    </ul>
+  );
+}
 
 export function MobileNav({
   primary,
@@ -79,55 +139,13 @@ export function MobileNav({
               </div>
 
               <nav aria-label="Primary" className="px-gutter pt-6">
-                <ul className="flex flex-col gap-5">
-                  {primary.map((item) => (
-                    <li key={item.id}>
-                      <Link href={item.href} onClick={() => setOpen(false)} className="text-h3">
-                        {item.title}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
+                <DrawerList items={primary} level="primary" onNavigate={() => setOpen(false)} />
               </nav>
 
               <nav aria-label="Secondary" className="mt-auto px-gutter pb-10">
-                <ul className="flex flex-col gap-3 border-t border-border pt-6">
-                  {secondary.map((item) =>
-                    item.items.length > 0 ? (
-                      <li key={item.id}>
-                        <details className="group">
-                          <summary className="text-secondary flex cursor-pointer list-none items-center justify-between opacity-80 marker:content-none">
-                            {item.title}
-                            <ChevronDown
-                              className="size-4 transition-transform group-open:rotate-180"
-                              strokeWidth={1.5}
-                              aria-hidden
-                            />
-                          </summary>
-                          <ul className="mt-3 flex flex-col gap-3 pl-4">
-                            {item.items.map((child) => (
-                              <li key={child.id}>
-                                <Link
-                                  href={child.href}
-                                  onClick={() => setOpen(false)}
-                                  className="text-secondary opacity-70"
-                                >
-                                  {child.title}
-                                </Link>
-                              </li>
-                            ))}
-                          </ul>
-                        </details>
-                      </li>
-                    ) : (
-                      <li key={item.id}>
-                        <Link href={item.href} onClick={() => setOpen(false)} className="text-secondary opacity-80">
-                          {item.title}
-                        </Link>
-                      </li>
-                    ),
-                  )}
-                </ul>
+                <div className="border-t border-border pt-6">
+                  <DrawerList items={secondary} level="secondary" onNavigate={() => setOpen(false)} />
+                </div>
               </nav>
             </motion.div>
           </motion.div>

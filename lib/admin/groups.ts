@@ -16,7 +16,7 @@ import "server-only";
  * with no code change.
  */
 
-export type GroupKey = "pages" | "content" | "catalogue" | "library" | "inbox" | "settings" | "other";
+export type GroupKey = "pages" | "content" | "library" | "inbox" | "settings" | "other";
 
 type GroupDef = { key: GroupKey; label: string; types: string[] };
 
@@ -27,12 +27,17 @@ const GROUPS: GroupDef[] = [
    */
   { key: "pages", label: "Website", types: [] },
   /**
-   * The entries pages draw on — a page's Services list, its FAQ. Edited here once,
-   * shown wherever a section uses them. Locations and contact channels are the same
-   * kind of thing and live on Site-wide.
+   * Everything kept as a list and shown on the pages: the catalogue (products,
+   * collections — bespoke screens — designers, projects) and the entries sections draw
+   * on (a page's Services list, its FAQ). One group: they are all "a list of things the
+   * site shows". Locations and contact channels are the same kind of thing and live on
+   * Site-wide.
    */
-  { key: "content", label: "Content library", types: ["service", "faq_item", "location", "contact_channel"] },
-  { key: "catalogue", label: "Catalogue", types: ["designer", "project"] },
+  {
+    key: "content",
+    label: "Content",
+    types: ["designer", "project", "service", "faq_item", "location", "contact_channel"],
+  },
   { key: "library", label: "Library", types: ["captioned_image"] },
   { key: "inbox", label: "Inbox", types: ["inquiry", "contact_message", "newsletter_subscriber"] },
   {
@@ -48,7 +53,7 @@ const GROUPS: GroupDef[] = [
  *  has classified still has to be reachable and editable. */
 const OTHER: GroupDef = { key: "other", label: "Other", types: [] };
 
-export const GROUP_ORDER: GroupKey[] = ["pages", "content", "catalogue", "library", "inbox", "settings", "other"];
+export const GROUP_ORDER: GroupKey[] = ["pages", "content", "library", "inbox", "settings", "other"];
 
 const TYPE_TO_GROUP = new Map<string, GroupKey>(
   GROUPS.flatMap((group) => group.types.map((type) => [type, group.key] as const)),

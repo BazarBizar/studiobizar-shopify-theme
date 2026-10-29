@@ -48,26 +48,65 @@ export function routeForPageHandle(handle: string): string {
 /** The catalogue collection stands in for the whole shop. */
 const CATALOGUE_HANDLES = new Set(["all", "shop-all"]);
 
+/**
+ * Shopify's catalogue addresses that carry a filter, onto the shop's own query (see
+ * `lib/shopify/catalogue-filter.ts`): `/collections/types?q=Chairs` → `/shop?type=Chairs`,
+ * `/collections/vendors?q=X` → `/shop?vendor=X`, and a collection narrowed to a tag,
+ * `/collections/<handle>/<tag>`, → the shop's grid of that collection with `?tag=`
+ * (`collectionTagRoute`). That tag is Shopify's handle of it; a menu item knows the tag
+ * itself and `normalizeMenuItem` uses that instead.
+ */
+const FILTER_COLLECTIONS: Record<string, "type" | "vendor"> = { types: "type", vendors: "vendor" };
+
+/**
+ * A collection narrowed to tags. The collection's own page is editorial (a mosaic of
+ * ten); a filtered list belongs in the shop's grid, which pages through it.
+ */
+export function collectionTagRoute(handle: string, tags: string[]): string {
+  const tag = tags.join(",");
+  return CATALOGUE_HANDLES.has(handle)
+    ? `/shop?${new URLSearchParams({ tag })}`
+    : `/shop?${new URLSearchParams({ view: "collection", collection: handle, tag })}`;
+}
+
+/** The paths Shopify gives its own storefront resources — what a menu's absolute url points at. */
+const SHOPIFY_PATHS = new Set(["pages", "policies", "products", "collections", "search"]);
+
 export function shopifyUrlToRoute(url: string | null | undefined): string {
   if (!url) return "/";
 
-  let pathname = url;
+  let parsed: URL;
   try {
-    pathname = new URL(url).pathname;
+    parsed = new URL(url, "https://shop.invalid");
   } catch {
-    if (!url.startsWith("/")) return url;
+    return url;
   }
+  if (!/^(https?:\/\/|\/)/i.test(url)) return url;
 
-  const segments = pathname.split("/").filter(Boolean);
+  const segments = parsed.pathname.split("/").filter(Boolean);
+  const [first, second, third] = segments;
+
+  // An absolute url is the shop's own only on its myshopify domain or at one of
+  // Shopify's resource paths; anything else is another website and stays as it is.
+  const absolute = /^https?:\/\//i.test(url);
+  const ownHost = parsed.hostname.endsWith(".myshopify.com");
+  if (absolute && !ownHost && !(first && SHOPIFY_PATHS.has(first))) return url;
+
+  const pathname = parsed.pathname;
+  const search = parsed.searchParams;
   if (segments.length === 0) return "/";
 
-  const [first, second] = segments;
-
-  if (first === "pages") return PAGE_ROUTES[second] ?? `/${second}`;
+  // A metaobject's own page — a designer, a project — is `/pages/<type>/<handle>` on
+  // Shopify and `/<type>/<handle>` here.
+  if (first === "pages") return third ? `/${second}/${third}` : (PAGE_ROUTES[second] ?? `/${second}`);
   if (first === "policies") return PAGE_ROUTES[second] ?? `/legal/${second}`;
   if (first === "products") return second ? `/shop/${second}` : "/shop";
   if (first === "collections") {
     if (!second) return "/collections";
+    const filter = FILTER_COLLECTIONS[second];
+    const value = search.get("q")?.trim();
+    if (filter) return value ? `/shop?${new URLSearchParams({ [filter]: value })}` : "/shop";
+    if (third) return collectionTagRoute(second, decodeURIComponent(third).split("+"));
     return CATALOGUE_HANDLES.has(second) ? "/shop" : `/collections/${second}`;
   }
   if (first === "search") return "/search";

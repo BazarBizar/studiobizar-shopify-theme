@@ -190,8 +190,6 @@ export type SectionDefinition<
   source: (settings: S) => ContentSource | null;
   /** Whether the Style tab offers "Text alignment" — off where the section places its text itself. */
   textAlign: boolean;
-  /** Whether the Style tab offers space inside (padding) — off where the height is fixed. */
-  innerSpacing: boolean;
 };
 
 /** A screen in the panel that holds what a section shows. */
@@ -229,12 +227,6 @@ export function defineSection<
    * slide — so a section-wide "Text alignment" would visibly do nothing.
    */
   textAlign?: boolean;
-  /**
-   * Off where the section's height is its photograph's or a Height choice (a banner,
-   * the slideshow): space inside would change nothing, so only space above and below
-   * are offered.
-   */
-  innerSpacing?: boolean;
   /** The settings key whose value labels the section in the list. */
   summaryKey?: F[number]["key"];
   hidden?: boolean;
@@ -299,6 +291,5 @@ export function defineSection<
     hidden: definition.hidden ?? false,
     source: definition.source ?? (() => null),
     textAlign: definition.textAlign ?? true,
-    innerSpacing: definition.innerSpacing ?? true,
   };
 }

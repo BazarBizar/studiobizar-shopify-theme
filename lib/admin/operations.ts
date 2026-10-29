@@ -1094,19 +1094,23 @@ ${REFERENCE_PREVIEW}
   /* ---------------------------------------------------------------- menus */
 
   /**
-   * Navigation menus.
+   * Navigation menus, THREE LEVELS deep — Shopify's limit, and what the header's mega
+   * menu and the phone drawer draw. Every level is read because `menuUpdate`
+   * replaces the tree: a level not read here would be deleted by the next save.
    *
-   * TWO LEVELS, because that is what the storefront renders: `Header` maps
-   * `item.items` for the secondary nav's dropdowns and stops there, and the
-   * mobile drawer does the same. Asking for a third level would return data no
-   * screen can show and no editor here can put back.
-   *
-   * Eight menus exist and only the five `desk-*` ones are this site's; the rest
-   * are Shopify's defaults. Small enough to take whole.
+   * `tags` is a collection link's "filtered by tag".
    */
   menus: {
     kind: "read",
     document: `
+      fragment AdminMenuItemParts on MenuItem {
+        id
+        title
+        type
+        url
+        resourceId
+        tags
+      }
       query AdminMenus($first: Int!) {
         menus(first: $first) {
           nodes {
@@ -1115,19 +1119,58 @@ ${REFERENCE_PREVIEW}
             title
             isDefault
             items {
-              id
-              title
-              type
-              url
-              resourceId
+              ...AdminMenuItemParts
               items {
-                id
-                title
-                type
-                url
-                resourceId
+                ...AdminMenuItemParts
+                items {
+                  ...AdminMenuItemParts
+                }
               }
             }
+          }
+        }
+      }
+    `,
+  },
+
+  /**
+   * A new menu, made under Menus — shown wherever a Theme Builder menu element is set
+   * to it. Its handle is checked in `lib/admin/menus.ts` so it can never take one of
+   * the site's own.
+   */
+  menuCreate: {
+    kind: "write",
+    document: `
+      mutation AdminMenuCreate($title: String!, $handle: String!, $items: [MenuItemCreateInput!]!) {
+        menuCreate(title: $title, handle: $handle, items: $items) {
+          menu {
+            id
+            handle
+            title
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    `,
+  },
+
+  /**
+   * Only a menu made here: the route refuses the site's own five (their components
+   * ask for them by handle) and Shopify's defaults, and one a Theme Builder layout
+   * still shows.
+   */
+  menuDelete: {
+    kind: "write",
+    document: `
+      mutation AdminMenuDelete($id: ID!) {
+        menuDelete(id: $id) {
+          deletedMenuId
+          userErrors {
+            field
+            message
           }
         }
       }
@@ -1165,7 +1208,10 @@ ${REFERENCE_PREVIEW}
   },
 
   /**
-   * The destinations a menu item can point at, for the editor's picker.
+   * The destinations a menu item can point at, for the editor's picker — what
+   * Shopify's own link picker lists, less blogs (neither storefront has a blog page
+   * yet). Designers and projects are the metaobjects with a web page of their own
+   * (`/pages/designers/<handle>`); single products are searched instead.
    *
    * Collections are capped at 100 and pages at 100 — this store has 13 and 16.
    * A store that outgrew either would need a searching picker rather than a
@@ -1175,6 +1221,36 @@ ${REFERENCE_PREVIEW}
     kind: "read",
     document: `
       query AdminMenuDestinations {
+        productsCount(query: "status:active") {
+          count
+        }
+        designers: metaobjects(type: "designer", first: 100, sortKey: "display_name") {
+          nodes {
+            id
+            displayName
+          }
+        }
+        projects: metaobjects(type: "project", first: 100, sortKey: "display_name") {
+          nodes {
+            id
+            displayName
+          }
+        }
+        customerAccountPages(first: 20) {
+          nodes {
+            id
+            title
+          }
+        }
+        productTypes(first: 250) {
+          nodes
+        }
+        productVendors(first: 250) {
+          nodes
+        }
+        productTags(first: 250) {
+          nodes
+        }
         pages(first: 100, sortKey: TITLE) {
           nodes {
             id

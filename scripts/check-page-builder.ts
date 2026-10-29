@@ -27,6 +27,7 @@ import { carouselStyle, carouselView } from "../lib/page-builder/carousel";
 import { contrastRatio, designSchema, designStyle, readDesign } from "../lib/page-builder/design";
 import { SECTIONS, SECTION_TYPES } from "../lib/page-builder/registry";
 import { defaultLayoutContent, menusIn, parseThemeLayout, sameThemeContent, themeContentSchema } from "../lib/theme-builder/layout";
+import { createMessage, createPopup, isScheduledNow, popupHasContent, popupOnPath } from "../lib/theme-builder/promo";
 import { PAGE_TEMPLATES, documentFromTemplate } from "../lib/page-builder/templates";
 
 let failures = 0;
@@ -385,7 +386,7 @@ check(
 
   const damaged = JSON.parse(JSON.stringify(content));
   damaged.header.desktop.left.push({ id: "b_zzzzzzzz", type: "made_up", settings: {} });
-  damaged.header.desktop.right[0].settings.menu = "not-a-menu";
+  damaged.header.desktop.right[0].settings.menu = 42;
   const repaired = parseThemeLayout(JSON.stringify(damaged));
   check(
     "a damaged layout keeps every valid element and repairs the bad setting",
@@ -397,6 +398,81 @@ check(
   unsafe.header.style.background = "red";
   check("a layout with a bad colour is refused on write", !themeContentSchema.safeParse(unsafe).success);
   check("broken JSON is not a layout", !parseThemeLayout("{oops").ok);
+}
+
+/* --- promotions: the announcement bar and pop-ups --- */
+
+{
+  const content = defaultLayoutContent();
+
+  // The bar before several messages: one `text`, one `link`.
+  const old = JSON.parse(JSON.stringify(content));
+  old.header.announcement = { enabled: true, text: "Free delivery", link: { label: "Free delivery", href: "/shop" }, background: "", color: "" };
+  const migrated = parseThemeLayout(JSON.stringify(old));
+  check(
+    "an announcement saved with one text reads as one message, link kept",
+    migrated.ok &&
+      migrated.layout.header.announcement.enabled &&
+      migrated.layout.header.announcement.messages.length === 1 &&
+      migrated.layout.header.announcement.messages[0]!.text === "Free delivery" &&
+      migrated.layout.header.announcement.messages[0]!.href === "/shop" &&
+      themeContentSchema.safeParse({
+        header: migrated.layout.header,
+        footer: migrated.layout.footer,
+        global: migrated.layout.global,
+        popups: migrated.layout.popups,
+      }).success,
+  );
+
+  const withPromo = structuredClone(content);
+  withPromo.header.announcement = {
+    ...withPromo.header.announcement,
+    enabled: true,
+    mode: "scroll",
+    messages: [createMessage("One"), { ...createMessage("Two"), startsAt: "2026-12-01T08:00:00.000Z" }],
+  };
+  const popup = createPopup("Event", { heading: "Join us" });
+  withPromo.popups = [popup, createPopup("Empty")];
+  check("a layout with messages and pop-ups passes the write schema", themeContentSchema.safeParse(withPromo).success);
+  const back = parseThemeLayout(JSON.stringify(withPromo));
+  check("messages and pop-ups read back the same", back.ok && sameThemeContent(back.layout, withPromo));
+
+  const unsafeLink = structuredClone(withPromo);
+  unsafeLink.header.announcement.messages[0]!.href = "javascript:alert(1)";
+  check("a message linking to javascript: is refused on write", !themeContentSchema.safeParse(unsafeLink).success);
+  const badPath = structuredClone(withPromo);
+  badPath.popups[0]!.pages = { mode: "only", paths: ["https://elsewhere.example"] };
+  check("a pop-up page that is not a path is refused on write", !themeContentSchema.safeParse(badPath).success);
+  const twice = structuredClone(withPromo);
+  twice.popups[1]!.id = twice.popups[0]!.id;
+  check("two pop-ups with one id are refused on write", !themeContentSchema.safeParse(twice).success);
+
+  const broken = JSON.parse(JSON.stringify(withPromo));
+  broken.popups.push({ id: "nope", settings: {} });
+  broken.popups[0].settings.trigger = "teleport";
+  broken.header.announcement.messages.push({ id: "b_brokenone", text: 42 });
+  const repaired = parseThemeLayout(JSON.stringify(broken));
+  check(
+    "a damaged pop-up is dropped, a damaged setting defaults, a damaged message is dropped",
+    repaired.ok &&
+      repaired.layout.popups.length === 2 &&
+      repaired.layout.popups[0]!.settings.trigger === "delay" &&
+      repaired.layout.header.announcement.messages.length === 2,
+  );
+
+  const at = Date.parse("2026-11-15T12:00:00.000Z");
+  check("no dates: always showing", isScheduledNow({ startsAt: "", endsAt: "" }, at));
+  check("before its start: not yet", !isScheduledNow({ startsAt: "2026-12-01T00:00:00.000Z", endsAt: "" }, at));
+  check("after its end: no longer", !isScheduledNow({ startsAt: "", endsAt: "2026-11-01T00:00:00.000Z" }, at));
+  check("between its dates: showing", isScheduledNow({ startsAt: "2026-11-01T00:00:00.000Z", endsAt: "2026-12-01T00:00:00.000Z" }, at));
+
+  check("every page includes the home page", popupOnPath({ mode: "all", paths: [] }, "/"));
+  check("home only: not on another page", !popupOnPath({ mode: "home", paths: [] }, "/our-story"));
+  check("only listed: a trailing slash still matches", popupOnPath({ mode: "only", paths: ["/our-story"] }, "/our-story/"));
+  check("only listed: /products/* covers a product", popupOnPath({ mode: "only", paths: ["/products/*"] }, "/products/chair"));
+  check("only listed: /products/* does not cover /productsale", !popupOnPath({ mode: "only", paths: ["/products/*"] }, "/productsale"));
+  check("except listed: stays away from the listed page", !popupOnPath({ mode: "except", paths: ["/contact"] }, "/contact"));
+  check("a pop-up with a heading has content; a blank one has none", popupHasContent(popup) && !popupHasContent(createPopup("Blank")));
 }
 
 

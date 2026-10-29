@@ -1,11 +1,12 @@
-# Theme Builder — header & footer
+# Theme Builder — header & footer, and pop-ups
 
-Admin: **Website → Header & footer** (`/admin/theme-builder`). The site's header and footer,
-composed from elements, edited beside a live preview of a real page.
+Admin: **Website → Appearance** (`/admin/theme-builder`), on four tabs: Header,
+Footer, Site style, Pop-ups. The site's header and footer, composed from elements, and the
+promotions over the pages, edited beside a live preview of a real page.
 
 ## What an editor can do
 
-- **Header**: an announcement bar (text, link, colours, per device); *stay at the top while
+- **Header**: an announcement bar — see *Promotions* below; *stay at the top while
   scrolling*; two arrangements — **Desktop** (1024px and wider) and **Phones & tablets** — each with
   three zones (left, centre, right). Elements are added, removed, reordered, duplicated and moved
   between zones. Look: background, text colour, line under, shadow, space above/below per device,
@@ -36,6 +37,37 @@ in the ⋯ menu.
 `Footer` in `components/layout/`). The editor opens on `defaultLayoutContent()`, which reproduces
 them element for element — measured spacing included — so the first change starts from what is on
 the site.
+
+## Promotions — the announcement bar and pop-ups
+
+Data and rules in `lib/theme-builder/promo.ts`; drawn by `components/layout/announcement-bar.tsx`
+and `popups.tsx`; edited in `components/admin/theme-builder/promo-panels.tsx`. Part of the layout,
+so drafted, previewed, published and rolled back with the header and footer.
+
+- **Announcement bar** (Header tab): up to 8 messages, each with its own link and dates; **one at a
+  time** (seconds per message, arrows, paused under the pointer or keyboard) or **scrolling across**
+  (the Scrolling text section's `sb-marquee` loop: speed, direction, separator, paused under the
+  pointer); text size; *visitors can close it* — remembered in `localStorage` until the messages
+  change (a fingerprint of their text and links); colours; show on per device. A bar saved before
+  this (one `text`, one `link`) reads as one message.
+- **Pop-ups** (Pop-ups tab): up to 10, in priority order — **at most one opens per page**, the first
+  whose moment comes. Each: switched on or off, a name only the editor sees, photograph, heading,
+  text, button, newsletter sign-up; shape (box in the middle — modal `<dialog>`, Escape and a click
+  outside close it — small box in a corner, bar along the bottom), size, photograph above or beside,
+  alignment, colours, darkened page; opens after N seconds, after scrolling N% or when the pointer
+  leaves through the top (never on touch screens); how often (once per visit — `sessionStorage`,
+  every N days, only once, every page — `localStorage` `sb-popup-<id>`); which pages (every, home
+  only, only / except a list; `/products/*` covers everything under it); devices; dates. Four
+  ready-made starts in *Add a pop-up*.
+
+**Everything visitor-specific is decided in the browser** — the dates, the page, the device, the
+trigger, "closed" and "seen": pages are cached and the same for everyone. The bar's first render uses
+the moment the server drew the page, so hydration matches, then the browser's clock (to the minute).
+Pop-ups render nothing until one opens.
+
+**Preview**: in `/preview/…` nothing opens by itself and nothing is remembered. The editor puts the
+pop-up being edited in the iframe's hash (`#popup-<id>`); `Popups` opens that one at once, switched
+off or not. Every announcement message shows there, dated or not.
 
 ## Data
 
@@ -73,5 +105,6 @@ so the editor draws them with the same controls and the API validates them with 
 
 ## Liquid
 
-Not rendered by the theme yet (Next first, by decision). The layout is plain JSON on the shop, so
+Not rendered by the theme yet (Next first, by decision) — nor the announcement bar's messages or the
+pop-ups. The layout is plain JSON on the shop, so
 `sb-header` / `sb-footer` can read `shop.metafields.custom.theme_layout.value` when they catch up.

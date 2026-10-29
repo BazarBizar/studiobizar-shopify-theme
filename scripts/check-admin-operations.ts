@@ -173,6 +173,21 @@ async function main() {
     handle: "zz-check-only-does-not-exist",
     items: [],
   });
+  /**
+   * A blank title and handle, which Shopify refuses: the document is parsed and
+   * validated, and no menu is made. Should it ever make one anyway, it is deleted at
+   * once and the check fails — this run must leave the store as it found it.
+   */
+  const created = (await run("menuCreate", { title: "", handle: "", items: [] })) as {
+    menuCreate?: { menu: { id: string } | null };
+  } | null;
+  if (created?.menuCreate?.menu) {
+    failures += 1;
+    console.log(`FAIL  menuCreate made a menu from a blank title — deleting ${created.menuCreate.menu.id}`);
+    await run("menuDelete", { id: created.menuCreate.menu.id });
+  }
+  /** Menu id 0: Shopify never issues it, so nothing is deleted. */
+  await run("menuDelete", { id: "gid://shopify/Menu/0" });
 
   await run("pages", { first: 3, after: null });
   await run("pagesBuilderStatus", { first: 3, after: null });

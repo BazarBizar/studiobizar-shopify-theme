@@ -534,9 +534,9 @@ async function main() {
       await aside.getByRole("tab", { name: "Content" }).click();
       await aside.getByRole("button", { name: "Delete section" }).click();
 
-      // A banner: its photograph is its ground and its height is fixed — so Background holds
-      // its own darkening (no photo or gradient that would sit unseen behind it), and Spacing
-      // offers only the space around it.
+      // A banner: its photograph is its ground and its height is the Height choice — so
+      // Background holds its own darkening (no photo or gradient that would sit unseen behind
+      // it), and space inside, top and bottom, moves the text rather than the height.
       await page.getByRole("button", { name: "Add section" }).click();
       await page.locator("[cmdk-item]").filter({ hasText: "A large photograph with a centred heading" }).first().click();
       await aside.getByRole("tab", { name: "Style" }).click();
@@ -549,11 +549,31 @@ async function main() {
           (await aside.getByText("Gradient", { exact: true }).count()) === 0 &&
           (await aside.getByText("Photo", { exact: true }).count()) === 0,
       );
+      const bannerPreview = page.frameLocator("iframe[title^='Preview']").locator('[data-section-type="image_banner"]').first();
+      const measureBanner = () =>
+        bannerPreview.evaluate((frame) => {
+          const heading = frame.querySelector("h1, h2");
+          return {
+            height: Math.round(frame.getBoundingClientRect().height),
+            textFromTop: heading ? Math.round(heading.getBoundingClientRect().top - frame.getBoundingClientRect().top) : -1,
+          };
+        });
       check(
-        "Banner: Spacing offers its sides and the space around it, not the height",
-        (await aside.getByRole("spinbutton", { name: "Padding top (px)" }).isDisabled()) &&
+        "Banner: Spacing offers space inside on every side, and the space around it",
+        (await aside.getByRole("spinbutton", { name: "Padding top (px)" }).isEnabled()) &&
+          (await aside.getByRole("spinbutton", { name: "Padding bottom (px)" }).isEnabled()) &&
           (await aside.getByRole("spinbutton", { name: "Padding left (px)" }).isEnabled()) &&
           (await aside.getByRole("spinbutton", { name: "Margin top (px)" }).isEnabled()),
+      );
+      const bannerBefore = await measureBanner();
+      await aside.getByRole("spinbutton", { name: "Padding top (px)" }).fill("10");
+      await aside.getByRole("spinbutton", { name: "Padding bottom (px)" }).fill("300");
+      await page.waitForTimeout(2500);
+      const bannerAfter = await measureBanner();
+      check(
+        "Banner: space inside moves the text, and the banner keeps its height",
+        bannerAfter.height === bannerBefore.height && bannerAfter.textFromTop !== bannerBefore.textFromTop,
+        JSON.stringify({ bannerBefore, bannerAfter }),
       );
       await shot("06c-banner-style");
       await aside.getByRole("tab", { name: "Content" }).click();
