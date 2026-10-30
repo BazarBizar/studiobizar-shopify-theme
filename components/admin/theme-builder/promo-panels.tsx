@@ -6,8 +6,12 @@ import {
   ArrowUpIcon,
   ChevronRightIcon,
   CopyIcon,
+  EyeIcon,
+  EyeOffIcon,
+  MonitorPlayIcon,
   MoreHorizontalIcon,
   PlusIcon,
+  RotateCcwIcon,
   Trash2Icon,
   TriangleAlertIcon,
   XIcon,
@@ -19,8 +23,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Input } from "@/components/admin/ui/input";
 import { Label } from "@/components/admin/ui/label";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/admin/ui/select";
+import { Separator } from "@/components/admin/ui/separator";
 import { Switch } from "@/components/admin/ui/switch";
-import { isFieldActive, newBlockId, type FieldGroup, type LeafFieldDef } from "@/lib/page-builder/fields";
+import { Tabs, TabsList, TabsTrigger } from "@/components/admin/ui/tabs";
+import { contrastRatio, DEVICES, getAt, setAt, type DesignValue } from "@/lib/page-builder/design-style";
+import { fieldDefault, isFieldActive, newBlockId, type ImageRef, type LeafFieldDef, type LinkValue } from "@/lib/page-builder/fields";
 import {
   createMessage,
   createPopup,
@@ -28,19 +35,29 @@ import {
   MAX_POPUP_PATHS,
   MAX_POPUPS,
   MESSAGE_MAX,
+  paddingOn,
   POPUP_FIELDS,
+  POPUP_LIMITS,
+  POPUP_SIDES,
+  POPUP_STYLE_FOLD,
+  popupDefaults,
   popupHasContent,
   scheduleNote,
   type Announcement,
   type AnnouncementMessage,
   type Popup,
+  type PopupBox,
   type PopupPages,
+  type PopupSides,
+  type PopupStyleFold,
   type Schedule,
 } from "@/lib/theme-builder/promo";
 import { cn } from "@/lib/utils/cn";
 
-import { Row, Segmented, Slider } from "../page-builder/design-controls";
+import { BackgroundPart, DesignControls, Part, ResponsiveSlider, Row, Segmented, Slider } from "../page-builder/design-controls";
+import { DeviceSwitch, useEditorDevice } from "../page-builder/editor-device";
 import { ColorField, EditorLookupsContext, FieldControl } from "../page-builder/field-controls";
+import { SpacingBox, type BoxSide } from "../page-builder/section-editor";
 
 import { Group, ShowOn, Toggle } from "./controls";
 import type { Edits } from "./panels";
@@ -452,6 +469,14 @@ export function PopupsPanel({ edits, onOpen }: { edits: Edits; onOpen: (id: stri
   );
 }
 
+/** A copy just below it — switched off, so two of the same never open side by side. */
+function duplicatePopup(edits: Edits, popup: Popup) {
+  const popups = edits.content.popups;
+  const index = popups.findIndex((other) => other.id === popup.id);
+  const copy: Popup = { ...structuredClone(popup), id: newBlockId(), name: `${popup.name} (copy)`.slice(0, 60), enabled: false };
+  edits.change({ ...edits.content, popups: [...popups.slice(0, index + 1), copy, ...popups.slice(index + 1)] });
+}
+
 function PopupMenu({ edits, popup, onRemoved }: { edits: Edits; popup: Popup; onRemoved?: () => void }) {
   const popups = edits.content.popups;
   return (
@@ -462,15 +487,7 @@ function PopupMenu({ edits, popup, onRemoved }: { edits: Edits; popup: Popup; on
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem
-          disabled={popups.length >= MAX_POPUPS}
-          onSelect={() => {
-            const index = popups.findIndex((other) => other.id === popup.id);
-            // A copy starts switched off, so two of the same never open side by side.
-            const copy: Popup = { ...structuredClone(popup), id: newBlockId(), name: `${popup.name} (copy)`.slice(0, 60), enabled: false };
-            edits.change({ ...edits.content, popups: [...popups.slice(0, index + 1), copy, ...popups.slice(index + 1)] });
-          }}
-        >
+        <DropdownMenuItem disabled={popups.length >= MAX_POPUPS} onSelect={() => duplicatePopup(edits, popup)}>
           <CopyIcon />
           Duplicate
         </DropdownMenuItem>
@@ -493,23 +510,59 @@ function PopupMenu({ edits, popup, onRemoved }: { edits: Edits; popup: Popup; on
  * One pop-up's settings
  * -------------------------------------------------------------------------- */
 
-const FOLDS: { group: FieldGroup; title: string }[] = [
-  { group: "content", title: "What it says" },
-  { group: "style", title: "Look" },
-  { group: "advanced", title: "When it opens" },
-];
-
-export function PopupEditor({ id, edits, onBack }: { id: string; edits: Edits; onBack: () => void }) {
+export function PopupEditor({
+  id,
+  edits,
+  onBack,
+  onPreview,
+}: {
+  id: string;
+  edits: Edits;
+  onBack: () => void;
+  /** Opens it in the preview again — after it was closed there, say. */
+  onPreview: () => void;
+}) {
+  const [tab, setTab] = React.useState<"content" | "style">("content");
   const popup = edits.content.popups.find((candidate) => candidate.id === id);
   if (!popup) return null;
 
   const set = (change: Partial<Popup>) =>
     edits.change({ ...edits.content, popups: edits.content.popups.map((other) => (other.id === id ? { ...other, ...change } : other)) });
   const setSetting = (key: string, value: unknown) => set({ settings: { ...popup.settings, [key]: value } });
-  const fields = (POPUP_FIELDS as readonly LeafFieldDef[]).filter((field) => isFieldActive(field, popup.settings));
+  const replace = (next: Popup) =>
+    edits.change({ ...edits.content, popups: edits.content.popups.map((other) => (other.id === id ? next : other)) });
+  const s = popup.settings;
+  const hasButton = Boolean((s.button as LinkValue | null)?.href);
+  const fields = (POPUP_FIELDS as readonly LeafFieldDef[]).filter(
+    (field) =>
+      isFieldActive(field, s) &&
+      // The page behind is darkened or blurred only behind the box in the middle.
+      (POPUP_STYLE_FOLD[field.key] !== "behind" || s.layout === "center") &&
+      (field.key !== "buttonStyle" || hasButton) &&
+      ((field.key !== "borderStyle" && field.key !== "borderColor") || Number(s.borderWidth) > 0),
+  );
+
+  const renderField = (field: LeafFieldDef) => {
+    const inputId = `${id}-${field.key}`;
+    const inline = field.kind === "toggle";
+    return (
+      <div key={field.key} className={inline ? "flex items-center justify-between gap-4" : "space-y-1.5"}>
+        <Label htmlFor={inputId} className="text-xs">
+          {field.label}
+        </Label>
+        <FieldControl field={field} value={s[field.key]} inputId={inputId} collections={[]} onChange={(next) => setSetting(field.key, next)} />
+        {field.help && !inline ? <p className="text-muted-foreground text-xs">{field.help}</p> : null}
+      </div>
+    );
+  };
+  const remove = () => {
+    edits.change({ ...edits.content, popups: edits.content.popups.filter((other) => other.id !== id) });
+    onBack();
+  };
 
   return (
     <div className="flex h-full flex-col">
+      {/* The section editor's header: back, the name, then show / hide, duplicate, delete. */}
       <div className="flex items-center gap-1 border-b px-2 py-2">
         <Button type="button" variant="ghost" size="icon-sm" aria-label="Back" onClick={onBack}>
           <ArrowLeftIcon />
@@ -518,82 +571,453 @@ export function PopupEditor({ id, edits, onBack }: { id: string; edits: Edits; o
           <h2 className="truncate text-sm font-medium">{popup.name || "Pop-up"}</h2>
           <p className="text-muted-foreground truncate text-[11px]">Pop-up · {popupSummary(popup)}</p>
         </div>
-        <PopupMenu edits={edits} popup={popup} onRemoved={onBack} />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Show in preview"
+          title="Show in preview"
+          onClick={onPreview}
+          disabled={!popupHasContent(popup)}
+        >
+          <MonitorPlayIcon />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          aria-label={popup.enabled ? "Switch off" : "Switch on"}
+          title={popup.enabled ? "Switch off" : "Switch on"}
+          onClick={() => set({ enabled: !popup.enabled })}
+        >
+          {popup.enabled ? <EyeIcon /> : <EyeOffIcon />}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Duplicate pop-up"
+          title="Duplicate"
+          disabled={edits.content.popups.length >= MAX_POPUPS}
+          onClick={() => duplicatePopup(edits, popup)}
+        >
+          <CopyIcon />
+        </Button>
+        <Button type="button" variant="ghost" size="icon-sm" className="text-destructive" aria-label="Delete pop-up" title="Delete" onClick={remove}>
+          <Trash2Icon />
+        </Button>
       </div>
 
-      <div className="flex-1 space-y-4 overflow-y-auto p-4">
-        <Toggle id={`${id}-on`} label="Switched on" checked={popup.enabled} onChange={(enabled) => set({ enabled })} />
-        {!popup.enabled ? (
-          <p className="text-muted-foreground text-xs">Visitors do not see it. The preview still shows it, so you can finish it first.</p>
-        ) : null}
-        <div className="space-y-1.5">
-          <Label htmlFor={`${id}-name`} className="text-xs">
-            Name
-          </Label>
-          <Input id={`${id}-name`} value={popup.name} maxLength={60} onChange={(event) => set({ name: event.target.value })} className="h-8 text-xs" />
-          <p className="text-muted-foreground text-xs">Only for this list — visitors never see it.</p>
-        </div>
-        {!popupHasContent(popup) ? (
-          <p className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-500">
-            <TriangleAlertIcon className="mt-0.5 size-3.5 shrink-0" />
-            Add a heading, some text, a photograph, a button or the sign-up — an empty pop-up never opens.
-          </p>
-        ) : null}
+      {/* Content | Style, as on a section: what it says and when, then how it looks. */}
+      <div className="border-b px-4 py-2">
+        <Tabs value={tab} onValueChange={(next) => setTab(next as "content" | "style")}>
+          <TabsList className="w-full">
+            <TabsTrigger value="content" className="flex-1">
+              Content
+            </TabsTrigger>
+            <TabsTrigger value="style" className="flex-1">
+              Style
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
 
-        {FOLDS.map((fold) => (
-          <Group key={fold.group} title={fold.title} defaultOpen={fold.group === "content"}>
-            {fields
-              .filter((field) => field.group === fold.group)
-              .map((field) => {
-                const inputId = `${id}-${field.key}`;
-                const inline = field.kind === "toggle";
-                return (
-                  <div key={field.key} className={inline ? "flex items-center justify-between gap-4" : "space-y-1.5"}>
-                    <Label htmlFor={inputId} className="text-xs">
-                      {field.label}
-                    </Label>
-                    <FieldControl
-                      field={field}
-                      value={popup.settings[field.key]}
-                      inputId={inputId}
-                      collections={[]}
-                      onChange={(next) => setSetting(field.key, next)}
-                    />
-                    {field.help && !inline ? <p className="text-muted-foreground text-xs">{field.help}</p> : null}
-                  </div>
-                );
-              })}
-            {fold.group === "advanced" && popup.settings.trigger === "exit" ? (
+      {tab === "style" ? (
+        <PopupStyle
+          popup={popup}
+          fields={fields.filter((field) => field.group === "style")}
+          renderField={renderField}
+          onSettings={(change) => set({ settings: { ...popup.settings, ...change } })}
+          onBox={(box) => replace(Object.keys(box).length ? { ...popup, box } : withoutBox(popup))}
+          onHide={(hide) => replace(hide ? { ...popup, hide } : withoutHide(popup))}
+          onReset={(change) => replace({ ...withoutBox(popup), settings: { ...popup.settings, ...change } })}
+        />
+      ) : (
+        <div className="flex-1 space-y-5 overflow-y-auto p-4">
+          <p className="text-muted-foreground text-xs">A box that opens over the page — for an event, a new collection or the newsletter.</p>
+
+          {!popup.enabled ? (
+            <div className="flex items-center justify-between gap-3 rounded-md border border-dashed px-3 py-2 text-xs">
+              <p>Switched off — visitors don’t see it. The preview still shows it, so you can finish it first.</p>
+              <Button type="button" variant="outline" size="xs" onClick={() => set({ enabled: true })}>
+                Switch on
+              </Button>
+            </div>
+          ) : null}
+          {!popupHasContent(popup) ? (
+            <p className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-500">
+              <TriangleAlertIcon className="mt-0.5 size-3.5 shrink-0" />
+              Add a heading, some text, a photograph, a button or the sign-up — an empty pop-up never opens.
+            </p>
+          ) : null}
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor={`${id}-name`} className="text-xs">
+                Name
+              </Label>
+              <Input id={`${id}-name`} value={popup.name} maxLength={60} onChange={(event) => set({ name: event.target.value })} className="h-8 text-xs" />
+              <p className="text-muted-foreground text-xs">Only for this list — visitors never see it.</p>
+            </div>
+            {fields.filter((field) => field.group === "content").map(renderField)}
+          </div>
+
+          <Separator />
+          <div className="space-y-4">
+            <h3 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">Layout</h3>
+            {fields.filter((field) => field.group === "layout").map(renderField)}
+          </div>
+
+          <Separator />
+          <div className="space-y-4">
+            <h3 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">When it opens</h3>
+            {fields.filter((field) => field.group === "advanced").map(renderField)}
+            {s.trigger === "exit" ? (
               <p className="text-muted-foreground text-xs">
                 When the pointer heads for the tabs or the address bar. Phones and tablets have no pointer, so there it does not open.
               </p>
             ) : null}
-            {fold.group === "advanced" ? (
-              <p className="text-muted-foreground text-xs">Closing it, or pressing its button, counts as seen.</p>
-            ) : null}
-          </Group>
-        ))}
+            <p className="text-muted-foreground text-xs">Closing it, or pressing its button, counts as seen.</p>
+          </div>
 
-        <Group title="Where it shows">
-          <PagesPicker id={id} value={popup.pages} onChange={(pages) => set({ pages })} />
-          <ShowOn
-            id={`${id}-device`}
-            hide={popup.hide}
-            onChange={(hide) => {
-              const next = { ...popup };
-              if (hide) next.hide = hide;
-              else delete next.hide;
-              edits.change({ ...edits.content, popups: edits.content.popups.map((other) => (other.id === id ? next : other)) });
-            }}
-          />
-        </Group>
+          <Separator />
+          <div className="space-y-4">
+            <h3 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">Where it shows</h3>
+            <PagesPicker id={id} value={popup.pages} onChange={(pages) => set({ pages })} />
+            <div className="flex items-center justify-between gap-3 text-xs">
+              <p className="text-muted-foreground">
+                {popup.hide && Object.values(popup.hide).some(Boolean) ? "Not on every device." : "On every device."}
+              </p>
+              <Button type="button" variant="outline" size="xs" onClick={() => setTab("style")}>
+                Choose devices
+              </Button>
+            </div>
+          </div>
 
-        <Group title="Dates">
-          <DateRange id={id} value={popup} onChange={(next) => set(next)} />
-        </Group>
-      </div>
+          <Separator />
+          <div className="space-y-4">
+            <h3 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">Dates</h3>
+            <DateRange id={id} value={popup} onChange={(next) => set(next)} />
+          </div>
+        </div>
+      )}
     </div>
   );
+}
+
+/* -------------------------------------------------------------------------- *
+ * One pop-up's Style tab — the section's Style tab: the same frame, the same groups
+ * in the same order, then the pop-up's own
+ * -------------------------------------------------------------------------- */
+
+const FOLD_TITLE: Record<PopupStyleFold, string> = {
+  background: "Background",
+  spacing: "Spacing",
+  border: "Border & shadow",
+  images: "Images",
+  size: "Size",
+  behind: "Page behind it",
+  close: "Close button",
+  animation: "Animation",
+};
+
+/** The brand's light ground and dark text: what an empty colour means in a pop-up. */
+const LIGHT = { background: "#ebe8e3", text: "#302f2d" };
+
+function readableOn(background: string): string {
+  return contrastRatio(background, LIGHT.text) >= contrastRatio(background, LIGHT.background) ? LIGHT.text : LIGHT.background;
+}
+
+function PopupStyle({
+  popup,
+  fields,
+  renderField,
+  onSettings,
+  onBox,
+  onHide,
+  onReset,
+}: {
+  popup: Popup;
+  /** The look's settings that apply now. */
+  fields: LeafFieldDef[];
+  renderField: (field: LeafFieldDef) => React.ReactNode;
+  /** Several settings in one change, so none overwrites another. */
+  onSettings: (change: Record<string, unknown>) => void;
+  onBox: (box: PopupBox) => void;
+  onHide: (hide: Popup["hide"] | undefined) => void;
+  /** These settings, and no per-device sizes — one change. */
+  onReset: (settings: Record<string, unknown>) => void;
+}) {
+  const { device } = useEditorDevice();
+  const s = popup.settings;
+  const layout = (s.layout as "center" | "corner" | "bar") ?? "center";
+  const box = popup.box ?? {};
+  const design = (s.design as DesignValue | undefined) ?? {};
+  const getDesign = (path: readonly (string | number)[]) => getAt(design, path);
+  const setDesign = (path: readonly (string | number)[], next: unknown) => onSettings({ design: setAt(design, path, next) });
+  const setBox = <K extends keyof PopupBox>(key: K, value: PopupBox[K] | undefined) => {
+    const next = { ...box };
+    if (value && Object.keys(value).length) next[key] = value;
+    else delete next[key];
+    onBox(next);
+  };
+
+  const all = POPUP_FIELDS as readonly LeafFieldDef[];
+  const differs = (key: string) => {
+    const field = all.find((candidate) => candidate.key === key);
+    return field ? s[key] !== undefined && JSON.stringify(s[key]) !== JSON.stringify(fieldDefault(field)) : false;
+  };
+  const inFold = (fold: PopupStyleFold) => fields.filter((field) => POPUP_STYLE_FOLD[field.key] === fold);
+  const foldChanged = (fold: PopupStyleFold) =>
+    Object.entries(POPUP_STYLE_FOLD).some(([key, each]) => each === fold && differs(key));
+
+  const image = s.image as ImageRef | null | undefined;
+  const placed = layout === "center" ? String(s.imagePosition ?? "top") : "top";
+  const closeRoom = !image || (layout === "center" && (placed === "bottom" || placed === "side"));
+  const defaults = popupDefaults(layout, !closeRoom);
+  // As a section's: photo controls only where there is a photograph to shape.
+  const photo = Boolean(image) && layout !== "bar";
+
+  /* Background */
+  const background = typeof s.background === "string" && s.background ? s.background : LIGHT.background;
+  const text = typeof s.color === "string" && s.color ? s.color : LIGHT.text;
+  const hardToRead = !design.background?.image && contrastRatio(background, text) < 4.5;
+
+  /* Spacing: the device being edited; an empty side follows the larger screen, then the pop-up's own. */
+  const ownPadding = box.padding?.[device] ?? {};
+  const inherited = paddingOn({ padding: { ...box.padding, [device]: undefined } }, device, defaults.padding);
+  const changePadding = (changes: Partial<Record<BoxSide, number | undefined>>) => {
+    const sides: PopupSides = { ...ownPadding, ...changes };
+    for (const side of POPUP_SIDES) if (sides[side] === undefined) delete sides[side];
+    const padding = { ...box.padding };
+    if (Object.keys(sides).length) padding[device] = sides;
+    else delete padding[device];
+    setBox("padding", padding);
+  };
+  const offsetHint = {
+    center:
+      s.vertical === "top" || s.vertical === "bottom"
+        ? "From the top or bottom of the screen, and the least space kept at its sides."
+        : "The least space kept at its sides on a narrow screen.",
+    corner: "From the bottom and the side of the screen.",
+    bar: "0: across the whole foot of the screen. More: floating above it.",
+  }[layout];
+
+  /* Size: the box in the middle has sizes and Custom; the corner box a width; the bar runs across. */
+  const widthShown = (layout === "center" && s.width === "custom") || layout === "corner";
+
+  const changed = {
+    background: foldChanged("background") || Boolean(design.background),
+    spacing: Boolean(box.padding || box.offset || box.gap),
+    border: foldChanged("border") || Boolean(box.radius || design.images?.radius),
+    size: foldChanged("size") || Boolean(box.width),
+  };
+  const anything =
+    Object.keys(POPUP_STYLE_FOLD).some(differs) || Object.keys(box).length > 0 || Object.keys(design).length > 0;
+
+  return (
+    <div className="flex-1 space-y-4 overflow-y-auto p-4">
+      {/* The device being edited — the same switch as above the preview. */}
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-muted-foreground text-xs">Settings marked with a device icon can differ on desktop, tablet and mobile.</p>
+        <DeviceSwitch />
+      </div>
+
+      <div className="space-y-2">
+        <Part title={FOLD_TITLE.background} changed={changed.background} defaultOpen={false}>
+          <div className="space-y-4">
+            {inFold("background")
+              .filter((field) => field.key === "background")
+              .map(renderField)}
+            <BackgroundPart get={getDesign} set={setDesign} what="pop-up" />
+            {inFold("background")
+              .filter((field) => field.key !== "background")
+              .map(renderField)}
+            {hardToRead ? (
+              <div
+                role="status"
+                className="space-y-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
+              >
+                <p>The text may be hard to read on this background.</p>
+                <Button type="button" variant="outline" size="sm" onClick={() => onSettings({ color: readableOn(background) })}>
+                  Use a readable text colour
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        </Part>
+
+        <Part title={FOLD_TITLE.spacing} changed={changed.spacing} defaultOpen={false}>
+          <div className="space-y-4">
+            <SpacingBox
+              title="Padding"
+              values={{ top: ownPadding.top, right: ownPadding.right, bottom: ownPadding.bottom, left: ownPadding.left }}
+              placeholders={{
+                top: String(inherited.top),
+                right: String(inherited.right),
+                bottom: String(inherited.bottom),
+                left: String(inherited.left),
+              }}
+              hint={
+                layout === "bar"
+                  ? "Space around the words and buttons. Keep some on the right for the close button."
+                  : "Space around the words and buttons. The photograph runs to the edge — for space around it, see Images."
+              }
+              onChange={changePadding}
+            />
+            <ResponsiveSlider
+              label="Distance from the screen's edge"
+              hint={offsetHint}
+              unit="px"
+              min={POPUP_LIMITS.offset.min}
+              max={POPUP_LIMITS.offset.max}
+              step={1}
+              value={box.offset}
+              placeholder={String(defaults.offset)}
+              onChange={(next) => setBox("offset", next)}
+            />
+            <ResponsiveSlider
+              label="Space between"
+              hint="Between the heading and text, and the buttons."
+              unit="px"
+              min={POPUP_LIMITS.gap.min}
+              max={POPUP_LIMITS.gap.max}
+              step={1}
+              value={box.gap}
+              placeholder={String(defaults.gap)}
+              onChange={(next) => setBox("gap", next)}
+            />
+          </div>
+        </Part>
+
+        <Part title={FOLD_TITLE.border} changed={changed.border} defaultOpen={false}>
+          <div className="space-y-4">
+            <ResponsiveSlider
+              label={photo ? "Pop-up corners" : "Rounded corners"}
+              unit="px"
+              min={POPUP_LIMITS.radius.min}
+              max={POPUP_LIMITS.radius.max}
+              step={1}
+              value={box.radius}
+              placeholder="0"
+              onChange={(next) => setBox("radius", next)}
+            />
+            {photo ? (
+              <Slider
+                label="Photo corners"
+                hint="Rounds the photograph — best with some space around it (Images)."
+                unit="px"
+                min={0}
+                max={120}
+                step={1}
+                value={getDesign(["images", "radius"]) as number | undefined}
+                placeholder="0"
+                onChange={(next) => setDesign(["images", "radius"], next === 0 ? undefined : next)}
+              />
+            ) : null}
+            {inFold("border").map(renderField)}
+          </div>
+        </Part>
+
+        <DesignControls
+          value={design}
+          parts={["typography", "buttons"]}
+          contents={{
+            heading: Boolean(String(s.heading ?? "").trim()),
+            text: Boolean(String(s.text ?? "").trim()),
+            button: Boolean((s.button as LinkValue | null)?.href),
+          }}
+          onChange={(next) => onSettings({ design: next })}
+        />
+
+        {photo ? (
+          <Part title={FOLD_TITLE.images} changed={foldChanged("images")} defaultOpen={false}>
+            <div className="space-y-4">{inFold("images").map(renderField)}</div>
+          </Part>
+        ) : null}
+
+        {layout !== "bar" ? (
+          <Part title={FOLD_TITLE.size} changed={changed.size} defaultOpen={false}>
+            <div className="space-y-4">
+              {inFold("size").map(renderField)}
+              {widthShown ? (
+                <ResponsiveSlider
+                  label="Width"
+                  hint={layout === "corner" ? "Empty: 384px. It never gets wider than the screen." : "It never gets wider than the screen."}
+                  unit="px"
+                  min={POPUP_LIMITS.width.min}
+                  max={POPUP_LIMITS.width.max}
+                  step={10}
+                  value={box.width}
+                  placeholder={String(defaults.width)}
+                  onChange={(next) => setBox("width", next)}
+                />
+              ) : null}
+            </div>
+          </Part>
+        ) : null}
+
+        {layout === "center" ? (
+          <Part title={FOLD_TITLE.behind} changed={foldChanged("behind")} defaultOpen={false}>
+            <div className="space-y-4">{inFold("behind").map(renderField)}</div>
+          </Part>
+        ) : null}
+
+        <Part title={FOLD_TITLE.close} changed={foldChanged("close")} defaultOpen={false}>
+          <div className="space-y-4">{inFold("close").map(renderField)}</div>
+        </Part>
+
+        <Part title={FOLD_TITLE.animation} changed={foldChanged("animation")} defaultOpen={false}>
+          <div className="space-y-4">{inFold("animation").map(renderField)}</div>
+        </Part>
+
+        {/* Last, as on a section. */}
+        <DesignControls
+          value={design}
+          parts={["visibility"]}
+          visibility={{
+            hidden: DEVICES.filter((each) => popup.hide?.[each]),
+            onChange: (hidden) => onHide(hidden.length ? Object.fromEntries(hidden.map((each) => [each, true])) : undefined),
+          }}
+          onChange={(next) => onSettings({ design: next })}
+        />
+      </div>
+
+      {anything ? (
+        <>
+          <Separator />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              onReset({
+                ...Object.fromEntries(all.filter((field) => POPUP_STYLE_FOLD[field.key]).map((field) => [field.key, fieldDefault(field)])),
+                design: {},
+              })
+            }
+          >
+            <RotateCcwIcon />
+            Reset style
+          </Button>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+/** A pop-up with no per-device sizes — the key gone, not empty, so it reads back the same. */
+function withoutBox(popup: Popup): Popup {
+  const rest = { ...popup };
+  delete rest.box;
+  return rest;
+}
+
+/** Shown on every device — the key gone, as a read leaves it. */
+function withoutHide(popup: Popup): Popup {
+  const rest = { ...popup };
+  delete rest.hide;
+  return rest;
 }
 
 function PagesPicker({ id, value, onChange }: { id: string; value: PopupPages; onChange: (next: PopupPages) => void }) {

@@ -27,7 +27,7 @@ import { carouselStyle, carouselView } from "../lib/page-builder/carousel";
 import { contrastRatio, designSchema, designStyle, readDesign } from "../lib/page-builder/design";
 import { SECTIONS, SECTION_TYPES } from "../lib/page-builder/registry";
 import { defaultLayoutContent, menusIn, parseThemeLayout, sameThemeContent, themeContentSchema } from "../lib/theme-builder/layout";
-import { createMessage, createPopup, isScheduledNow, popupHasContent, popupOnPath } from "../lib/theme-builder/promo";
+import { createMessage, createPopup, isScheduledNow, onDevice, paddingOn, popupDefaults, popupHasContent, popupOnPath } from "../lib/theme-builder/promo";
 import { PAGE_TEMPLATES, documentFromTemplate } from "../lib/page-builder/templates";
 
 let failures = 0;
@@ -446,6 +446,100 @@ check(
   const twice = structuredClone(withPromo);
   twice.popups[1]!.id = twice.popups[0]!.id;
   check("two pop-ups with one id are refused on write", !themeContentSchema.safeParse(twice).success);
+
+  const styled = structuredClone(withPromo);
+  Object.assign(styled.popups[0]!.settings, {
+    width: "custom",
+    imagePosition: "right",
+    imageShare: "third",
+    imageInset: 12,
+    borderWidth: 2,
+    borderStyle: "dashed",
+    borderColor: "#302f2d",
+    shadow: "strong",
+    overlay: "#1a2b3c",
+    overlayOpacity: 70,
+    blur: 6,
+    closeSize: "large",
+    closeBackground: "#ffffff",
+    animation: "zoom",
+    speed: "slow",
+    buttonStyle: "outline",
+    design: {
+      heading: { size: { d: 40, m: 28 }, color: "#aa3300" },
+      buttonLook: { radius: 100 },
+      background: { overlay: "#000000", overlayOpacity: 20, gradient: { from: "#ebe8e3", to: "#c9c2b8", angle: 180 } },
+      images: { radius: 12 },
+    },
+  });
+  styled.popups[0]!.box = {
+    width: { d: 640, m: 320 },
+    padding: { d: { top: 48, right: 40, bottom: 48, left: 40 }, m: { right: 16, left: 16 } },
+    offset: { d: 24 },
+    gap: { t: 12 },
+    radius: { d: 16, m: 8 },
+  };
+  check("a styled pop-up passes the write schema", themeContentSchema.safeParse(styled).success);
+  const styledBack = parseThemeLayout(JSON.stringify(styled));
+  check("a styled pop-up reads back the same, per-device sizes and all", styledBack.ok && sameThemeContent(styledBack.layout, styled));
+  for (const [label, change] of [
+    ["a line colour that is not a colour", { borderColor: "red;background:url(x)" }],
+    ["an unknown line style", { borderStyle: "groove;x" }],
+    ["a blur past 20px", { blur: 50 }],
+    ["an unknown animation", { animation: "spin" }],
+    ["a design part that does not exist", { design: { script: "x" } }],
+    ["a setting that no longer exists (the old single width)", { customWidth: 640 }],
+  ] as const) {
+    const bad = structuredClone(styled);
+    Object.assign(bad.popups[0]!.settings, change);
+    check(`pop-up style: ${label} is refused on write`, !themeContentSchema.safeParse(bad).success);
+  }
+  for (const [label, box] of [
+    ["a width past 1200px", { width: { d: 5000 } }],
+    ["padding as text", { padding: { d: { top: "10px;x" } } }],
+    ["a device that does not exist", { radius: { w: 4 } }],
+    ["an unknown size", { height: { d: 100 } }],
+  ] as const) {
+    const bad = structuredClone(styled) as unknown as { popups: { box: unknown }[] };
+    bad.popups[0]!.box = box;
+    check(`pop-up sizes: ${label} is refused on write`, !themeContentSchema.safeParse(bad).success);
+  }
+
+  // A pop-up saved before its sizes could differ per device keeps its look.
+  const before = JSON.parse(JSON.stringify(withPromo));
+  Object.assign(before.popups[0].settings, { width: "custom", customWidth: 640, radius: 16, padding: 20 });
+  const beforeBack = parseThemeLayout(JSON.stringify(before));
+  const beforeBox = beforeBack.ok ? beforeBack.layout.popups[0]!.box : undefined;
+  check(
+    "an earlier pop-up's one width, corner and space inside read as desktop's",
+    beforeBox?.width?.d === 640 &&
+      beforeBox?.radius?.d === 16 &&
+      beforeBox?.padding?.d?.top === 20 &&
+      beforeBox?.padding?.d?.left === 20 &&
+      beforeBack.ok &&
+      !("customWidth" in beforeBack.layout.popups[0]!.settings) &&
+      themeContentSchema.safeParse({
+        header: beforeBack.layout.header,
+        footer: beforeBack.layout.footer,
+        global: beforeBack.layout.global,
+        popups: beforeBack.layout.popups,
+      }).success,
+  );
+  const damagedBox = JSON.parse(JSON.stringify(styled));
+  damagedBox.popups[0].box.width = { d: "wide" };
+  const damagedBack = parseThemeLayout(JSON.stringify(damagedBox));
+  check(
+    "a damaged size is dropped alone, the others kept",
+    damagedBack.ok && !damagedBack.layout.popups[0]!.box?.width && damagedBack.layout.popups[0]!.box?.radius?.m === 8,
+  );
+
+  const defaults = popupDefaults("center", false);
+  check(
+    "padding per device follows the larger screen, then the pop-up's own",
+    JSON.stringify(paddingOn(styled.popups[0]!.box, "m", defaults.padding)) === JSON.stringify({ top: 48, right: 16, bottom: 48, left: 16 }) &&
+      JSON.stringify(paddingOn(undefined, "m", defaults.padding)) === JSON.stringify({ top: 40, right: 24, bottom: 24, left: 24 }),
+  );
+  check("a size on a device follows the larger screen", onDevice(styled.popups[0]!.box!.gap, "m") === 12 && onDevice(styled.popups[0]!.box!.gap, "d") === undefined);
 
   const broken = JSON.parse(JSON.stringify(withPromo));
   broken.popups.push({ id: "nope", settings: {} });

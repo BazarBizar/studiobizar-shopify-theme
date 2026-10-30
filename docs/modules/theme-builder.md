@@ -52,9 +52,29 @@ so drafted, previewed, published and rolled back with the header and footer.
   this (one `text`, one `link`) reads as one message.
 - **Pop-ups** (Pop-ups tab): up to 10, in priority order — **at most one opens per page**, the first
   whose moment comes. Each: switched on or off, a name only the editor sees, photograph, heading,
-  text, button, newsletter sign-up; shape (box in the middle — modal `<dialog>`, Escape and a click
-  outside close it — small box in a corner, bar along the bottom), size, photograph above or beside,
-  alignment, colours, darkened page; opens after N seconds, after scrolling N% or when the pointer
+  text, button and its style (filled, outlined, underlined), newsletter sign-up; shape (box in the
+  middle — modal `<dialog>`, Escape and a click outside close it — small box in a corner, bar along
+  the bottom). The editor is a section editor's: the same header (back, name; show in preview,
+  switch on / off, duplicate, delete) and **Content | Style** tabs. **Content**: name, what it says,
+  then headed as a section's Layout — **Layout** (shape, corner, top / middle / bottom of the
+  screen, photograph above, below, left or right — its width and where the words sit beside it —
+  alignment), **When it opens**, **Where it shows** (pages; devices are on Style), **Dates**.
+  **Style**: the section's Style tab — the device switch, then **Background** (own colour, the
+  section's gradient / photo / overlay panel, text colour, a readability warning with a fix
+  button), **Spacing** (padding as four boxes, distance from the screen's edge, space between),
+  **Border & shadow** (corners, photo corners, a line — width, style, colour — shadow),
+  **Typography**, **Buttons**, **Images** (shape, space around), **Size** (sizes or a custom width
+  per device), then the pop-up's own: **Page behind it** (box in the middle only: darkened —
+  colour, how dark, read by the backdrop as `--sb-popup-backdrop` — and blurred), **Close button**
+  (look, size, colour, circle colour), **Animation** (rise, fade, zoom, slide, at once; speed); and
+  last **Show on devices**. *Reset style* keeps the shape. Colours rebind the
+  tokens as a section's do (`frameStyle`). The `design` field (`designStyle` on the `<dialog>`,
+  `sb-design.css`) holds typography, buttons, background and photo corners. The sizes that can
+  differ per device live in the pop-up's own `box` (width, padding, offset, gap, radius — each
+  `{ d, t, m }`, a smaller screen following the larger); `popups.tsx` writes every device's value in
+  full as `--sb-pop-<name>-<d|t|m>` and `data-sb-pop` lists them, and globals.css ("Pop-ups") picks
+  the device's at 1024px / 750px. A pop-up saved before (one `padding`, `radius`, `customWidth`) is
+  read as desktop's box values. Opens after N seconds, after scrolling N% or when the pointer
   leaves through the top (never on touch screens); how often (once per visit — `sessionStorage`,
   every N days, only once, every page — `localStorage` `sb-popup-<id>`); which pages (every, home
   only, only / except a list; `/products/*` covers everything under it); devices; dates. Four
@@ -67,7 +87,10 @@ Pop-ups render nothing until one opens.
 
 **Preview**: in `/preview/…` nothing opens by itself and nothing is remembered. The editor puts the
 pop-up being edited in the iframe's hash (`#popup-<id>`); `Popups` opens that one at once, switched
-off or not. Every announcement message shows there, dated or not.
+off or not. It keeps the id, not the pop-up, so one just added opens when it reaches the preview a
+moment later. After every change the editor also posts `sb-preview:popup`, so a pop-up closed in
+the preview opens again as soon as it is edited; **Show in preview** in its editor does the same.
+Every announcement message shows there, dated or not.
 
 ## Data
 

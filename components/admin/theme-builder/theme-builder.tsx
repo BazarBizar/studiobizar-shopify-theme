@@ -107,9 +107,14 @@ export function ThemeBuilder({
   const contentRef = React.useRef(content);
   const inflightRef = React.useRef<Promise<boolean> | null>(null);
   const iframeRef = React.useRef<HTMLIFrameElement>(null);
+  const editingPopupRef = React.useRef<string | null>(null);
   React.useEffect(() => {
     contentRef.current = content;
   });
+  /** Opens a pop-up in the preview (again) — see `Popups`. */
+  const showPopup = React.useCallback((id: string) => {
+    iframeRef.current?.contentWindow?.postMessage({ type: PREVIEW_MESSAGE.popup, id }, window.location.origin);
+  }, []);
 
   const dirty = JSON.stringify(content) !== savedJson;
   useUnsavedChangesWarning(dirty || saveState === "saving" || saveState === "error");
@@ -221,7 +226,9 @@ export function ThemeBuilder({
   // drawn there by the server without waiting for the save — see `LivePreview`.
   const sendContent = React.useCallback(() => {
     iframeRef.current?.contentWindow?.postMessage({ type: PREVIEW_MESSAGE.content, content: contentRef.current }, window.location.origin);
-  }, []);
+    // The pop-up being edited stays open while it is edited, even if it was closed there.
+    if (editingPopupRef.current) showPopup(editingPopupRef.current);
+  }, [showPopup]);
   React.useEffect(() => {
     const timer = window.setTimeout(sendContent, 150);
     return () => window.clearTimeout(timer);
@@ -291,6 +298,9 @@ export function ThemeBuilder({
 
   const editingPopup = tab === "popups" && popup && content.popups.some((candidate) => candidate.id === popup) ? popup : null;
   const previewHash = editingPopup ? `popup-${editingPopup}` : tab === "footer" ? "site-footer" : "site-header";
+  React.useEffect(() => {
+    editingPopupRef.current = editingPopup;
+  });
   const previewSrc = `/preview/theme?page=${encodeURIComponent(previewPage)}#${previewHash}`;
 
   return (
@@ -431,7 +441,15 @@ export function ThemeBuilder({
               {selected && ops.locate(content, selected) ? (
                 <ElementEditor id={selected} edits={edits} onBack={() => setSelected(null)} />
               ) : editingPopup ? (
-                <PopupEditor id={editingPopup} edits={edits} onBack={() => setPopup(null)} />
+                <PopupEditor
+                  id={editingPopup}
+                  edits={edits}
+                  onBack={() => setPopup(null)}
+                  onPreview={() => {
+                    showPopup(editingPopup);
+                    setPane("preview");
+                  }}
+                />
               ) : (
                 <>
                   <div className="border-b px-4 py-2">

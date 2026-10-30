@@ -864,3 +864,80 @@
 @utility sb-popup-in {
   animation: sb-popup-in 0.35s ease-out both;
 }
+
+/* The other ways in (a pop-up's "How it appears"). */
+@keyframes sb-popup-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes sb-popup-zoom {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes sb-popup-slide {
+  from {
+    opacity: 0;
+    transform: translateY(40%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility sb-popup-fade {
+  animation: sb-popup-fade 0.35s ease-out both;
+}
+@utility sb-popup-zoom {
+  animation: sb-popup-zoom 0.3s ease-out both;
+}
+@utility sb-popup-slide {
+  animation: sb-popup-slide 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* A pop-up's sizes per device (a pop-up's `box`). popups.tsx writes each device's value
+   in full — `--sb-pop-pad-d`, `-t`, `-m` — so no inheritance is left to CSS; these pick
+   the device's: desktop, tablet below 1024px, mobile below 750px. `data-sb-pop` lists
+   which are set, so an unset one leaves the pop-up's own. Unlayered: it must win over
+   the utilities it replaces. */
+[data-sb-pop] {
+  --sb-pop-w: var(--sb-pop-w-d);
+  --sb-pop-pad: var(--sb-pop-pad-d);
+  --sb-pop-off: var(--sb-pop-off-d);
+  --sb-pop-gap: var(--sb-pop-gap-d);
+  --sb-pop-r: var(--sb-pop-r-d);
+}
+@media (max-width: 1023px) {
+  [data-sb-pop] {
+    --sb-pop-w: var(--sb-pop-w-t);
+    --sb-pop-pad: var(--sb-pop-pad-t);
+    --sb-pop-off: var(--sb-pop-off-t);
+    --sb-pop-gap: var(--sb-pop-gap-t);
+    --sb-pop-r: var(--sb-pop-r-t);
+  }
+}
+@media (max-width: 749px) {
+  [data-sb-pop] {
+    --sb-pop-w: var(--sb-pop-w-m);
+    --sb-pop-pad: var(--sb-pop-pad-m);
+    --sb-pop-off: var(--sb-pop-off-m);
+    --sb-pop-gap: var(--sb-pop-gap-m);
+    --sb-pop-r: var(--sb-pop-r-m);
+  }
+}
+[data-sb-pop~="w"] { max-width: min(var(--sb-pop-w), calc(100% - 2 * var(--sb-pop-off, 1rem))); }
+[data-sb-pop~="r"] { border-radius: var(--sb-pop-r); }
+[data-sb-pop~="pad"] [data-sb-pop-body] { padding: var(--sb-pop-pad); }
+[data-sb-pop~="gap"] [data-sb-pop-body] { gap: var(--sb-pop-gap); }
+/* The page behind the box in the middle, blurred. */
+[data-sb-pop-blur]::backdrop { backdrop-filter: blur(var(--sb-popup-blur)); }
