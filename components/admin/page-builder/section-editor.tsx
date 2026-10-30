@@ -474,16 +474,17 @@ function DeviceNumber({
   );
 }
 
-type BoxSide = "top" | "right" | "bottom" | "left";
+export type BoxSide = "top" | "right" | "bottom" | "left";
 const BOX_SIDES: readonly BoxSide[] = ["top", "right", "bottom", "left"];
 const BOX_LABEL: Record<BoxSide, string> = { top: "Top", right: "Right", bottom: "Bottom", left: "Left" };
 
 /**
  * Padding or margin as four small boxes in one row — top, right, bottom, left, as in
  * Elementor — for the device chosen at the top. Linked, one number fills all four. An
- * empty box follows the larger screen (or, for the sides, the design's own).
+ * empty box follows the larger screen (or, for the sides, the design's own). Also a
+ * pop-up's space inside (Theme Builder → Pop-ups).
  */
-function SpacingBox({
+export function SpacingBox({
   title,
   values,
   placeholders,

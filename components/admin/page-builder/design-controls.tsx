@@ -544,14 +544,15 @@ function ButtonsPart({ get, set }: PartProps) {
  * and an overlay over whichever is there — a colour, the gradient or the photo.
  * The section's own colour sits above these in its Style tab's Background group.
  */
-export function BackgroundPart({ get, set }: PartProps) {
+/** `what`: what the background is behind, in its hint — a section, or a pop-up. */
+export function BackgroundPart({ get, set, what = "section" }: PartProps & { what?: string }) {
   const image = get(["background", "image"]) as ImageRef | null | undefined;
   const overlay = get(["background", "overlay"]) as string | undefined;
 
   return (
     <div className="space-y-4">
       <GradientRows get={get} set={set} />
-      <Row label="Photo" hint="Covers the whole section, behind its content.">
+      <Row label="Photo" hint={`Covers the whole ${what}, behind its content.`}>
         <ImageField
           label="Background photo"
           value={image ?? null}
@@ -782,7 +783,7 @@ function VisibilityPart({
         );
       })}
       <p className="text-muted-foreground text-xs">
-        A hidden section is still on the page for the other devices.
+        Hidden on one device, it still shows on the others.
       </p>
     </div>
   );
