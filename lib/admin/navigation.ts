@@ -100,6 +100,7 @@ const RESERVED_SLUGS = new Set([
   "page-builder",
   "shop-categories",
   "site-texts",
+  "redirects",
   "product-details",
   "menus",
   "media",
@@ -172,6 +173,11 @@ const BESPOKE: { group: GroupKey; item: NavItem }[] = [
     group: "pages",
     /** Next to Pages: the two together are what a visitor can reach and how. */
     item: { href: "/admin/menus", label: "Menus", readOnly: false, type: null },
+  },
+  {
+    group: "pages",
+    /** Old addresses that send visitors on to new ones — see `lib/admin/redirects.ts`. */
+    item: { href: "/admin/redirects", label: "Redirects", readOnly: false, type: null },
   },
   {
     group: "pages",
@@ -261,7 +267,7 @@ export async function buildNavigation(): Promise<NavGroup[]> {
     const items = byGroup.get(key);
     if (!items?.length) continue;
 
-    // Website keeps the order its rows are declared in: Pages, Menus, Appearance, Media.
+    // Website keeps the order its rows are declared in: Pages, Menus, Redirects, Appearance, Media.
     // Others follow ORDER, then the alphabet, so the list is stable.
     const order = ORDER[key] ?? [];
     const rank = (item: NavItem) => (order.includes(item.href) ? order.indexOf(item.href) : order.length);

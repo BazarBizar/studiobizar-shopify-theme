@@ -1838,6 +1838,82 @@ ${REFERENCE_PREVIEW}
       }
     `,
   },
+
+  /* ------------------------------------------------------------------ redirects */
+
+  /** Website → Redirects (`lib/admin/redirects.ts`): every URL redirect, newest first. */
+  urlRedirects: {
+    kind: "read",
+    document: `
+      query AdminUrlRedirects($after: String) {
+        urlRedirects(first: 250, after: $after, sortKey: ID, reverse: true) {
+          nodes {
+            id
+            path
+            target
+            createdAt
+          }
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+        }
+      }
+    `,
+  },
+
+  /** The redirects from given addresses — Shopify search syntax built on the server. */
+  urlRedirectsAt: {
+    kind: "read",
+    document: `
+      query AdminUrlRedirectsAt($query: String!) {
+        urlRedirects(first: 25, query: $query) {
+          nodes {
+            id
+            path
+            target
+          }
+        }
+      }
+    `,
+  },
+
+  urlRedirectCreate: {
+    kind: "write",
+    document: `
+      mutation AdminUrlRedirectCreate($urlRedirect: UrlRedirectInput!) {
+        urlRedirectCreate(urlRedirect: $urlRedirect) {
+          urlRedirect {
+            id
+            path
+            target
+            createdAt
+          }
+          userErrors {
+            field
+            message
+            code
+          }
+        }
+      }
+    `,
+  },
+
+  urlRedirectDelete: {
+    kind: "write",
+    document: `
+      mutation AdminUrlRedirectDelete($id: ID!) {
+        urlRedirectDelete(id: $id) {
+          deletedUrlRedirectId
+          userErrors {
+            field
+            message
+            code
+          }
+        }
+      }
+    `,
+  },
 } as const satisfies Record<string, Operation>);
 
 export type OperationName = keyof typeof OPERATIONS;

@@ -275,7 +275,8 @@ export async function updateCollection(id: string, input: CollectionWriteInput) 
       userErrors: { field?: string[] | null; message: string }[];
     };
   }>("collectionUpdate", OPERATIONS.collectionUpdate.document, {
-    input: { id, ...toShopifyInput(input) },
+    // A new handle: Shopify adds a redirect from the old address, so links to it keep working.
+    input: { id, ...toShopifyInput(input), ...(input.handle !== undefined ? { redirectNewHandle: true } : {}) },
   });
 
   assertNoUserErrors(data.collectionUpdate.userErrors);

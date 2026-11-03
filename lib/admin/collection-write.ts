@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { fail, failure, guard, readJson, validate } from "./api";
 import { audit } from "./audit";
 import { createCollection, updateCollection, type CollectionWriteInput } from "./collections";
+import { releaseAddress } from "./redirects";
 import { revalidateForType } from "./revalidate";
 import { createCollectionSchema, updateCollectionSchema } from "./validation";
 
@@ -106,6 +107,7 @@ export async function handleCollectionWrite(
         ip,
       });
 
+      await releaseAddress(`/collections/${created.handle}`);
       await revalidateForType("collection");
       return NextResponse.json(created);
     }
@@ -129,6 +131,7 @@ export async function handleCollectionWrite(
       ip,
     });
 
+    if (rest.handle !== undefined) await releaseAddress(`/collections/${updated.handle}`);
     await revalidateForType("collection");
     return NextResponse.json(updated);
   } catch (error) {

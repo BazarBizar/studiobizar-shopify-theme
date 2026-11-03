@@ -453,6 +453,24 @@ export async function siteTextsRequest(input: {
   return post("/api/admin/site-texts", { operation: "siteTextsSave", ...input });
 }
 
+export type RedirectRow = {
+  id: string;
+  path: string;
+  target: string;
+  from: string;
+  to: string;
+  createdAt: string | null;
+};
+
+/** Website → Redirects (`app/api/admin/redirects/route.ts`). */
+export async function createRedirectRequest(input: { from: string; to: string }): Promise<RedirectRow> {
+  return post("/api/admin/redirects", { operation: "redirectCreate", ...input });
+}
+
+export async function deleteRedirectRequest(id: string): Promise<{ ok: true }> {
+  return post("/api/admin/redirects", { operation: "redirectDelete", id });
+}
+
 export type ProductDetailRow = { key: string; label: string };
 export type ProductFieldOption = { key: string; name: string; type: string };
 

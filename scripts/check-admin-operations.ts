@@ -262,6 +262,12 @@ async function main() {
     definition: { name: "Check", namespace: "custom", key: "shop_json_check", type: "no_such_type", ownerType: "SHOP" },
   });
 
+  // Website → Redirects. A blank path is refused before anything is made; id 0 is never issued.
+  await run("urlRedirects", { after: null });
+  await run("urlRedirectsAt", { query: "path:'/redirect-check-none'" });
+  await run("urlRedirectCreate", { urlRedirect: { path: "", target: "" } });
+  await run("urlRedirectDelete", { id: "gid://shopify/UrlRedirect/0" });
+
   /**
    * The count is of what this run actually SENT, not of what the allowlist contains —
    * an operation nobody exercises here has not been checked, and saying otherwise would

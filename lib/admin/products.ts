@@ -326,7 +326,11 @@ export async function updateProduct(
   const product: Record<string, unknown> = { id };
 
   if (fields.title !== undefined) product.title = fields.title;
-  if (fields.handle !== undefined) product.handle = fields.handle;
+  if (fields.handle !== undefined) {
+    product.handle = fields.handle;
+    // Shopify adds a redirect from the old address, so links to it keep working.
+    product.redirectNewHandle = true;
+  }
   if (fields.descriptionHtml !== undefined) product.descriptionHtml = fields.descriptionHtml;
   if (fields.vendor !== undefined) product.vendor = fields.vendor;
   if (fields.productType !== undefined) product.productType = fields.productType;

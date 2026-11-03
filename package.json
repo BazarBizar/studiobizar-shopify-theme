@@ -56,6 +56,7 @@
     "audit:page-builder": "tsx scripts/audit-page-builder.ts",
     "check:shop-categories": "tsx scripts/check-shop-categories.ts",
     "check:site-texts": "tsx scripts/check-site-texts.ts",
+    "check:redirects": "tsx scripts/check-redirects.ts",
     "check:product-details": "tsx scripts/check-product-details.ts"
   },
   "dependencies": {
