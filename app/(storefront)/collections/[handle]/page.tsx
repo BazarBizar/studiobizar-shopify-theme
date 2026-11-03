@@ -10,7 +10,7 @@ import { MediaText } from "@/components/sections/media-text";
 import { Carousel } from "@/components/ui/carousel";
 import { Container } from "@/components/ui/container";
 import { GoBack } from "@/components/ui/go-back";
-import { getCollection, getCollectionProducts } from "@/lib/shopify";
+import { getCollection, getCollectionProducts, getSiteTexts } from "@/lib/shopify";
 import {
   cdnImage,
   fieldImage,
@@ -46,7 +46,7 @@ export async function generateMetadata({
 
 export default async function CollectionPage({ params }: PageProps<"/collections/[handle]">) {
   const { handle } = await params;
-  const collection = await getCollection(handle);
+  const [collection, texts] = await Promise.all([getCollection(handle), getSiteTexts()]);
   if (!collection) notFound();
 
   // The mosaic below shows at most 10 — the top of the collection, not every
@@ -126,7 +126,7 @@ export default async function CollectionPage({ params }: PageProps<"/collections
 
       {designer?.bio && (
         <MediaText
-          title="The Designer"
+          title={texts["collection.designer"]}
           html={designer.bio}
           image={designer.portrait}
           align="right"
@@ -155,10 +155,10 @@ export default async function CollectionPage({ params }: PageProps<"/collections
       {inContext.length > 0 && (
         <section data-surface="blue" className="bg-background py-section text-foreground">
           <Container>
-            <h2 className="text-h2 mb-8">In Context</h2>
+            <h2 className="text-h2 mb-8">{texts["collection.inContext"]}</h2>
           </Container>
 
-          <Carousel ariaLabel="In Context" gap="none" slideClassName="w-full sm:w-1/2 lg:w-1/3">
+          <Carousel ariaLabel={texts["collection.inContext"]} gap="none" slideClassName="w-full sm:w-1/2 lg:w-1/3">
             {inContext.map((project) => (
               <Link key={project.handle} href={`/projects/${project.handle}`} className="group block">
                 <div className="relative aspect-3/4 overflow-hidden bg-foreground/10">

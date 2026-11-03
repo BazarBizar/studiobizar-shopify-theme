@@ -13,7 +13,7 @@
 | `components/shop/product-grid.tsx` | Client; infinite scroll + Load more |
 | `components/product/product-card.tsx` | `sb-card-product` |
 | `components/ui/skeleton.tsx` | `Skeleton`, `ProductCardSkeleton` |
-| `lib/shopify/categories.ts` | Chip → `productType` mapping |
+| `lib/shopify/categories.ts` | Chip → `productType` mapping: the saved list, else the original one |
 
 ## Layout, measured from the PDF
 
@@ -24,25 +24,25 @@
 - Grid: 4 columns of 415px on a 10px gap, x-origins 20 / 445 / 869 / 1294
 - Card media 4:5, `new` flag inset ~14px top-left, title 16px, collection label 14px
 
-## Categories — needs your confirmation
+## Categories — edited in the admin
 
-The store has **63 flat `productType` values and no category collections**, so chips filter with a
+The store has flat `productType` values and no category collections, so chips filter with a
 Storefront query (`product_type:"Dining Tables" OR product_type:"Dining Chairs"`) rather than a
 collection lookup. Verified working against the live API, ampersands in type names included.
-Switching to real Shopify collections later means changing `lib/shopify/categories.ts` and nothing
-else.
 
-**Two things are unconfirmed:**
+**Since 2026-11-03 the list is edited under Content → Shop categories** — see
+[../modules/shop-categories.md](../modules/shop-categories.md). Until it is saved once, the Shop
+page draws `DEFAULT_CATEGORIES`, the original 11 groups below.
+
+Where the original list came from:
 
 1. **Some chip labels are unreadable in the PDF.** That row is set in a font whose embedded
    ToUnicode table is a 49-glyph subset covering only the header nav, so `d`, `c`, `h`, `m`, `u`
-   and `&` decode to nothing on that row specifically — the extracted text reads
-   `"ining tables a…irs"`. Confident: *dining tables & chairs*, *bar tables & chairs*,
-   *side tables*, *lamps*, *consoles*. Reconstructed: *office furniture*,
-   *dressers, cabinets & consoles*, and one chip at x=801 that decodes only as `"bes"`.
-2. **The grouping is mine.** The design's ~9 chips are furniture-led, but the catalogue is mostly
-   homeware — the design's chips alone would hide most of the 1,595 products. The 11 groups in
-   `categories.ts` cover the whole catalogue so nothing is unreachable.
+   and `&` decode to nothing on that row specifically. Confident: *dining tables & chairs*,
+   *bar tables & chairs*, *side tables*, *lamps*, *consoles*. The rest were reconstructed.
+2. **The grouping was mine.** The design's ~9 chips are furniture-led, but the catalogue is mostly
+   homeware — the design's chips alone would hide most of the products. The 11 groups cover every
+   type the store had then; a type added since shows up as a warning on the admin screen.
 
 ## URL state (`nuqs`)
 

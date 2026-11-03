@@ -4,6 +4,7 @@ import { Minus, Plus, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
+import { useSiteTexts } from "@/components/site-texts";
 import { ProductCardSkeleton } from "@/components/ui/skeleton";
 import { ButtonLink } from "@/components/ui/button";
 import { cdnImage } from "@/lib/shopify/transforms";
@@ -22,6 +23,7 @@ export function InquiryList() {
   const clear = useInquiryCart((state) => state.clear);
   const totalProducts = useInquiryCart(selectTotalProducts);
   const totalQuantity = useInquiryCart(selectTotalQuantity);
+  const texts = useSiteTexts();
 
   // The list lives in localStorage, so it is unknown until after rehydration.
   if (!hydrated) {
@@ -39,9 +41,9 @@ export function InquiryList() {
   if (items.length === 0) {
     return (
       <div className="border-t border-border py-16">
-        <p className="text-body text-muted">Your inquiry is empty.</p>
+        <p className="text-body text-muted">{texts["inquiry.empty"]}</p>
         <ButtonLink href="/shop" className="mt-4">
-          Browse products
+          {texts["inquiry.browse"]}
         </ButtonLink>
       </div>
     );
@@ -121,11 +123,11 @@ export function InquiryList() {
       <div className="mt-8 flex flex-wrap items-center justify-between gap-6">
         <dl className="text-secondary flex gap-8">
           <div className="flex gap-2">
-            <dt className="text-muted">Total products</dt>
+            <dt className="text-muted">{texts["inquiry.totalProducts"]}</dt>
             <dd className="tabular-nums">{totalProducts}</dd>
           </div>
           <div className="flex gap-2">
-            <dt className="text-muted">Total quantity</dt>
+            <dt className="text-muted">{texts["inquiry.totalQuantity"]}</dt>
             <dd className="tabular-nums">{totalQuantity}</dd>
           </div>
         </dl>
@@ -135,7 +137,7 @@ export function InquiryList() {
           onClick={clear}
           className="text-button sb-underline text-muted"
         >
-          Clear inquiry
+          {texts["inquiry.clear"]}
         </button>
       </div>
     </div>

@@ -248,6 +248,29 @@ async function main() {
     ],
   });
 
+  // Shop json documents (Shop categories, Site texts). The write names shop 0 again; the
+  // definition has a type that does not exist, so Shopify refuses it and creates nothing.
+  await run("shopCategories", {});
+  await run("siteTexts", {});
+  await run("productDetails", {});
+  await run("shopJsonSet", {
+    metafields: [
+      { ownerId: "gid://shopify/Shop/0", namespace: "custom", key: "site_texts", type: "json", value: "{}", compareDigest: null },
+    ],
+  });
+  await run("metafieldDefinitionCreate", {
+    definition: { name: "Check", namespace: "custom", key: "shop_json_check", type: "no_such_type", ownerType: "SHOP" },
+  });
+
+  // "Add a choice": definition id 0 is never issued, so nothing changes.
+  await run("metaobjectFieldChoicesUpdate", { id: "gid://shopify/MetaobjectDefinition/0", definition: { fieldDefinitions: [] } });
+
+  // Website → Redirects. A blank path is refused before anything is made; id 0 is never issued.
+  await run("urlRedirects", { after: null });
+  await run("urlRedirectsAt", { query: "path:'/redirect-check-none'" });
+  await run("urlRedirectCreate", { urlRedirect: { path: "", target: "" } });
+  await run("urlRedirectDelete", { id: "gid://shopify/UrlRedirect/0" });
+
   /**
    * The count is of what this run actually SENT, not of what the allowlist contains —
    * an operation nobody exercises here has not been checked, and saying otherwise would

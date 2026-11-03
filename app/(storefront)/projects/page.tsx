@@ -4,7 +4,7 @@ import { PageShell } from "@/components/layout/page-shell";
 import { ProjectCard } from "@/components/project/project-card";
 import { ProjectControls } from "@/components/project/project-controls";
 import { Container } from "@/components/ui/container";
-import { METAOBJECT_TYPES, getMetaobjects, getPage } from "@/lib/shopify";
+import { METAOBJECT_TYPES, getMetaobjects, getPage, getSiteTexts } from "@/lib/shopify";
 import { normalizeProjectCard, sortProjects } from "@/lib/shopify/entities";
 
 export const metadata: Metadata = {
@@ -19,9 +19,10 @@ export default async function ProjectsPage({ searchParams }: PageProps<"/project
   const category = typeof params.category === "string" ? params.category : undefined;
   const view = params.view === "l" ? "l" : "m";
 
-  const [page, intro] = await Promise.all([
+  const [page, intro, texts] = await Promise.all([
     getMetaobjects(METAOBJECT_TYPES.project, { first: 200 }),
     getPage("projects").catch(() => null),
+    getSiteTexts(),
   ]);
 
   const all = sortProjects(page.items.map(normalizeProjectCard));
@@ -38,7 +39,7 @@ export default async function ProjectsPage({ searchParams }: PageProps<"/project
     <PageShell surface="light">
       <Container className="pt-12 pb-section">
         <header className="max-w-[46rem]">
-          <h1 className="text-h1">Projects</h1>
+          <h1 className="text-h1">{texts["projects.title"]}</h1>
           {intro?.bodySummary && <p className="text-body mt-6">{intro.bodySummary}</p>}
         </header>
 

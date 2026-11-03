@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from "next";
 
 import { Providers } from "@/components/providers";
-import { getSiteIdentity } from "@/lib/shopify";
+import { SiteTextsProvider } from "@/components/site-texts";
+import { getSiteIdentity, getSiteTexts } from "@/lib/shopify";
 import { cdnImage } from "@/lib/shopify/transforms";
 
 /**
@@ -11,9 +12,17 @@ import { cdnImage } from "@/lib/shopify/transforms";
  * it up to the root would put both halves' client weight on every route.
  *
  * A route group is not a URL segment, so every storefront path is unchanged.
+ *
+ * The site's fixed texts (Settings → Site texts) are handed to Client Components from
+ * here; cached under `content`, so this costs nothing per page.
  */
-export default function StorefrontLayout({ children }: LayoutProps<"/">) {
-  return <Providers>{children}</Providers>;
+export default async function StorefrontLayout({ children }: LayoutProps<"/">) {
+  const texts = await getSiteTexts();
+  return (
+    <Providers>
+      <SiteTextsProvider texts={texts}>{children}</SiteTextsProvider>
+    </Providers>
+  );
 }
 
 /**

@@ -116,6 +116,8 @@ export type ShopifyProduct = ShopifyProductCard & {
   images: { nodes: ShopifyImage[] };
   options: { id: string; name: string; optionValues: { id: string; name: string }[] }[];
   variants: { nodes: ShopifyProductVariant[] };
+  /** Fields added under Content → Product details, beyond the fixed list. */
+  details?: Maybe<Metafield>[];
 };
 
 export type ShopifyCollection = {

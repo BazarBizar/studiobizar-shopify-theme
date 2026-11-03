@@ -435,3 +435,59 @@ export type EmailOperation =
 export async function emailRequest(input: EmailOperation): Promise<{ ok: true; id?: string | null }> {
   return post<{ ok: true; id?: string | null }>("/api/admin/email", input);
 }
+
+export type ShopCategoryPayload = { slug: string | null; label: string; types: string[] };
+
+export async function shopCategoriesRequest(input: {
+  digest: string | null;
+  categories: ShopCategoryPayload[];
+}): Promise<{ digest: string | null; categories: { slug: string; label: string; types: string[] }[]; savedAt: string }> {
+  return post("/api/admin/shop-categories", { operation: "shopCategoriesSave", ...input });
+}
+
+/** Settings → Site texts (`app/api/admin/site-texts/route.ts`). Only changed texts are sent. */
+export async function siteTextsRequest(input: {
+  digest: string | null;
+  texts: Record<string, string>;
+}): Promise<{ digest: string | null; changes: Record<string, string>; savedAt: string }> {
+  return post("/api/admin/site-texts", { operation: "siteTextsSave", ...input });
+}
+
+export type RedirectRow = {
+  id: string;
+  path: string;
+  target: string;
+  from: string;
+  to: string;
+  createdAt: string | null;
+};
+
+/** Website → Redirects (`app/api/admin/redirects/route.ts`). */
+export async function createRedirectRequest(input: { from: string; to: string }): Promise<RedirectRow> {
+  return post("/api/admin/redirects", { operation: "redirectCreate", ...input });
+}
+
+export async function deleteRedirectRequest(id: string): Promise<{ ok: true }> {
+  return post("/api/admin/redirects", { operation: "redirectDelete", id });
+}
+
+/** "Add a choice" on a field with a fixed list (`app/api/admin/metaobjects/choices/route.ts`). */
+export async function addChoiceRequest(input: { type: string; key: string; choice: string }): Promise<{ choices: string[] }> {
+  return post("/api/admin/metaobjects/choices", { operation: "choiceAdd", ...input });
+}
+
+export type ProductDetailRow = { key: string; label: string };
+export type ProductFieldOption = { key: string; name: string; type: string };
+
+/** Content → Product details (`app/api/admin/product-details/route.ts`). */
+export async function productDetailsRequest(input: {
+  digest: string | null;
+  rows: ProductDetailRow[];
+  panels: ProductDetailRow[];
+}): Promise<{ digest: string | null; savedAt: string }> {
+  return post("/api/admin/product-details", { operation: "productDetailsSave", ...input });
+}
+
+export async function productFieldRequest(input: { name: string; kind: "row" | "panel" }): Promise<ProductFieldOption> {
+  return post("/api/admin/product-details", { operation: "productFieldCreate", ...input });
+}

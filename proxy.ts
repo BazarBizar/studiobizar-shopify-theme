@@ -1,26 +1,29 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { STAFF_COOKIE, STAFF_LOGIN_PATH } from "@/lib/admin/cookie";
+import { findRedirect } from "@/lib/redirect-map";
+import { shopifyAddressRoute } from "@/lib/redirects";
 
 /**
  * In Next 16 this file is `proxy.ts` exporting `proxy` — `middleware.ts` /
  * `middleware()` is deprecated and renamed. See
  * `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md`.
  *
- * Two jobs, both scoped to the admin half of the app:
+ * Three jobs:
  *
  *  1. A strict, per-request, nonce-based CSP for `/admin/**` and `/staff/**`.
  *  2. An OPTIMISTIC auth gate for `/admin/**`.
+ *  3. On the storefront, REDIRECTS ONLY (`storefront()` below): the URL redirects
+ *     kept in Shopify (Website → Redirects), and Shopify's own addresses
+ *     (`/products/x` → `/shop/x`).
  *
- * WHY THE MATCHER EXCLUDES THE STOREFRONT. The storefront gets its security
- * headers statically from `next.config.ts` instead. Running this function on
- * public traffic would mint a nonce for every storefront request that will never
- * use one, and — because a nonce requires dynamic rendering — would risk pulling
- * prerendered pages into per-request rendering. The storefront carries no CSP
- * today; when one is added it belongs in the branch marked below, as its OWN
- * policy. It must never be done by loosening the admin policy to suit
- * analytics or chat widgets, which would give away the whole point of having a
- * strict one here.
+ * WHY THE STOREFRONT GETS NOTHING ELSE HERE. Its security headers come statically
+ * from `next.config.ts`. Minting a nonce for public traffic would — because a nonce
+ * requires dynamic rendering — risk pulling prerendered pages into per-request
+ * rendering; the storefront branch therefore never touches request or response
+ * headers, it either redirects or lets the request through untouched. A storefront
+ * CSP, if one is ever added here, must be its OWN policy — never the admin one
+ * loosened to suit analytics or chat widgets.
  */
 
 const isDevelopment = process.env.NODE_ENV === "development";
@@ -61,8 +64,37 @@ function adminCsp(nonce: string, { preview = false }: { preview?: boolean } = {}
   ].join("; ");
 }
 
-export function proxy(request: NextRequest) {
+/** The panel's paths; everything else the matcher sends here is the storefront. */
+const PANEL = /^\/(admin|staff|preview)(\/|$)/;
+
+/**
+ * A redirect, or straight through. Pages, not files: an address with an extension
+ * (`/brand/logo.svg`) and anything but GET/HEAD pass untouched. A redirect is 308 — the
+ * permanent kind, which tells Google to move the old address's ranking to the new one —
+ * and keeps the visitor's query string unless the destination has its own.
+ */
+async function storefront(request: NextRequest) {
+  const { pathname, search } = request.nextUrl;
+  if ((request.method !== "GET" && request.method !== "HEAD") || /\.[a-z0-9]+$/i.test(pathname)) {
+    return NextResponse.next();
+  }
+
+  const target = (await findRedirect(pathname)) ?? shopifyAddressRoute(pathname);
+  if (!target) return NextResponse.next();
+
+  const url = new URL(target, request.url);
+  if (!url.search && search) url.search = search;
+  // Never onto itself: a redirect whose destination is its own address would loop.
+  if (url.origin === request.nextUrl.origin && url.pathname.toLowerCase() === pathname.toLowerCase()) {
+    return NextResponse.next();
+  }
+  return NextResponse.redirect(url, 308);
+}
+
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  if (!PANEL.test(pathname)) return storefront(request);
+
   const isPreview = pathname.startsWith("/preview/");
   // The page builder's preview renders unpublished drafts — gated exactly like the panel.
   const isAdminPage = pathname === "/admin" || pathname.startsWith("/admin/") || isPreview;
@@ -86,8 +118,6 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(login);
   }
 
-  // The storefront branch would go here — its own policy, not a relaxed
-  // version of the admin one. Today the matcher below never sends it here.
   const nonce = crypto.randomUUID();
   const csp = adminCsp(nonce, { preview: isPreview });
 
@@ -131,5 +161,10 @@ export const config = {
         { type: "header", key: "purpose", value: "prefetch" },
       ],
     },
+    /**
+     * The storefront, for `storefront()` above: every page address, without Next's own
+     * files, the API (its routes are not pages) and the panel (the two entries above).
+     */
+    "/((?!api/|_next/|admin|staff|preview|favicon.ico|robots.txt|sitemap.xml).*)",
   ],
 };

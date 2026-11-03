@@ -2,6 +2,8 @@ import "server-only";
 
 import { shopifyFetch } from "./client";
 import {
+  METAFIELD_NAMESPACE,
+  PRODUCT_DETAIL_METAFIELDS,
   PRODUCTS_PER_PAGE,
   REVALIDATE,
   SITE_IDENTITY_HANDLE,
@@ -32,9 +34,15 @@ import {
   getPageQuery,
   getThemeLayoutQuery,
   getPagesQuery,
+  getShopCategoriesQuery,
+  getSiteTextsQuery,
+  getProductDetailsQuery,
   getShopQuery,
 } from "./queries/content";
 import { parseThemeLayout, type ThemeLayout } from "@/lib/theme-builder/layout";
+import { DEFAULT_CATEGORIES, parseShopCategories, type Category } from "./categories";
+import { DEFAULT_PRODUCT_DETAILS, parseProductDetails, type ProductDetails } from "./product-details";
+import { DEFAULT_SITE_TEXTS, parseSiteTexts, resolveSiteTexts, type SiteTexts } from "@/lib/site-texts";
 import { getMetaobjectQuery, getMetaobjectsQuery } from "./queries/metaobject";
 import {
   getProductQuery,
@@ -119,9 +127,13 @@ export async function countProducts(query: string): Promise<number> {
 }
 
 export async function getProduct(handle: string): Promise<Maybe<Product>> {
+  // The fields Content → Product details added beyond the fixed list ride along.
+  const details = await getProductDetails();
+  const fixed = new Set<string>(PRODUCT_DETAIL_METAFIELDS);
+  const extra = [...details.rows, ...details.panels].filter((detail) => !fixed.has(detail.key));
   const data = await shopifyFetch<{ product: Maybe<ShopifyProduct> }>({
     query: getProductQuery,
-    variables: { handle },
+    variables: { handle, details: extra.map((detail) => ({ namespace: METAFIELD_NAMESPACE, key: detail.key })) },
     tags: [TAGS.products],
     revalidate: REVALIDATE.products,
   });
@@ -415,6 +427,66 @@ export async function getThemeLayout(): Promise<ThemeLayout | null> {
   } catch {
     // The shell must render even when Shopify is unreachable.
     return null;
+  }
+}
+
+/**
+ * Shop All's category chips: the list saved in the admin, else the original one. A
+ * list that cannot be read falls back too, so the Shop page always has its chips.
+ */
+export async function getShopCategories(): Promise<readonly Category[]> {
+  try {
+    const data = await shopifyFetch<{ shop: { categories: Maybe<{ value: string }> } }>({
+      query: getShopCategoriesQuery,
+      tags: [TAGS.content],
+      revalidate: REVALIDATE.content,
+    });
+    const raw = data.shop.categories?.value;
+    const stored = parseShopCategories(raw);
+    if (raw && !stored) console.error("[shop-categories] the saved categories are not readable — showing the original ones.");
+    return stored?.categories ?? DEFAULT_CATEGORIES;
+  } catch {
+    return DEFAULT_CATEGORIES;
+  }
+}
+
+/**
+ * The site's fixed texts: the originals with whatever was changed under Settings →
+ * Site texts on top. Never throws — a page, a form or an email always has its words.
+ */
+export async function getSiteTexts(): Promise<SiteTexts> {
+  try {
+    const data = await shopifyFetch<{ shop: { texts: Maybe<{ value: string }> } }>({
+      query: getSiteTextsQuery,
+      tags: [TAGS.content],
+      revalidate: REVALIDATE.content,
+    });
+    const raw = data.shop.texts?.value;
+    const stored = parseSiteTexts(raw);
+    if (raw && !stored) console.error("[site-texts] the saved texts are not readable — showing the original ones.");
+    return resolveSiteTexts(stored);
+  } catch {
+    return DEFAULT_SITE_TEXTS;
+  }
+}
+
+/**
+ * Which fields the product page shows and under what labels: the list saved in the admin,
+ * else the page as it was built. Never throws.
+ */
+export async function getProductDetails(): Promise<ProductDetails> {
+  try {
+    const data = await shopifyFetch<{ shop: { details: Maybe<{ value: string }> } }>({
+      query: getProductDetailsQuery,
+      tags: [TAGS.content],
+      revalidate: REVALIDATE.content,
+    });
+    const raw = data.shop.details?.value;
+    const stored = parseProductDetails(raw);
+    if (raw && !stored) console.error("[product-details] the saved list is not readable — showing the original one.");
+    return stored ?? DEFAULT_PRODUCT_DETAILS;
+  } catch {
+    return DEFAULT_PRODUCT_DETAILS;
   }
 }
 

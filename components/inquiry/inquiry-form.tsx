@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { Honeypot } from "@/components/forms/honeypot";
+import { useSiteTexts } from "@/components/site-texts";
 import { HONEYPOT_FIELD, honeypotValue } from "@/lib/honeypot";
 import { inquiryContactSchema, type InquiryContact } from "@/lib/inquiry/schema";
 import { useInquiryCart } from "@/store/inquiry-cart";
@@ -47,6 +48,7 @@ export function InquiryForm() {
   const router = useRouter();
   const items = useInquiryCart((state) => state.items);
   const clear = useInquiryCart((state) => state.clear);
+  const texts = useSiteTexts();
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
@@ -68,17 +70,18 @@ export function InquiryForm() {
         body: JSON.stringify({ ...values, items, [HONEYPOT_FIELD]: honeypotValue(event?.target) }),
       });
 
-      const body = (await response.json()) as { inquiryId?: string; message?: string };
+      const body = (await response.json().catch(() => ({}))) as { inquiryId?: string };
       if (!response.ok || !body.inquiryId) {
-        throw new Error(body.message ?? "We could not send that. Please try again.");
+        throw new Error(response.status === 429 ? texts["form.tooMany"] : texts["form.sendFailed"]);
       }
 
       // Only clear once the inquiry is safely stored.
       clear();
       router.push(`/inquiry/success?id=${encodeURIComponent(body.inquiryId)}`);
     } catch (error) {
+      // A network failure throws a TypeError in the browser's own words — not for a visitor.
       setSubmitError(
-        error instanceof Error ? error.message : "We could not send that. Please try again.",
+        error instanceof Error && !(error instanceof TypeError) ? error.message : texts["form.sendFailed"],
       );
     }
   }
@@ -87,11 +90,11 @@ export function InquiryForm() {
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="relative flex flex-col gap-6">
       <Honeypot />
       <div className="grid gap-6 sm:grid-cols-2">
-        <Field id="name" label="Your name" error={errors.name?.message}>
+        <Field id="name" label="Your name" error={errors.name && texts["form.errorName"]}>
           <input
             id="name"
             {...register("name")}
-            placeholder="Name*"
+            placeholder={texts["inquiry.fieldName"]}
             autoComplete="name"
             aria-invalid={Boolean(errors.name)}
             aria-describedby={errors.name ? "name-error" : undefined}
@@ -103,18 +106,18 @@ export function InquiryForm() {
           <input
             id="company"
             {...register("company")}
-            placeholder="Company name"
+            placeholder={texts["inquiry.fieldCompany"]}
             autoComplete="organization"
             className={inputClass}
           />
         </Field>
 
-        <Field id="email" label="Email address" error={errors.email?.message}>
+        <Field id="email" label="Email address" error={errors.email && texts["form.errorEmail"]}>
           <input
             id="email"
             type="email"
             {...register("email")}
-            placeholder="Email*"
+            placeholder={texts["inquiry.fieldEmail"]}
             autoComplete="email"
             aria-invalid={Boolean(errors.email)}
             aria-describedby={errors.email ? "email-error" : undefined}
@@ -127,7 +130,7 @@ export function InquiryForm() {
             id="phone"
             type="tel"
             {...register("phone")}
-            placeholder="Phone"
+            placeholder={texts["inquiry.fieldPhone"]}
             autoComplete="tel"
             className={inputClass}
           />
@@ -139,15 +142,12 @@ export function InquiryForm() {
           id="message"
           {...register("message")}
           rows={6}
-          placeholder="Message"
+          placeholder={texts["inquiry.fieldMessage"]}
           className={cn(inputClass, "resize-y")}
         />
       </Field>
 
-      <p className="text-secondary text-muted">
-        Please include anything that can help us help you faster — a timeline, a budget, or the
-        project it is for.
-      </p>
+      <p className="text-secondary text-muted">{texts["inquiry.formHint"]}</p>
 
       {submitError && (
         <p role="alert" className="text-secondary text-deep-mocha">
@@ -160,7 +160,7 @@ export function InquiryForm() {
         disabled={isSubmitting || items.length === 0}
         className="text-button h-12 w-full max-w-[20rem] border border-foreground uppercase tracking-[0.08em] transition-colors hover:bg-foreground hover:text-background disabled:cursor-not-allowed disabled:opacity-40"
       >
-        {isSubmitting ? "Sending" : "Send inquiry"}
+        {isSubmitting ? texts["inquiry.sending"] : texts["inquiry.send"]}
       </button>
     </form>
   );

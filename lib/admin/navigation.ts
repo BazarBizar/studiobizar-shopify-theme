@@ -66,9 +66,9 @@ const MENU_GROUPS: readonly GroupKey[] = ["inbox", "settings", "other"];
  * Inbox: what asks for an answer first. Settings: the site before the panel.
  */
 const ORDER: Partial<Record<GroupKey, string[]>> = {
-  content: ["/admin/products", "/admin/collections", "/admin/designer", "/admin/project", "/admin/service", "/admin/faq_item"],
+  content: ["/admin/products", "/admin/collections", "/admin/shop-categories", "/admin/product-details", "/admin/designer", "/admin/project", "/admin/service", "/admin/faq_item"],
   inbox: ["/admin/inquiry", "/admin/contact_message", "/admin/newsletter_subscriber", "/admin/customers"],
-  settings: [SITE_WIDE_HREF, "/admin/email", "/admin/staff"],
+  settings: [SITE_WIDE_HREF, "/admin/site-texts", "/admin/email", "/admin/staff"],
 };
 
 /**
@@ -98,6 +98,10 @@ const RESERVED_SLUGS = new Set([
   "customers",
   "pages",
   "page-builder",
+  "shop-categories",
+  "site-texts",
+  "redirects",
+  "product-details",
   "menus",
   "media",
   "site-wide",
@@ -148,6 +152,16 @@ const BESPOKE: { group: GroupKey; item: NavItem }[] = [
     item: { href: "/admin/collections", label: "Collections", readOnly: false, type: null },
   },
   {
+    group: "content",
+    /** The chips above the products on the Shop page — see `lib/admin/shop-categories.ts`. */
+    item: { href: "/admin/shop-categories", label: "Shop categories", readOnly: false, type: null },
+  },
+  {
+    group: "content",
+    /** The rows and fold-out panels of every product page — see `lib/admin/product-details.ts`. */
+    item: { href: "/admin/product-details", label: "Product details", readOnly: false, type: null },
+  },
+  {
     group: "pages",
     /**
      * The ONE place a page is managed: each page opens on two tabs, Content (the
@@ -159,6 +173,11 @@ const BESPOKE: { group: GroupKey; item: NavItem }[] = [
     group: "pages",
     /** Next to Pages: the two together are what a visitor can reach and how. */
     item: { href: "/admin/menus", label: "Menus", readOnly: false, type: null },
+  },
+  {
+    group: "pages",
+    /** Old addresses that send visitors on to new ones — see `lib/admin/redirects.ts`. */
+    item: { href: "/admin/redirects", label: "Redirects", readOnly: false, type: null },
   },
   {
     group: "pages",
@@ -185,6 +204,11 @@ const BESPOKE: { group: GroupKey; item: NavItem }[] = [
       type: null,
       matches: SITE_WIDE_SECTIONS.map((section) => `/admin/${section.type}`),
     },
+  },
+  {
+    group: "settings",
+    /** The fixed wording of the site — headings, forms, emails; see `lib/site-texts.ts`. */
+    item: { href: "/admin/site-texts", label: "Site texts", readOnly: false, type: null },
   },
   {
     group: "settings",
@@ -243,7 +267,7 @@ export async function buildNavigation(): Promise<NavGroup[]> {
     const items = byGroup.get(key);
     if (!items?.length) continue;
 
-    // Website keeps the order its rows are declared in: Pages, Menus, Appearance, Media.
+    // Website keeps the order its rows are declared in: Pages, Menus, Redirects, Appearance, Media.
     // Others follow ORDER, then the alphabet, so the list is stable.
     const order = ORDER[key] ?? [];
     const rank = (item: NavItem) => (order.includes(item.href) ? order.indexOf(item.href) : order.length);

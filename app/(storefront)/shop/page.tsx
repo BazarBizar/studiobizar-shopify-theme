@@ -14,6 +14,8 @@ import {
   getListedCollections,
   getPage,
   getProducts,
+  getShopCategories,
+  getSiteTexts,
 } from "@/lib/shopify";
 import { categoryQuery, findCategory } from "@/lib/shopify/categories";
 import {
@@ -40,14 +42,18 @@ export default async function ShopPage({ searchParams }: PageProps<"/shop">) {
   // `view` decides which row of chips filters the grid, so only that view's
   // param counts — a stale ?category= left in a "by collection" URL is ignored.
   const byCollection = params.view === "collection";
-  // Awaited ahead of the rest because it validates ?collection=: an unknown
-  // handle falls back to "all", as an unknown ?category= does. Cached, so cheap.
+  // Awaited ahead of the rest because they validate ?collection= and ?category=: an
+  // unknown handle or chip falls back to "all". Both cached, so cheap.
   // A menu link's type, vendor or tag (see `lib/shopify/catalogue-filter.ts`) narrows
   // whatever else is chosen. A filtered collection may be one the chips do not list —
   // a menu can point at any collection — so only the handle's shape is checked then.
   const filter = readCatalogueFilter((key) => params[key]);
   const filtered = hasCatalogueFilter(filter);
-  const collections = await getListedCollections().catch(() => []);
+  const [collections, categories, texts] = await Promise.all([
+    getListedCollections().catch(() => []),
+    getShopCategories(),
+    getSiteTexts(),
+  ]);
   const requested = typeof params.collection === "string" ? params.collection : undefined;
   const collectionHandle = byCollection
     ? (collections.find((item) => item.handle === requested)?.handle ??
@@ -55,7 +61,7 @@ export default async function ShopPage({ searchParams }: PageProps<"/shop">) {
     : undefined;
   const categorySlug =
     !byCollection && typeof params.category === "string" ? params.category : undefined;
-  const category = findCategory(categorySlug);
+  const category = findCategory(categories, categorySlug);
   const query = combineQueries(categoryQuery(category), catalogueFilterQuery(filter));
   const filterLabel = catalogueFilterLabel(filter);
 
@@ -91,7 +97,7 @@ export default async function ShopPage({ searchParams }: PageProps<"/shop">) {
     <PageShell surface="light">
       <Container className="pt-12 pb-section">
         <header className="max-w-[46rem]">
-          <h1 className="text-h1">Products</h1>
+          <h1 className="text-h1">{texts["shop.title"]}</h1>
           {intro?.bodySummary && <p className="text-body mt-6">{intro.bodySummary}</p>}
           {filterLabel ? (
             <p className="text-secondary mt-6">
@@ -107,6 +113,7 @@ export default async function ShopPage({ searchParams }: PageProps<"/shop">) {
         <div className="mt-12">
           <ShopControls
             total={total ?? undefined}
+            categories={categories.map(({ slug, label }) => ({ slug, label }))}
             collections={collections.map(({ handle, title }) => ({ handle, title }))}
           />
         </div>

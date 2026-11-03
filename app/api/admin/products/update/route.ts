@@ -5,6 +5,7 @@ import { fail, failure, guard, readJson, validate } from "@/lib/admin/api";
 import { audit } from "@/lib/admin/audit";
 import { clearProductMetafields, updateProduct } from "@/lib/admin/products";
 import { revalidateForType } from "@/lib/admin/revalidate";
+import { releaseAddress } from "@/lib/admin/redirects";
 
 /** Room for the second cache drop `revalidateForType` schedules after responding. */
 export const maxDuration = 60;
@@ -111,6 +112,7 @@ export async function POST(request: Request) {
       ip,
     });
 
+    if (rest.handle !== undefined) await releaseAddress(`/shop/${updated.handle}`);
     await revalidateForType("product");
     return NextResponse.json(updated);
   } catch (error) {

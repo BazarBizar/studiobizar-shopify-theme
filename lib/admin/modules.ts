@@ -65,6 +65,13 @@ export type ModuleDef = {
    */
   editableFields?: string[];
   /**
+   * Fields with fixed choices (a `choices` validation) whose list an editor may GROW
+   * from the form — "Add a choice" writes it to the definition in Shopify. Opt-in per
+   * field: a status or a routing code is read by the code, and a choice nobody wrote
+   * code for would be stored and then ignored. See `lib/admin/choices.ts`.
+   */
+  addableChoices?: string[];
+  /**
    * "client" fetches the whole collection and sorts/filters in the browser. That
    * is correct ONLY because the entire set is in memory — a faceted filter over a
    * partial set silently omits matches.
@@ -145,6 +152,8 @@ export const MODULES: Record<string, ModuleDef> = {
     description: "Finished projects shown on the Projects page. Drag the rows to change their order.",
     columns: ["card_image", "title", "category", "location", "year", "is_selected", "sort_order"],
     facets: ["category", "is_selected"],
+    // The Projects page draws one chip per category in use, so a new one needs no code.
+    addableChoices: ["category"],
     neverColumn: ["body", "gallery", "related_projects", "featured_items", "subtitle"],
     searchFields: ["title", "location", "creative_lead"],
     orderField: "sort_order",

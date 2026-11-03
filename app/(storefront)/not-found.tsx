@@ -1,6 +1,7 @@
 import { PageShell } from "@/components/layout/page-shell";
 import { ButtonLink } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
+import { getSiteTexts } from "@/lib/shopify";
 
 export const metadata = {
   title: "Page not found",
@@ -19,22 +20,20 @@ export const metadata = {
  * Next's default page: unbranded, no header, no footer, and no way back into the
  * site.
  */
-export default function NotFound() {
+export default async function NotFound() {
+  const texts = await getSiteTexts();
   return (
     <PageShell surface="light">
       <Container className="py-section">
-        <h1 className="text-h1">We couldn&rsquo;t find that page</h1>
-        <p className="text-body mt-4 max-w-[36rem] text-muted">
-          The address may be mistyped, or the page may have been renamed since the
-          link was made.
-        </p>
+        <h1 className="text-h1">{texts["notFound.title"]}</h1>
+        <p className="text-body mt-4 max-w-[36rem] text-muted">{texts["notFound.body"]}</p>
 
         <div className="mt-8 flex flex-wrap gap-4">
           <ButtonLink href="/shop" variant="solid">
-            Browse all products
+            {texts["notFound.primary"]}
           </ButtonLink>
           <ButtonLink href="/" variant="outline">
-            Back to home
+            {texts["notFound.secondary"]}
           </ButtonLink>
         </div>
       </Container>

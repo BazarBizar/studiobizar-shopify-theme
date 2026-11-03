@@ -4,7 +4,7 @@ import Link from "next/link";
 import { PageShell } from "@/components/layout/page-shell";
 import { ProductGrid } from "@/components/shop/product-grid";
 import { Container } from "@/components/ui/container";
-import { PRODUCTS_PER_PAGE, searchProducts } from "@/lib/shopify";
+import { PRODUCTS_PER_PAGE, getSiteTexts, searchProducts } from "@/lib/shopify";
 
 export const metadata: Metadata = {
   title: "Search",
@@ -19,12 +19,15 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
   const { q } = await searchParams;
   const query = typeof q === "string" ? q.trim() : "";
 
-  const results = query ? await searchProducts({ query, first: PRODUCTS_PER_PAGE }) : null;
+  const [results, texts] = await Promise.all([
+    query ? searchProducts({ query, first: PRODUCTS_PER_PAGE }) : Promise.resolve(null),
+    getSiteTexts(),
+  ]);
 
   return (
     <PageShell surface="light">
       <Container className="py-section">
-        <h1 className="text-h1">Search</h1>
+        <h1 className="text-h1">{texts["search.title"]}</h1>
 
         <form action="/search" className="mt-8 max-w-[32rem]">
           <div className="flex items-center gap-4 border-b border-foreground pb-2">

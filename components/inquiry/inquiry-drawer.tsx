@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect } from "react";
 
+import { useSiteTexts } from "@/components/site-texts";
 import { cdnImage } from "@/lib/shopify/transforms";
 import { MAX_QTY, selectTotalQuantity, useInquiryCart } from "@/store/inquiry-cart";
 import { useUi } from "@/store/ui";
@@ -23,6 +24,7 @@ export function InquiryDrawer() {
   const updateQty = useInquiryCart((state) => state.updateQty);
   const remove = useInquiryCart((state) => state.remove);
   const totalQuantity = useInquiryCart(selectTotalQuantity);
+  const texts = useSiteTexts();
 
   useEffect(() => {
     if (!open) return;
@@ -60,7 +62,7 @@ export function InquiryDrawer() {
           <motion.aside
             role="dialog"
             aria-modal="true"
-            aria-label="Your inquiry"
+            aria-label={texts["inquiry.title"]}
             data-surface="light"
             className="absolute inset-y-0 right-0 flex w-[min(28rem,92vw)] flex-col bg-background text-foreground"
             initial={{ x: "100%" }}
@@ -70,7 +72,7 @@ export function InquiryDrawer() {
           >
             <header className="flex items-center justify-between border-b border-border px-gutter py-5">
               <h2 className="text-h3">
-                Your inquiry{hydrated && totalQuantity > 0 ? ` (${totalQuantity})` : ""}
+                {texts["inquiry.title"]}{hydrated && totalQuantity > 0 ? ` (${totalQuantity})` : ""}
               </h2>
               <button type="button" onClick={close} aria-label="Close inquiry">
                 <X className="size-5" strokeWidth={1.5} aria-hidden />
@@ -81,9 +83,9 @@ export function InquiryDrawer() {
               <div className="flex-1 px-gutter py-6" />
             ) : items.length === 0 ? (
               <div className="flex flex-1 flex-col items-start gap-4 px-gutter py-10">
-                <p className="text-body text-muted">Your inquiry is empty.</p>
+                <p className="text-body text-muted">{texts["inquiry.empty"]}</p>
                 <Link href="/shop" onClick={close} className="text-button sb-underline">
-                  Browse products
+                  {texts["inquiry.browse"]}
                 </Link>
               </div>
             ) : (
@@ -160,7 +162,7 @@ export function InquiryDrawer() {
                   onClick={close}
                   className="text-button flex h-12 items-center justify-center border border-foreground uppercase tracking-[0.08em] transition-colors hover:bg-foreground hover:text-background"
                 >
-                  Review &amp; send
+                  {texts["inquiry.reviewSend"]}
                 </Link>
               </footer>
             )}

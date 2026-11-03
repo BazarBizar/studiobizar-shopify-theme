@@ -175,7 +175,11 @@ export async function updatePage(id: string, fields: PageWrite) {
   const page: Record<string, unknown> = {};
 
   if (fields.title !== undefined) page.title = fields.title;
-  if (fields.handle !== undefined) page.handle = fields.handle;
+  if (fields.handle !== undefined) {
+    page.handle = fields.handle;
+    // Shopify adds a redirect from the old address, so links to it keep working.
+    page.redirectNewHandle = true;
+  }
   if (fields.body !== undefined) page.body = fields.body;
   if (fields.isPublished !== undefined) page.isPublished = fields.isPublished;
 

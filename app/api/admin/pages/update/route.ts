@@ -5,6 +5,8 @@ import { fail, failure, guard, readJson, validate } from "@/lib/admin/api";
 import { audit } from "@/lib/admin/audit";
 import { clearPageMetafields, updatePage } from "@/lib/admin/pages";
 import { revalidateForType } from "@/lib/admin/revalidate";
+import { releaseAddress } from "@/lib/admin/redirects";
+import { routeForPageHandle } from "@/lib/routes";
 import { BUILDER_METAFIELD_KEYS } from "@/lib/page-builder/document";
 import { isReservedHandle } from "@/lib/page-builder/handles";
 
@@ -114,6 +116,7 @@ export async function POST(request: Request) {
       ip,
     });
 
+    if (rest.handle !== undefined) await releaseAddress(routeForPageHandle(updated.handle));
     await revalidateForType("page");
     return NextResponse.json(updated);
   } catch (error) {

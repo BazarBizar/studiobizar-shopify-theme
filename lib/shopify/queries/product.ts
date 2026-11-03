@@ -27,9 +27,12 @@ export const getProductsQuery = withFragments(
 
 export const getProductQuery = withFragments(
   /* GraphQL */ `
-    query GetProduct($handle: String!) {
+    query GetProduct($handle: String!, $details: [HasMetafieldsIdentifier!]!) {
       product(handle: $handle) {
         ...ProductParts
+        details: metafields(identifiers: $details) {
+          ...MetafieldParts
+        }
       }
     }
   `,

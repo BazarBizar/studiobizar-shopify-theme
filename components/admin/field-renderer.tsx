@@ -1,8 +1,18 @@
 "use client";
 
+import { Loader2Icon, PlusIcon } from "lucide-react";
 import * as React from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/admin/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/admin/ui/dialog";
 import { Input } from "@/components/admin/ui/input";
 import {
   Select,
@@ -15,6 +25,7 @@ import { Switch } from "@/components/admin/ui/switch";
 import { Textarea } from "@/components/admin/ui/textarea";
 import { isTrue, parseList } from "@/lib/admin/field-values";
 import type { FieldSpec } from "@/lib/admin/form-fields";
+import { addChoiceRequest, RequestError } from "@/lib/admin/queries";
 
 import { CataloguePicker } from "./catalogue-picker";
 import { MediaField, MediaListField } from "./media/media-field";
@@ -41,6 +52,8 @@ type Props = {
 
 /** A sentinel, because a Radix SelectItem cannot have an empty string value. */
 const NONE = "__none__";
+/** The "Add a choice…" item at the bottom of a list that may grow. */
+const ADD = "__add__";
 
 /**
  * A list of plain text — one item per line.
@@ -222,29 +235,13 @@ export function FieldRenderer({ spec, value, onChange, invalid }: Props) {
 
   if (spec.choices.length > 0) {
     return (
-      <Select
-        value={value === "" ? NONE : value}
+      <ChoiceField
+        spec={spec}
+        value={value}
+        onChange={onChange}
         disabled={disabled}
-        onValueChange={(next) => onChange(next === NONE ? "" : next)}
-      >
-        <SelectTrigger id={spec.key} aria-invalid={invalid} className="w-full">
-          <SelectValue placeholder="Choose…" />
-        </SelectTrigger>
-        <SelectContent>
-          {/* A blank option only where the field allows one — offering it on a required
-              field invites a save Shopify will reject. */}
-          {!spec.required || !value ? (
-            <SelectItem value={NONE}>
-              <span className="text-muted-foreground">—</span>
-            </SelectItem>
-          ) : null}
-          {spec.choices.map((choice) => (
-            <SelectItem key={choice} value={choice}>
-              {spec.choiceLabels[choice] ?? choice}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+        invalid={invalid}
+      />
     );
   }
 
@@ -349,5 +346,137 @@ export function FieldRenderer({ spec, value, onChange, invalid }: Props) {
       aria-describedby={describedBy}
       onChange={(event) => onChange(event.target.value)}
     />
+  );
+}
+
+/**
+ * A fixed list of choices. Where the module opens the field (`addableChoices`), the last
+ * item is "Add a choice…": the new choice is written to the definition in Shopify and
+ * picked at once, so a new project category needs no developer.
+ */
+function ChoiceField({
+  spec,
+  value,
+  onChange,
+  disabled,
+  invalid,
+}: {
+  spec: FieldSpec;
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  invalid?: boolean;
+}) {
+  const [choices, setChoices] = React.useState(spec.choices);
+  const [adding, setAdding] = React.useState(false);
+  const [draft, setDraft] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const addTo = spec.addChoiceTo;
+
+  const save = async (event: React.FormEvent) => {
+    event.preventDefault();
+    // The dialog is portalled out of the DOM but not out of React: without this the
+    // submit would bubble on to the entry's own form and save the whole entry.
+    event.stopPropagation();
+    const choice = draft.trim();
+    if (!choice || !addTo) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const result = await addChoiceRequest({ type: addTo, key: spec.key, choice });
+      setChoices(result.choices);
+      onChange(result.choices.find((item) => item.toLowerCase() === choice.toLowerCase()) ?? choice);
+      setAdding(false);
+      setDraft("");
+      toast.success(`“${choice}” added to ${spec.name}`, { description: "It can now be chosen on every entry." });
+    } catch (caught) {
+      setError(caught instanceof RequestError || caught instanceof Error ? caught.message : "That did not work.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <Select
+        value={value === "" ? NONE : value}
+        disabled={disabled}
+        onValueChange={(next) => {
+          if (next === ADD) {
+            setAdding(true);
+            return;
+          }
+          onChange(next === NONE ? "" : next);
+        }}
+      >
+        <SelectTrigger id={spec.key} aria-invalid={invalid} className="w-full">
+          <SelectValue placeholder="Choose…" />
+        </SelectTrigger>
+        <SelectContent>
+          {/* A blank option only where the field allows one — offering it on a required
+              field invites a save Shopify will reject. */}
+          {!spec.required || !value ? (
+            <SelectItem value={NONE}>
+              <span className="text-muted-foreground">—</span>
+            </SelectItem>
+          ) : null}
+          {choices.map((choice) => (
+            <SelectItem key={choice} value={choice}>
+              {spec.choiceLabels[choice] ?? choice}
+            </SelectItem>
+          ))}
+          {addTo ? (
+            <SelectItem value={ADD}>
+              <span className="text-muted-foreground flex items-center gap-1.5">
+                <PlusIcon className="size-3.5" />
+                Add a choice…
+              </span>
+            </SelectItem>
+          ) : null}
+        </SelectContent>
+      </Select>
+
+      {addTo ? (
+        <Dialog open={adding} onOpenChange={(open) => !saving && setAdding(open)}>
+          <DialogContent className="sm:max-w-md">
+            <form onSubmit={save} className="space-y-4">
+              <DialogHeader>
+                <DialogTitle>Add a choice to {spec.name}</DialogTitle>
+                <DialogDescription>
+                  It is added to the list for every entry, and picked for this one.
+                </DialogDescription>
+              </DialogHeader>
+              <Input
+                autoFocus
+                value={draft}
+                maxLength={60}
+                placeholder={`e.g. ${choices[0] ?? "New choice"}`}
+                aria-label="New choice"
+                aria-invalid={Boolean(error) || undefined}
+                onChange={(event) => {
+                  setDraft(event.target.value);
+                  setError(null);
+                }}
+              />
+              {error && (
+                <p role="alert" className="text-destructive text-xs">
+                  {error}
+                </p>
+              )}
+              <DialogFooter>
+                <Button type="button" variant="outline" disabled={saving} onClick={() => setAdding(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={saving || !draft.trim()}>
+                  {saving ? <Loader2Icon className="animate-spin" /> : <PlusIcon />}
+                  {saving ? "Adding…" : "Add choice"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      ) : null}
+    </>
   );
 }

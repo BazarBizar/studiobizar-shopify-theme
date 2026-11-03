@@ -4,6 +4,7 @@ import { z } from "zod";
 import { fail, failure, guard, readJson, validate } from "@/lib/admin/api";
 import { audit } from "@/lib/admin/audit";
 import { BuilderError, createBuilderPage, duplicateBuilderPage } from "@/lib/admin/page-builder";
+import { releaseAddress } from "@/lib/admin/redirects";
 import { PageNotFoundError } from "@/lib/admin/pages";
 import { PAGE_TEMPLATE_IDS } from "@/lib/page-builder/templates";
 
@@ -59,6 +60,7 @@ export async function POST(request: Request) {
         ? await duplicateBuilderPage(input.duplicateOf, { title: input.title, handle: input.handle }, staff.email)
         : await createBuilderPage(input, staff.email);
     audit({ action: "page.create", actor: staff.email, outcome: "ok", type: "page", entryId: created.id, ip });
+    await releaseAddress(`/${created.handle}`);
     return NextResponse.json(created);
   } catch (error) {
     if (error instanceof PageNotFoundError) {

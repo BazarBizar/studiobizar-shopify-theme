@@ -200,6 +200,15 @@ function dropNow(type: string): string[] {
     revalidateTag(TAGS.content, "max");
     return [TAGS.content];
   }
+  /**
+   * Shop All's category chips and the site's fixed texts — shop metafields read under
+   * `content`. The texts are also in the inquiry emails, which read them fresh enough
+   * from the same cache.
+   */
+  if (type === "shop_categories" || type === "site_texts" || type === "product_details") {
+    revalidateTag(TAGS.content, "max");
+    return [TAGS.content];
+  }
   if (type === "page") {
     revalidateTag(TAGS.content, "max");
     revalidateTag(TAGS.metaobjects, "max");

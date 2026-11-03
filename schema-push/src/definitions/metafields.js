@@ -201,6 +201,27 @@ const shop = [
     pin: false,
     description: 'Header and footer, managed by the Theme Builder in the admin panel. Do not edit by hand.',
   },
+  /*
+   * Shop All's category chips (lib/shopify/categories.ts), edited under Products →
+   * Shop categories. The admin's first save creates this definition itself when it is
+   * missing; it is listed here so a fresh store gets it from one push too.
+   */
+  {
+    key: 'shop_categories',
+    name: 'Shop categories',
+    type: 'json',
+    pin: false,
+    description: 'The category chips on the Shop page, managed under Content → Shop categories in the admin panel. Do not edit by hand.',
+  },
+  /* The site's changed wording (lib/site-texts.ts), Settings → Site texts. Created by
+   * the admin's first save too. */
+  {
+    key: 'site_texts',
+    name: 'Site texts',
+    type: 'json',
+    pin: false,
+    description: 'Changed wording of the website, managed under Settings → Site texts in the admin panel. Do not edit by hand.',
+  },
 ];
 
 /**

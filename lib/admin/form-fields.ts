@@ -21,6 +21,8 @@ export type FieldSpec = {
   choices: string[];
   /** What to show for a stored choice, when it is a code like `product_inquiry`. */
   choiceLabels: Record<string, string>;
+  /** The metaobject type whose definition "Add a choice" grows, when this field allows it. */
+  addChoiceTo?: string | null;
   /** For metaobject references: the target definition's type. Resolved server-side. */
   targetType: string | null;
   /** For file references, narrowed from `file_type_options`. */

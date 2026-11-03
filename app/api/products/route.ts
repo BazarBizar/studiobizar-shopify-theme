@@ -11,6 +11,7 @@ import {
   PRODUCTS_PER_PAGE,
   getCollectionProducts,
   getProducts,
+  getShopCategories,
   searchProducts,
 } from "@/lib/shopify";
 
@@ -21,7 +22,7 @@ import {
  */
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
-  const category = findCategory(params.get("category"));
+  const category = findCategory(await getShopCategories(), params.get("category"));
   const filter = readCatalogueFilter((key) => params.get(key));
 
   const collection = params.get("collection");

@@ -76,6 +76,7 @@ export async function buildFieldSpecs(
       required: field.required,
       type: field.type,
       choices: choicesFrom(field.validations),
+      addChoiceTo: editable && moduleDef.addableChoices?.includes(field.key) ? definition.type : null,
       targetType: (() => {
         const definitionId = referenceDefinitionId(field.validations);
         if (!definitionId) return null;
