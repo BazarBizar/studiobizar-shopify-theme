@@ -7,6 +7,8 @@ import { sendEmail, type SendResult } from "@/lib/email/client";
 import { notificationRecipients } from "@/lib/email/notification-recipients";
 import { InquiryEmail, type InquiryEmailProps } from "@/lib/email/templates/inquiry-email";
 import { generateInquiryPdf } from "@/lib/pdf/inquiry-pdf";
+import { getSiteTexts } from "@/lib/shopify";
+import { fillText } from "@/lib/site-texts";
 import type { InquirySubmission } from "@/lib/inquiry/schema";
 
 /**
@@ -27,7 +29,12 @@ export async function sendInquiryEmails({
   customer: SendResult | { ok: false; skipped: false; error: string };
   internal: SendResult | { ok: false; skipped: false; error: string } | { skipped: "no-recipient" };
 }> {
+  // Never throws: without Shopify the emails go out with the original wording.
+  const texts = await getSiteTexts();
+  const fill = (text: string) => fillText(text, { name: submission.name, reference: inquiryId, brand: BRAND.name });
+
   const props: InquiryEmailProps = {
+    texts,
     inquiryId,
     submittedAt,
     name: submission.name,
@@ -74,7 +81,7 @@ export async function sendInquiryEmails({
   const [customer, internal] = await Promise.all([
     sendEmail({
       to: submission.email,
-      subject: `Your ${BRAND.name} inquiry — ${inquiryId}`,
+      subject: fill(texts["email.customerSubject"]),
       html: customerHtml,
       text: customerText,
       attachments,
@@ -87,7 +94,7 @@ export async function sendInquiryEmails({
     notify.to.length
       ? sendEmail({
           to: notify.to,
-          subject: `New inquiry ${inquiryId} — ${submission.name}`,
+          subject: fill(texts["email.teamSubject"]),
           html: internalHtml,
           text: internalText,
           attachments,

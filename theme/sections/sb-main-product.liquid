@@ -37,6 +37,13 @@
   assign designer = m.designer.value
 
   comment
+    Content → Product details (lib/shopify/product-details.ts): which fields the rows
+    and the fold-out panels show, in what order, under what label. Until that list is
+    saved it is blank and the fixed rows and panels below are drawn, as built.
+  endcomment
+  assign details = shop.metafields.custom.product_details.value
+
+  comment
     Liquid does not allow a filter on a `render` argument, so every label passed
     to a snippet below is resolved here first. `scripts/check-theme-refs.mjs`
     fails the build on the inline form.
@@ -117,6 +124,23 @@
 
         {% comment %} ── specs ─────────────────────────────────────────────── {% endcomment %}
         {%- capture specs -%}
+          {%- if details.rows -%}
+            {%- for row in details.rows -%}
+              {%- liquid
+                if row.key == 'availability'
+                  assign row_value = availability
+                else
+                  assign row_value = m[row.key].value
+                endif
+              -%}
+              {%- if row_value != blank -%}
+                <div class="grid grid-cols-[10rem_1fr] gap-4">
+                  <dt class="text-h4">{{ row.label }}</dt>
+                  <dd class="text-tertiary">{{ row_value }}</dd>
+                </div>
+              {%- endif -%}
+            {%- endfor -%}
+          {%- else -%}
           {%- if m.material_finish.value != blank -%}
             <div class="grid grid-cols-[10rem_1fr] gap-4">
               <dt class="text-h4">{{ 'product.spec.material_finish' | t }}</dt>
@@ -141,6 +165,7 @@
               <dd class="text-tertiary">{{ availability }}</dd>
             </div>
           {%- endif -%}
+          {%- endif -%}
         {%- endcapture -%}
 
         {%- if specs contains '<dt' -%}
@@ -157,6 +182,13 @@
 
         {% comment %} ── disclosure panels, in design order ────────────────── {% endcomment %}
         <div class="mt-12">
+          {%- if details.panels -%}
+            {%- for panel in details.panels -%}
+              {%- if m[panel.key].value != blank -%}
+                {%- render 'sb-accordion', title: panel.label, content: m[panel.key].value -%}
+              {%- endif -%}
+            {%- endfor -%}
+          {%- else -%}
           {%- if m.technical_specifications.value != blank -%}
             {%- render 'sb-accordion',
               title: t_panel_tech,
@@ -171,6 +203,7 @@
           {%- endif -%}
           {%- if m.shipping_delivery.value != blank -%}
             {%- render 'sb-accordion', title: t_panel_shipping, content: m.shipping_delivery.value -%}
+          {%- endif -%}
           {%- endif -%}
 
           {%- if m.downloads.value != blank -%}

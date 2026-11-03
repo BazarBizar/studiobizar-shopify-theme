@@ -87,6 +87,42 @@ export const getThemeLayoutQuery = /* GraphQL */ `
   }
 `;
 
+/**
+ * Shop All's category chips, as edited under Content → Shop categories. See
+ * `lib/shopify/categories.ts`; absent until the list has been saved once.
+ */
+export const getShopCategoriesQuery = /* GraphQL */ `
+  query GetShopCategories {
+    shop {
+      categories: metafield(namespace: "custom", key: "shop_categories") {
+        value
+      }
+    }
+  }
+`;
+
+/** The site's fixed texts as changed under Settings → Site texts — see `lib/site-texts.ts`. */
+export const getSiteTextsQuery = /* GraphQL */ `
+  query GetSiteTexts {
+    shop {
+      texts: metafield(namespace: "custom", key: "site_texts") {
+        value
+      }
+    }
+  }
+`;
+
+/** Which fields the product page shows — Content → Product details; see `lib/shopify/product-details.ts`. */
+export const getProductDetailsQuery = /* GraphQL */ `
+  query GetProductDetails {
+    shop {
+      details: metafield(namespace: "custom", key: "product_details") {
+        value
+      }
+    }
+  }
+`;
+
 export const getPageBuilderDocumentQuery = /* GraphQL */ `
   query GetPageBuilderDocument($handle: String!) {
     page(handle: $handle) {

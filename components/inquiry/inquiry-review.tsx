@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { InquiryForm } from "@/components/inquiry/inquiry-form";
 import { InquiryList } from "@/components/inquiry/inquiry-list";
+import { useSiteTexts } from "@/components/site-texts";
 import { useInquiryCart } from "@/store/inquiry-cart";
 
 /**
@@ -13,6 +14,7 @@ import { useInquiryCart } from "@/store/inquiry-cart";
 export function InquiryReview() {
   const items = useInquiryCart((state) => state.items);
   const hydrated = useInquiryCart((state) => state.hydrated);
+  const texts = useSiteTexts();
 
   return (
     <div className="mt-12 grid gap-16 lg:grid-cols-[1.2fr_1fr] lg:gap-20">
@@ -22,10 +24,8 @@ export function InquiryReview() {
 
       {hydrated && items.length > 0 ? (
         <div>
-          <h2 className="text-h2">Your details</h2>
-          <p className="text-secondary mt-2 text-muted">
-            So we know who to reply to. Fields marked * are required.
-          </p>
+          <h2 className="text-h2">{texts["inquiry.detailsTitle"]}</h2>
+          <p className="text-secondary mt-2 text-muted">{texts["inquiry.detailsIntro"]}</p>
           <div className="mt-8">
             <InquiryForm />
           </div>

@@ -14,10 +14,13 @@ import {
   getCollectionProducts,
   getProduct,
   getProductRecommendations,
+  getProductDetails,
   getProducts,
+  getSiteTexts,
 } from "@/lib/shopify";
 import { normalizeCaptionedImage } from "@/lib/shopify/entities";
 import {
+  metafieldHtml,
   metafieldImage,
   metafieldInt,
   metafieldMetaobjects,
@@ -28,23 +31,9 @@ import {
   fieldImage,
   fieldRichText,
 } from "@/lib/shopify/transforms";
+import { AVAILABILITY_KEY } from "@/lib/shopify/product-details";
 import type { MetafieldMap, Product } from "@/lib/shopify/types";
 
-/** The four rows above the buy controls. */
-const SPEC_ROWS = [
-  { key: "material_finish", label: "Material / Finish" },
-  { key: "colour", label: "Colour" },
-  { key: "upholstery", label: "Upholstery" },
-  { key: "availability", label: "Availability" },
-] as const;
-
-/** The five disclosure panels, in design order. */
-const PANELS = [
-  { key: "technical_specifications", label: "Technical Specifications" },
-  { key: "dimensions", label: "Dimensions" },
-  { key: "care_maintenance", label: "Care & Maintenance" },
-  { key: "shipping_delivery", label: "Shipping & Delivery" },
-] as const;
 
 function designerOf(metafields: MetafieldMap) {
   const reference = metafields.designer?.reference;
@@ -121,7 +110,7 @@ export default async function ProductPage({ params }: PageProps<"/shop/[handle]"
 
   // Shopify derives recommendations from order history, which this store has
   // none of, so fall back to the same product type.
-  const [collectionProducts, recommended] = await Promise.all([
+  const [collectionProducts, recommended, texts, details] = await Promise.all([
     collection
       ? getCollectionProducts({ handle: collection.handle, first: 4 }).then((page) => page.items)
       : Promise.resolve([]),
@@ -134,24 +123,28 @@ export default async function ProductPage({ params }: PageProps<"/shop/[handle]"
             ),
       )
       .catch(() => []),
+    getSiteTexts(),
+    getProductDetails(),
   ]);
 
   const leadTime = metafieldText(metafields, "lead_time_weeks");
 
   // Availability and lead time render as one row — "Made to order | Lead
   // time of 12–16 weeks" — rather than two separate lines.
-  const specs = SPEC_ROWS.map((row) => {
-    const value = metafieldText(metafields, row.key);
-    return {
-      label: row.label,
-      value: row.key === "availability" && value && leadTime ? `${value} | ${leadTime}` : value,
-    };
-  }).filter((row) => row.value);
+  // Rows and panels as listed under Content → Product details; an empty field is skipped.
+  const specs = details.rows
+    .map((row) => {
+      const value = metafieldText(metafields, row.key);
+      return {
+        label: row.label,
+        value: row.key === AVAILABILITY_KEY && value && leadTime ? `${value} | ${leadTime}` : value,
+      };
+    })
+    .filter((row) => row.value);
 
-  const panels = PANELS.map((panel) => ({
-    label: panel.label,
-    html: metafieldRichText(metafields, panel.key),
-  })).filter((panel) => panel.html);
+  const panels = details.panels
+    .map((panel) => ({ label: panel.label, html: metafieldHtml(metafields, panel.key) }))
+    .filter((panel) => panel.html);
 
   const ideaBody = metafieldRichText(metafields, "idea_body");
   const ideaImage = metafieldImage(metafields, "idea_image");
@@ -217,7 +210,7 @@ export default async function ProductPage({ params }: PageProps<"/shop/[handle]"
               </dl>
             )}
 
-            <p className="text-h4 mt-10 border-t border-border pt-10 italic">Price on request</p>
+            <p className="text-h4 mt-10 border-t border-border pt-10 italic">{texts["product.priceOnRequest"]}</p>
 
             <div className="mt-5">
               {variant ? (
@@ -244,7 +237,7 @@ export default async function ProductPage({ params }: PageProps<"/shop/[handle]"
                 ))}
 
                 {(metafields.downloads?.references?.nodes.length ?? 0) > 0 && (
-                  <Accordion title="Downloads">
+                  <Accordion title={texts["product.panelDownloads"]}>
                     <ul className="flex flex-col gap-2">
                       {metafields.downloads?.references?.nodes.map((node, index) => {
                         const file = node as { __typename: string; url?: string | null };
@@ -273,7 +266,7 @@ export default async function ProductPage({ params }: PageProps<"/shop/[handle]"
 
       {ideaBody && (
         <MediaText
-          title="The Idea"
+          title={texts["product.idea"]}
           html={ideaBody}
           image={ideaImage}
           align="left"
@@ -284,24 +277,24 @@ export default async function ProductPage({ params }: PageProps<"/shop/[handle]"
 
       {designer?.bio && (
         <MediaText
-          title="The Designer"
+          title={texts["product.designer"]}
           html={designer.bio}
           image={designer.portrait}
           align="right"
-          link={{ href: `/designers/${designer.handle}`, label: "learn more" }}
+          link={{ href: `/designers/${designer.handle}`, label: texts["product.designerLink"] }}
           padding="wide"
         />
       )}
 
       {collection && (
         <ProductRail
-          title="The Collection"
+          title={texts["product.collection"]}
           products={collectionProducts.filter((item) => item.handle !== product.handle)}
           viewAllHref={`/collections/${collection.handle}`}
         />
       )}
 
-      <ProductRail title="Discover More" products={recommended} viewAllHref="/shop" />
+      <ProductRail title={texts["product.discover"]} products={recommended} viewAllHref="/shop" />
     </PageShell>
   );
 }

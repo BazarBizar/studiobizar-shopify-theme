@@ -66,9 +66,9 @@ const MENU_GROUPS: readonly GroupKey[] = ["inbox", "settings", "other"];
  * Inbox: what asks for an answer first. Settings: the site before the panel.
  */
 const ORDER: Partial<Record<GroupKey, string[]>> = {
-  content: ["/admin/products", "/admin/collections", "/admin/designer", "/admin/project", "/admin/service", "/admin/faq_item"],
+  content: ["/admin/products", "/admin/collections", "/admin/shop-categories", "/admin/product-details", "/admin/designer", "/admin/project", "/admin/service", "/admin/faq_item"],
   inbox: ["/admin/inquiry", "/admin/contact_message", "/admin/newsletter_subscriber", "/admin/customers"],
-  settings: [SITE_WIDE_HREF, "/admin/email", "/admin/staff"],
+  settings: [SITE_WIDE_HREF, "/admin/site-texts", "/admin/email", "/admin/staff"],
 };
 
 /**
@@ -98,6 +98,9 @@ const RESERVED_SLUGS = new Set([
   "customers",
   "pages",
   "page-builder",
+  "shop-categories",
+  "site-texts",
+  "product-details",
   "menus",
   "media",
   "site-wide",
@@ -148,6 +151,16 @@ const BESPOKE: { group: GroupKey; item: NavItem }[] = [
     item: { href: "/admin/collections", label: "Collections", readOnly: false, type: null },
   },
   {
+    group: "content",
+    /** The chips above the products on the Shop page — see `lib/admin/shop-categories.ts`. */
+    item: { href: "/admin/shop-categories", label: "Shop categories", readOnly: false, type: null },
+  },
+  {
+    group: "content",
+    /** The rows and fold-out panels of every product page — see `lib/admin/product-details.ts`. */
+    item: { href: "/admin/product-details", label: "Product details", readOnly: false, type: null },
+  },
+  {
     group: "pages",
     /**
      * The ONE place a page is managed: each page opens on two tabs, Content (the
@@ -185,6 +198,11 @@ const BESPOKE: { group: GroupKey; item: NavItem }[] = [
       type: null,
       matches: SITE_WIDE_SECTIONS.map((section) => `/admin/${section.type}`),
     },
+  },
+  {
+    group: "settings",
+    /** The fixed wording of the site — headings, forms, emails; see `lib/site-texts.ts`. */
+    item: { href: "/admin/site-texts", label: "Site texts", readOnly: false, type: null },
   },
   {
     group: "settings",

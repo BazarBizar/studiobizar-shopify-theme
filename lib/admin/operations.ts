@@ -1719,6 +1719,125 @@ ${REFERENCE_PREVIEW}
       }
     `,
   },
+
+  /* ------------------------------------------------- shop json (categories, texts) */
+
+  /**
+   * Shop All's category chips (`lib/admin/shop-categories.ts`): the saved list with its
+   * digest, every product type in the store to choose from, and whether the metafield's
+   * definition exists yet — without one the Storefront API cannot read the list.
+   */
+  shopCategories: {
+    kind: "read",
+    document: `
+      query AdminShopCategories {
+        shop {
+          id
+          categories: metafield(namespace: "custom", key: "shop_categories") {
+            value
+            compareDigest
+          }
+        }
+        productTypes(first: 250) {
+          nodes
+        }
+        metafieldDefinitions(first: 1, ownerType: SHOP, namespace: "custom", key: "shop_categories") {
+          nodes {
+            id
+          }
+        }
+      }
+    `,
+  },
+
+  /** Settings → Site texts (`lib/admin/site-texts.ts`): the saved changes, as above. */
+  siteTexts: {
+    kind: "read",
+    document: `
+      query AdminSiteTexts {
+        shop {
+          id
+          texts: metafield(namespace: "custom", key: "site_texts") {
+            value
+            compareDigest
+          }
+        }
+        metafieldDefinitions(first: 1, ownerType: SHOP, namespace: "custom", key: "site_texts") {
+          nodes {
+            id
+          }
+        }
+      }
+    `,
+  },
+
+  /** Content → Product details (`lib/admin/product-details.ts`): the saved list, as above. */
+  productDetails: {
+    kind: "read",
+    document: `
+      query AdminProductDetails {
+        shop {
+          id
+          details: metafield(namespace: "custom", key: "product_details") {
+            value
+            compareDigest
+          }
+        }
+        metafieldDefinitions(first: 1, ownerType: SHOP, namespace: "custom", key: "product_details") {
+          nodes {
+            id
+          }
+        }
+      }
+    `,
+  },
+
+  /**
+   * Writes one of the json documents above (`lib/admin/shop-json.ts`). The server names
+   * the key; the digest makes it refuse to overwrite a save it did not see.
+   */
+  shopJsonSet: {
+    kind: "write",
+    document: `
+      mutation AdminShopJsonSet($metafields: [MetafieldsSetInput!]!) {
+        metafieldsSet(metafields: $metafields) {
+          metafields {
+            key
+            compareDigest
+          }
+          userErrors {
+            field
+            message
+            code
+          }
+        }
+      }
+    `,
+  },
+
+  /**
+   * A metafield definition, built on the server: a shop json document's on its first save
+   * (`shop-json.ts`), and a new product field from Content → Product details
+   * (`product-details.ts`). Either way nobody has to run a setup script, and the
+   * definition is what opens the value to the Storefront API (`PUBLIC_READ`).
+   */
+  metafieldDefinitionCreate: {
+    kind: "write",
+    document: `
+      mutation AdminMetafieldDefinitionCreate($definition: MetafieldDefinitionInput!) {
+        metafieldDefinitionCreate(definition: $definition) {
+          createdDefinition {
+            id
+          }
+          userErrors {
+            field
+            message
+            code
+          }
+        }
+      }
+    `,
+  },
 } as const satisfies Record<string, Operation>);
 
 export type OperationName = keyof typeof OPERATIONS;

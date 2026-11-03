@@ -13,7 +13,7 @@ import {
   getCollectionQuery,
   getCollectionsQuery,
 } from "../lib/shopify/queries/collection";
-import { getMenuQuery, getPageQuery, getShopQuery, getThemeLayoutQuery } from "../lib/shopify/queries/content";
+import { getMenuQuery, getPageQuery, getShopCategoriesQuery, getProductDetailsQuery, getShopQuery, getSiteTextsQuery, getThemeLayoutQuery } from "../lib/shopify/queries/content";
 import { getMetaobjectsQuery } from "../lib/shopify/queries/metaobject";
 import {
   getProductQuery,
@@ -73,7 +73,11 @@ async function main() {
     (products.data?.products as { nodes: { handle: string }[] } | undefined)?.nodes?.[0]?.handle ??
     "the-caviar-spoon-natural";
 
-  results.push((await run("getProduct", getProductQuery, { handle: firstHandle })).ok);
+  results.push((await run("getProduct", getProductQuery, { handle: firstHandle, details: [] })).ok);
+  // With a field added under Content → Product details riding along.
+  results.push(
+    (await run("getProduct (+details)", getProductQuery, { handle: firstHandle, details: [{ namespace: "custom", key: "colour" }] })).ok,
+  );
   results.push(
     (
       await run("getProductRecommendations", getProductRecommendationsQuery, {
@@ -96,6 +100,9 @@ async function main() {
   );
   results.push((await run("getMetaobjects", getMetaobjectsQuery, { type: "designer", first: 3 })).ok);
   results.push((await run("getThemeLayout", getThemeLayoutQuery)).ok);
+  results.push((await run("getShopCategories", getShopCategoriesQuery)).ok);
+  results.push((await run("getSiteTexts", getSiteTextsQuery)).ok);
+  results.push((await run("getProductDetails", getProductDetailsQuery)).ok);
   results.push((await run("getPage", getPageQuery, { handle: "our-story" })).ok);
   results.push((await run("getMenu", getMenuQuery, { handle: "desk-primary" })).ok);
   results.push((await run("getShop", getShopQuery)).ok);
@@ -107,7 +114,7 @@ async function main() {
   // The queries executing is only half of it — the normalisers have to survive
   // the real payload shape too.
   console.log("\n— normalisers —");
-  const raw = await run("getProduct (normalise)", getProductQuery, { handle: firstHandle });
+  const raw = await run("getProduct (normalise)", getProductQuery, { handle: firstHandle, details: [] });
   results.push(raw.ok);
 
   if (raw.data?.product) {

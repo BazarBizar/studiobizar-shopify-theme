@@ -13,6 +13,7 @@ import {
   getMetaobject,
   getMetaobjects,
   getProductsByIds,
+  getSiteTexts,
 } from "@/lib/shopify";
 import { normalizeProject, normalizeProjectCard, sortProjects } from "@/lib/shopify/entities";
 import { cdnImage } from "@/lib/shopify/transforms";
@@ -85,7 +86,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[hand
 
   const project = normalizeProject(entry);
 
-  const [featured, others] = await Promise.all([
+  const [featured, others, texts] = await Promise.all([
     getProductsByIds(project.featuredProductIds).catch((error: unknown) => {
       console.error(`[projects/${handle}] featured items failed`, error);
       return [];
@@ -101,6 +102,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[hand
               .slice(0, 3),
           )
           .catch(() => []),
+    getSiteTexts(),
   ]);
 
   const meta = [
@@ -158,11 +160,11 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[hand
         )}
       </Container>
 
-      {featured.length > 0 && <ProductRail title="Featured Items" products={featured} viewAllHref="/shop" />}
+      {featured.length > 0 && <ProductRail title={texts["project.featured"]} products={featured} viewAllHref="/shop" />}
 
       {others.length > 0 && (
         <Container className="pb-section">
-          <h2 className="text-h2 mb-8">Other Projects</h2>
+          <h2 className="text-h2 mb-8">{texts["project.others"]}</h2>
           <ul className="grid gap-grid-gap gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
             {others.map((other) => (
               <li key={other.handle}>

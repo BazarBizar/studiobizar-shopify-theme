@@ -300,6 +300,22 @@ export function richTextToHtml(value: Maybe<string> | undefined): string {
 export const metafieldRichText = (map: MetafieldMap, key: string): string =>
   richTextToHtml(map[key]?.value ?? null);
 
+/**
+ * A product field as a fold-out panel's HTML: formatted text as it was written, plain
+ * text (a multi-line field) as escaped paragraphs.
+ */
+export function metafieldHtml(map: MetafieldMap, key: string): string {
+  const field = map[key];
+  if (!field?.value) return "";
+  if (field.type === "rich_text_field") return richTextToHtml(field.value);
+  return field.value
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+    .map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, "<br>")}</p>`)
+    .join("");
+}
+
 export const fieldRichText = (map: MetaobjectFieldMap, key: string): string =>
   richTextToHtml(map[key]?.value ?? null);
 
@@ -326,7 +342,7 @@ export function normalizeProductCard(product: ShopifyProductCard): ProductCard {
 }
 
 export function normalizeProduct(product: ShopifyProduct): Product {
-  const metafields = toMetafieldMap(product.metafields);
+  const metafields = toMetafieldMap([...product.metafields, ...(product.details ?? [])]);
   return {
     ...normalizeProductCard(product),
     description: product.description,

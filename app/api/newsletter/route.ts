@@ -32,6 +32,8 @@ export async function POST(request: Request) {
   try {
     const result = await subscribeToNewsletter(email, source);
     return NextResponse.json({
+      // `result` lets the form say it in the words set under Site texts.
+      result,
       message: result === "again" ? "You are already on the list — thank you." : "Thanks — you are on the list.",
     });
   } catch (error) {

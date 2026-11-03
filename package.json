@@ -53,7 +53,10 @@
     "check:email-ui": "tsx --conditions=react-server scripts/check-email-ui.ts",
     "check:site-identity": "tsx --conditions=react-server scripts/check-site-identity.ts",
     "setup:site-identity": "node --env-file=.env scripts/add-site-identity.mjs",
-    "audit:page-builder": "tsx scripts/audit-page-builder.ts"
+    "audit:page-builder": "tsx scripts/audit-page-builder.ts",
+    "check:shop-categories": "tsx scripts/check-shop-categories.ts",
+    "check:site-texts": "tsx scripts/check-site-texts.ts",
+    "check:product-details": "tsx scripts/check-product-details.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

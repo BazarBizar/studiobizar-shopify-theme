@@ -3,6 +3,8 @@
 import { Minus, Plus, Share2 } from "lucide-react";
 import { useState } from "react";
 
+import { useSiteTexts } from "@/components/site-texts";
+import { fillText } from "@/lib/site-texts";
 import { MAX_QTY, useInquiryCart, type InquiryItem } from "@/store/inquiry-cart";
 
 /**
@@ -15,6 +17,7 @@ export function AddToInquiry({ item, moq = 1 }: { item: Omit<InquiryItem, "qty">
   const [added, setAdded] = useState(false);
   const [shared, setShared] = useState(false);
   const add = useInquiryCart((state) => state.add);
+  const texts = useSiteTexts();
 
   function onAdd() {
     add(item, qty);
@@ -84,7 +87,7 @@ export function AddToInquiry({ item, moq = 1 }: { item: Omit<InquiryItem, "qty">
           onClick={onAdd}
           className="text-button h-12 min-w-[16rem] flex-1 border border-foreground px-8 uppercase tracking-[0.08em] transition-colors hover:bg-foreground hover:text-background"
         >
-          enquire
+          {texts["product.enquire"]}
         </button>
 
         <button
@@ -99,11 +102,11 @@ export function AddToInquiry({ item, moq = 1 }: { item: Omit<InquiryItem, "qty">
 
       <p role="status" aria-live="polite" className="text-tertiary min-h-[1.2em] text-muted">
         {added
-          ? "Added to your inquiry."
+          ? texts["product.added"]
           : shared
-            ? "Link copied."
+            ? texts["product.linkCopied"]
             : moq > 1
-              ? `Minimum order ${moq} pieces.`
+              ? fillText(texts["product.minimumOrder"], { quantity: moq })
               : ""}
       </p>
     </div>

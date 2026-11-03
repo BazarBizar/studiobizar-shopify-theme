@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { CollectionGrid } from "@/components/collection/collection-grid";
 import { PageShell } from "@/components/layout/page-shell";
 import { Container } from "@/components/ui/container";
-import { getListedCollections, getPage } from "@/lib/shopify";
+import { getListedCollections, getPage, getSiteTexts } from "@/lib/shopify";
 
 export const metadata: Metadata = {
   title: "Collections",
@@ -13,16 +13,17 @@ export const metadata: Metadata = {
 };
 
 export default async function CollectionsPage() {
-  const [collections, intro] = await Promise.all([
+  const [collections, intro, texts] = await Promise.all([
     getListedCollections(),
     getPage("collections").catch(() => null),
+    getSiteTexts(),
   ]);
 
   return (
     <PageShell surface="light">
       <Container className="pt-12 pb-section">
         <header className="max-w-[46rem]">
-          <h1 className="text-h1">Collections</h1>
+          <h1 className="text-h1">{texts["collections.title"]}</h1>
           {intro?.bodySummary && <p className="text-body mt-6">{intro.bodySummary}</p>}
         </header>
 

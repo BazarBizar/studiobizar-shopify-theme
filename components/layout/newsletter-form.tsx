@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { Honeypot } from "@/components/forms/honeypot";
+import { useSiteTexts } from "@/components/site-texts";
 import { HONEYPOT_FIELD, honeypotValue } from "@/lib/honeypot";
 
 type Status = "idle" | "sending" | "done" | "error";
@@ -12,6 +13,7 @@ export function NewsletterForm({ inputId = "newsletter-email", className }: { in
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
+  const texts = useSiteTexts();
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -23,16 +25,21 @@ export function NewsletterForm({ inputId = "newsletter-email", className }: { in
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, [HONEYPOT_FIELD]: honeypotValue(event.currentTarget) }),
       });
-      const body = (await response.json()) as { message?: string };
+      const body = (await response.json().catch(() => ({}))) as { result?: string };
 
-      if (!response.ok) throw new Error(body.message ?? "That did not go through.");
+      if (!response.ok) {
+        throw new Error(
+          response.status === 400 ? texts["form.errorEmail"] : response.status === 429 ? texts["form.tooMany"] : texts["newsletter.failed"],
+        );
+      }
 
       setStatus("done");
-      setMessage(body.message ?? "You are on the list.");
+      setMessage(body.result === "again" ? texts["newsletter.again"] : texts["newsletter.thanks"]);
       setEmail("");
     } catch (error) {
       setStatus("error");
-      setMessage(error instanceof Error ? error.message : "That did not go through.");
+      // A network failure throws a TypeError in the browser's own words — not for a visitor.
+      setMessage(error instanceof Error && !(error instanceof TypeError) ? error.message : texts["newsletter.failed"]);
     }
   }
 
@@ -49,7 +56,7 @@ export function NewsletterForm({ inputId = "newsletter-email", className }: { in
           required
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          placeholder="Your email address"
+          placeholder={texts["newsletter.field"]}
           autoComplete="email"
           className="text-secondary w-full bg-transparent placeholder:text-current placeholder:opacity-70 focus:outline-none"
         />
@@ -58,7 +65,7 @@ export function NewsletterForm({ inputId = "newsletter-email", className }: { in
           disabled={status === "sending"}
           className="text-secondary shrink-0 transition-opacity hover:opacity-70 disabled:opacity-50"
         >
-          {status === "sending" ? "Sending" : "Submit"}
+          {status === "sending" ? texts["newsletter.sending"] : texts["newsletter.submit"]}
         </button>
       </div>
 

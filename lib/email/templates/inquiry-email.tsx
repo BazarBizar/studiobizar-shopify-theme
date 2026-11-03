@@ -13,6 +13,7 @@ import {
 } from "@react-email/components";
 
 import { BRAND } from "@/lib/brand";
+import { DEFAULT_SITE_TEXTS, fillText, type SiteTexts } from "@/lib/site-texts";
 
 /**
  * One layout, two audiences. Styling is inline and table-based because email
@@ -38,6 +39,8 @@ export type InquiryEmailProps = {
   items: InquiryEmailItem[];
   /** Internal copy adds the customer's details and drops the pleasantries. */
   audience: "customer" | "internal";
+  /** Headings and sentences from Settings → Site texts; the originals when absent. */
+  texts?: SiteTexts;
 };
 
 const styles = {
@@ -87,6 +90,7 @@ export function InquiryEmail({
   message,
   items,
   audience,
+  texts = DEFAULT_SITE_TEXTS,
 }: InquiryEmailProps) {
   const internal = audience === "internal";
   const totalQuantity = items.reduce((total, item) => total + item.qty, 0);
@@ -102,7 +106,7 @@ export function InquiryEmail({
       <Body style={styles.body}>
         <Container style={styles.container}>
           <Heading style={styles.heading}>
-            {internal ? "New product inquiry" : "Thank you — your inquiry is with us"}
+            {internal ? texts["email.teamHeading"] : texts["email.customerHeading"]}
           </Heading>
           <Text style={styles.tagline}>
             {BRAND.name} — {BRAND.tagline}
@@ -110,9 +114,7 @@ export function InquiryEmail({
 
           {!internal && (
             <Text style={styles.text}>
-              Hello {name}, thank you for your interest. Your inquiry is below and attached as a
-              PDF. We’ll come back to you by email, usually within two working days, with
-              availability, lead times and pricing.
+              {fillText(texts["email.customerIntro"], { name, reference: inquiryId, brand: BRAND.name })}
             </Text>
           )}
 
@@ -180,9 +182,7 @@ export function InquiryEmail({
 
           <Hr style={styles.hr} />
 
-          <Text style={styles.footer}>
-            This is an inquiry, not an order confirmation. Nothing has been charged.
-          </Text>
+          <Text style={styles.footer}>{texts["email.footer"]}</Text>
           <Text style={styles.footer}>{BRAND.url}</Text>
         </Container>
       </Body>

@@ -3,7 +3,6 @@
 import { parseAsString, parseAsStringLiteral, useQueryState, useQueryStates } from "nuqs";
 
 import { SIZES, sizeParser } from "@/components/shop/product-grid";
-import { CATEGORIES } from "@/lib/shopify/categories";
 import { DEFAULT_SORT, SORT_OPTIONS } from "@/lib/shopify/constants";
 import { cn } from "@/lib/utils/cn";
 
@@ -16,6 +15,8 @@ const SIZE_LABELS = {
 } as const;
 
 type CollectionChip = { handle: string; title: string };
+/** A category chip — the list edited under Content → Shop categories. */
+type CategoryChip = { slug: string; label: string };
 
 /**
  * "The Duna Collection" → "duna". The chip row already sits under
@@ -38,10 +39,12 @@ const chipLabel = (title: string) =>
  */
 export function ShopControls({
   total,
+  categories,
   collections,
 }: {
   /** Products under the active chip; absent when unfiltered or uncountable. */
   total?: number;
+  categories: CategoryChip[];
   collections: CollectionChip[];
 }) {
   // One hook for the three, so switching view clears the other view's filter in
@@ -57,7 +60,7 @@ export function ShopControls({
   const { view } = filters;
   // A value no chip owns (a stale or mistyped link) reads as "all", which is
   // also what the server rendered for it.
-  const category = CATEGORIES.some((item) => item.slug === filters.category)
+  const category = categories.some((item) => item.slug === filters.category)
     ? filters.category
     : null;
   const collection = collections.some((item) => item.handle === filters.collection)
@@ -98,7 +101,7 @@ export function ShopControls({
             <Chip active={!category} onClick={() => setFilters({ category: null })}>
               all
             </Chip>
-            {CATEGORIES.map((item) => (
+            {categories.map((item) => (
               <Chip
                 key={item.slug}
                 active={category === item.slug}

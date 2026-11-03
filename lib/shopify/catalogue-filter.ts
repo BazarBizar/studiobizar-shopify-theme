@@ -48,7 +48,7 @@ export function hasCatalogueFilter(filter: CatalogueFilter): boolean {
 }
 
 /** A value inside Storefront search syntax: quoted, with its own quotes and backslashes escaped. */
-const quoted = (value: string) => `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+export const quoted = (value: string) => `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 
 /** Storefront `products(query:)` syntax for the whole catalogue, or undefined for none. */
 export function catalogueFilterQuery(filter: CatalogueFilter): string | undefined {
