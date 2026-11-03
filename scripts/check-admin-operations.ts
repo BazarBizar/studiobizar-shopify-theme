@@ -262,6 +262,9 @@ async function main() {
     definition: { name: "Check", namespace: "custom", key: "shop_json_check", type: "no_such_type", ownerType: "SHOP" },
   });
 
+  // "Add a choice": definition id 0 is never issued, so nothing changes.
+  await run("metaobjectFieldChoicesUpdate", { id: "gid://shopify/MetaobjectDefinition/0", definition: { fieldDefinitions: [] } });
+
   // Website → Redirects. A blank path is refused before anything is made; id 0 is never issued.
   await run("urlRedirects", { after: null });
   await run("urlRedirectsAt", { query: "path:'/redirect-check-none'" });

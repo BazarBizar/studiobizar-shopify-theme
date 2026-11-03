@@ -471,6 +471,11 @@ export async function deleteRedirectRequest(id: string): Promise<{ ok: true }> {
   return post("/api/admin/redirects", { operation: "redirectDelete", id });
 }
 
+/** "Add a choice" on a field with a fixed list (`app/api/admin/metaobjects/choices/route.ts`). */
+export async function addChoiceRequest(input: { type: string; key: string; choice: string }): Promise<{ choices: string[] }> {
+  return post("/api/admin/metaobjects/choices", { operation: "choiceAdd", ...input });
+}
+
 export type ProductDetailRow = { key: string; label: string };
 export type ProductFieldOption = { key: string; name: string; type: string };
 

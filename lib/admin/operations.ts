@@ -1914,6 +1914,31 @@ ${REFERENCE_PREVIEW}
       }
     `,
   },
+
+  /* ------------------------------------------------------------- field choices */
+
+  /**
+   * Grows a field's fixed choices (`lib/admin/choices.ts`). The server builds the whole
+   * input — which definition, which field, the full list — the client names only the
+   * new choice, and only for a field `addableChoices` opens.
+   */
+  metaobjectFieldChoicesUpdate: {
+    kind: "write",
+    document: `
+      mutation AdminMetaobjectFieldChoicesUpdate($id: ID!, $definition: MetaobjectDefinitionUpdateInput!) {
+        metaobjectDefinitionUpdate(id: $id, definition: $definition) {
+          metaobjectDefinition {
+            id
+          }
+          userErrors {
+            field
+            message
+            code
+          }
+        }
+      }
+    `,
+  },
 } as const satisfies Record<string, Operation>);
 
 export type OperationName = keyof typeof OPERATIONS;

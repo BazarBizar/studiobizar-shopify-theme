@@ -47,9 +47,6 @@ export function normalizeCaptionedImage(entry: ShopifyMetaobject): CaptionedImag
  * Project
  * -------------------------------------------------------------------------- */
 
-export const PROJECT_CATEGORIES = ["Commercial", "Hospitality", "Residential"] as const;
-export type ProjectCategory = (typeof PROJECT_CATEGORIES)[number];
-
 export type ProjectCard = {
   handle: string;
   title: string;

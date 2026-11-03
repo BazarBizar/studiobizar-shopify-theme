@@ -2,7 +2,6 @@
 
 import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 
-import { PROJECT_CATEGORIES } from "@/lib/shopify/entities";
 import { cn } from "@/lib/utils/cn";
 
 const VIEWS = ["l", "m"] as const;
@@ -11,8 +10,13 @@ const VIEWS = ["l", "m"] as const;
  * Category chips and the L / M density toggle, both held in the URL so a
  * filtered view is shareable and the back button works — the brief's
  * requirement for this page specifically.
+ *
+ * One chip per category the projects actually use, A–Z — as the Liquid
+ * `sb-project-list` builds it — so a category added in the admin (Projects →
+ * Category → "Add a choice") appears with its first project, and none is ever empty.
  */
 export function ProjectControls({ counts }: { counts: Record<string, number> }) {
+  const categories = Object.keys(counts).sort((a, b) => a.localeCompare(b));
   const [category, setCategory] = useQueryState(
     "category",
     parseAsString.withOptions({ shallow: false, history: "push" }),
@@ -37,15 +41,14 @@ export function ProjectControls({ counts }: { counts: Record<string, number> }) 
             all <span className="text-muted tabular-nums">{total}</span>
           </button>
         </li>
-        {PROJECT_CATEGORIES.map((item) => (
+        {categories.map((item) => (
           <li key={item}>
             <button
               type="button"
               onClick={() => setCategory(item)}
               aria-pressed={category === item}
-              disabled={!counts[item]}
               className={cn(
-                "text-secondary sb-underline lowercase disabled:opacity-40",
+                "text-secondary sb-underline lowercase",
                 category === item && "font-medium",
               )}
             >
