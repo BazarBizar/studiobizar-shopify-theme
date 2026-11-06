@@ -490,13 +490,108 @@
     when 'portrait'
       assign css = css | append: '--sb-ratio:4 / 5;'
       assign attrs = attrs | append: ' data-sb-ratio'
+    when 'portrait_3_4'
+      assign css = css | append: '--sb-ratio:3 / 4;'
+      assign attrs = attrs | append: ' data-sb-ratio'
+    when 'portrait_2_3'
+      assign css = css | append: '--sb-ratio:2 / 3;'
+      assign attrs = attrs | append: ' data-sb-ratio'
+    when 'portrait_9_16'
+      assign css = css | append: '--sb-ratio:9 / 16;'
+      assign attrs = attrs | append: ' data-sb-ratio'
+    when 'landscape_5_4'
+      assign css = css | append: '--sb-ratio:5 / 4;'
+      assign attrs = attrs | append: ' data-sb-ratio'
+    when 'landscape_4_3'
+      assign css = css | append: '--sb-ratio:4 / 3;'
+      assign attrs = attrs | append: ' data-sb-ratio'
     when 'landscape'
       assign css = css | append: '--sb-ratio:3 / 2;'
       assign attrs = attrs | append: ' data-sb-ratio'
     when 'wide'
       assign css = css | append: '--sb-ratio:16 / 9;'
       assign attrs = attrs | append: ' data-sb-ratio'
+    when 'landscape_21_9'
+      assign css = css | append: '--sb-ratio:21 / 9;'
+      assign attrs = attrs | append: ' data-sb-ratio'
+    when 'own'
+      assign attrs = attrs | append: ' data-sb-own'
+    when 'custom'
+      assign kw = pre | append: 'img_ratio_w'
+      assign kh = pre | append: 'img_ratio_h'
+      assign rw = st[kw]
+      assign rh = st[kh]
+      if rw != blank and rh != blank and rw > 0 and rh > 0
+        assign rw = rw | at_least: 1 | at_most: 50 | round
+        assign rh = rh | at_least: 1 | at_most: 50 | round
+        assign css = css | append: '--sb-ratio:' | append: rw | append: ' / ' | append: rh | append: ';'
+        assign attrs = attrs | append: ' data-sb-ratio'
+      endif
   endcase
+
+
+
+  assign dev = ''
+  assign k = pre | append: 'img_width'
+  assign v = st[k]
+  if v != blank
+    assign v = v | at_least: 40 | at_most: 2400 | round
+    assign css = css | append: '--sb-imgw:' | append: v | append: 'px;'
+    assign dev = dev | append: ' d'
+  endif
+  assign k = pre | append: 'img_width_m'
+  assign v = st[k]
+  if v != blank
+    assign v = v | at_least: 40 | at_most: 2400 | round
+    assign css = css | append: '--sb-imgw-m:' | append: v | append: 'px;'
+    assign dev = dev | append: ' m'
+  endif
+  if dev != blank
+    assign dev = dev | strip
+    assign attrs = attrs | append: ' data-sb-imgw="' | append: dev | append: '"'
+  endif
+
+  assign dev = ''
+  assign k = pre | append: 'img_height'
+  assign v = st[k]
+  if v != blank
+    assign v = v | at_least: 40 | at_most: 2000 | round
+    assign css = css | append: '--sb-imgh:' | append: v | append: 'px;'
+    assign dev = dev | append: ' d'
+  endif
+  assign k = pre | append: 'img_height_m'
+  assign v = st[k]
+  if v != blank
+    assign v = v | at_least: 40 | at_most: 2000 | round
+    assign css = css | append: '--sb-imgh-m:' | append: v | append: 'px;'
+    assign dev = dev | append: ' m'
+  endif
+  if dev != blank
+    assign dev = dev | strip
+    assign attrs = attrs | append: ' data-sb-imgh="' | append: dev | append: '"'
+  endif
+
+  assign dev = ''
+  assign k = pre | append: 'img_fit'
+  assign v = st[k]
+  if v != blank and v != 'default'
+    assign css = css | append: '--sb-imgfit:' | append: v | append: ';'
+    assign dev = dev | append: ' d'
+  endif
+  if dev != blank
+    assign attrs = attrs | append: ' data-sb-imgfit'
+  endif
+
+  assign dev = ''
+  assign k = pre | append: 'img_focus'
+  assign v = st[k]
+  if v != blank and v != 'default'
+    assign css = css | append: '--sb-imgpos:' | append: v | append: ';'
+    assign dev = dev | append: ' d'
+  endif
+  if dev != blank
+    assign attrs = attrs | append: ' data-sb-imgpos'
+  endif
 
   assign dev = ''
   assign k = pre | append: 'img_radius'

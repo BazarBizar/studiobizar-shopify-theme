@@ -8,6 +8,8 @@ import {
   parseThemeLayout,
   sameThemeContent,
   THEME_LAYOUT_VERSION,
+  themePublishProblems,
+  type AreaProblem,
   type ThemeLayout,
   type ThemeLayoutContent,
 } from "@/lib/theme-builder/layout";
@@ -40,10 +42,13 @@ export type ThemeErrorCode = "CONFLICT" | "TOO_LARGE" | "NOT_READY";
 
 export class ThemeBuilderError extends Error {
   readonly code: ThemeErrorCode;
-  constructor(code: ThemeErrorCode, message: string) {
+  /** NOT_READY on publish: the sections still missing content. */
+  readonly problems: AreaProblem[];
+  constructor(code: ThemeErrorCode, message: string, problems: AreaProblem[] = []) {
     super(message);
     this.name = "ThemeBuilderError";
     this.code = code;
+    this.problems = problems;
   }
 }
 
@@ -136,10 +141,15 @@ export async function saveThemeDraft(content: ThemeLayoutContent, baseRevision: 
   return { revision: next.meta.revision, savedAt: next.meta.savedAt };
 }
 
-/** The draft goes live; what it replaces is kept for rollback. */
+/**
+ * The draft goes live; what it replaces is kept for rollback. A visible section under
+ * the header or in the footer with required content left empty stops it, as on a page.
+ */
 export async function publishTheme(baseRevision: number, actor: string) {
   const state = await getThemeState();
   assertRevision(state, baseRevision);
+  const problems = themePublishProblems(state.draft);
+  if (problems.length) throw new ThemeBuilderError("NOT_READY", "Some sections still need content.", problems);
   const at = now();
   const live: ThemeLayout = { ...state.draft, meta: { ...state.draft.meta, publishedAt: at, publishedBy: actor } };
   const draft: ThemeLayout = { ...live, meta: { ...live.meta, revision: baseRevision + 1 } };

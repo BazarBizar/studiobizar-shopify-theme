@@ -45,6 +45,7 @@ export function Collage({
         <Picture
           image={item.image}
           ratio={large ? "portrait" : "landscape"}
+          followCrop={!fill}
           placeholder={placeholder}
           sizes={large ? "(max-width: 749px) 100vw, 50vw" : "(max-width: 749px) 100vw, 25vw"}
           className={cn(

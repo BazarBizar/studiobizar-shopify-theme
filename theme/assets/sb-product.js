@@ -100,7 +100,7 @@
         if (navigator.share) {
           try {
             await navigator.share({ title: document.title, url: url });
-          } catch (error) {
+          } catch {
             // The visitor dismissed the share sheet. Not a failure.
           }
           return;
@@ -115,7 +115,7 @@
               note.hidden = true;
             }, 2400);
           }
-        } catch (error) {
+        } catch {
           // No clipboard permission — the URL is in the address bar regardless.
         }
       });

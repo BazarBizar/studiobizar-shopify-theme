@@ -27,11 +27,18 @@ async function menuOrFallback(handle: string, fallback: MenuLink[]): Promise<Men
  * wood, mocha and off-black — so it paints no background of its own and takes
  * its colour from the surrounding `data-surface`.
  */
-export async function Header({ theme }: { theme?: ThemeLayoutContent | null } = {}) {
+export async function Header({
+  theme,
+  preview = false,
+}: {
+  theme?: ThemeLayoutContent | null;
+  /** The Theme Builder's preview — its sections may draw placeholders. */
+  preview?: boolean;
+} = {}) {
   // The Theme Builder's header once one is published (or the draft, in its preview);
   // until then, the original below.
   const layout = theme === undefined ? await getThemeLayout() : theme;
-  if (layout) return <ThemeHeader content={layout} />;
+  if (layout) return <ThemeHeader content={layout} preview={preview} />;
 
   const [primary, secondary] = await Promise.all([
     menuOrFallback(MENUS.primary, FALLBACK_NAV.primary),

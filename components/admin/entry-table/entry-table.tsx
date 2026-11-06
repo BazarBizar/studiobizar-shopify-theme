@@ -137,6 +137,7 @@ export function EntryTable({
     [fields, type, readOnly, linkKey, typeLabel, deletable, orderField],
   );
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table: the compiler leaves this component as it is, which is fine
   const table = useReactTable({
     data,
     columns,

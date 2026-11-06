@@ -1,5 +1,7 @@
+import { duplicateSection, type SectionInstance } from "@/lib/page-builder/document";
 import {
   createElement,
+  MAX_AREA_SECTIONS,
   MAX_ELEMENTS_PER_ZONE,
   MAX_FOOTER_COLUMNS,
   ZONES,
@@ -142,4 +144,73 @@ export function placeElement(content: ThemeLayoutContent, id: string, to: Locati
   const list = [...listAt(without, to)];
   list.splice(Math.max(0, Math.min(index, list.length)), 0, found.element);
   return withList(without, to, list);
+}
+
+/* -------------------------------------------------------------------------- *
+ * Sections — page builder sections under the header and in the footer
+ * -------------------------------------------------------------------------- */
+
+export type Area = "header" | "footer";
+
+export const sectionsOf = (content: ThemeLayoutContent, area: Area): SectionInstance[] => content[area].sections;
+
+function withSections(content: ThemeLayoutContent, area: Area, sections: SectionInstance[]): ThemeLayoutContent {
+  return area === "header"
+    ? { ...content, header: { ...content.header, sections } }
+    : { ...content, footer: { ...content.footer, sections } };
+}
+
+export function locateSection(content: ThemeLayoutContent, id: string): { area: Area; index: number; section: SectionInstance } | null {
+  for (const area of ["header", "footer"] as const) {
+    const index = sectionsOf(content, area).findIndex((section) => section.id === id);
+    if (index >= 0) return { area, index, section: sectionsOf(content, area)[index]! };
+  }
+  return null;
+}
+
+/** At the end of the area — or after `after`, when that section is in it. Null when the area is full. */
+export function insertSection(content: ThemeLayoutContent, area: Area, section: SectionInstance, after: string | null = null) {
+  const list = [...sectionsOf(content, area)];
+  if (list.length >= MAX_AREA_SECTIONS) return null;
+  const at = list.findIndex((item) => item.id === after);
+  list.splice(at >= 0 ? at + 1 : list.length, 0, section);
+  return withSections(content, area, list);
+}
+
+/** The section changed by `change`, wherever it is. */
+export function updateSection(content: ThemeLayoutContent, id: string, change: (section: SectionInstance) => SectionInstance) {
+  const found = locateSection(content, id);
+  if (!found) return content;
+  const list = [...sectionsOf(content, found.area)];
+  list[found.index] = change(found.section);
+  return withSections(content, found.area, list);
+}
+
+export function setSectionSetting(content: ThemeLayoutContent, id: string, key: string, value: unknown) {
+  return updateSection(content, id, (section) => ({ ...section, settings: { ...section.settings, [key]: value } }) as SectionInstance);
+}
+
+export function removeSection(content: ThemeLayoutContent, id: string) {
+  const found = locateSection(content, id);
+  if (!found) return content;
+  return withSections(content, found.area, sectionsOf(content, found.area).filter((section) => section.id !== id));
+}
+
+/** The copy straight after the original; null when the area is full. */
+export function duplicateAreaSection(content: ThemeLayoutContent, id: string): { content: ThemeLayoutContent; id: string } | null {
+  const found = locateSection(content, id);
+  if (!found) return null;
+  const copy = duplicateSection(found.section);
+  const next = insertSection(content, found.area, copy, id);
+  return next ? { content: next, id: copy.id } : null;
+}
+
+export function shiftSection(content: ThemeLayoutContent, id: string, delta: -1 | 1) {
+  const found = locateSection(content, id);
+  if (!found) return content;
+  const list = [...sectionsOf(content, found.area)];
+  const target = found.index + delta;
+  if (target < 0 || target >= list.length) return content;
+  [list[found.index], list[target]] = [list[target]!, list[found.index]!];
+  return withSections(content, found.area, list);
 }

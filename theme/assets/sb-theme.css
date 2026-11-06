@@ -2211,6 +2211,9 @@
 [data-sb-minh~="d"] {
   min-height: var(--sb-minh);
 }
+[data-sb-minh~="d"] [data-sb-fill-height] {
+  min-height: var(--sb-minh);
+}
 [data-sb-valign] {
   display: flex;
   flex-direction: column;
@@ -2234,7 +2237,24 @@
   height: auto;
 }
 [data-sb-ratio] :has(> img:is([data-nimg="fill"], .absolute), > picture > img:is([data-nimg="fill"], .absolute)):not([data-section-id], section) {
-  aspect-ratio: var(--sb-ratio);
+  aspect-ratio: var(--sb-ratio) !important;
+  height: auto;
+}
+[data-sb-own]:not([data-sb-imgh]) :has(> img:is([data-nimg="fill"], .absolute), > picture > img:is([data-nimg="fill"], .absolute)):not([data-section-id], section)[style*="--sb-photo-ratio"] {
+  aspect-ratio: var(--sb-photo-ratio) !important;
+  height: auto !important;
+}
+[data-sb-own]:not([data-sb-imgh]) :has(> img:is([data-nimg="fill"], .absolute), > picture > img:is([data-nimg="fill"], .absolute)):not([data-section-id], section):not([style*="--sb-photo-ratio"]) {
+  aspect-ratio: auto !important;
+  height: auto !important;
+}
+[data-sb-own]:not([data-sb-imgh]) :not([style*="--sb-photo-ratio"]) > img:is([data-nimg="fill"], .absolute):first-of-type, [data-sb-own]:not([data-sb-imgh]) :not([style*="--sb-photo-ratio"]) > picture > img:is([data-nimg="fill"], .absolute) {
+  position: static !important;
+  width: 100% !important;
+  height: auto !important;
+}
+[data-sb-own]:not([data-sb-imgh]) img:not([data-nimg="fill"], .absolute) {
+  aspect-ratio: auto;
   height: auto;
 }
 [data-sb-imgr] img {
@@ -2252,6 +2272,24 @@
 }
 [data-sb-zoom] :has(> img, > picture > img):hover img {
   transform: scale(1.05);
+}
+[data-sb-imgw~="d"] img:not([data-nimg="fill"], .absolute), [data-sb-imgw~="d"] :has(> img:is([data-nimg="fill"], .absolute), > picture > img:is([data-nimg="fill"], .absolute)):not([data-section-id], section) {
+  width: min(100%, var(--sb-imgw));
+}
+[data-sb-imgh~="d"] img:not([data-nimg="fill"], .absolute) {
+  height: var(--sb-imgh);
+  aspect-ratio: auto;
+  object-fit: cover;
+}
+[data-sb-imgh~="d"] :has(> img:is([data-nimg="fill"], .absolute), > picture > img:is([data-nimg="fill"], .absolute)):not([data-section-id], section) {
+  height: var(--sb-imgh);
+  aspect-ratio: auto !important;
+}
+[data-sb-imgfit][data-sb-imgfit][data-sb-imgfit] img {
+  object-fit: var(--sb-imgfit);
+}
+[data-sb-imgpos][data-sb-imgpos] img {
+  object-position: var(--sb-imgpos);
 }
 @media (prefers-reduced-motion: reduce) {
   [data-sb-zoom] :has(> img, > picture > img):hover img {
@@ -2341,8 +2379,23 @@
   [data-sb-minh~="t"] {
     min-height: var(--sb-minh-t);
   }
+  [data-sb-minh~="t"] [data-sb-fill-height] {
+    min-height: var(--sb-minh-t);
+  }
   [data-sb-rad~="t"] {
     --sb-rad: var(--sb-rad-t);
+  }
+  [data-sb-imgw~="t"] img:not([data-nimg="fill"], .absolute), [data-sb-imgw~="t"] :has(> img:is([data-nimg="fill"], .absolute), > picture > img:is([data-nimg="fill"], .absolute)):not([data-section-id], section) {
+    width: min(100%, var(--sb-imgw-t));
+  }
+  [data-sb-imgh~="t"] img:not([data-nimg="fill"], .absolute) {
+    height: var(--sb-imgh-t);
+    aspect-ratio: auto;
+    object-fit: cover;
+  }
+  [data-sb-imgh~="t"] :has(> img:is([data-nimg="fill"], .absolute), > picture > img:is([data-nimg="fill"], .absolute)):not([data-section-id], section) {
+    height: var(--sb-imgh-t);
+    aspect-ratio: auto !important;
   }
   [data-sb-pad][data-sb-space-t] {
     margin-top: var(--sb-mt-t, var(--sb-mt, 0px));
@@ -2439,8 +2492,23 @@
   [data-sb-minh~="m"] {
     min-height: var(--sb-minh-m);
   }
+  [data-sb-minh~="m"] [data-sb-fill-height] {
+    min-height: var(--sb-minh-m);
+  }
   [data-sb-rad~="m"] {
     --sb-rad: var(--sb-rad-m);
+  }
+  [data-sb-imgw~="m"] img:not([data-nimg="fill"], .absolute), [data-sb-imgw~="m"] :has(> img:is([data-nimg="fill"], .absolute), > picture > img:is([data-nimg="fill"], .absolute)):not([data-section-id], section) {
+    width: min(100%, var(--sb-imgw-m));
+  }
+  [data-sb-imgh~="m"] img:not([data-nimg="fill"], .absolute) {
+    height: var(--sb-imgh-m);
+    aspect-ratio: auto;
+    object-fit: cover;
+  }
+  [data-sb-imgh~="m"] :has(> img:is([data-nimg="fill"], .absolute), > picture > img:is([data-nimg="fill"], .absolute)):not([data-section-id], section) {
+    height: var(--sb-imgh-m);
+    aspect-ratio: auto !important;
   }
   [data-sb-bg-m] {
     background-image: var(--sb-bg-m);

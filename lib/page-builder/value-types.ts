@@ -14,6 +14,15 @@ export type ImageRef = {
   altText: string | null;
   width: number | null;
   height: number | null;
+  /**
+   * The part of the photograph to show, in the ORIGINAL's pixels — cut by the Shopify
+   * CDN (`crop=region`), so the visitor downloads only that part and every component
+   * sees a photograph of that size and shape. Absent: the whole photograph.
+   * Next only: the theme's image picker has no crop.
+   */
+  crop?: ImageCrop;
 };
+
+export type ImageCrop = { x: number; y: number; width: number; height: number };
 
 export const HEX_COLOR = /^#[0-9a-f]{6}$/i;

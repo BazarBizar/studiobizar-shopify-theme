@@ -2,8 +2,15 @@ import { z } from "zod";
 
 import {
   ALIGNMENTS,
+  CUSTOM_RATIO,
   FONTS,
+  IMAGE_FOCUS,
   IMAGE_RATIOS,
+  MAX_CUSTOM_RATIO,
+  MAX_IMAGE_HEIGHT,
+  MAX_IMAGE_WIDTH,
+  MIN_IMAGE_SIZE,
+  OWN_RATIO,
   SHADOWS,
   TEXT_TRANSFORMS,
   type DesignValue,
@@ -90,7 +97,14 @@ export const designSchema = z.strictObject({
   radius: z.strictObject({ t: z.number().int().min(0).max(200).optional(), m: z.number().int().min(0).max(200).optional() }).optional(),
   images: z
     .strictObject({
-      ratio: z.enum(Object.keys(IMAGE_RATIOS) as [ImageRatio, ...ImageRatio[]]).optional(),
+      ratio: z.enum([...(Object.keys(IMAGE_RATIOS) as ImageRatio[]), CUSTOM_RATIO, OWN_RATIO] as unknown as [string, ...string[]]).optional(),
+      custom: z
+        .strictObject({ w: z.number().int().min(1).max(MAX_CUSTOM_RATIO), h: z.number().int().min(1).max(MAX_CUSTOM_RATIO) })
+        .optional(),
+      width: responsive(z.number().int().min(MIN_IMAGE_SIZE).max(MAX_IMAGE_WIDTH)).optional(),
+      height: responsive(z.number().int().min(MIN_IMAGE_SIZE).max(MAX_IMAGE_HEIGHT)).optional(),
+      fit: z.literal("contain").optional(),
+      focus: z.enum(IMAGE_FOCUS.filter((focus) => focus !== "center") as [string, ...string[]]).optional(),
       radius: z.number().int().min(0).max(120).optional(),
       zoom: z.boolean().optional(),
     })

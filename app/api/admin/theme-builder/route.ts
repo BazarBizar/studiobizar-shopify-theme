@@ -118,7 +118,7 @@ export async function POST(request: Request) {
       audit({ action, actor: staff.email, outcome: "denied", reason: error.code, ip });
       if (error.code === "CONFLICT") return fail("CONFLICT", error.message);
       if (error.code === "TOO_LARGE") return fail("PAYLOAD_TOO_LARGE", error.message);
-      return fail("INVALID", error.message);
+      return fail("INVALID", error.message, error.problems.length ? { problems: error.problems } : undefined);
     }
     audit({ action, actor: staff.email, outcome: "error", reason: "UPSTREAM", ip });
     return failure(action, error);

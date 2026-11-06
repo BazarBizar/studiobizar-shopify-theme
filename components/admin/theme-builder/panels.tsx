@@ -7,10 +7,12 @@ import {
   ArrowUpIcon,
   ChevronRightIcon,
   CopyIcon,
+  EyeIcon,
   EyeOffIcon,
   GripVerticalIcon,
   MoreHorizontalIcon,
   PlusIcon,
+  RotateCcwIcon,
   Trash2Icon,
 } from "lucide-react";
 import {
@@ -38,18 +40,25 @@ import {
 } from "@/components/admin/ui/dropdown-menu";
 import { Input } from "@/components/admin/ui/input";
 import { Label } from "@/components/admin/ui/label";
-import { DEVICE_LABELS, DEVICES, SHADOWS, type DesignValue } from "@/lib/page-builder/design";
+import { Tabs, TabsList, TabsTrigger } from "@/components/admin/ui/tabs";
+import { DEVICE_LABELS, DEVICES, SHADOWS, type DesignValue, type ShadowId } from "@/lib/page-builder/design";
 import { isFieldActive, isFieldFilled, type LeafFieldDef, type LinkValue } from "@/lib/page-builder/fields";
 import { newBlockId } from "@/lib/page-builder/fields";
+import type { SectionPreset } from "@/lib/page-builder/presets";
+import { sectionDefinition } from "@/lib/page-builder/registry";
 import {
+  AREA_EXCLUDED_SECTIONS,
   ELEMENTS,
   ELEMENT_TYPES,
+  MAX_AREA_SECTIONS,
+  MAX_ELEMENT_PADDING,
   MAX_SAVED_COLOURS,
   MAX_ELEMENTS_PER_ZONE,
   MAX_FOOTER_COLUMNS,
   MAX_SPACE_BEFORE,
   MENU_CHOICES,
   ZONES,
+  type ElementStyle,
   type ElementType,
   type FooterLayout,
   type GlobalStyle,
@@ -59,12 +68,23 @@ import {
 } from "@/lib/theme-builder/layout";
 import { cn } from "@/lib/utils/cn";
 
+import { AddSectionDialog } from "../page-builder/add-section-dialog";
 import { DesignControls, ResponsiveSlider, Row, Segmented, Slider } from "../page-builder/design-controls";
 import { useEditorDevice } from "../page-builder/editor-device";
 import { ColorField, EditorLookupsContext, FieldControl } from "../page-builder/field-controls";
 
 import { Group, ShowOn, Toggle } from "./controls";
-import { listAt, locate, locationLabel, placeElement, type Location } from "./ops";
+import {
+  listAt,
+  locate,
+  locationLabel,
+  placeElement,
+  sectionsOf,
+  shiftSection,
+  updateSection,
+  type Area,
+  type Location,
+} from "./ops";
 import { AnnouncementGroup } from "./promo-panels";
 
 /**
@@ -83,6 +103,11 @@ export type Edits = {
   duplicate: (id: string) => void;
   shift: (id: string, delta: -1 | 1) => void;
   move: (id: string, to: Location) => void;
+  /** Sections under the header and in the footer. */
+  openSection: (id: string) => void;
+  addSection: (area: Area, preset: SectionPreset) => void;
+  removeSection: (id: string) => void;
+  duplicateSection: (id: string) => void;
 };
 
 /** What a row says under an element's name — enough to tell two menus apart. */
@@ -321,7 +346,20 @@ function ElementRow({
  * One element's settings
  * -------------------------------------------------------------------------- */
 
+/**
+ * What each element draws, for its Style tab's typography — only headings, text or
+ * buttons it HAS are offered. Elements made of icons (search, the bag …) have none.
+ */
+const ELEMENT_CONTENTS: Partial<Record<ElementType, { heading: boolean; text: boolean; button: boolean }>> = {
+  menu: { heading: true, text: true, button: false },
+  text: { heading: false, text: true, button: false },
+  copyright: { heading: false, text: true, button: false },
+  button: { heading: false, text: false, button: true },
+  newsletter: { heading: false, text: true, button: true },
+};
+
 export function ElementEditor({ id, edits, onBack }: { id: string; edits: Edits; onBack: () => void }) {
+  const [tab, setTab] = React.useState<"content" | "style">("content");
   const found = locate(edits.content, id);
   if (!found) return null;
   const { element } = found;
@@ -367,60 +405,314 @@ export function ElementEditor({ id, edits, onBack }: { id: string; edits: Edits;
         </Button>
       </div>
 
-      <div className="flex-1 space-y-5 overflow-y-auto p-4">
-        <p className="text-muted-foreground text-xs">{definition.description}</p>
-
-        {fields.length === 0 ? null : (
-          fields.map((field) => {
-            const inputId = `${id}-${field.key}`;
-            const inline = field.kind === "toggle";
-            const missing = field.required && !isFieldFilled(field, element.settings[field.key]);
-            return (
-              <div key={field.key} className={inline ? "flex items-center justify-between gap-4" : "space-y-1.5"}>
-                <Label htmlFor={inputId} className="text-xs">
-                  {field.label}
-                </Label>
-                <FieldControl
-                  field={field}
-                  value={element.settings[field.key]}
-                  inputId={inputId}
-                  collections={[]}
-                  onChange={(next) => set((current) => ({ ...current, settings: { ...current.settings, [field.key]: next } }))}
-                />
-                {field.help && !inline ? <p className="text-muted-foreground text-xs">{field.help}</p> : null}
-                {missing ? <p className="text-xs text-amber-600 dark:text-amber-500">Fill this in, or the element is not shown.</p> : null}
-              </div>
-            );
-          })
-        )}
-
-        <div className="space-y-4 border-t pt-4">
-          <Slider
-            label="Space before it"
-            hint="Empty uses the spacing of the zone."
-            unit="px"
-            min={0}
-            max={MAX_SPACE_BEFORE}
-            step={1}
-            value={element.spaceBefore}
-            placeholder="Auto"
-            onChange={(next) => set((current) => ({ ...current, spaceBefore: next }))}
-          />
-          <ShowOn
-            id={id}
-            hide={element.hide}
-            onChange={(hide) =>
-              set((current) => {
-                const next = { ...current };
-                if (hide) next.hide = hide;
-                else delete next.hide;
-                return next;
-              })
-            }
-          />
-        </div>
+      {/* Content | Style, as a section has: what it shows, then how it looks. */}
+      <div className="border-b px-4 py-2">
+        <Tabs value={tab} onValueChange={(next) => setTab(next as "content" | "style")}>
+          <TabsList className="w-full">
+            <TabsTrigger value="content" className="flex-1">
+              Content
+            </TabsTrigger>
+            <TabsTrigger value="style" className="flex-1">
+              Style
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
+
+      {tab === "style" ? (
+        <ElementStyleTab
+          element={element}
+          onChange={(style) =>
+            set((current) => {
+              const next = { ...current };
+              if (style) next.style = style;
+              else delete next.style;
+              return next;
+            })
+          }
+        />
+      ) : (
+        <div className="flex-1 space-y-5 overflow-y-auto p-4">
+          <p className="text-muted-foreground text-xs">{definition.description}</p>
+
+          {fields.length === 0 ? null : (
+            fields.map((field) => {
+              const inputId = `${id}-${field.key}`;
+              const inline = field.kind === "toggle";
+              const missing = field.required && !isFieldFilled(field, element.settings[field.key]);
+              return (
+                <div key={field.key} className={inline ? "flex items-center justify-between gap-4" : "space-y-1.5"}>
+                  <Label htmlFor={inputId} className="text-xs">
+                    {field.label}
+                  </Label>
+                  <FieldControl
+                    field={field}
+                    value={element.settings[field.key]}
+                    inputId={inputId}
+                    collections={[]}
+                    onChange={(next) => set((current) => ({ ...current, settings: { ...current.settings, [field.key]: next } }))}
+                  />
+                  {field.help && !inline ? <p className="text-muted-foreground text-xs">{field.help}</p> : null}
+                  {missing ? <p className="text-xs text-amber-600 dark:text-amber-500">Fill this in, or the element is not shown.</p> : null}
+                </div>
+              );
+            })
+          )}
+
+          <div className="space-y-4 border-t pt-4">
+            <Slider
+              label="Space before it"
+              hint="Empty uses the spacing of the zone."
+              unit="px"
+              min={0}
+              max={MAX_SPACE_BEFORE}
+              step={1}
+              value={element.spaceBefore}
+              placeholder="Auto"
+              onChange={(next) => set((current) => ({ ...current, spaceBefore: next }))}
+            />
+            <ShowOn
+              id={id}
+              hide={element.hide}
+              onChange={(hide) =>
+                set((current) => {
+                  const next = { ...current };
+                  if (hide) next.hide = hide;
+                  else delete next.hide;
+                  return next;
+                })
+              }
+            />
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+/**
+ * An element's own look. Every value is optional — empty follows the header's or the
+ * footer's Look — and Reset style empties them all at once.
+ */
+function ElementStyleTab({ element, onChange }: { element: ThemeElement; onChange: (style: ElementStyle | undefined) => void }) {
+  const style = element.style ?? {};
+  const id = element.id;
+  const contents = ELEMENT_CONTENTS[element.type];
+  const places = ELEMENTS[element.type].places as readonly string[];
+  /** One value set or cleared; an empty style is no style. */
+  const setStyle = <K extends keyof ElementStyle>(key: K, value: ElementStyle[K] | undefined) => {
+    const next: ElementStyle = { ...style };
+    const empty =
+      value === undefined || value === "" || (typeof value === "object" && value !== null && Object.keys(value).length === 0);
+    if (empty) delete next[key];
+    else next[key] = value;
+    onChange(Object.keys(next).length ? next : undefined);
+  };
+  const colour = (key: "color" | "hoverColor" | "background" | "borderColor", label: string, hint?: string) => (
+    <Row label={label} hint={hint} onReset={style[key] ? () => setStyle(key, undefined) : undefined}>
+      <ColorField inputId={`${id}-${key}`} value={style[key] ?? ""} onChange={(next) => setStyle(key, String(next))} />
+    </Row>
+  );
+
+  return (
+    <div className="flex-1 space-y-2 overflow-y-auto p-4">
+      <p className="text-muted-foreground pb-2 text-xs">
+        Only for this {ELEMENTS[element.type].label.toLowerCase()}. Anything left empty looks like the rest of the{" "}
+        {places.length === 1 ? places[0] : "header or footer"}.
+      </p>
+
+      <Group title="Colours" defaultOpen>
+        {colour("color", "Text and icons")}
+        {colour("hoverColor", "Under the pointer", "Links and icons as the pointer is over them.")}
+        {colour("background", "Background")}
+      </Group>
+
+      <Group title="Spacing">
+        <ResponsiveSlider
+          label="Space inside, left and right"
+          unit="px"
+          min={0}
+          max={MAX_ELEMENT_PADDING}
+          step={1}
+          value={style.padX}
+          placeholder="0"
+          onChange={(next) => setStyle("padX", next)}
+        />
+        <ResponsiveSlider
+          label="Space inside, top and bottom"
+          unit="px"
+          min={0}
+          max={MAX_ELEMENT_PADDING}
+          step={1}
+          value={style.padY}
+          placeholder="0"
+          onChange={(next) => setStyle("padY", next)}
+        />
+        <p className="text-muted-foreground text-xs">The space between it and the element before it is on the Content tab.</p>
+      </Group>
+
+      <Group title="Border & shadow">
+        <Slider
+          label="Corners"
+          unit="px"
+          min={0}
+          max={100}
+          step={1}
+          value={style.radius}
+          placeholder="0"
+          onChange={(next) => setStyle("radius", next || undefined)}
+        />
+        <Slider
+          label="Line around it"
+          unit="px"
+          min={0}
+          max={10}
+          step={1}
+          value={style.borderWidth}
+          placeholder="0"
+          onChange={(next) => setStyle("borderWidth", next || undefined)}
+        />
+        {style.borderWidth ? colour("borderColor", "Line colour", "Empty: the text colour.") : null}
+        <Segmented
+          label="Shadow"
+          value={style.shadow ?? "none"}
+          options={Object.entries(SHADOWS).map(([value, shadow]) => ({ value, label: shadow.label }))}
+          onChange={(next) => setStyle("shadow", next && next !== "none" ? (next as ShadowId) : undefined)}
+        />
+      </Group>
+
+      {contents ? (
+        <DesignControls
+          value={style.design ?? {}}
+          parts={contents.button ? ["typography", "buttons"] : ["typography"]}
+          align={false}
+          contents={contents}
+          onChange={(next: DesignValue) => setStyle("design", next)}
+        />
+      ) : null}
+
+      {element.style ? (
+        <div className="pt-2">
+          <Button type="button" variant="outline" size="sm" onClick={() => onChange(undefined)}>
+            <RotateCcwIcon />
+            Reset style
+          </Button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- *
+ * Sections under the header and in the footer
+ * -------------------------------------------------------------------------- */
+
+/**
+ * Any page builder section, on every page: under the header bar, or at the top of the
+ * footer. A row opens the section's own editor — the same one a page uses.
+ */
+export function AreaSections({ area, edits }: { area: Area; edits: Edits }) {
+  const sections = sectionsOf(edits.content, area);
+  const full = sections.length >= MAX_AREA_SECTIONS;
+
+  return (
+    // Open from the start: the way to design a header or footer of your own should not need finding.
+    <Group title={area === "header" ? "Sections under the header" : "Sections"} defaultOpen>
+      <p className="text-muted-foreground text-xs">
+        {area === "header"
+          ? "Add any section — a banner, a line of text, your own columns of photos and buttons. It shows under the header on every page."
+          : "Add any section — your own columns of photos, text and buttons, a banner, a newsletter sign-up. It opens the footer, above the columns, on every page."}
+      </p>
+
+      {sections.length ? (
+        <ul className="divide-y rounded-md border">
+          {sections.map((section, index) => {
+            const label = sectionDefinition(section.type)?.label ?? section.type;
+            return (
+              <li key={section.id} className="flex items-center gap-1 px-1 py-1">
+                <button
+                  type="button"
+                  onClick={() => edits.openSection(section.id)}
+                  className="hover:bg-muted flex min-w-0 flex-1 items-center gap-1.5 rounded px-1.5 py-1 text-left"
+                >
+                  <span className={cn("min-w-0 flex-1 truncate text-xs font-medium", !section.visible && "text-muted-foreground line-through")}>
+                    {label}
+                  </span>
+                  <ChevronRightIcon className="text-muted-foreground size-3.5" />
+                </button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label={section.visible ? `Hide ${label}` : `Show ${label}`}
+                  title={section.visible ? "Hide" : "Show"}
+                  onClick={() =>
+                    edits.change(updateSection(edits.content, section.id, (current) => ({ ...current, visible: !current.visible })))
+                  }
+                >
+                  {section.visible ? <EyeIcon /> : <EyeOffIcon />}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label={`Move ${label} up`}
+                  disabled={index === 0}
+                  onClick={() => edits.change(shiftSection(edits.content, section.id, -1))}
+                >
+                  <ArrowUpIcon />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label={`Move ${label} down`}
+                  disabled={index === sections.length - 1}
+                  onClick={() => edits.change(shiftSection(edits.content, section.id, 1))}
+                >
+                  <ArrowDownIcon />
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button type="button" variant="ghost" size="icon-xs" aria-label={`More for ${label}`}>
+                      <MoreHorizontalIcon />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => edits.duplicateSection(section.id)} disabled={full}>
+                      <CopyIcon />
+                      Duplicate
+                    </DropdownMenuItem>
+                    <DropdownMenuItem variant="destructive" onSelect={() => edits.removeSection(section.id)}>
+                      <Trash2Icon />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+
+      <AddSectionDialog
+        onAdd={(preset) => edits.addSection(area, preset)}
+        disabled={full}
+        exclude={AREA_EXCLUDED_SECTIONS}
+        trigger={
+          <Button type="button" variant="outline" size="sm" className="w-full" disabled={full}>
+            <PlusIcon />
+            Add section
+          </Button>
+        }
+      />
+      {full ? (
+        <p className="text-muted-foreground text-xs">
+          There is room for {MAX_AREA_SECTIONS} sections here. Delete one to add another, or put several columns into one Custom
+          section.
+        </p>
+      ) : null}
+    </Group>
   );
 }
 
@@ -467,6 +759,8 @@ export function HeaderPanel({ edits }: { edits: Edits }) {
           />
         ))}
       </ZonesDnd>
+
+      <AreaSections area="header" edits={edits} />
 
       <AnnouncementGroup edits={edits} />
 
@@ -605,6 +899,8 @@ export function FooterPanel({
 
   return (
     <div className="space-y-4">
+      <AreaSections area="footer" edits={edits} />
+
       <p className="text-muted-foreground text-xs">
         Columns side by side on desktop; on phones they stack (or sit two by two — under Look).
       </p>

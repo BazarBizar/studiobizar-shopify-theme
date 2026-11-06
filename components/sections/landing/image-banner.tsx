@@ -171,6 +171,8 @@ export function ImageBanner({
 
   return (
     <section
+      // An exact height (Style → design.minHeight) sizes this box, not only the frame around it.
+      data-sb-fill-height=""
       className={cn("bg-off-black relative isolate flex overflow-hidden", !adapt && BANNER_HEIGHT[height === "adapt" ? "large" : height])}
       style={adapt ? { aspectRatio: `${image.width} / ${image.height}` } : undefined}
     >

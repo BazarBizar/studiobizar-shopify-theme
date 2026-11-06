@@ -34,7 +34,7 @@
 {%- if image != blank or request.design_mode -%}
   <div
     class="relative w-full overflow-hidden bg-foreground/5 {{ ratio_class }} {{ class }}"
-    {%- if ratio == 'adapt' and image != blank %} style="aspect-ratio: {{ image.aspect_ratio }};"{% endif %}
+    {%- if image != blank %} style="--sb-photo-ratio: {{ image.aspect_ratio }};{% if ratio == 'adapt' %} aspect-ratio: {{ image.aspect_ratio }};{% endif %}"{% endif %}
   >
     {%- if image != blank -%}
       {%- render 'sb-image',

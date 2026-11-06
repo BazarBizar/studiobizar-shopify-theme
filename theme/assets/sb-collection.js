@@ -110,7 +110,7 @@
           if (incomingMore) currentMore.replaceWith(incomingMore);
           else currentMore.remove();
         }
-      } catch (error) {
+      } catch {
         // Left as a working link: the visitor can still click through to page
         // two, which is the whole reason it is an anchor.
         if (box) box.removeAttribute("data-loading");

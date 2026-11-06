@@ -97,10 +97,12 @@ import {
 } from "@/lib/page-builder/fields";
 import type { DesignValue } from "@/lib/page-builder/design";
 import { blockWithExamples, NO_EXAMPLE_MEDIA, type ExampleMedia } from "@/lib/page-builder/examples";
+import { croppedImage } from "@/lib/page-builder/image-crop";
 import { cdnImage } from "@/lib/shopify/transforms";
 import { cn } from "@/lib/utils/cn";
 
 import { DesignControls } from "./design-controls";
+import { CropButton } from "./image-crop-dialog";
 
 /**
  * One input per field KIND — the only place the builder decides what a setting
@@ -471,7 +473,8 @@ function imagesFrom(picks: MediaPick[]): ImageRef[] {
 }
 
 const previewOfImage = (image: ImageRef) => ({
-  thumbnail: cdnImage(image.url, 160),
+  // As the visitor sees it: just the cropped part, when it is cropped.
+  thumbnail: cdnImage(croppedImage(image).url, 160),
   label: image.altText ?? "",
   kind: "image" as const,
 });
@@ -530,7 +533,12 @@ export function ImageField({
         onChoose={() => setOpen(true)}
         onRemove={() => onChange(null)}
       >
-        {value && <AltInput image={value} label={label} onChange={onChange} />}
+        {value && (
+          <>
+            <CropButton image={value} onChange={onChange} />
+            <AltInput image={value} label={label} onChange={onChange} />
+          </>
+        )}
       </MediaSlot>
       <MediaPicker
         open={open}
@@ -594,6 +602,7 @@ function ImageListField({
                   />
                 </label>
               )}
+              <CropButton image={item.image} onChange={(image) => update(index, { ...item, image })} />
               <AltInput image={item.image} label={`${label} ${index + 1}`} onChange={(image) => update(index, { ...item, image })} />
             </>
           ),
@@ -1549,7 +1558,7 @@ function BlockFields({
           onChange={(next) => onChange(child.key, next)}
         />
         {child.help && !inline && <p className="text-muted-foreground text-xs">{child.help}</p>}
-        {missing && <p className="text-xs text-amber-600 dark:text-amber-500">Needed before this page can be published.</p>}
+        {missing && <p className="text-xs text-amber-600 dark:text-amber-500">Fill this in before publishing.</p>}
       </div>
     );
   };

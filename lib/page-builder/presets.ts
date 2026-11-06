@@ -62,14 +62,14 @@ const VARIANTS: SectionPreset[] = [
   {
     id: "custom_section.photo",
     type: "custom_section",
-    label: "Photo beside text",
+    label: "Custom: photo beside text",
     description: "A photograph on one side; a label, heading, text and button on the other. Every block can be changed.",
     category: "Build your own",
     settings: {
       columnGap: "lg",
       blocks: [
         { type: "column" },
-        { type: "image", settings: { ratio: "portrait" } },
+        { type: "image", settings: {} },
         { type: "column", settings: { position: "middle" } },
         { type: "eyebrow", settings: { eyebrow: "The workshop" } },
         { type: "heading", settings: { title: "Made by hand, made to last" } },
@@ -81,7 +81,7 @@ const VARIANTS: SectionPreset[] = [
   {
     id: "custom_section.features",
     type: "custom_section",
-    label: "Heading and three features",
+    label: "Custom: heading and three features",
     description: "A centred heading over three icons with a short text each.",
     category: "Build your own",
     settings: {
@@ -100,7 +100,7 @@ const VARIANTS: SectionPreset[] = [
   {
     id: "custom_section.cards",
     type: "custom_section",
-    label: "Four cards",
+    label: "Custom: four cards",
     description: "Four photo cards in a row — two on tablets, one under the other on phones.",
     category: "Build your own",
     settings: {
@@ -116,7 +116,7 @@ const VARIANTS: SectionPreset[] = [
   {
     id: "custom_section.questions",
     type: "custom_section",
-    label: "Questions and answers",
+    label: "Custom: questions that fold out",
     description: "A heading with questions that open to show their answer, on a narrow column.",
     category: "Build your own",
     settings: {
@@ -269,7 +269,6 @@ const VARIANTS: SectionPreset[] = [
       eyebrow: "Material",
       title: "Oak, oiled by hand",
       body: para("Write a few lines about the material and the way it is finished."),
-      ratio: "landscape",
       imageWidth: "wide",
       buttonStyle: "text",
       link: { label: "learn more", href: "/care-maintenance" },

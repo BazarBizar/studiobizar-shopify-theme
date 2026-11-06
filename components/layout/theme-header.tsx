@@ -1,3 +1,4 @@
+import { SectionRenderer } from "@/components/page-builder/section-renderer";
 import { Container } from "@/components/ui/container";
 import { designStyle, SHADOWS } from "@/lib/page-builder/design";
 import { HEX_COLOR } from "@/lib/page-builder/fields";
@@ -25,7 +26,8 @@ import { ElementRun, hideClasses, responsivePadding, type ThemeData } from "./th
  * original. Two arrangements: desktop from 1024px, mobile below it.
  *
  * Like the original it is sticky and opaque by default, and paints the page's own
- * ground unless a background is chosen.
+ * ground unless a background is chosen. Its sections (page builder sections, on every
+ * page) follow the bar, outside it: they scroll with the page.
  */
 
 /** One of the site's menus by key (with its fallback links), or another menu by handle. */
@@ -86,7 +88,7 @@ function Bar({ zones, data, gap }: { zones: Zones; data: ThemeData; gap: number 
   );
 }
 
-export async function ThemeHeader({ content }: { content: ThemeLayoutContent }) {
+export async function ThemeHeader({ content, preview = false }: { content: ThemeLayoutContent; preview?: boolean }) {
   const header = content.header;
   const data = await loadThemeData(content, headerMenus(header));
   const { style: designVars, attrs: designAttrs } = designStyle(header.style.design);
@@ -152,6 +154,12 @@ export async function ThemeHeader({ content }: { content: ThemeLayoutContent }) 
         </Container>
         {scrolls ? <HeaderScroll target="site-header" /> : null}
       </header>
+
+      {header.sections.length ? (
+        <div data-theme-sections="header">
+          <SectionRenderer sections={header.sections} context={{ pageTitle: "Studio Bizar", preview }} />
+        </div>
+      ) : null}
     </>
   );
 }

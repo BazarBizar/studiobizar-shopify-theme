@@ -296,7 +296,7 @@ export const POPUP_FIELDS = [
     "align",
     "Text",
     [
-      { value: "center", label: "Centred" },
+      { value: "center", label: "Centre" },
       { value: "left", label: "Left" },
       { value: "right", label: "Right" },
     ],

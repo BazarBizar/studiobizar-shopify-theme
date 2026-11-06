@@ -25,8 +25,19 @@ import { builderHandleProblem, handleFromTitle, isBuilderEditable, isBuilderHand
 import { PAGE_MIGRATIONS, migrateToDocument } from "../lib/page-builder/migrations";
 import { carouselStyle, carouselView } from "../lib/page-builder/carousel";
 import { contrastRatio, designSchema, designStyle, readDesign } from "../lib/page-builder/design";
+import { croppedImage, croppedUrl, isCropped, withCrops } from "../lib/page-builder/image-crop";
+import { imageRefSchema } from "../lib/page-builder/value-schemas";
 import { SECTIONS, SECTION_TYPES } from "../lib/page-builder/registry";
-import { defaultLayoutContent, menusIn, parseThemeLayout, sameThemeContent, themeContentSchema } from "../lib/theme-builder/layout";
+import {
+  defaultLayoutContent,
+  MAX_AREA_SECTIONS,
+  menusIn,
+  parseThemeLayout,
+  sameThemeContent,
+  themeContentSchema,
+  themePublishProblems,
+} from "../lib/theme-builder/layout";
+import { elementLook } from "../lib/theme-builder/element-look";
 import { createMessage, createPopup, isScheduledNow, onDevice, paddingOn, popupDefaults, popupHasContent, popupOnPath } from "../lib/theme-builder/promo";
 import { PAGE_TEMPLATES, documentFromTemplate } from "../lib/page-builder/templates";
 
@@ -400,6 +411,104 @@ check(
   check("broken JSON is not a layout", !parseThemeLayout("{oops").ok);
 }
 
+/* --- theme layout: sections under the header and in the footer, and element styles --- */
+
+{
+  const content = defaultLayoutContent();
+  check("the default has no sections under the header or in the footer", content.header.sections.length === 0 && content.footer.sections.length === 0);
+
+  const withSections = structuredClone(content);
+  withSections.header.sections = [sectionFromPreset(presetById("image_banner")!)];
+  withSections.footer.sections = [sectionFromPreset(presetById("custom_section")!), createSection("text_block")];
+  check("a layout with sections passes the write schema", themeContentSchema.safeParse(withSections).success);
+  const back = parseThemeLayout(JSON.stringify(withSections));
+  check(
+    "sections read back the same, in order",
+    back.ok && sameThemeContent(back.layout, withSections) && back.layout.footer.sections[1]!.type === "text_block",
+  );
+
+  const heading = structuredClone(content);
+  heading.footer.sections = [createSection("page_heading")];
+  check("a Page heading is refused in the footer (it draws the page's h1)", !themeContentSchema.safeParse(heading).success);
+  const headingBack = parseThemeLayout(JSON.stringify(heading));
+  check("a stored Page heading is left out on read", headingBack.ok && headingBack.layout.footer.sections.length === 0);
+
+  const tooMany = structuredClone(content);
+  tooMany.header.sections = Array.from({ length: MAX_AREA_SECTIONS + 1 }, () => createSection("spacer"));
+  check(`more than ${MAX_AREA_SECTIONS} sections in one place are refused on write`, !themeContentSchema.safeParse(tooMany).success);
+
+  const damaged = JSON.parse(JSON.stringify(withSections));
+  damaged.footer.sections.push({ id: "s_madeupone", type: "made_up", visible: true, settings: {} });
+  damaged.footer.sections[1].settings.title = 42;
+  const repaired = parseThemeLayout(JSON.stringify(damaged));
+  check(
+    "a damaged footer section is dropped, a bad setting defaults, the rest stay",
+    repaired.ok && repaired.layout.footer.sections.length === 2 && typeof (repaired.layout.footer.sections[1]!.settings as { title?: unknown }).title === "string",
+  );
+
+  const incomplete = structuredClone(content);
+  incomplete.footer.sections = [createSection("image_banner")];
+  const problems = themePublishProblems(incomplete);
+  check(
+    "a visible footer section missing required content stops Publish, and says where",
+    problems.length === 1 && problems[0]!.area === "footer" && problems[0]!.sectionId === incomplete.footer.sections[0]!.id,
+  );
+  incomplete.footer.sections[0] = { ...incomplete.footer.sections[0]!, visible: false };
+  check("a hidden one does not", themePublishProblems(incomplete).length === 0);
+
+  const styled = structuredClone(content);
+  styled.header.desktop.left[1] = {
+    ...styled.header.desktop.left[1]!,
+    style: {
+      color: "#302f2d",
+      hoverColor: "#7a6a4f",
+      background: "#ebe8e3",
+      padX: { d: 16, m: 8 },
+      padY: { d: 6 },
+      radius: 100,
+      borderWidth: 1,
+      borderColor: "#302f2d",
+      shadow: "soft",
+      design: { text: { font: "inter", size: { d: 15 }, transform: "uppercase" }, buttonLook: { radius: 4 } },
+    },
+  };
+  check("a styled element passes the write schema", themeContentSchema.safeParse(styled).success);
+  const styledBack = parseThemeLayout(JSON.stringify(styled));
+  check("an element's style reads back the same", styledBack.ok && sameThemeContent(styledBack.layout, styled));
+  const look = elementLook(styled.header.desktop.left[1]!.style);
+  check(
+    "an element's style draws colours, padding per device and its typography",
+    look.style.color === "#302f2d" &&
+      look.style["--sb-foreground"] === "#302f2d" &&
+      look.style["--sb-el-px-m"] === "8px" &&
+      look.attrs["data-el-px"] === "d m" &&
+      look.attrs["data-el-hover"] === "" &&
+      look.attrs["data-sb-psize"] === "d",
+  );
+  check("an element without a style draws nothing of its own", Object.keys(elementLook(undefined).style).length === 0);
+
+  for (const [label, style] of [
+    ["a colour that is not #rrggbb", { color: "red" }],
+    ["padding past the limit", { padX: { d: 500 } }],
+    ["a background image in its design (sections only)", { design: { background: { overlay: "#000000" } } }],
+    ["an unknown key", { float: "left" }],
+  ] as const) {
+    const bad = structuredClone(content);
+    bad.footer.columns[0]!.elements[0] = { ...bad.footer.columns[0]!.elements[0]!, style: style as never };
+    check(`element style: ${label} is refused on write`, !themeContentSchema.safeParse(bad).success);
+  }
+
+  const damagedStyle = JSON.parse(JSON.stringify(styled));
+  damagedStyle.header.desktop.left[1].style.color = "red";
+  damagedStyle.header.desktop.left[1].style.design.background = { overlay: "#000000" };
+  const styleRepaired = parseThemeLayout(JSON.stringify(damagedStyle));
+  const kept = styleRepaired.ok ? styleRepaired.layout.header.desktop.left[1]!.style : undefined;
+  check(
+    "a damaged element style loses only the bad parts",
+    kept !== undefined && kept.color === undefined && kept.background === "#ebe8e3" && kept.design?.background === undefined && kept.design?.text?.size?.d === 15,
+  );
+}
+
 /* --- promotions: the announcement bar and pop-ups --- */
 
 {
@@ -711,6 +820,87 @@ check(
     !canConvertToCustom(sectionFromPreset(presetById("cta_banner.image")!)),
   );
   check("custom: a catalogue section is not offered the change", !canConvertToCustom(sectionFromPreset(presetById("product_grid")!)));
+}
+
+/* -------------------------------------------------------------------------- *
+ * Photos: shape, size, fit, focus — and one photo's own crop
+ * -------------------------------------------------------------------------- */
+{
+  const look = designStyle({
+    images: { ratio: "portrait_2_3", width: { d: 480, m: 280 }, height: { t: 500 }, fit: "contain", focus: "center top" },
+  });
+  check("photos: a portrait 2:3 is drawn 2 / 3", look.style["--sb-ratio"] === "2 / 3" && look.attrs["data-sb-ratio"] === "");
+  check(
+    "photos: a width in px per device",
+    look.style["--sb-imgw"] === "480px" && look.style["--sb-imgw-m"] === "280px" && look.attrs["data-sb-imgw"] === "d m",
+  );
+  check("photos: a height for tablet only", look.style["--sb-imgh-t"] === "500px" && look.attrs["data-sb-imgh"] === "t");
+  check("photos: the whole photo", look.style["--sb-imgfit"] === "contain" && look.attrs["data-sb-imgfit"] === "");
+  check("photos: kept in view at the top", look.style["--sb-imgpos"] === "center top" && look.attrs["data-sb-imgpos"] === "");
+  check("photos: the old shapes still draw as before", designStyle({ images: { ratio: "landscape" } }).style["--sb-ratio"] === "3 / 2");
+
+  const custom = designStyle({ images: { ratio: "custom", custom: { w: 7, h: 3 } } });
+  check("photos: a custom shape 7 : 3", custom.style["--sb-ratio"] === "7 / 3");
+  const own = designStyle({ images: { ratio: "own" } });
+  check("photos: 'As uploaded' marks the section, with no shape of its own", own.attrs["data-sb-own"] === "" && own.style["--sb-ratio"] === undefined);
+  check("photos: 'Section default' writes nothing", designStyle({ images: { zoom: true } }).attrs["data-sb-own"] === undefined);
+  check("photos: custom with no numbers draws no shape", designStyle({ images: { ratio: "custom" } }).attrs["data-sb-ratio"] === undefined);
+
+  const ok = (value: unknown) => designSchema.safeParse({ images: value }).success;
+  check("photos: every new setting saves", ok({ ratio: "custom", custom: { w: 16, h: 9 }, width: { d: 600 }, height: { m: 300 }, fit: "contain", focus: "right bottom" }));
+  check("photos: a custom shape of 0 is refused", !ok({ ratio: "custom", custom: { w: 0, h: 9 } }));
+  check("photos: a width under 40 px is refused", !ok({ width: { d: 10 } }));
+  check("photos: an unknown shape is refused", !ok({ ratio: "banana" }));
+  check("photos: 'As uploaded' saves", ok({ ratio: "own" }));
+  check("photos: 'the middle' is the default, not a stored value", !ok({ focus: "center" }));
+  check("photos: a fit of 'cover' is the default, not a stored value", !ok({ fit: "cover" }));
+
+  const photo = {
+    id: "gid://shopify/MediaImage/1",
+    url: "https://cdn.shopify.com/s/files/1/0750/8108/9160/files/a.jpg?v=1",
+    altText: null,
+    width: 3000,
+    height: 2000,
+  };
+  const crop = { x: 100, y: 50, width: 1200, height: 1500 };
+  check("crop: a crop inside the photo saves", imageRefSchema.safeParse({ ...photo, crop }).success);
+  check("crop: a photo without one still saves", imageRefSchema.safeParse(photo).success);
+  check("crop: past the right edge is refused", !imageRefSchema.safeParse({ ...photo, crop: { ...crop, x: 2000 } }).success);
+  check("crop: past the bottom is refused", !imageRefSchema.safeParse({ ...photo, crop: { ...crop, y: 600 } }).success);
+  check("crop: a zero size is refused", !imageRefSchema.safeParse({ ...photo, crop: { ...crop, width: 0 } }).success);
+  check("crop: an unknown key is refused", !imageRefSchema.safeParse({ ...photo, crop: { ...crop, zoom: 2 } }).success);
+
+  const url = new URL(croppedUrl(photo.url, crop));
+  check(
+    "crop: the CDN is asked for just that region, the version kept",
+    url.searchParams.get("crop") === "region" &&
+      url.searchParams.get("crop_left") === "100" &&
+      url.searchParams.get("crop_top") === "50" &&
+      url.searchParams.get("crop_width") === "1200" &&
+      url.searchParams.get("crop_height") === "1500" &&
+      url.searchParams.get("v") === "1",
+  );
+  const seen = croppedImage({ ...photo, crop });
+  check("crop: the photo is seen at the crop's size (a portrait now)", seen.width === 1200 && seen.height === 1500);
+  check("crop: a cropped photo is known as cropped, after it is drawn too", isCropped({ ...photo, crop }) && isCropped(seen) && !isCropped(photo));
+
+  const section = {
+    id: "s1",
+    type: "multicolumn",
+    visible: true,
+    settings: {
+      title: "x",
+      columns: [{ id: "b1", type: "column", settings: { image: { ...photo, crop } } }, { id: "b2", type: "column", settings: { image: photo } }],
+      design: { background: { image: { ...photo, crop } } },
+    },
+  };
+  const drawn = withCrops(section);
+  check("crop: a cropped photo in a block is drawn cropped", drawn.settings.columns[0]!.settings.image.url.includes("crop=region"));
+  check("crop: an uncropped photo is left exactly as it was", drawn.settings.columns[1] === section.settings.columns[1]);
+  check("crop: a cropped background is drawn cropped too", drawn.settings.design.background.image.width === 1200);
+  check("crop: the saved section is not changed", section.settings.columns[0]!.settings.image.url === photo.url);
+  const plain = { ...section, settings: { ...section.settings, columns: [section.settings.columns[1]!], design: {} } };
+  check("crop: a section with no crop is not copied", withCrops(plain) === plain);
 }
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll page builder checks passed.");

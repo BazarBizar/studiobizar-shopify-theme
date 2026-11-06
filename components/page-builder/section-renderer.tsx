@@ -3,14 +3,15 @@ import "server-only";
 import { unstable_rethrow } from "next/navigation";
 
 import { NEUTRAL_STYLE, type UniversalSettings } from "@/lib/page-builder/define-section";
-import type { PageDocument, SectionInstance } from "@/lib/page-builder/document";
+import type { SectionInstance } from "@/lib/page-builder/document";
+import { withCrops } from "@/lib/page-builder/image-crop";
 
 import { RENDERERS, type RenderContext, type SectionContext } from "./renderers";
 import { SectionBoundary } from "./section-boundary";
 import { SectionFrame } from "./section-frame";
 
 /**
- * Draws a page document. The SAME component renders the live page and the
+ * Draws a page's sections. The SAME component renders the live page and the
  * panel's preview — there is no preview-only version of anything.
  *
  * Every visible section's data loads in parallel, so a page of ten sections
@@ -71,8 +72,10 @@ function framed(section: SectionInstance, element: React.ReactNode, settings: Un
 const sitsUnderHeading = (section: SectionInstance | undefined) =>
   (section?.settings as { placement?: unknown } | undefined)?.placement === "heading";
 
-export async function SectionRenderer({ doc, context }: { doc: PageDocument; context: RenderContext }) {
-  const visible = doc.sections.filter((section) => section.visible);
+/** A list of sections — a page's, or the Theme Builder's under the header and in the footer. */
+export async function SectionRenderer({ sections, context }: { sections: SectionInstance[]; context: RenderContext }) {
+  // A cropped photo becomes just its cropped part here, before any component sees it.
+  const visible = sections.filter((section) => section.visible).map((section) => withCrops(section));
   const loaded = await Promise.all(visible.map(load));
 
   const out: React.ReactNode[] = [];

@@ -212,7 +212,7 @@ export const richTextSection = defineSection({
       "Alignment",
       [
         { value: "left", label: "Left" },
-        { value: "center", label: "Centred" },
+        { value: "center", label: "Centre" },
       ],
       { group: "layout" },
     ),
@@ -307,17 +307,6 @@ export const mediaText = defineSection({
       [
         { value: "normal", label: "Standard" },
         { value: "wide", label: "Inset" },
-      ],
-      { group: "layout" },
-    ),
-    select(
-      "ratio",
-      "Image shape",
-      [
-        { value: "portrait", label: "Tall" },
-        { value: "square", label: "Square" },
-        { value: "landscape", label: "Landscape" },
-        { value: "adapt", label: "Original" },
       ],
       { group: "layout" },
     ),

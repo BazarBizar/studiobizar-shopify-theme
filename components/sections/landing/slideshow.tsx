@@ -94,6 +94,8 @@ export function Slideshow({
     <section
       aria-roledescription="carousel"
       aria-label="Slideshow"
+      // An exact height (design.minHeight) sizes this box, not only the frame around it.
+      data-sb-fill-height=""
       className={cn(
         "bg-off-black relative isolate overflow-hidden",
         BANNER_HEIGHT[height],

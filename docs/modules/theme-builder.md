@@ -18,7 +18,15 @@ promotions over the pages, edited beside a live preview of a real page.
   side or stacked, link size, space between links, dropdowns), search, account, inquiry bag,
   language, menu button (phones), social links, text (typed, or the Site-wide tagline / bottom line),
   button, newsletter sign-up, copyright (`{year}`). Every element: **space before it** and **show on**
-  desktop / tablet / mobile.
+  desktop / tablet / mobile, and a **Style** tab of its own — colours (text and icons, under the
+  pointer, background), space inside per device, corners, a line, a shadow, and typography / the
+  buttons' look where it has text or a button. Empty follows the header's or footer's Look.
+- **Sections** — any page builder section (Custom section with its own blocks and columns, banners,
+  newsletter …), on every page: **under the header** (after the sticky bar, scrolling with the page)
+  and **in the footer** (above the columns, on the footer's ground). Up to 8 each; Page heading and
+  Go back are page-only and not offered. Edited with the page builder's own section editor, clicked
+  in the preview, text typed over in place. A visible one missing required content stops Publish,
+  as on a page.
 
 - **Site style** (third tab): fonts and sizes for headings, text and buttons across the whole site
   (applied on `PageShell`, so a section's own design still wins), and up to twelve **saved colours**
@@ -112,7 +120,8 @@ a `CONFLICT` ("edited elsewhere"), as for pages.
 | `lib/theme-builder/layout.ts` | the layout: elements, zones, defaults, strict write schema, lenient read |
 | `lib/admin/theme-builder.ts` | read the three copies; save, publish, discard, rollback |
 | `app/api/admin/theme-builder/route.ts` | the one write endpoint (validates, audits, drops the cache twice on publish) |
-| `components/layout/theme-header.tsx`, `theme-footer.tsx`, `theme-elements.tsx` | the storefront rendering |
+| `components/layout/theme-header.tsx`, `theme-footer.tsx`, `theme-elements.tsx` | the storefront rendering (sections through the page builder's `SectionRenderer`) |
+| `lib/theme-builder/element-look.ts` | an element's Style → inline properties and `data-el-*` switches (CSS in `globals.css`) |
 | `app/(admin)/preview/theme/page.tsx` | the preview: the draft around a real page (`?page=`, `?version=live`) |
 | `components/admin/theme-builder/` | the editor (`theme-builder.tsx`), its panels, and pure edit operations (`ops.ts`) |
 
@@ -123,11 +132,13 @@ so the editor draws them with the same controls and the API validates them with 
 
 - `yarn check:page-builder` — the layout's schema, round trip and damage handling.
 - `yarn check:theme-builder-ui` — the editor in a browser. **Draft only, never Publish**; ends with
-  *Discard*.
+  *Discard* — which also throws away anyone's unpublished draft, so not while one is in progress.
+- `yarn check:theme-preview` — sections and element styles drawn by the real preview. **Writes
+  nothing**: only the preview is opened, and sent a layout as the editor sends one.
 - `npx tsx scripts/check-queries.ts`, `scripts/check-admin-operations.ts` — the queries Shopify parses.
 
 ## Liquid
 
-Not rendered by the theme yet (Next first, by decision) — nor the announcement bar's messages or the
-pop-ups. The layout is plain JSON on the shop, so
+Not rendered by the theme yet (Next first, by decision) — nor the announcement bar's messages, the
+pop-ups, the header's and footer's sections or element styles. The layout is plain JSON on the shop, so
 `sb-header` / `sb-footer` can read `shop.metafields.custom.theme_layout.value` when they catch up.

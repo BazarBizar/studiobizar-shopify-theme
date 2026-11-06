@@ -94,7 +94,7 @@ export async function fetchExistingMetaobjectDefinitions(client) {
       label: 'metaobjectDefinitions',
       pageSize: 50,
     });
-  } catch (error) {
+  } catch {
     // `capabilities` selection unsupported on this API version — retry leaner.
     log.dim('falling back to a minimal metaobjectDefinitions query');
     return client.paginate(LIST_QUERY_MINIMAL, {}, pick, {

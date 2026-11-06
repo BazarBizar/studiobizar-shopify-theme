@@ -1,4 +1,5 @@
 import type { Surface } from "@/components/layout/page-shell";
+import { SectionRenderer } from "@/components/page-builder/section-renderer";
 import { Container } from "@/components/ui/container";
 import { designStyle } from "@/lib/page-builder/design";
 import { HEX_COLOR } from "@/lib/page-builder/fields";
@@ -12,7 +13,8 @@ import { loadThemeData } from "./theme-header";
  * The footer as the Theme Builder composed it: columns of elements, then a bottom
  * bar. Drawn only once a layout has been PUBLISHED — until then `Footer` draws the
  * original. On the page's footer ground (olive on most pages) unless a background
- * is chosen, as the original.
+ * is chosen, as the original. Its sections (page builder sections) open it, above the
+ * columns, on the same ground unless a section chooses its own.
  */
 
 export function footerMenus(footer: FooterLayout): MenuRef[] {
@@ -20,7 +22,15 @@ export function footerMenus(footer: FooterLayout): MenuRef[] {
   return [...new Set(all.filter((element) => element.type === "menu").map((element) => element.settings.menu as MenuRef))];
 }
 
-export async function ThemeFooter({ content, surface }: { content: ThemeLayoutContent; surface: Surface }) {
+export async function ThemeFooter({
+  content,
+  surface,
+  preview = false,
+}: {
+  content: ThemeLayoutContent;
+  surface: Surface;
+  preview?: boolean;
+}) {
   const footer = content.footer;
   const data = await loadThemeData(content, footerMenus(footer));
   const { style: designVars, attrs: designAttrs } = designStyle(footer.style.design);
@@ -58,6 +68,11 @@ export async function ThemeFooter({ content, surface }: { content: ThemeLayoutCo
       className="bg-background text-foreground"
       style={style as React.CSSProperties}
     >
+      {footer.sections.length ? (
+        <div data-theme-sections="footer">
+          <SectionRenderer sections={footer.sections} context={{ pageTitle: "Studio Bizar", preview }} />
+        </div>
+      ) : null}
       <Container>
         <div {...top.attrs} {...bottomPad.attrs} style={{ ...top.style, ...bottomPad.style } as React.CSSProperties} className="pt-12 pb-4">
           <div

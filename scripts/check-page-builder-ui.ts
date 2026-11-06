@@ -600,7 +600,7 @@ async function main() {
       // The project carousel: two across, two per arrow press — set in the editor, drawn in the preview.
       await page.getByRole("button", { name: "Add section" }).click();
       await page.locator("[cmdk-item]").filter({ hasText: "A scrolling row of project cards" }).first().click();
-      await aside.getByRole("combobox", { name: "Items across on desktop" }).click();
+      await aside.getByRole("combobox", { name: "Items across" }).click();
       await page.getByRole("option", { name: "2", exact: true }).click();
       await aside.getByRole("radio", { name: "2 items" }).click();
       await page.waitForTimeout(2500);

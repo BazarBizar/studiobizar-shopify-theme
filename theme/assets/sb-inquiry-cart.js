@@ -42,7 +42,7 @@
       var parsed = JSON.parse(raw);
       var items = parsed && parsed.state && parsed.state.items;
       memory = Array.isArray(items) ? items.filter(isItem) : [];
-    } catch (error) {
+    } catch {
       memory = [];
     }
 
@@ -61,7 +61,7 @@
         KEY,
         JSON.stringify({ state: { items: items }, version: VERSION }),
       );
-    } catch (error) {
+    } catch {
       // Kept in memory for this page view; the visitor still sees their list.
     }
 

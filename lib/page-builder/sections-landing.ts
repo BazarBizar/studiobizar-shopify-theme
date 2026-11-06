@@ -53,13 +53,13 @@ const HEADING_SIZES = [
 
 const TEXT_ALIGN = [
   { value: "left", label: "Left" },
-  { value: "center", label: "Centred" },
+  { value: "center", label: "Centre" },
   { value: "right", label: "Right" },
 ] as const;
 
 const TEXT_ALIGN_2 = [
   { value: "left", label: "Left" },
-  { value: "center", label: "Centred" },
+  { value: "center", label: "Centre" },
 ] as const;
 
 /** Where the copy sits on an image — drawn as a 3 × 3 picker. */
@@ -87,13 +87,6 @@ const BANNER_HEIGHTS = [
 const TEXT_TONES = [
   { value: "light", label: "Light text" },
   { value: "dark", label: "Dark text" },
-] as const;
-
-const IMAGE_RATIOS = [
-  { value: "portrait", label: "Portrait" },
-  { value: "square", label: "Square" },
-  { value: "landscape", label: "Landscape" },
-  { value: "adapt", label: "Original" },
 ] as const;
 
 const WIDTHS = [
@@ -306,7 +299,7 @@ export const ctaBanner = defineSection({
       "layout",
       "Layout",
       [
-        { value: "center", label: "Centred" },
+        { value: "center", label: "Centre" },
         { value: "split", label: "Text left, buttons right" },
         { value: "image", label: "On a photograph" },
       ],
@@ -366,19 +359,18 @@ export const multicolumn = defineSection({
     link("button", "Button under the columns"),
     select(
       "media",
-      "Media",
+      "Columns without an image",
       [
-        { value: "image", label: "Images" },
-        { value: "icon", label: "Icons" },
-        { value: "none", label: "None" },
+        { value: "icon", label: "An icon" },
+        { value: "image", label: "An empty frame (editor only)" },
+        { value: "none", label: "Nothing" },
       ],
       {
         group: "layout",
-        help: "An image added to a column always shows. Icons: an icon in the columns without one. Images: an empty frame in the preview where an image is still missing.",
+        help: "A column’s own image always shows.",
       },
     ),
     // Not tied to Media: a column's own image shows whatever Media says, so its shape always matters.
-    select("ratio", "Image shape", IMAGE_RATIOS, { default: "portrait", group: "layout" }),
     select(
       "columnsDesktop",
       "Columns on desktop",

@@ -33,6 +33,9 @@ import { HEX_COLOR, type ImageRef } from "./value-types";
  * Devices
  * -------------------------------------------------------------------------- */
 
+/** How an alignment reads in the panel and the theme editor — one spelling, Centre. */
+export const ALIGNMENT_LABEL: Record<string, string> = { left: "Left", center: "Centre", right: "Right", justify: "Justify" };
+
 export const DEVICES = ["d", "t", "m"] as const;
 export type Device = (typeof DEVICES)[number];
 
@@ -114,15 +117,61 @@ export const SHADOWS = {
 
 export type ShadowId = keyof typeof SHADOWS;
 
-/** Image shapes, as CSS aspect ratios. */
+/**
+ * Image shapes, as CSS aspect ratios, by orientation. The first four ids predate the
+ * orientations and are kept as they are stored (`portrait` is 4:5, `landscape` 3:2,
+ * `wide` 16:9).
+ */
 export const IMAGE_RATIOS = {
-  square: { label: "Square", css: "1 / 1" },
-  portrait: { label: "Tall", css: "4 / 5" },
-  landscape: { label: "Landscape", css: "3 / 2" },
-  wide: { label: "Wide", css: "16 / 9" },
+  square: { label: "Square 1:1", short: "1:1", orientation: "square", css: "1 / 1" },
+  portrait: { label: "Portrait 4:5", short: "4:5", orientation: "portrait", css: "4 / 5" },
+  portrait_3_4: { label: "Portrait 3:4", short: "3:4", orientation: "portrait", css: "3 / 4" },
+  portrait_2_3: { label: "Portrait 2:3", short: "2:3", orientation: "portrait", css: "2 / 3" },
+  portrait_9_16: { label: "Portrait 9:16", short: "9:16", orientation: "portrait", css: "9 / 16" },
+  landscape_5_4: { label: "Landscape 5:4", short: "5:4", orientation: "landscape", css: "5 / 4" },
+  landscape_4_3: { label: "Landscape 4:3", short: "4:3", orientation: "landscape", css: "4 / 3" },
+  landscape: { label: "Landscape 3:2", short: "3:2", orientation: "landscape", css: "3 / 2" },
+  wide: { label: "Landscape 16:9", short: "16:9", orientation: "landscape", css: "16 / 9" },
+  landscape_21_9: { label: "Landscape 21:9", short: "21:9", orientation: "landscape", css: "21 / 9" },
 } as const;
 
 export type ImageRatio = keyof typeof IMAGE_RATIOS;
+export type ImageOrientation = (typeof IMAGE_RATIOS)[ImageRatio]["orientation"];
+
+/** A shape typed in as width : height — `images.custom`. */
+export const CUSTOM_RATIO = "custom";
+/** Each photo in its own shape (or its crop's), whatever the section's frame. */
+export const OWN_RATIO = "own";
+export const MAX_CUSTOM_RATIO = 50;
+
+/** Which part of a photograph stays in view when its shape cuts it — CSS `object-position`. */
+export const IMAGE_FOCUS = [
+  "left top",
+  "center top",
+  "right top",
+  "left center",
+  "center",
+  "right center",
+  "left bottom",
+  "center bottom",
+  "right bottom",
+] as const;
+export type ImageFocus = (typeof IMAGE_FOCUS)[number];
+export const IMAGE_FOCUS_LABEL: Record<ImageFocus, string> = {
+  "left top": "Top left",
+  "center top": "Top",
+  "right top": "Top right",
+  "left center": "Left",
+  center: "The middle",
+  "right center": "Right",
+  "left bottom": "Bottom left",
+  "center bottom": "Bottom",
+  "right bottom": "Bottom right",
+};
+
+export const MIN_IMAGE_SIZE = 40;
+export const MAX_IMAGE_WIDTH = 2400;
+export const MAX_IMAGE_HEIGHT = 2000;
 
 /* -------------------------------------------------------------------------- *
  * Shape
@@ -210,7 +259,17 @@ export type DesignValue = {
   radius?: { t?: number; m?: number };
   /** The photographs inside the section. */
   images?: {
-    ratio?: ImageRatio;
+    /** A shape from the list, or `custom` for `custom`'s width : height. */
+    ratio?: ImageRatio | typeof CUSTOM_RATIO | typeof OWN_RATIO;
+    custom?: { w: number; h: number };
+    /** The photographs' width, px — never wider than their column. */
+    width?: Responsive<number>;
+    /** The photographs' height, px — over the shape, which it replaces. */
+    height?: Responsive<number>;
+    /** `contain`: the whole photograph, inside its shape. Unset: it fills the shape. */
+    fit?: "contain";
+    /** The part kept in view when the shape cuts the photograph. Unset: the middle. */
+    focus?: Exclude<ImageFocus, "center">;
     /** px */
     radius?: number;
     /** A slow zoom when the pointer is over a photograph. */
@@ -266,6 +325,16 @@ export function isEmptyDesign(value: DesignValue | undefined): boolean {
 /* -------------------------------------------------------------------------- *
  * To CSS
  * -------------------------------------------------------------------------- */
+
+/** The photographs' shape as a CSS aspect ratio — a listed one, or the typed-in one. */
+export function imageRatioCss(images: DesignValue["images"]): string | null {
+  if (!images?.ratio || images.ratio === OWN_RATIO) return null;
+  if (images.ratio === CUSTOM_RATIO) {
+    const custom = images.custom;
+    return custom && custom.w > 0 && custom.h > 0 ? `${custom.w} / ${custom.h}` : null;
+  }
+  return IMAGE_RATIOS[images.ratio]?.css ?? null;
+}
 
 /**
  * Inline style + data attributes for an element carrying a design. The style holds
@@ -400,9 +469,21 @@ export function designStyle(value: DesignValue | undefined): {
   }
 
   const images = value.images;
-  if (images?.ratio && IMAGE_RATIOS[images.ratio]) {
-    style["--sb-ratio"] = IMAGE_RATIOS[images.ratio].css;
+  const ratio = imageRatioCss(images);
+  if (ratio) {
+    style["--sb-ratio"] = ratio;
     attrs["data-sb-ratio"] = "";
+  }
+  if (images?.ratio === OWN_RATIO) attrs["data-sb-own"] = "";
+  each("imgw", "--sb-imgw", images?.width, (v) => `${v}px`);
+  each("imgh", "--sb-imgh", images?.height, (v) => `${v}px`);
+  if (images?.fit === "contain") {
+    style["--sb-imgfit"] = "contain";
+    attrs["data-sb-imgfit"] = "";
+  }
+  if (images?.focus && (IMAGE_FOCUS as readonly string[]).includes(images.focus)) {
+    style["--sb-imgpos"] = images.focus;
+    attrs["data-sb-imgpos"] = "";
   }
   if (images?.radius) {
     style["--sb-imgr"] = `${images.radius}px`;

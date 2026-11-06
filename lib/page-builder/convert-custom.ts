@@ -78,7 +78,6 @@ const fullRow = (after: Draft[]): Draft[] =>
   after.length ? [{ type: "column", settings: { width: "100", widthMobile: "100" } }, ...after] : [];
 
 const WIDTH: Record<string, string> = { narrow: "narrow", medium: "medium", full: "page", wide: "page" };
-const RATIO: Record<string, string> = { portrait: "portrait", square: "square", landscape: "landscape", adapt: "adapt" };
 
 type Converted = { blocks: Draft[]; layout?: S };
 
@@ -107,7 +106,7 @@ const CONVERTERS: Record<string, (s: S) => Converted | null> = {
     const right = s.align === "right";
     const photo: Draft[] = [
       { type: "column", settings: { width: imageWidth, widthTablet: "50", ...(right ? { mobileFirst: true } : {}) } },
-      { type: "image", settings: { image: s.image, ratio: RATIO[str(s.ratio)] ?? "portrait" } },
+      { type: "image", settings: { image: s.image } },
     ];
     const words: Draft[] = [
       { type: "column", settings: { position: s.verticalAlign === "top" ? "top" : s.verticalAlign === "bottom" ? "bottom" : "middle" } },
@@ -131,7 +130,6 @@ const CONVERTERS: Record<string, (s: S) => Converted | null> = {
               title: str(b.title),
               body: b.body,
               link: b.link,
-              ratio: RATIO[str(s.ratio)] ?? "portrait",
               style: s.style === "cards" ? "panel" : "plain",
             },
           },
@@ -168,7 +166,7 @@ const CONVERTERS: Record<string, (s: S) => Converted | null> = {
 
   steps: (s) => {
     const items = list(s.items).map((item, index): Draft[] => [
-      ...(item.settings.image ? [{ type: "image", settings: { image: item.settings.image, ratio: "landscape" } }] : []),
+      ...(item.settings.image ? [{ type: "image", settings: { image: item.settings.image } }] : []),
       ...(s.numbered !== false ? [{ type: "eyebrow", settings: { eyebrow: String(index + 1).padStart(2, "0") } }] : []),
       { type: "heading", settings: { title: str(item.settings.title), size: "h3" } },
       ...(hasRich(item.settings.body) ? [{ type: "text", settings: { body: item.settings.body, size: "small" } }] : []),
@@ -185,7 +183,7 @@ const CONVERTERS: Record<string, (s: S) => Converted | null> = {
     return {
       blocks: [
         { type: "column", settings: { width: "50" } },
-        { type: "image", settings: { image: s.image, ratio: "portrait" } },
+        { type: "image", settings: { image: s.image } },
         { type: "column" },
         ...heading(s),
         ...rows,
@@ -220,7 +218,7 @@ const CONVERTERS: Record<string, (s: S) => Converted | null> = {
 
   testimonials: (s) => {
     const items = list(s.quotes).map((item): Draft[] => [
-      ...(item.settings.image ? [{ type: "image", settings: { image: item.settings.image, ratio: "square", size: "25" } }] : []),
+      ...(item.settings.image ? [{ type: "image", settings: { image: item.settings.image, size: "25" } }] : []),
       { type: "quote", settings: { quote: str(item.settings.quote), author: str(item.settings.author), role: str(item.settings.role) } },
     ]);
     return { blocks: [...heading(s, s.headingAlign), ...columns(items, String(Math.min(items.length, 3)))] };
@@ -229,7 +227,7 @@ const CONVERTERS: Record<string, (s: S) => Converted | null> = {
   logo_list: (s) => {
     const items = list(s.logos)
       .filter((item) => item.settings.image)
-      .map((item): Draft[] => [{ type: "image", settings: { image: item.settings.image, ratio: "adapt", size: "75" } }]);
+      .map((item): Draft[] => [{ type: "image", settings: { image: item.settings.image, size: "75" } }]);
     return {
       blocks: [...heading(s, s.headingAlign), ...columns(items, String(Math.min(Math.max(items.length, 1), 5)), "50")],
       layout: { align: "center" },

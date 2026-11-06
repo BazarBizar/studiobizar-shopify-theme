@@ -200,9 +200,47 @@ groups; the rest in these:
   colour is set; a new background with no text colour gets a readable one. Offered on sections
   with buttons, on each Hero slider slide, and for the whole site (Theme Builder → Site style →
   Buttons for the whole site), where a section's own still wins.
-- **Images** (not on banners and heroes, whose photograph is their ground): a shape for every
-  photograph in the section (square, tall, landscape, wide) and a slow zoom on hover. Their corners
-  are under Border & shadow.
+- **Images** (not on banners and heroes, whose photograph is their ground) — for every photograph
+  in the section:
+  - **Orientation** Section default (the shape the section is designed with) / **As uploaded**
+    (each photo its own shape, or its crop's — `images.ratio = "own"`, `data-sb-own`) / Portrait /
+    Square / Landscape / Custom, then the **ratio** of that
+    orientation (portrait 4:5 3:4 2:3 9:16; landscape 5:4 4:3 3:2 16:9 21:9), or Custom's own
+    width : height (1–50 each) with **Turn** to swap portrait and landscape. `images.ratio` keeps the
+    four older ids as they were stored (`portrait` 4:5, `landscape` 3:2, `wide` 16:9, `square`).
+  - **Width** and **Height** in px, per device (40–2400 / 40–2000). A width never goes past the
+    column; a height replaces the shape.
+  - **Fit**: fill the shape (trims the edges) or show the whole photo; with fill, **Keep in view**
+    (a 3 × 3 grid, `object-position`) says which part stays.
+  - A slow zoom on hover. Their corners are under Border & shadow.
+
+  The CSS (`styles/sb-design.css`) targets a plain `<img>` and, for a photograph that FILLS its box
+  (`data-nimg="fill"` in Next, `.absolute` in the theme), that box — so every component takes it
+  without changes. Checked on all 20 section types with photographs.
+
+**One photo's crop** is on the photo itself, not in the Style tab: under every chosen image
+(Content tab, also in lists of photos and the background photo) there is **Crop**, with the size
+shown in px. The dialog (`image-crop-dialog.tsx`): Free / As uploaded / 1:1 5:4 4:3 3:2 16:9 21:9,
+Portrait or Landscape, drag the frame or a corner, type the width or height in px, arrow keys move
+it; a warning below 800 px on the shorter side. It is stored on the image (`ImageRef.crop`, in the
+original's pixels, checked to lie inside it) and drawn by the **Shopify CDN** (`crop=region` +
+`crop_left/top/width/height`, `lib/page-builder/image-crop.ts`): `SectionRenderer` passes every
+section through `withCrops` first, so each component simply sees a smaller photo of the crop's
+size and shape, and the visitor downloads only that part. **No "Image shape" setting any more** (removed 2026-11-06 from Media & text, Columns and the
+Custom section's Image and Card blocks, Next and theme): each photo is drawn in its own shape, and
+**Change crop** is how its shape is chosen. A value stored before is dropped on read (`lenient`).
+The video's Shape stays — it is the video's.
+**A crop is also the photo's shape**: a
+photo frame that has a shape of its own (`Picture` — columns, custom section, steps, tabs,
+collapsible, the large collage tile — Media & text, three photos, full-width image) takes the
+crop's instead (`isCropped`). Kept in their frame, the crop only picking the part: banners and
+heroes (the photo is their ground), the video cover, avatars, logos, the Instagram grid, the small
+collage tiles. The Style tab's shape wins over both (its frame rules are `!important`, as a frame
+that follows its photo sets its shape inline). Photo frames also carry their photo's ratio as
+`--sb-photo-ratio` (`photoFrameStyle`; the theme's `sb-picture` too), so "As uploaded" has the right
+height before the photo loads; a frame without it (a product card) falls back to the photo in the
+flow. Next only: the theme's image picker has
+no crop (the Style tab's photo settings are in the theme too).
 - **Width & height** (content width, minimum height, where content sits), **Show on devices**.
 
 Only what does something is offered. When a section is selected, and after each redraw, the preview
@@ -212,6 +250,27 @@ captions; a choice of one shows no switch, and a section with no text has no Typ
 edge to edge (full image, marquee, spacer). "Text" covers paragraphs, list items, captions, quotes
 and term/description pairs. `defineSection({ textAlign: false })` drops Text alignment where the
 section places its own text (the slideshow: Text position per slide).
+
+**One setting, one place** (2026-11-06). A quick choice in the section's Layout that has an exact
+twin in the design value carries that twin under it: **Heading size** → "Or set an exact size in px"
+(`design.heading.size`), **Width** → exact width (`design.maxWidth`; the quick choice moves to the
+widest that stays in the page, so it no longer limits the px), **Height** → exact height
+(`design.minHeight`; "adapt" moves to Large, and "Height on phones" is not offered while it is set).
+Picking a quick choice clears the exact value. `EXACT` / `fromLayoutOf` in `section-editor.tsx`;
+DesignControls' `fromLayout` then leaves these out of the Style tab, and Typography's Text
+alignment where the section has an alignment of its own (one stored before still shows, to be
+reset). A banner's and a slideshow's box carries `data-sb-fill-height`, so an exact height sizes the
+box itself, shorter or taller than its quick choice (in the theme the box is the frame already).
+Alignments are spelled **Centre** everywhere (`ALIGNMENT_LABEL`).
+
+**Shorter Style tab, one per-device pattern** (2026-11-06). Typography shows font, size, colour and
+alignment; weight, line height, letter spacing and letter case sit behind **More** (`More` in
+`design-controls.tsx`, open by itself when one of them is set). Buttons show colours and corners;
+line thickness and spacing behind More. Settings stored one per device — Items across
+(`perDesktop/perTablet/perMobile`), Columns (`columnsDesktop/columnsMobile`), Height
+(`height/heightMobile`) — are ONE control for the device being edited (`PER_DEVICE` / `DeviceField`
+in `section-editor.tsx`), with the same device switch as the preview; a device without its own
+choice shows and sets the larger screen's, and says so. Advanced names what is inside it.
 
 On a section with photographs, Border & shadow offers **Section corners** (its background and
 line — the help says when there is nothing yet to see them on) and, beside it, **Photo corners**
@@ -322,7 +381,7 @@ props, so a Liquid section can be written from the same settings.
 | Banners | `image_banner` | 3 × 3 text position, height (to full screen / fit image), darkening 0–80%, light/dark text, text panel, phone crop, two buttons | — |
 | | `slideshow` | per-slide position and text colour, autoplay + seconds, arrows/dots; pause control; no autoplay under reduced motion | slide |
 | | `cta_banner` | centred · split · on a photograph; width; two buttons | — |
-| Text & media | `media_text` | (existing) + small label, image shape, image width, vertical alignment, button style | — |
+| Text & media | `media_text` | (existing) + small label, image width, vertical alignment, button style | — |
 | | `multicolumn` | images · icons · none; 2–5 columns; phones 1 · 2 · swipe; plain · cards · lines | column |
 | | `stats` | figure size, alignment, dividers | figure |
 | | `steps` | in a row · timeline; numbers; images | step |
@@ -616,7 +675,7 @@ It then draws the section again with the **Next renderer and the Liquid theme se
 - **Steps:** the step image showed only with a "Show images" switch that was off by default.
 
 **Rule since then: an image someone added always shows.**
-- **Columns:** "Media" now only decides what fills a column *without* an image: an icon, or an empty frame in the preview. "Image shape" is always offered.
+- **Columns:** "Media" now only decides what fills a column *without* an image: an icon, or an empty frame in the preview. (The "Image shape" setting is gone: see below.)
 - **Steps:** the switch is gone. In the preview, once one step has an image, the others show an empty frame.
 
 Both storefronts changed together.

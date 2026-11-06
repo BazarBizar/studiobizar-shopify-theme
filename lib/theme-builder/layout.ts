@@ -2,6 +2,14 @@ import { z } from "zod";
 
 import { designSchema, readDesign, SHADOWS, type DesignValue, type Device, type Responsive, type ShadowId } from "@/lib/page-builder/design";
 import {
+  DEFAULT_PAGE_SETTINGS,
+  publishProblems,
+  readSections,
+  sectionListSchema,
+  type PublishProblem,
+  type SectionInstance,
+} from "@/lib/page-builder/document";
+import {
   fieldDefault,
   fieldSchema,
   HEX_COLOR,
@@ -176,6 +184,32 @@ export const ELEMENTS = {
 export type ElementType = keyof typeof ELEMENTS;
 export const ELEMENT_TYPES = Object.keys(ELEMENTS) as ElementType[];
 
+/**
+ * One element's own look — its Style tab, as a section has one. Every part is
+ * optional; an element with none looks as its zone does. `design` carries only the
+ * typography and the buttons' look (`ELEMENT_DESIGN_PARTS`), drawn by the design
+ * value's own rules, so a menu's links take a font the way a section's text does.
+ */
+export type ElementStyle = {
+  /** Text and icons. */
+  color?: string;
+  /** Links and icons under the pointer. */
+  hoverColor?: string;
+  background?: string;
+  /** Space inside, px per device. */
+  padX?: Responsive<number>;
+  padY?: Responsive<number>;
+  /** Rounded corners, px. */
+  radius?: number;
+  /** A line around it, px — in `borderColor`, else the text colour. */
+  borderWidth?: number;
+  borderColor?: string;
+  shadow?: ShadowId;
+  design?: DesignValue;
+};
+
+export const ELEMENT_DESIGN_PARTS = ["heading", "text", "button", "buttonLook"] as const satisfies readonly (keyof DesignValue)[];
+
 export type ThemeElement = {
   id: string;
   type: ElementType;
@@ -184,9 +218,11 @@ export type ThemeElement = {
   hide?: Partial<Record<Device, boolean>>;
   /** Space before it in its zone or column, px — the zone's own spacing when absent. */
   spaceBefore?: number;
+  style?: ElementStyle;
 };
 
 export const MAX_SPACE_BEFORE = 240;
+export const MAX_ELEMENT_PADDING = 120;
 
 export function createElement(type: ElementType, settings: Record<string, unknown> = {}): ThemeElement {
   const fields = ELEMENTS[type].fields as readonly LeafFieldDef[];
@@ -214,6 +250,11 @@ export type HeaderLayout = {
   desktop: Zones;
   /** Narrower than 1024px. */
   mobile: Zones;
+  /**
+   * Page builder sections drawn under the header bar on every page — they scroll
+   * with the page, the bar above them stays sticky.
+   */
+  sections: SectionInstance[];
   style: {
     /** "" = the page's own ground, as the original header. */
     background: string;
@@ -245,6 +286,8 @@ export type HeaderLayout = {
 export type FooterColumn = { id: string; elements: ThemeElement[] };
 
 export type FooterLayout = {
+  /** Page builder sections at the top of the footer, above the columns, on its ground. */
+  sections: SectionInstance[];
   columns: FooterColumn[];
   bottom: Zones;
   style: {
@@ -292,6 +335,14 @@ export type ThemeLayout = ThemeLayoutContent & { version: number; meta: ThemeMet
 
 export const MAX_ELEMENTS_PER_ZONE = 12;
 export const MAX_FOOTER_COLUMNS = 5;
+/** Sections under the header, and in the footer — each. The whole layout stays under `MAX_THEME_BYTES`. */
+export const MAX_AREA_SECTIONS = 8;
+
+/**
+ * Sections not offered under the header or in the footer: Page heading draws the
+ * page's one `h1`, and Go back is about the page it sits on.
+ */
+export const AREA_EXCLUDED_SECTIONS: readonly string[] = ["page_heading", "go_back"];
 
 /* -------------------------------------------------------------------------- *
  * Default — what the site shows today
@@ -329,6 +380,7 @@ export function defaultLayoutContent(): ThemeLayoutContent {
           { ...createElement("menuToggle"), spaceBefore: 16 },
         ],
       },
+      sections: [],
       style: {
         background: "",
         color: "",
@@ -347,6 +399,7 @@ export function defaultLayoutContent(): ThemeLayoutContent {
       },
     },
     footer: {
+      sections: [],
       columns: [
         {
           id: newBlockId(),
@@ -399,6 +452,45 @@ const responsivePx = (max: number) =>
     m: z.number().int().min(0).max(max).optional(),
   });
 
+const elementDesignSchema = designSchema.refine(
+  (value) => Object.keys(value).every((key) => (ELEMENT_DESIGN_PARTS as readonly string[]).includes(key)),
+  "An element takes typography and the buttons' look only.",
+);
+
+const elementStyleShape = {
+  color: hex.optional(),
+  hoverColor: hex.optional(),
+  background: hex.optional(),
+  padX: responsivePx(MAX_ELEMENT_PADDING).optional(),
+  padY: responsivePx(MAX_ELEMENT_PADDING).optional(),
+  radius: z.number().int().min(0).max(100).optional(),
+  borderWidth: z.number().int().min(0).max(10).optional(),
+  borderColor: hex.optional(),
+  shadow: z.enum(Object.keys(SHADOWS) as [ShadowId, ...ShadowId[]]).optional(),
+  design: elementDesignSchema.optional(),
+};
+
+const elementStyleSchema = z.strictObject(elementStyleShape);
+
+/** An element's style, read part by part — a damaged part is dropped alone; nothing left, no style. */
+function readElementStyle(input: unknown): ElementStyle | undefined {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return undefined;
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(input)) {
+    if (key === "design") {
+      const design = Object.fromEntries(
+        Object.entries(readDesign(value)).filter(([part]) => (ELEMENT_DESIGN_PARTS as readonly string[]).includes(part)),
+      );
+      if (Object.keys(design).length) out.design = design;
+      continue;
+    }
+    const shape = elementStyleShape[key as keyof typeof elementStyleShape] as z.ZodType | undefined;
+    const parsed = shape?.safeParse(value);
+    if (parsed?.success && parsed.data !== undefined && parsed.data !== "") out[key] = parsed.data;
+  }
+  return Object.keys(out).length ? (out as ElementStyle) : undefined;
+}
+
 function elementSchema(type: ElementType) {
   const fields = ELEMENTS[type].fields as readonly LeafFieldDef[];
   return z.strictObject({
@@ -407,8 +499,15 @@ function elementSchema(type: ElementType) {
     settings: z.strictObject(Object.fromEntries(fields.map((field) => [field.key, fieldSchema(field)]))),
     hide: hide.optional(),
     spaceBefore: z.number().int().min(0).max(MAX_SPACE_BEFORE).optional(),
+    style: elementStyleSchema.optional(),
   });
 }
+
+/** Sections under the header or in the footer: as a page's, minus the ones that only make sense on a page. */
+const areaSections = sectionListSchema(MAX_AREA_SECTIONS).refine(
+  (sections) => sections.every((section) => !AREA_EXCLUDED_SECTIONS.includes(section.type)),
+  "That section can only be placed on a page.",
+);
 
 const elementSchemaAny = z.discriminatedUnion(
   "type",
@@ -423,6 +522,7 @@ const headerSchema = z.strictObject({
   sticky: z.boolean(),
   desktop: zones,
   mobile: zones,
+  sections: areaSections,
   style: z.strictObject({
     background: hex,
     color: hex,
@@ -442,6 +542,7 @@ const headerSchema = z.strictObject({
 });
 
 const footerSchema = z.strictObject({
+  sections: areaSections,
   columns: z
     .array(z.strictObject({ id: z.string().regex(ELEMENT_ID), elements: zone }))
     .min(1)
@@ -481,7 +582,14 @@ export const themeContentSchema = z.strictObject({
 
 /** A read element: unknown types dropped, each setting falling back to its default alone. */
 function readElement(input: unknown): ThemeElement | null {
-  const candidate = input as { id?: unknown; type?: unknown; settings?: unknown; hide?: unknown; spaceBefore?: unknown } | null;
+  const candidate = input as {
+    id?: unknown;
+    type?: unknown;
+    settings?: unknown;
+    hide?: unknown;
+    spaceBefore?: unknown;
+    style?: unknown;
+  } | null;
   if (!candidate || typeof candidate.id !== "string" || !ELEMENT_ID.test(candidate.id)) return null;
   if (typeof candidate.type !== "string" || !(candidate.type in ELEMENTS)) return null;
   const type = candidate.type as ElementType;
@@ -490,12 +598,14 @@ function readElement(input: unknown): ThemeElement | null {
   const settings = Object.fromEntries(fields.map((field) => [field.key, lenientFieldSchema(field).parse(raw[field.key])]));
   const hidden = hide.safeParse(candidate.hide);
   const space = z.number().int().min(0).max(MAX_SPACE_BEFORE).safeParse(candidate.spaceBefore);
+  const style = readElementStyle(candidate.style);
   return {
     id: candidate.id,
     type,
     settings,
     ...(hidden.success && Object.keys(hidden.data).length ? { hide: hidden.data } : {}),
     ...(space.success ? { spaceBefore: space.data } : {}),
+    ...(style ? { style } : {}),
   };
 }
 
@@ -511,6 +621,11 @@ function readZones(input: unknown, place: "header" | "footer", fallback: Zones):
   if (!input || typeof input !== "object") return fallback;
   const value = input as Record<string, unknown>;
   return { left: readZone(value.left, place), center: readZone(value.center, place), right: readZone(value.right, place) };
+}
+
+/** Stored area sections, read as a page's are — and without the ones only a page may hold. */
+function readAreaSections(input: unknown): SectionInstance[] {
+  return readSections(input, MAX_AREA_SECTIONS).sections.filter((section) => !AREA_EXCLUDED_SECTIONS.includes(section.type));
 }
 
 /** Each part kept or replaced by its default on its own — one damaged value costs that value. */
@@ -567,9 +682,11 @@ export function readThemeContent(input: unknown): ThemeLayoutContent {
       sticky: pick(z.boolean(), header.sticky, base.header.sticky),
       desktop: readZones(header.desktop, "header", base.header.desktop),
       mobile: readZones(header.mobile, "header", base.header.mobile),
+      sections: readAreaSections(header.sections),
       style: styleOf(headerSchema.shape.style, headerStyle, base.header.style),
     },
     footer: {
+      sections: readAreaSections(footer.sections),
       columns: columns.length ? columns : base.footer.columns,
       bottom: readZones(footer.bottom, "footer", base.footer.bottom),
       style: styleOf(footerSchema.shape.style, footerStyle, base.footer.style),
@@ -614,6 +731,19 @@ export function sameThemeContent(a: ThemeLayoutContent | null, b: ThemeLayoutCon
   const content = (layout: ThemeLayoutContent) =>
     JSON.stringify({ header: layout.header, footer: layout.footer, global: layout.global, popups: layout.popups });
   return content(a) === content(b);
+}
+
+/** Where an area section sits, for the editor's messages. */
+export type AreaProblem = PublishProblem & { area: "header" | "footer" };
+
+/**
+ * Required fields left empty in a visible section under the header or in the footer —
+ * the publish gate, as a page's (`publishProblems`). Drafts may be saved incomplete.
+ */
+export function themePublishProblems(content: ThemeLayoutContent): AreaProblem[] {
+  const check = (area: "header" | "footer", sections: SectionInstance[]) =>
+    publishProblems({ page: DEFAULT_PAGE_SETTINGS, sections }).map((problem) => ({ ...problem, area }));
+  return [...check("header", content.header.sections), ...check("footer", content.footer.sections)];
 }
 
 /** The menus a layout uses, so the storefront fetches only those. */

@@ -156,7 +156,7 @@ export const LANDING_RENDERERS = {
         }))}
         button={linkOf(s.button)}
         media={s.media}
-        ratio={s.ratio}
+        ratio="adapt"
         columnsDesktop={s.columnsDesktop}
         columnsMobile={s.columnsMobile}
         align={s.align}

@@ -75,6 +75,9 @@
 [data-sb-align~="d"] { text-align: var(--sb-align); }
 [data-sb-maxw~="d"] .sb-container { max-width: var(--sb-maxw); margin-inline: auto; }
 [data-sb-minh~="d"] { min-height: var(--sb-minh); }
+/* A banner's own box (`data-sb-fill-height`): the exact height sizes it — taller or shorter than its
+   quick choice — not only the frame around it. (In the theme the box IS the frame.) */
+[data-sb-minh~="d"] [data-sb-fill-height] { min-height: var(--sb-minh); }
 [data-sb-valign] { display: flex; flex-direction: column; }
 [data-sb-valign="center"] { justify-content: center; }
 [data-sb-valign="bottom"] { justify-content: flex-end; }
@@ -90,12 +93,42 @@
    A photograph that FILLS its box (Next: `data-nimg="fill"`; the theme: an `absolute`
    <img>, maybe in a <picture>) takes the shape on that box instead. */
 [data-sb-ratio] img:not([data-nimg="fill"], .absolute) { aspect-ratio: var(--sb-ratio); object-fit: cover; width: 100%; height: auto; }
-[data-sb-ratio] :has(> img:is([data-nimg="fill"], .absolute), > picture > img:is([data-nimg="fill"], .absolute)):not([data-section-id], section) { aspect-ratio: var(--sb-ratio); height: auto; }
+/* !important: a frame that follows its photo ("adapt", or a cropped photo) carries its shape
+   inline — the Style tab's shape is for every photo in the section, so it wins. */
+[data-sb-ratio] :has(> img:is([data-nimg="fill"], .absolute), > picture > img:is([data-nimg="fill"], .absolute)):not([data-section-id], section) { aspect-ratio: var(--sb-ratio) !important; height: auto; }
+/* "As uploaded" (design.images.ratio = own): each photo in its own shape — or its crop's —
+   whatever frame the component draws. A frame that knows its photo's shape carries it
+   (`--sb-photo-ratio`, Next's photo frames and the theme's sb-picture) and takes it at once.
+   One that does not (a product card) puts its photo back in the flow, so the frame takes
+   the photo's height once it loads — only the first photo in a frame: a product card's
+   second, hover photo stays laid over it. A height in px still wins. */
+[data-sb-own]:not([data-sb-imgh]) :has(> img:is([data-nimg="fill"], .absolute), > picture > img:is([data-nimg="fill"], .absolute)):not([data-section-id], section)[style*="--sb-photo-ratio"] { aspect-ratio: var(--sb-photo-ratio) !important; height: auto !important; }
+[data-sb-own]:not([data-sb-imgh]) :has(> img:is([data-nimg="fill"], .absolute), > picture > img:is([data-nimg="fill"], .absolute)):not([data-section-id], section):not([style*="--sb-photo-ratio"]) { aspect-ratio: auto !important; height: auto !important; }
+[data-sb-own]:not([data-sb-imgh]) :not([style*="--sb-photo-ratio"]) > img:is([data-nimg="fill"], .absolute):first-of-type,
+[data-sb-own]:not([data-sb-imgh]) :not([style*="--sb-photo-ratio"]) > picture > img:is([data-nimg="fill"], .absolute) {
+  position: static !important;
+  width: 100% !important;
+  height: auto !important;
+}
+[data-sb-own]:not([data-sb-imgh]) img:not([data-nimg="fill"], .absolute) { aspect-ratio: auto; height: auto; }
 [data-sb-imgr] img { border-radius: var(--sb-imgr); }
 [data-sb-imgr] :has(> img:is([data-nimg="fill"], .absolute), > picture > img:is([data-nimg="fill"], .absolute)) { border-radius: var(--sb-imgr); overflow: hidden; }
 [data-sb-zoom] :has(> img, > picture > img) { overflow: hidden; }
 [data-sb-zoom] img { transition: transform 0.6s var(--sb-ease-out, ease-out); }
 [data-sb-zoom] :has(> img, > picture > img):hover img { transform: scale(1.05); }
+
+/* The photographs' size in px (design.images.width / height), focus and fit. A width never
+   pushes past the column; a height replaces the shape. They come after the shape's rules,
+   with the same weight, so they win over it. Fit and focus win over the components' own
+   `object-cover` / `object-top`. */
+[data-sb-imgw~="d"] img:not([data-nimg="fill"], .absolute),
+[data-sb-imgw~="d"] :has(> img:is([data-nimg="fill"], .absolute), > picture > img:is([data-nimg="fill"], .absolute)):not([data-section-id], section) { width: min(100%, var(--sb-imgw)); }
+[data-sb-imgh~="d"] img:not([data-nimg="fill"], .absolute) { height: var(--sb-imgh); aspect-ratio: auto; object-fit: cover; }
+[data-sb-imgh~="d"] :has(> img:is([data-nimg="fill"], .absolute), > picture > img:is([data-nimg="fill"], .absolute)):not([data-section-id], section) { height: var(--sb-imgh); aspect-ratio: auto !important; }
+/* Heavier than the per-device heights below, which fill the box by default. */
+[data-sb-imgfit][data-sb-imgfit][data-sb-imgfit] img { object-fit: var(--sb-imgfit); }
+[data-sb-imgpos][data-sb-imgpos] img { object-position: var(--sb-imgpos); }
+
 @media (prefers-reduced-motion: reduce) {
   [data-sb-zoom] :has(> img, > picture > img):hover img { transform: none; }
 }
@@ -129,7 +162,12 @@
   [data-sb-align~="t"] { text-align: var(--sb-align-t); }
   [data-sb-maxw~="t"] .sb-container { max-width: var(--sb-maxw-t); margin-inline: auto; }
   [data-sb-minh~="t"] { min-height: var(--sb-minh-t); }
+  [data-sb-minh~="t"] [data-sb-fill-height] { min-height: var(--sb-minh-t); }
   [data-sb-rad~="t"] { --sb-rad: var(--sb-rad-t); }
+  [data-sb-imgw~="t"] img:not([data-nimg="fill"], .absolute),
+  [data-sb-imgw~="t"] :has(> img:is([data-nimg="fill"], .absolute), > picture > img:is([data-nimg="fill"], .absolute)):not([data-section-id], section) { width: min(100%, var(--sb-imgw-t)); }
+  [data-sb-imgh~="t"] img:not([data-nimg="fill"], .absolute) { height: var(--sb-imgh-t); aspect-ratio: auto; object-fit: cover; }
+  [data-sb-imgh~="t"] :has(> img:is([data-nimg="fill"], .absolute), > picture > img:is([data-nimg="fill"], .absolute)):not([data-section-id], section) { height: var(--sb-imgh-t); aspect-ratio: auto !important; }
 
   [data-sb-pad][data-sb-space-t] {
     margin-top: var(--sb-mt-t, var(--sb-mt, 0px));
@@ -178,7 +216,12 @@
   [data-sb-align~="m"] { text-align: var(--sb-align-m); }
   [data-sb-maxw~="m"] .sb-container { max-width: var(--sb-maxw-m); margin-inline: auto; }
   [data-sb-minh~="m"] { min-height: var(--sb-minh-m); }
+  [data-sb-minh~="m"] [data-sb-fill-height] { min-height: var(--sb-minh-m); }
   [data-sb-rad~="m"] { --sb-rad: var(--sb-rad-m); }
+  [data-sb-imgw~="m"] img:not([data-nimg="fill"], .absolute),
+  [data-sb-imgw~="m"] :has(> img:is([data-nimg="fill"], .absolute), > picture > img:is([data-nimg="fill"], .absolute)):not([data-section-id], section) { width: min(100%, var(--sb-imgw-m)); }
+  [data-sb-imgh~="m"] img:not([data-nimg="fill"], .absolute) { height: var(--sb-imgh-m); aspect-ratio: auto; object-fit: cover; }
+  [data-sb-imgh~="m"] :has(> img:is([data-nimg="fill"], .absolute), > picture > img:is([data-nimg="fill"], .absolute)):not([data-section-id], section) { height: var(--sb-imgh-m); aspect-ratio: auto !important; }
   [data-sb-bg-m] { background-image: var(--sb-bg-m); }
 
   [data-sb-pad][data-sb-space-m] {

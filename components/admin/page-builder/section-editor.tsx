@@ -35,12 +35,12 @@ import {
   type Device,
   type Responsive,
 } from "@/lib/page-builder/design";
-import { isFieldActive, isFieldFilled, type FieldDef } from "@/lib/page-builder/fields";
+import { isFieldActive, isFieldFilled, type DesignPart, type FieldDef } from "@/lib/page-builder/fields";
 import { sectionDefinition } from "@/lib/page-builder/registry";
 
 import type { SectionContents } from "@/components/page-builder/preview-bridge";
 
-import { BackgroundPart, DesignControls, Part, Segmented, Slider } from "./design-controls";
+import { BackgroundPart, DesignControls, Part, ResponsiveSlider, Segmented, Slider, type FromLayout } from "./design-controls";
 import { DEVICE_ICONS, DeviceSwitch, useEditorDevice } from "./editor-device";
 import { FieldControl, type CollectionOption } from "./field-controls";
 
@@ -87,7 +87,153 @@ function Field({
         onChange={(next) => onChange(field.key, next)}
       />
       {field.help && !inline && <p className="text-muted-foreground text-xs">{field.help}</p>}
-      {missing && <p className="text-xs text-amber-600 dark:text-amber-500">Needed before this page can be published.</p>}
+      {missing && <p className="text-xs text-amber-600 dark:text-amber-500">Fill this in before publishing.</p>}
+    </div>
+  );
+}
+
+/**
+ * A quick choice in Layout whose exact twin is a design value: Heading size and the
+ * headings' px size, Width and the content width, Height and the minimum height. ONE
+ * setting in ONE place — the twin is shown here, under its quick choice, and not again
+ * in the Style tab (`fromLayout`). Picking a quick choice clears the exact value, so the
+ * two never disagree; setting an exact one moves the quick choice to where it no longer
+ * limits it (`widest`: the widest that stays within the page; `notAdapt`: a height that
+ * does not follow the photo).
+ */
+const EXACT: Record<
+  string,
+  { path: string[]; part: DesignPart; label: string; min: number; max: number; step: number; widest?: Record<string, string>; notAdapt?: string }
+> = {
+  headingSize: { path: ["heading", "size"], part: "typography", label: "an exact size", min: 16, max: 160, step: 1 },
+  width: {
+    path: ["maxWidth"],
+    part: "layout",
+    label: "an exact width",
+    min: 320,
+    max: 2400,
+    step: 10,
+    widest: { rich_text: "full", cta_banner: "full", video: "full", custom_section: "page" },
+  },
+  height: { path: ["minHeight"], part: "layout", label: "an exact height", min: 200, max: 1600, step: 10, notAdapt: "large" },
+};
+
+/** The fields of this section that own an exact twin, for the Style tab not to repeat it. */
+function fromLayoutOf(fields: readonly FieldDef[], parts: readonly DesignPart[], type: string): FromLayout {
+  const has = (key: string) => {
+    const exact = EXACT[key];
+    const field = fields.find((candidate) => candidate.key === key);
+    return Boolean(field && exact && parts.includes(exact.part) && (key !== "width" || exact.widest?.[type]));
+  };
+  // A text alignment of the section's own (with a centre); media & text's "align" is the image's side.
+  const align = fields.some(
+    (field) => field.key === "align" && field.kind === "select" && field.options.some((option) => option.value === "center"),
+  );
+  return { align, headingSize: has("headingSize"), width: has("width"), height: has("height") };
+}
+
+/**
+ * Settings stored one per device ("Items across on desktop", "… on tablets", "… on
+ * phones") shown as ONE control for the device being edited — the same device switch
+ * as above the preview and on the Style tab, so every per-device setting works alike.
+ * A device without a choice of its own shows (and sets) the larger screen's.
+ */
+const PER_DEVICE: { label: string; keys: Partial<Record<Device, string>> }[] = [
+  { label: "Items across", keys: { d: "perDesktop", t: "perTablet", m: "perMobile" } },
+  { label: "Columns", keys: { d: "columnsDesktop", m: "columnsMobile" } },
+  { label: "Height", keys: { d: "height", m: "heightMobile" } },
+];
+const deviceGroupOf = (key: string) => PER_DEVICE.find((group) => Object.values(group.keys).includes(key));
+
+function DeviceField({
+  group,
+  fields,
+  sectionId,
+  settings,
+  collections,
+  onChange,
+}: {
+  group: (typeof PER_DEVICE)[number];
+  fields: readonly FieldDef[];
+  sectionId: string;
+  settings: Record<string, unknown>;
+  collections: CollectionOption[];
+  onChange: (key: string, value: unknown) => void;
+}) {
+  const { device } = useEditorDevice();
+  const offered = (key: string | undefined) => (key ? fields.find((field) => field.key === key) : undefined);
+  // Its own, else the next larger screen's: tablet → desktop, phone → tablet → desktop.
+  const order: Device[] = device === "m" ? ["m", "t", "d"] : device === "t" ? ["t", "d"] : ["d"];
+  const from = order.find((candidate) => offered(group.keys[candidate]));
+  const field = from ? offered(group.keys[from]) : undefined;
+  if (!field || !from) return null;
+  const Icon = DEVICE_ICONS[device];
+  const help =
+    from === device
+      ? field.help
+      : `${DEVICE_LABELS[device]} uses the ${DEVICE_LABELS[from].toLowerCase()} choice — changing it here changes both.`;
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
+          <Icon className="size-3" />
+          {DEVICE_LABELS[device]}
+        </span>
+        <DeviceSwitch />
+      </div>
+      <Field
+        field={{ ...field, label: group.label, help } as FieldDef}
+        sectionId={sectionId}
+        settings={settings}
+        collections={collections}
+        onChange={onChange}
+      />
+    </div>
+  );
+}
+
+function ExactSize({
+  fieldKey,
+  type,
+  settings,
+  onChange,
+}: {
+  fieldKey: string;
+  type: string;
+  settings: Record<string, unknown>;
+  onChange: (key: string, value: unknown) => void;
+}) {
+  const exact = EXACT[fieldKey]!;
+  const design = (settings.design as DesignValue | undefined) ?? {};
+  const value = getAt(design, exact.path) as Responsive<number> | undefined;
+  const [open, setOpen] = React.useState(false);
+  if (!value && !open) {
+    return (
+      <Button type="button" variant="link" size="xs" className="-mt-2 h-auto px-0 text-xs" onClick={() => setOpen(true)}>
+        Or set {exact.label} in px
+      </Button>
+    );
+  }
+  return (
+    <div className="bg-muted/40 -mt-1 space-y-1 rounded-md p-2">
+      <ResponsiveSlider
+        label={exact.label[3]!.toUpperCase() + exact.label.slice(4)}
+        hint="Replaces the choice above. Picking one above goes back to it."
+        unit="px"
+        min={exact.min}
+        max={exact.max}
+        step={exact.step}
+        value={value}
+        placeholder="—"
+        onChange={(next) => {
+          onChange("design", setAt(design, exact.path, next));
+          if (!next) return;
+          // Out of the way of the exact value.
+          const widest = exact.widest?.[type];
+          if (widest && settings[fieldKey] !== widest) onChange(fieldKey, widest);
+          if (exact.notAdapt && settings[fieldKey] === "adapt") onChange(fieldKey, exact.notAdapt);
+        }}
+      />
     </div>
   );
 }
@@ -141,8 +287,10 @@ export function SectionEditor({
   // A section with the design panel has ONE "Show on": the three switches there.
   // The older select is folded into them (see `visibilityOf`), so it is not offered.
   const hasDesign = definition.fields.some((field) => field.kind === "design");
+  const exactHeight = Boolean(getAt((settings.design as DesignValue | undefined) ?? {}, ["minHeight"]));
   const offered = (field: FieldDef) =>
     !(hasDesign && field.key === "hideOn") &&
+    !(field.key === "heightMobile" && exactHeight) &&
     !(field.key === "placement" && !afterHeading) && !(joined && field.group === "style");
 
   const active = definition.fields.filter((field) => isFieldActive(field, settings) && offered(field));
@@ -151,6 +299,42 @@ export function SectionEditor({
   const style = active.filter((field) => field.group === "style");
   const advanced = active.filter((field) => field.group === "advanced");
   const source = definition.source(settings);
+  // Words to type over in the preview — known from the fields, so the tip never jumps in late.
+  const typable = definition.fields.some((field) =>
+    ["text", "textarea", "richText", "link", "blocks"].includes(field.kind) && (field.group ?? "content") === "content",
+  );
+  const designField = definition.fields.find((field) => field.kind === "design");
+  const designParts = designField?.kind === "design" ? designField.parts : [];
+  const fromLayout = fromLayoutOf(definition.fields, designParts, section.type);
+  const exactOf = (key: string) => (fromLayout as Record<string, boolean | undefined>)[key] && EXACT[key];
+  const change = (key: string, value: unknown) => {
+    onChange(key, value);
+    const exact = exactOf(key);
+    const design = (settings.design as DesignValue | undefined) ?? {};
+    if (exact && getAt(design, exact.path) !== undefined) onChange("design", setAt(design, exact.path, undefined));
+  };
+  const fieldOf = (field: FieldDef, index: number, list: readonly FieldDef[]) => {
+    const group = deviceGroupOf(field.key);
+    if (group) {
+      // Drawn once, where the group's first member is.
+      const first = list.find((candidate) => deviceGroupOf(candidate.key) === group);
+      if (first !== field) return null;
+      return (
+        <React.Fragment key={field.key}>
+          <DeviceField group={group} fields={list} sectionId={section.id} settings={settings} collections={collections} onChange={change} />
+          {group.keys.d && exactOf(group.keys.d) ? (
+            <ExactSize fieldKey={group.keys.d} type={section.type} settings={settings} onChange={onChange} />
+          ) : null}
+        </React.Fragment>
+      );
+    }
+    return (
+      <React.Fragment key={field.key}>
+        <Field field={field} sectionId={section.id} settings={settings} collections={collections} onChange={change} />
+        {exactOf(field.key) ? <ExactSize fieldKey={field.key} type={section.type} settings={settings} onChange={onChange} /> : null}
+      </React.Fragment>
+    );
+  };
   // A tab with nothing on it is not offered: a section with nothing to fill in opens
   // straight on its Style.
   const contentEmpty = content.length === 0 && layout.length === 0 && advanced.length === 0 && !source;
@@ -212,6 +396,7 @@ export function SectionEditor({
           joined={joined}
           category={definition.category}
           textAlign={definition.textAlign}
+          fromLayout={fromLayout}
           contents={contents}
           sectionId={section.id}
           settings={settings}
@@ -222,9 +407,12 @@ export function SectionEditor({
       ) : (
       <div className="flex-1 space-y-5 overflow-y-auto p-4">
         <p className="text-muted-foreground text-xs">{definition.description}</p>
-        <p className="text-muted-foreground text-xs">
-          Tip: double-click a heading, a line or a button in the preview to type over it there.
-        </p>
+        {/* Only where there is something to type over — not on a spacer or a photo. */}
+        {typable && !source ? (
+          <p className="text-muted-foreground text-xs">
+            Tip: double-click a heading, a line or a button in the preview to type over it there.
+          </p>
+        ) : null}
 
         {!section.visible && (
           <div className="flex items-center justify-between gap-3 rounded-md border border-dashed px-3 py-2 text-xs">
@@ -248,16 +436,7 @@ export function SectionEditor({
 
         {content.length > 0 && (
           <div className="space-y-4">
-            {content.map((field) => (
-              <Field
-                key={field.key}
-                field={field}
-                sectionId={section.id}
-                settings={settings}
-                collections={collections}
-                onChange={onChange}
-              />
-            ))}
+            {content.map(fieldOf)}
           </div>
         )}
 
@@ -266,16 +445,7 @@ export function SectionEditor({
             <Separator />
             <div className="space-y-4">
               <h3 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">Layout</h3>
-              {layout.map((field) => (
-                <Field
-                  key={field.key}
-                  field={field}
-                  sectionId={section.id}
-                  settings={settings}
-                  collections={collections}
-                  onChange={onChange}
-                />
-              ))}
+              {layout.map(fieldOf)}
               {joined && (
                 <p className="text-muted-foreground text-xs">
                   Joined to the Page heading, so it uses the heading’s background and spacing. Choose “Its own
@@ -293,6 +463,10 @@ export function SectionEditor({
             <summary className="flex cursor-pointer list-none items-center gap-1.5 px-3 py-2 text-xs font-medium [&::-webkit-details-marker]:hidden">
               <ChevronRightIcon className="text-muted-foreground size-3.5 transition-transform group-open:rotate-90" />
               Advanced
+              {/* What is inside, so it is found without opening it. */}
+              <span className="text-muted-foreground min-w-0 truncate font-normal">
+                · {advanced.map((field) => field.label).join(", ")}
+              </span>
             </summary>
             <div className="space-y-4 border-t px-3 py-3">
               {advanced.map((field) => (
@@ -568,6 +742,7 @@ function StyleTab({
   joined,
   category,
   textAlign,
+  fromLayout,
   contents,
   sectionId,
   settings,
@@ -575,6 +750,7 @@ function StyleTab({
   onChange,
   onOpenHeading,
 }: {
+  fromLayout: FromLayout;
   fields: FieldDef[];
   joined: boolean;
   /** Where the section sits in Add section — a banner's photograph is its ground. */
@@ -916,6 +1092,7 @@ function StyleTab({
                 (part !== "images" || (!IMAGE_GROUND_CATEGORIES.includes(category) && contents?.image !== false)),
             )}
             align={textAlign}
+            fromLayout={fromLayout}
             contents={contents}
             onChange={(next) => onChange("design", next)}
             visibility={visibilityOf(settings, onChange)}
