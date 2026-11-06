@@ -25,11 +25,20 @@
  */
 
 import {
+  ALIGNMENT_LABEL,
   ALIGNMENTS,
   FONT_WEIGHTS,
   FONTS,
   fontStack,
+  CUSTOM_RATIO,
+  IMAGE_FOCUS,
+  IMAGE_FOCUS_LABEL,
   IMAGE_RATIOS,
+  MAX_CUSTOM_RATIO,
+  MAX_IMAGE_HEIGHT,
+  MAX_IMAGE_WIDTH,
+  MIN_IMAGE_SIZE,
+  OWN_RATIO,
   SHADOWS,
   TEXT_TRANSFORMS,
   type DesignValue,
@@ -46,6 +55,8 @@ type Emit =
   /** `--name` (and `--name-m`), listed per device in `attr`. */
   | { as: "value"; name: string; attr: string; format: "px" | "raw" | "font"; skipZero?: boolean }
   | { as: "ratio" }
+  /** Read by another control's emit (the custom shape's width and height, by `ratio`). */
+  | { as: "none" }
   | { as: "flag"; attr: string }
   | { as: "shadow" }
   | { as: "valign" };
@@ -142,7 +153,7 @@ const align: Control = {
   header: "Text",
   label: "Alignment",
   input: "select",
-  options: [DEFAULT, ...ALIGNMENTS.map((value) => ({ value, label: value[0]!.toUpperCase() + value.slice(1) }))],
+  options: [DEFAULT, ...ALIGNMENTS.map((value) => ({ value, label: ALIGNMENT_LABEL[value] ?? value }))],
   responsive: true,
   path: ["align"],
   emit: { as: "value", name: "--sb-align", attr: "data-sb-align", format: "raw" },
@@ -199,11 +210,90 @@ const images: Control[] = [
     label: "Shape",
     input: "select",
     options: [
-      { value: "original", label: "As uploaded" },
+      { value: "original", label: "Section default" },
+      { value: OWN_RATIO, label: "As uploaded (each photo's own shape)" },
       ...Object.entries(IMAGE_RATIOS).map(([value, ratio]) => ({ value, label: ratio.label })),
+      { value: CUSTOM_RATIO, label: "Custom (width : height below)" },
     ],
     path: ["images", "ratio"],
     emit: { as: "ratio" },
+  },
+  {
+    id: "img_ratio_w",
+    part: "images",
+    header: "Photographs",
+    label: "Custom shape: width",
+    input: "number",
+    min: 1,
+    max: MAX_CUSTOM_RATIO,
+    path: ["images", "custom", "w"],
+    emit: { as: "none" },
+    info: "With Shape on Custom. 4 and 5 make a 4:5 portrait; 16 and 9 a wide landscape.",
+  },
+  {
+    id: "img_ratio_h",
+    part: "images",
+    header: "Photographs",
+    label: "Custom shape: height",
+    input: "number",
+    min: 1,
+    max: MAX_CUSTOM_RATIO,
+    path: ["images", "custom", "h"],
+    emit: { as: "none" },
+  },
+  {
+    id: "img_width",
+    part: "images",
+    header: "Photographs",
+    label: "Width (px)",
+    input: "number",
+    min: MIN_IMAGE_SIZE,
+    max: MAX_IMAGE_WIDTH,
+    responsive: true,
+    path: ["images", "width"],
+    emit: { as: "value", name: "--sb-imgw", attr: "data-sb-imgw", format: "px" },
+    info: "Never wider than the column. Empty: the full column.",
+  },
+  {
+    id: "img_height",
+    part: "images",
+    header: "Photographs",
+    label: "Height (px)",
+    input: "number",
+    min: MIN_IMAGE_SIZE,
+    max: MAX_IMAGE_HEIGHT,
+    responsive: true,
+    path: ["images", "height"],
+    emit: { as: "value", name: "--sb-imgh", attr: "data-sb-imgh", format: "px" },
+    info: "Replaces the shape. Empty: the shape decides.",
+  },
+  {
+    id: "img_fit",
+    part: "images",
+    header: "Photographs",
+    label: "Fit",
+    input: "select",
+    options: [
+      { value: "default", label: "Fill the shape (trims the edges)" },
+      { value: "contain", label: "Show the whole photo" },
+    ],
+    path: ["images", "fit"],
+    emit: { as: "value", name: "--sb-imgfit", attr: "data-sb-imgfit", format: "raw" },
+  },
+  {
+    id: "img_focus",
+    part: "images",
+    header: "Photographs",
+    label: "Keep in view",
+    input: "select",
+    // The middle first: the theme's default is the first option.
+    options: [
+      { value: "default", label: IMAGE_FOCUS_LABEL.center },
+      ...IMAGE_FOCUS.filter((focus) => focus !== "center").map((focus) => ({ value: focus, label: IMAGE_FOCUS_LABEL[focus] })),
+    ],
+    path: ["images", "focus"],
+    emit: { as: "value", name: "--sb-imgpos", attr: "data-sb-imgpos", format: "raw" },
+    info: "Which part stays when the shape trims the photo.",
   },
   {
     id: "img_radius",
@@ -488,7 +578,24 @@ function emitLines(control: Control): string[] {
       for (const [value, ratio] of Object.entries(IMAGE_RATIOS)) {
         lines.push(`  when '${value}'`, `    assign css = css | append: '--sb-ratio:${ratio.css};'`, "    assign attrs = attrs | append: ' data-sb-ratio'");
       }
+      lines.push(`  when '${OWN_RATIO}'`, "    assign attrs = attrs | append: ' data-sb-own'");
+      // The typed-in shape — both numbers, or nothing (as `imageRatioCss`).
+      lines.push(
+        `  when '${CUSTOM_RATIO}'`,
+        "    assign kw = pre | append: 'img_ratio_w'",
+        "    assign kh = pre | append: 'img_ratio_h'",
+        "    assign rw = st[kw]",
+        "    assign rh = st[kh]",
+        "    if rw != blank and rh != blank and rw > 0 and rh > 0",
+        `      assign rw = rw | at_least: 1 | at_most: ${MAX_CUSTOM_RATIO} | round`,
+        `      assign rh = rh | at_least: 1 | at_most: ${MAX_CUSTOM_RATIO} | round`,
+        "      assign css = css | append: '--sb-ratio:' | append: rw | append: ' / ' | append: rh | append: ';'",
+        "      assign attrs = attrs | append: ' data-sb-ratio'",
+        "    endif",
+      );
       lines.push("endcase");
+      break;
+    case "none":
       break;
     case "flag":
       lines.push(...read(""), "if v", `  assign attrs = attrs | append: ' ${emit.attr}'`, "endif");

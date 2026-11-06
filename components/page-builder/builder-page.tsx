@@ -37,7 +37,7 @@ export function BuilderPage({
   return (
     <PageShell surface={doc.page.surface} footerSurface={doc.page.footerSurface} theme={theme}>
       {!hasHeading && <h1 className="sr-only">{title}</h1>}
-      <SectionRenderer doc={doc} context={{ pageTitle: title, preview }} />
+      <SectionRenderer sections={doc.sections} context={{ pageTitle: title, preview }} />
     </PageShell>
   );
 }

@@ -2,6 +2,7 @@ import { ImageIcon } from "lucide-react";
 import Image from "next/image";
 
 import { ButtonLink, type ButtonVariant } from "@/components/ui/button";
+import { isCropped, photoFrameStyle } from "@/lib/page-builder/image-crop";
 import { cdnImage } from "@/lib/shopify/transforms";
 import type { ShopifyImage } from "@/lib/shopify/types";
 import { cn } from "@/lib/utils/cn";
@@ -123,8 +124,9 @@ export function Buttons({
 
   return (
     <div data-sb-buttons="" className={cn("flex flex-wrap gap-3", JUSTIFY[align], mobileAlign && JUSTIFY_MOBILE[mobileAlign], className)}>
-      {links.map((item) => (
-        <ButtonLink key={`${item.href}-${item.label}`} href={item.href} variant={item.variant} external={isExternal(item.href)}>
+      {/* Two fixed slots, first and second: the slot is the key — two buttons may share a link and text. */}
+      {links.map((item, slot) => (
+        <ButtonLink key={slot} href={item.href} variant={item.variant} external={isExternal(item.href)}>
           {item.label}
         </ButtonLink>
       ))}
@@ -185,9 +187,12 @@ export function Picture({
   imageClassName,
   placeholder = false,
   priority = false,
+  followCrop = true,
 }: {
   image: ShopifyImage | null | undefined;
   ratio?: Ratio;
+  /** A cropped photo takes its crop's shape (default) — off where the box is the layout's. */
+  followCrop?: boolean;
   sizes: string;
   className?: string;
   imageClassName?: string;
@@ -195,12 +200,12 @@ export function Picture({
   priority?: boolean;
 }) {
   if (!image && !placeholder) return null;
-  const adapt = ratio === "adapt" && image?.width && image.height;
+  const adapt = (ratio === "adapt" || (followCrop && isCropped(image))) && image?.width && image.height;
 
   return (
     <div
       className={cn("bg-foreground/5 relative w-full overflow-hidden", !adapt && RATIO[ratio === "adapt" ? "landscape" : ratio], className)}
-      style={adapt ? { aspectRatio: `${image.width} / ${image.height}` } : undefined}
+      style={photoFrameStyle(image, Boolean(adapt))}
     >
       {image ? (
         <Image

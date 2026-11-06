@@ -1,7 +1,9 @@
 import Image from "next/image";
 
 import { Container } from "@/components/ui/container";
+import { isCropped, photoFrameStyle } from "@/lib/page-builder/image-crop";
 import { cdnImage } from "@/lib/shopify/transforms";
+import { cn } from "@/lib/utils/cn";
 import type { CaptionedImage } from "@/lib/shopify/entities";
 
 /**
@@ -18,7 +20,11 @@ export function CaptionedRow({ images }: { images: CaptionedImage[] }) {
         {usable.map((item) => (
           <li key={item.handle}>
             <figure>
-              <div className="relative aspect-[3/4] overflow-hidden bg-foreground/10">
+              <div
+                className={cn("relative overflow-hidden bg-foreground/10", !isCropped(item.image) && "aspect-[3/4]")}
+                // A cropped photo keeps the crop's shape.
+                style={photoFrameStyle(item.image, isCropped(item.image))}
+              >
                 <Image
                   src={cdnImage(item.image!.url)}
                   alt={item.image!.altText ?? item.caption ?? ""}

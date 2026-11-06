@@ -13,6 +13,7 @@ import type { LinkValue } from "@/lib/page-builder/fields";
 import type { SiteSettings } from "@/lib/shopify/entities";
 import type { MenuLink } from "@/lib/shopify/types";
 import { resolveSocialLinks } from "@/lib/social";
+import { elementLook } from "@/lib/theme-builder/element-look";
 import type { MenuRef, ThemeElement } from "@/lib/theme-builder/layout";
 import { cn } from "@/lib/utils/cn";
 
@@ -79,15 +80,21 @@ export function ElementRun({
   gap: number;
   axis: keyof typeof SPACE_SIDE;
 }) {
-  return elements.map((element, index) => (
-    <div
-      key={element.id}
-      className={cn("flex min-w-0", axis === "column" ? "flex-col" : "items-center", index > 0 && SPACE_SIDE[axis], hideClasses(element.hide))}
-      style={index > 0 ? ({ "--sb-space": `${element.spaceBefore ?? gap}px` } as React.CSSProperties) : undefined}
-    >
-      <ThemeElementView element={element} data={data} />
-    </div>
-  ));
+  return elements.map((element, index) => {
+    const look = elementLook(element.style);
+    const style = { ...look.style, ...(index > 0 ? { "--sb-space": `${element.spaceBefore ?? gap}px` } : {}) };
+    return (
+      <div
+        key={element.id}
+        data-element-id={element.id}
+        {...look.attrs}
+        className={cn("flex min-w-0", axis === "column" ? "flex-col" : "items-center", index > 0 && SPACE_SIDE[axis], hideClasses(element.hide))}
+        style={Object.keys(style).length ? (style as React.CSSProperties) : undefined}
+      >
+        <ThemeElementView element={element} data={data} />
+      </div>
+    );
+  });
 }
 
 const TEXT_SIZES: Record<string, string> = {
@@ -217,9 +224,10 @@ export function ThemeElementView({
 
     case "copyright":
       return (
-        <span className="text-tertiary">
+        // A paragraph, so the element's typography (the design value's text) reaches it.
+        <p className="text-tertiary">
           {String(s.text ?? "© {year} Studio Bizar").replaceAll("{year}", String(new Date().getFullYear()))}
-        </span>
+        </p>
       );
   }
 }

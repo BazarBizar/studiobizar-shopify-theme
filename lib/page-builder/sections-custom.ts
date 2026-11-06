@@ -66,13 +66,6 @@ const WIDTHS = [
   { value: "20", label: "20%" },
 ] as const;
 
-const IMAGE_RATIOS = [
-  { value: "adapt", label: "Original" },
-  { value: "square", label: "Square" },
-  { value: "portrait", label: "Tall" },
-  { value: "landscape", label: "Wide" },
-] as const;
-
 /* -------------------------------------------------------------------------- *
  * What every block has: where it sits
  * -------------------------------------------------------------------------- */
@@ -236,7 +229,6 @@ const imageBlock = block(
     image("image", "Image", { required: true }),
     text("caption", "Caption", { max: 200, help: "Optional — a line under the photo." }),
     url("href", "Link", { help: "Optional — makes the photo clickable." }),
-    select("ratio", "Shape", IMAGE_RATIOS, { display: "buttons" }),
     select(
       "size",
       "Image width",
@@ -309,7 +301,6 @@ const cardBlock = block(
     text("title", "Heading", { max: 120 }),
     richText("body", "Text"),
     link("link", "Link"),
-    select("ratio", "Image shape", IMAGE_RATIOS, { ...LOOK, default: "portrait", display: "buttons" }),
     select(
       "style",
       "Style",
@@ -466,7 +457,7 @@ const CUSTOM_LAYOUTS: readonly BlockLayout[] = [
     description: "A photograph on the left, a heading, text and a button on the right.",
     blocks: [
       { type: "column" },
-      { type: "image", settings: { ratio: "portrait" } },
+      { type: "image", settings: {} },
       { type: "column", settings: { position: "middle" } },
       { type: "eyebrow" },
       { type: "heading" },

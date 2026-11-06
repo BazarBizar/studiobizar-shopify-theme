@@ -84,6 +84,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Shopify's own Dawn theme, kept as a reference to port from — not this project's code.
+    "Shopify Dawn Theme/**",
   ]),
 ]);
 

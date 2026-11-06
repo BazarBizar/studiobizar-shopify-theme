@@ -259,7 +259,7 @@ export const RENDERERS = {
         link={s.link?.href && s.link.label ? { href: s.link.href, label: s.link.label } : undefined}
         eyebrow={s.eyebrow.trim() || undefined}
         buttonVariant={s.buttonStyle}
-        ratio={s.ratio}
+        ratio="adapt"
         imageWidth={s.imageWidth}
         verticalAlign={s.verticalAlign}
       />

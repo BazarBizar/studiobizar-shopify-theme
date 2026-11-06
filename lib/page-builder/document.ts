@@ -133,15 +133,14 @@ const sectionSchema = z.discriminatedUnion(
 );
 
 /**
- * What the builder may SEND. Every section's settings go through that section's
- * strict schema — an unknown type, an unknown key, an unsafe link or an image on
- * another host is refused before anything reaches Shopify.
+ * A list of sections as a write must send it: each through its own strict schema,
+ * at most `max`, no id twice. A page's sections, and the sections the Theme Builder
+ * puts under the header and in the footer (`lib/theme-builder/layout.ts`).
  */
-export const documentContentSchema = z.strictObject({
-  page: pageSettingsSchema,
-  sections: z
+export function sectionListSchema(max: number) {
+  return z
     .array(sectionSchema)
-    .max(MAX_SECTIONS)
+    .max(max)
     .superRefine((sections, context) => {
       const seen = new Set<string>();
       sections.forEach((section, index) => {
@@ -151,7 +150,17 @@ export const documentContentSchema = z.strictObject({
         }
         seen.add(id);
       });
-    }),
+    }) as unknown as z.ZodType<SectionInstance[]>;
+}
+
+/**
+ * What the builder may SEND. Every section's settings go through that section's
+ * strict schema — an unknown type, an unknown key, an unsafe link or an image on
+ * another host is refused before anything reaches Shopify.
+ */
+export const documentContentSchema = z.strictObject({
+  page: pageSettingsSchema,
+  sections: sectionListSchema(MAX_SECTIONS),
 }) as unknown as z.ZodType<DocumentContent>;
 
 /* -------------------------------------------------------------------------- *
@@ -202,11 +211,35 @@ export function parsePageDocument(raw: string | null | undefined): ParsedDocumen
   }
 
   const input = value as { page?: unknown; sections: unknown[]; meta?: unknown };
+  const { sections, dropped } = readSections(input.sections, MAX_SECTIONS);
+
+  const page = lenientPageSettings.safeParse(input.page ?? {});
+  const meta = lenientMeta.safeParse(input.meta ?? {});
+
+  return {
+    ok: true,
+    dropped,
+    doc: {
+      version: DOCUMENT_VERSION,
+      page: page.success ? page.data : { ...DEFAULT_PAGE_SETTINGS },
+      sections,
+      meta: meta.success ? meta.data : { ...EMPTY_META },
+    },
+  };
+}
+
+/**
+ * A stored list of sections, read the lenient way: an unknown type, a bad id or an
+ * id seen before drops that section; a bad setting becomes its default. `dropped`
+ * counts what was left out, the ones past `max` included.
+ */
+export function readSections(input: unknown, max: number): { sections: SectionInstance[]; dropped: number } {
+  if (!Array.isArray(input)) return { sections: [], dropped: 0 };
   const sections: SectionInstance[] = [];
   const seen = new Set<string>();
   let dropped = 0;
 
-  for (const entry of input.sections.slice(0, MAX_SECTIONS)) {
+  for (const entry of input.slice(0, max)) {
     const candidate = entry as { id?: unknown; type?: unknown; visible?: unknown; settings?: unknown } | null;
     const type = candidate?.type;
     const rawId = candidate?.id;
@@ -227,21 +260,7 @@ export function parsePageDocument(raw: string | null | undefined): ParsedDocumen
     } as SectionInstance);
   }
 
-  dropped += Math.max(0, input.sections.length - MAX_SECTIONS);
-
-  const page = lenientPageSettings.safeParse(input.page ?? {});
-  const meta = lenientMeta.safeParse(input.meta ?? {});
-
-  return {
-    ok: true,
-    dropped,
-    doc: {
-      version: DOCUMENT_VERSION,
-      page: page.success ? page.data : { ...DEFAULT_PAGE_SETTINGS },
-      sections,
-      meta: meta.success ? meta.data : { ...EMPTY_META },
-    },
-  };
+  return { sections, dropped: dropped + Math.max(0, input.length - max) };
 }
 
 /* -------------------------------------------------------------------------- *

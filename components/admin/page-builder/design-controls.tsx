@@ -1,6 +1,10 @@
 "use client";
 
-import { ChevronRightIcon, RotateCcwIcon } from "lucide-react";
+import {
+  ChevronRightIcon,
+  RotateCcwIcon,
+  RotateCwSquareIcon,
+} from "lucide-react";
 import * as React from "react";
 
 import { Button } from "@/components/admin/ui/button";
@@ -15,6 +19,7 @@ import {
 } from "@/components/admin/ui/select";
 import { Switch } from "@/components/admin/ui/switch";
 import {
+  ALIGNMENT_LABEL,
   ALIGNMENTS,
   contrastRatio,
   DEVICE_LABELS,
@@ -22,8 +27,16 @@ import {
   FONT_WEIGHTS,
   FONTS,
   fontStack,
+  CUSTOM_RATIO,
   getAt,
+  IMAGE_FOCUS,
+  IMAGE_FOCUS_LABEL,
   IMAGE_RATIOS,
+  MAX_CUSTOM_RATIO,
+  MAX_IMAGE_HEIGHT,
+  MAX_IMAGE_WIDTH,
+  MIN_IMAGE_SIZE,
+  OWN_RATIO,
   inheritedFrom,
   resolveResponsive,
   setAt,
@@ -31,6 +44,9 @@ import {
   type DesignValue,
   type Device,
   type FontId,
+  type ImageFocus,
+  type ImageOrientation,
+  type ImageRatio,
   type Responsive,
 } from "@/lib/page-builder/design";
 import type { DesignPart, ImageRef } from "@/lib/page-builder/fields";
@@ -71,6 +87,13 @@ type Props = {
   /** Off for the site style: text alignment belongs to a section, not to the whole site. */
   align?: boolean;
   /**
+   * What the section's own Layout (Content tab) already sets — its alignment, heading
+   * size, width or height, each with an exact px value beside its quick choices. Not
+   * offered here a second time: one setting, one place. A text alignment stored here
+   * before still shows, so it can be reset.
+   */
+  fromLayout?: FromLayout;
+  /**
    * What the section actually draws (reported by the preview). Typography then offers
    * only headings, text or buttons it HAS — a control that does nothing reads as broken.
    * Absent: everything is offered.
@@ -85,6 +108,13 @@ type Props = {
 
 type Path = readonly (string | number)[];
 
+export type FromLayout = {
+  align?: boolean;
+  headingSize?: boolean;
+  width?: boolean;
+  height?: boolean;
+};
+
 export function DesignControls({
   value,
   onChange,
@@ -93,6 +123,7 @@ export function DesignControls({
   visibility,
   align = true,
   contents = null,
+  fromLayout = {},
 }: Props) {
   const get = (path: Path) => getAt(value, path);
   const set = (path: Path, next: unknown) => onChange(setAt(value, path, next));
@@ -101,7 +132,8 @@ export function DesignControls({
   const changed = (keys: (keyof DesignValue)[]) =>
     keys.some((key) => value[key] !== undefined);
   // A group with nothing to style is not shown at all — not shown and explained.
-  const hasText = !contents || contents.heading || contents.text || contents.button;
+  const hasText =
+    !contents || contents.heading || contents.text || contents.button;
 
   return (
     <div className="space-y-2">
@@ -114,7 +146,8 @@ export function DesignControls({
           <TypographyPart
             get={get}
             set={set}
-            align={align}
+            align={align && (!fromLayout.align || get(["align"]) !== undefined)}
+            headingSize={!fromLayout.headingSize}
             contents={contents}
           />
         </Part>
@@ -140,19 +173,21 @@ export function DesignControls({
           <ImagesPart get={get} set={set} />
         </Part>
       )}
-      {has("layout") && (
-        <Part
-          title="Width & height"
-          changed={changed(["maxWidth", "minHeight", "verticalAlign"])}
-          defaultOpen={open.includes("layout")}
-        >
-          <LayoutPart
-            get={get}
-            set={set}
-            width={contents?.container !== false}
-          />
-        </Part>
-      )}
+      {has("layout") &&
+        layoutShows(get, contents?.container !== false, fromLayout) && (
+          <Part
+            title="Width & height"
+            changed={changed(["maxWidth", "minHeight", "verticalAlign"])}
+            defaultOpen={open.includes("layout")}
+          >
+            <LayoutPart
+              get={get}
+              set={set}
+              width={contents?.container !== false && !fromLayout.width}
+              height={!fromLayout.height}
+            />
+          </Part>
+        )}
       {has("visibility") && (
         <Part
           title="Show on devices"
@@ -187,8 +222,13 @@ function TypographyPart({
   get,
   set,
   align,
+  headingSize = true,
   contents,
-}: PartProps & { align: boolean; contents: Props["contents"] }) {
+}: PartProps & {
+  align: boolean;
+  headingSize?: boolean;
+  contents: Props["contents"];
+}) {
   const offered = TARGETS.filter(
     (option) => !contents || contents[option.value],
   );
@@ -253,81 +293,22 @@ function TypographyPart({
         </Select>
       </Row>
 
-      <ResponsiveSlider
-        label="Size"
-        unit="px"
-        min={8}
-        max={target === "heading" ? 160 : isButton ? 32 : 48}
-        step={1}
-        value={get([...base, "size"]) as Responsive<number> | undefined}
-        placeholder="Default"
-        onChange={(next) => set([...base, "size"], next)}
-      />
-
-      <Row
-        label="Weight"
-        onReset={
-          get([...base, "weight"])
-            ? () => set([...base, "weight"], undefined)
-            : undefined
-        }
-      >
-        <Select
-          value={String(
-            (get([...base, "weight"]) as number | undefined) ?? "default",
-          )}
-          onValueChange={(next) =>
-            set(
-              [...base, "weight"],
-              next === "default" ? undefined : Number(next),
-            )
-          }
-        >
-          <SelectTrigger className="h-8 w-full text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="default" className="text-xs">
-              Default
-            </SelectItem>
-            {FONT_WEIGHTS.map((weight) => (
-              <SelectItem
-                key={weight.value}
-                value={String(weight.value)}
-                className="text-xs"
-              >
-                <span style={{ fontWeight: weight.value }}>{weight.label}</span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </Row>
-
-      {isButton ? null : (
+      {target === "heading" && !headingSize ? (
+        <p className="text-muted-foreground text-[11px]">
+          The headings’ size is under Heading size, in the Content tab.
+        </p>
+      ) : (
         <ResponsiveSlider
-          label="Line height"
-          unit="×"
-          min={0.8}
-          max={2.6}
-          step={0.05}
-          value={get([...base, "lineHeight"]) as Responsive<number> | undefined}
+          label="Size"
+          unit="px"
+          min={8}
+          max={target === "heading" ? 160 : isButton ? 32 : 48}
+          step={1}
+          value={get([...base, "size"]) as Responsive<number> | undefined}
           placeholder="Default"
-          onChange={(next) => set([...base, "lineHeight"], next)}
+          onChange={(next) => set([...base, "size"], next)}
         />
       )}
-
-      <ResponsiveSlider
-        label="Letter spacing"
-        unit="px"
-        min={-3}
-        max={12}
-        step={0.1}
-        value={
-          get([...base, "letterSpacing"]) as Responsive<number> | undefined
-        }
-        placeholder="Default"
-        onChange={(next) => set([...base, "letterSpacing"], next)}
-      />
 
       {isButton ? null : (
         <Row
@@ -346,25 +327,101 @@ function TypographyPart({
         </Row>
       )}
 
-      <Row
-        label="Letter case"
-        onReset={
-          get([...base, "transform"])
-            ? () => set([...base, "transform"], undefined)
-            : undefined
-        }
+      <More
+        label="Weight, line height, letter spacing, letter case"
+        changed={["weight", "lineHeight", "letterSpacing", "transform"].some(
+          (key) => get([...base, key]) !== undefined,
+        )}
       >
-        <Segmented
-          label="Letter case"
-          hideLabel
-          value={(get([...base, "transform"]) as string | undefined) ?? ""}
-          options={TEXT_TRANSFORMS.map((option) => ({
-            value: option.value,
-            label: option.label,
-          }))}
-          onChange={(next) => set([...base, "transform"], next)}
+        <Row
+          label="Weight"
+          onReset={
+            get([...base, "weight"])
+              ? () => set([...base, "weight"], undefined)
+              : undefined
+          }
+        >
+          <Select
+            value={String(
+              (get([...base, "weight"]) as number | undefined) ?? "default",
+            )}
+            onValueChange={(next) =>
+              set(
+                [...base, "weight"],
+                next === "default" ? undefined : Number(next),
+              )
+            }
+          >
+            <SelectTrigger className="h-8 w-full text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="default" className="text-xs">
+                Default
+              </SelectItem>
+              {FONT_WEIGHTS.map((weight) => (
+                <SelectItem
+                  key={weight.value}
+                  value={String(weight.value)}
+                  className="text-xs"
+                >
+                  <span style={{ fontWeight: weight.value }}>
+                    {weight.label}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Row>
+
+        {isButton ? null : (
+          <ResponsiveSlider
+            label="Line height"
+            unit="×"
+            min={0.8}
+            max={2.6}
+            step={0.05}
+            value={
+              get([...base, "lineHeight"]) as Responsive<number> | undefined
+            }
+            placeholder="Default"
+            onChange={(next) => set([...base, "lineHeight"], next)}
+          />
+        )}
+
+        <ResponsiveSlider
+          label="Letter spacing"
+          unit="px"
+          min={-3}
+          max={12}
+          step={0.1}
+          value={
+            get([...base, "letterSpacing"]) as Responsive<number> | undefined
+          }
+          placeholder="Default"
+          onChange={(next) => set([...base, "letterSpacing"], next)}
         />
-      </Row>
+
+        <Row
+          label="Letter case"
+          onReset={
+            get([...base, "transform"])
+              ? () => set([...base, "transform"], undefined)
+              : undefined
+          }
+        >
+          <Segmented
+            label="Letter case"
+            hideLabel
+            value={(get([...base, "transform"]) as string | undefined) ?? ""}
+            options={TEXT_TRANSFORMS.map((option) => ({
+              value: option.value,
+              label: option.label,
+            }))}
+            onChange={(next) => set([...base, "transform"], next)}
+          />
+        </Row>
+      </More>
 
       {align ? (
         <div className="border-t pt-4">
@@ -373,7 +430,7 @@ function TypographyPart({
             value={get(["align"]) as Responsive<string> | undefined}
             options={ALIGNMENTS.map((value) => ({
               value,
-              label: value[0]!.toUpperCase() + value.slice(1),
+              label: ALIGNMENT_LABEL[value] ?? value,
             }))}
             onChange={(next) => set(["align"], next)}
           />
@@ -454,7 +511,9 @@ function ButtonsPart({ get, set }: PartProps) {
           <ColorField
             inputId={`design-button-${colour.path[1]}`}
             value={(get(colour.path) as string | undefined) ?? ""}
-            onChange={(next) => setColour(colour.path, typeof next === "string" ? next : "")}
+            onChange={(next) =>
+              setColour(colour.path, typeof next === "string" ? next : "")
+            }
           />
         </Row>
       ))}
@@ -472,16 +531,6 @@ function ButtonsPart({ get, set }: PartProps) {
 
       <div className="space-y-4 border-t pt-4">
         <Slider
-          label="Line thickness"
-          unit="px"
-          min={0}
-          max={10}
-          step={1}
-          value={number(["buttonLook", "borderWidth"])}
-          placeholder="Default"
-          onChange={(next) => set(["buttonLook", "borderWidth"], next)}
-        />
-        <Slider
           label="Rounded corners"
           unit="px"
           min={0}
@@ -491,49 +540,63 @@ function ButtonsPart({ get, set }: PartProps) {
           placeholder="0"
           onChange={(next) => set(["buttonLook", "radius"], next)}
         />
-      </div>
-
-      <div className="space-y-4 border-t pt-4">
-        <ResponsiveSlider
-          label="Space inside, left and right"
-          unit="px"
-          min={0}
-          max={120}
-          step={1}
-          value={responsive(["buttonLook", "padX"])}
-          placeholder="Default"
-          onChange={(next) => set(["buttonLook", "padX"], next)}
-        />
-        <ResponsiveSlider
-          label="Space inside, top and bottom"
-          unit="px"
-          min={0}
-          max={60}
-          step={1}
-          value={responsive(["buttonLook", "padY"])}
-          placeholder="Default"
-          onChange={(next) => set(["buttonLook", "padY"], next)}
-        />
-        <ResponsiveSlider
-          label="Space above the buttons"
-          unit="px"
-          min={0}
-          max={200}
-          step={1}
-          value={responsive(["buttonLook", "spaceAbove"])}
-          placeholder="Default"
-          onChange={(next) => set(["buttonLook", "spaceAbove"], next)}
-        />
-        <ResponsiveSlider
-          label="Space between buttons"
-          unit="px"
-          min={0}
-          max={120}
-          step={1}
-          value={responsive(["buttonLook", "gap"])}
-          placeholder="Default"
-          onChange={(next) => set(["buttonLook", "gap"], next)}
-        />
+        <More
+          label="Line thickness, space inside and around"
+          changed={["borderWidth", "padX", "padY", "spaceAbove", "gap"].some(
+            (key) => get(["buttonLook", key]) !== undefined,
+          )}
+        >
+          <Slider
+            label="Line thickness"
+            unit="px"
+            min={0}
+            max={10}
+            step={1}
+            value={number(["buttonLook", "borderWidth"])}
+            placeholder="Default"
+            onChange={(next) => set(["buttonLook", "borderWidth"], next)}
+          />
+          <ResponsiveSlider
+            label="Space inside, left and right"
+            unit="px"
+            min={0}
+            max={120}
+            step={1}
+            value={responsive(["buttonLook", "padX"])}
+            placeholder="Default"
+            onChange={(next) => set(["buttonLook", "padX"], next)}
+          />
+          <ResponsiveSlider
+            label="Space inside, top and bottom"
+            unit="px"
+            min={0}
+            max={60}
+            step={1}
+            value={responsive(["buttonLook", "padY"])}
+            placeholder="Default"
+            onChange={(next) => set(["buttonLook", "padY"], next)}
+          />
+          <ResponsiveSlider
+            label="Space above the buttons"
+            unit="px"
+            min={0}
+            max={200}
+            step={1}
+            value={responsive(["buttonLook", "spaceAbove"])}
+            placeholder="Default"
+            onChange={(next) => set(["buttonLook", "spaceAbove"], next)}
+          />
+          <ResponsiveSlider
+            label="Space between buttons"
+            unit="px"
+            min={0}
+            max={120}
+            step={1}
+            value={responsive(["buttonLook", "gap"])}
+            placeholder="Default"
+            onChange={(next) => set(["buttonLook", "gap"], next)}
+          />
+        </More>
       </div>
     </div>
   );
@@ -545,7 +608,11 @@ function ButtonsPart({ get, set }: PartProps) {
  * The section's own colour sits above these in its Style tab's Background group.
  */
 /** `what`: what the background is behind, in its hint — a section, or a pop-up. */
-export function BackgroundPart({ get, set, what = "section" }: PartProps & { what?: string }) {
+export function BackgroundPart({
+  get,
+  set,
+  what = "section",
+}: PartProps & { what?: string }) {
   const image = get(["background", "image"]) as ImageRef | null | undefined;
   const overlay = get(["background", "overlay"]) as string | undefined;
 
@@ -561,29 +628,47 @@ export function BackgroundPart({ get, set, what = "section" }: PartProps & { wha
       </Row>
       {image ? (
         <>
-          <Row label="Photo on phones" hint="Optional — a taller crop for narrow screens.">
+          <Row
+            label="Photo on phones"
+            hint="Optional — a taller crop for narrow screens."
+          >
             <ImageField
               label="Background photo on phones"
-              value={(get(["background", "mobileImage"]) as ImageRef | null | undefined) ?? null}
-              onChange={(next) => set(["background", "mobileImage"], next ?? undefined)}
+              value={
+                (get(["background", "mobileImage"]) as
+                  ImageRef | null | undefined) ?? null
+              }
+              onChange={(next) =>
+                set(["background", "mobileImage"], next ?? undefined)
+              }
             />
           </Row>
           <Segmented
             label="Keep in view"
-            value={(get(["background", "position"]) as string | undefined) ?? "center"}
+            value={
+              (get(["background", "position"]) as string | undefined) ??
+              "center"
+            }
             options={[
               { value: "top", label: "Top" },
               { value: "center", label: "Middle" },
               { value: "bottom", label: "Bottom" },
             ]}
-            onChange={(next) => set(["background", "position"], next === "center" ? undefined : next)}
+            onChange={(next) =>
+              set(
+                ["background", "position"],
+                next === "center" ? undefined : next,
+              )
+            }
           />
         </>
       ) : null}
       <Row
         label="Overlay"
         hint="A colour over the whole background — colour, gradient or photo — so text on it stays readable."
-        onReset={overlay ? () => set(["background", "overlay"], undefined) : undefined}
+        onReset={
+          overlay ? () => set(["background", "overlay"], undefined) : undefined
+        }
       >
         <ColorField
           inputId="design-overlay"
@@ -667,23 +752,231 @@ function GradientRows({ get, set }: PartProps) {
   );
 }
 
+type Orientation =
+  "original" | typeof OWN_RATIO | ImageOrientation | typeof CUSTOM_RATIO;
+
+const ORIENTATIONS: { value: Orientation; label: string }[] = [
+  { value: "original", label: "Section default" },
+  { value: OWN_RATIO, label: "As uploaded" },
+  { value: "portrait", label: "Portrait" },
+  { value: "square", label: "Square" },
+  { value: "landscape", label: "Landscape" },
+  { value: CUSTOM_RATIO, label: "Custom" },
+];
+
+/** The first shape of each orientation — what picking the orientation starts on. */
+const FIRST_OF: Record<ImageOrientation, ImageRatio> = {
+  portrait: "portrait",
+  square: "square",
+  landscape: "landscape",
+};
+
+/**
+ * The photographs of a section: their shape (an orientation, then a ratio — or one
+ * typed in), their size in px per device, whether they fill the shape or show whole,
+ * the part kept in view, and the zoom. One photo's own crop is on the photo itself,
+ * in the Content tab.
+ */
 function ImagesPart({ get, set }: PartProps) {
+  const ratio = get(["images", "ratio"]) as
+    ImageRatio | typeof CUSTOM_RATIO | typeof OWN_RATIO | undefined;
+  const custom = (get(["images", "custom"]) as
+    { w: number; h: number } | undefined) ?? { w: 4, h: 5 };
+  const orientation: Orientation =
+    ratio === undefined
+      ? "original"
+      : ratio === CUSTOM_RATIO || ratio === OWN_RATIO
+        ? ratio
+        : (IMAGE_RATIOS[ratio]?.orientation ?? "original");
+  const fit = get(["images", "fit"]) === "contain" ? "contain" : "cover";
+  const focus =
+    (get(["images", "focus"]) as ImageFocus | undefined) ?? "center";
+  // The shape and its typed-in ratio in ONE write: `set` builds on the value as it was,
+  // so two writes in a row would lose the first.
+  const setShape = (
+    nextRatio: string | undefined,
+    nextCustom: { w: number; h: number } | undefined,
+  ) => {
+    const images: Record<string, unknown> = {
+      ...((get(["images"]) as object | undefined) ?? {}),
+      ratio: nextRatio,
+      custom: nextCustom,
+    };
+    for (const key of Object.keys(images))
+      if (images[key] === undefined) delete images[key];
+    set(["images"], Object.keys(images).length ? images : undefined);
+  };
+  const setCustom = (next: { w: number; h: number }) =>
+    setShape(CUSTOM_RATIO, next);
+  const part = (value: string) =>
+    Math.min(MAX_CUSTOM_RATIO, Math.max(1, Math.round(Number(value) || 1)));
+
   return (
     <div className="space-y-4">
       <Segmented
-        label="Shape"
-        value={(get(["images", "ratio"]) as string | undefined) ?? "original"}
+        label="Orientation"
+        value={orientation}
+        options={ORIENTATIONS}
+        onChange={(next) => {
+          if (!next || next === "original") setShape(undefined, undefined);
+          else if (next === CUSTOM_RATIO) setCustom(custom);
+          else if (next === OWN_RATIO) setShape(OWN_RATIO, undefined);
+          else setShape(FIRST_OF[next as ImageOrientation], undefined);
+        }}
+      />
+      <p className="text-muted-foreground -mt-2 text-[11px]">
+        {orientation === "original"
+          ? "The shape this section is designed with."
+          : orientation === OWN_RATIO
+            ? "Each photo keeps its own shape — a cropped photo, its crop's."
+            : "Every photo in this section takes this shape."}
+      </p>
+      {orientation === "portrait" || orientation === "landscape" ? (
+        <Segmented
+          label="Ratio (width : height)"
+          value={ratio as string}
+          options={Object.entries(IMAGE_RATIOS)
+            .filter(([, shape]) => shape.orientation === orientation)
+            .map(([value, shape]) => ({ value, label: shape.short }))}
+          onChange={(next) => {
+            if (next) set(["images", "ratio"], next);
+          }}
+        />
+      ) : null}
+      {orientation === CUSTOM_RATIO ? (
+        <div className="space-y-1.5">
+          <span className="text-xs font-medium">Ratio (width : height)</span>
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              min={1}
+              max={MAX_CUSTOM_RATIO}
+              aria-label="Width part of the ratio"
+              className="h-8 w-16 text-xs"
+              value={custom.w}
+              onChange={(event) =>
+                setCustom({ ...custom, w: part(event.target.value) })
+              }
+            />
+            <span className="text-muted-foreground text-xs">:</span>
+            <Input
+              type="number"
+              min={1}
+              max={MAX_CUSTOM_RATIO}
+              aria-label="Height part of the ratio"
+              className="h-8 w-16 text-xs"
+              value={custom.h}
+              onChange={(event) =>
+                setCustom({ ...custom, h: part(event.target.value) })
+              }
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              title="Turn portrait into landscape, or back"
+              onClick={() => setCustom({ w: custom.h, h: custom.w })}
+            >
+              <RotateCwSquareIcon className="size-3.5" />
+              Turn
+            </Button>
+          </div>
+          <p className="text-muted-foreground text-[11px]">
+            {custom.w === custom.h
+              ? "Square."
+              : custom.w > custom.h
+                ? "Landscape."
+                : "Portrait."}{" "}
+            For example 4 : 5 is a portrait, 16 : 9 a wide landscape.
+          </p>
+        </div>
+      ) : null}
+
+      <ResponsiveSlider
+        label="Width"
+        hint="Never wider than its column. Empty: the full column."
+        unit="px"
+        min={MIN_IMAGE_SIZE}
+        max={MAX_IMAGE_WIDTH}
+        step={10}
+        value={get(["images", "width"]) as Responsive<number> | undefined}
+        placeholder="Full"
+        onChange={(next) => set(["images", "width"], next)}
+      />
+      <ResponsiveSlider
+        label="Height"
+        hint="Replaces the shape above. Empty: the shape decides."
+        unit="px"
+        min={MIN_IMAGE_SIZE}
+        max={MAX_IMAGE_HEIGHT}
+        step={10}
+        value={get(["images", "height"]) as Responsive<number> | undefined}
+        placeholder="Auto"
+        onChange={(next) => set(["images", "height"], next)}
+      />
+
+      <Segmented
+        label="Fit"
+        value={fit}
         options={[
-          { value: "original", label: "As uploaded" },
-          ...Object.entries(IMAGE_RATIOS).map(([value, ratio]) => ({
-            value,
-            label: ratio.label,
-          })),
+          { value: "cover", label: "Fill the shape" },
+          { value: "contain", label: "Show the whole photo" },
         ]}
         onChange={(next) =>
-          set(["images", "ratio"], next === "original" ? undefined : next)
+          set(["images", "fit"], next === "contain" ? "contain" : undefined)
         }
       />
+      {fit === "cover" ? (
+        <div className="space-y-1.5">
+          <span className="text-xs font-medium">Keep in view</span>
+          <div className="flex items-start gap-3">
+            <div
+              role="radiogroup"
+              aria-label="Keep in view"
+              className="bg-muted grid aspect-[4/3] w-24 shrink-0 grid-cols-3 grid-rows-3 gap-1 rounded-lg border p-1.5"
+            >
+              {IMAGE_FOCUS.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  role="radio"
+                  aria-checked={focus === option}
+                  aria-label={IMAGE_FOCUS_LABEL[option]}
+                  title={IMAGE_FOCUS_LABEL[option]}
+                  onClick={() =>
+                    set(
+                      ["images", "focus"],
+                      option === "center" ? undefined : option,
+                    )
+                  }
+                  className={cn(
+                    "flex items-center justify-center rounded transition-colors",
+                    focus === option
+                      ? "bg-primary"
+                      : "bg-background hover:bg-primary/20",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "block size-1.5 rounded-full",
+                      focus === option
+                        ? "bg-primary-foreground"
+                        : "bg-muted-foreground/40",
+                    )}
+                  />
+                </button>
+              ))}
+            </div>
+            <p className="text-muted-foreground text-[11px]">
+              {IMAGE_FOCUS_LABEL[focus]}. When the shape trims a photo, this
+              part stays in view. To choose the exact part of one photo, use
+              Crop on that photo in the Content tab.
+            </p>
+          </div>
+        </div>
+      ) : null}
+
       {/* The photographs' corners sit with the section's own, under Border & shadow. */}
       <div className="flex items-center justify-between gap-3">
         <Label htmlFor="design-zoom" className="text-xs">
@@ -702,7 +995,25 @@ function ImagesPart({ get, set }: PartProps) {
 }
 
 /** `width` off: the section runs edge to edge with no content column to narrow. */
-function LayoutPart({ get, set, width }: PartProps & { width: boolean }) {
+/** Whether Width & height has anything left to offer, once the section's Layout holds its own. */
+function layoutShows(
+  get: PartProps["get"],
+  container: boolean,
+  fromLayout: FromLayout,
+): boolean {
+  return (
+    (container && !fromLayout.width) ||
+    !fromLayout.height ||
+    get(["minHeight"]) !== undefined
+  );
+}
+
+function LayoutPart({
+  get,
+  set,
+  width,
+  height = true,
+}: PartProps & { width: boolean; height?: boolean }) {
   const minHeight = get(["minHeight"]) as Responsive<number> | undefined;
   return (
     <div className="space-y-4">
@@ -719,16 +1030,18 @@ function LayoutPart({ get, set, width }: PartProps & { width: boolean }) {
           onChange={(next) => set(["maxWidth"], next)}
         />
       ) : null}
-      <ResponsiveSlider
-        label="Minimum height"
-        unit="px"
-        min={0}
-        max={1600}
-        step={10}
-        value={minHeight}
-        placeholder="Auto"
-        onChange={(next) => set(["minHeight"], next)}
-      />
+      {height ? (
+        <ResponsiveSlider
+          label="Minimum height"
+          unit="px"
+          min={0}
+          max={1600}
+          step={10}
+          value={minHeight}
+          placeholder="Auto"
+          onChange={(next) => set(["minHeight"], next)}
+        />
+      ) : null}
       {minHeight ? (
         <Segmented
           label="Content sits"
@@ -794,6 +1107,41 @@ function VisibilityPart({
  * -------------------------------------------------------------------------- */
 
 /** A group that folds away — the same card for every group of the Style tab. */
+/**
+ * The finer settings of a part, behind one line that names them — so a part shows what
+ * is most used first. Open by itself when one of them is set: nothing set is ever out
+ * of sight.
+ */
+function More({
+  label,
+  changed,
+  children,
+}: {
+  label: string;
+  changed: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = React.useState(changed);
+  if (!open && !changed) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="text-muted-foreground hover:text-foreground flex w-full items-center gap-1 text-left text-xs"
+      >
+        <ChevronRightIcon className="size-3.5 shrink-0" />
+        <span>
+          More:{" "}
+          <span className="underline underline-offset-2">
+            {label.toLowerCase()}
+          </span>
+        </span>
+      </button>
+    );
+  }
+  return <div className="space-y-4">{children}</div>;
+}
+
 export function Part({
   title,
   changed,

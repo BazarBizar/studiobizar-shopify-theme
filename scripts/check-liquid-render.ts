@@ -483,6 +483,14 @@ async function designParity() {
     ["every control, desktop and phone", DESIGN_SAMPLE, SECTION_PREFIX],
     ["zero corners on photos write nothing; a zero line is a choice", { images: { radius: 0 }, buttonLook: { borderWidth: 0 } }, SECTION_PREFIX],
     ["a height with no position, a position with no height", { minHeight: { m: 300 } }, SECTION_PREFIX],
+    [
+      "photos: a portrait 2:3, a size in px on desktop and phone, the whole photo, kept at the top",
+      { images: { ratio: "portrait_2_3", width: { d: 480, m: 280 }, height: { d: 600 }, fit: "contain", focus: "center top" } },
+      SECTION_PREFIX,
+    ],
+    ["photos: a custom shape typed in as 7 : 3", { images: { ratio: "custom", custom: { w: 7, h: 3 } } }, SECTION_PREFIX],
+    ["photos: a custom shape with no numbers writes nothing", { images: { ratio: "custom" } }, SECTION_PREFIX],
+    ["photos: as uploaded — each photo its own shape", { images: { ratio: "own", zoom: true } }, SECTION_PREFIX],
     ["Site style", { heading: DESIGN_SAMPLE.heading, buttonLook: DESIGN_SAMPLE.buttonLook }, SITE_PREFIX],
   ];
   for (const [label, value, prefix] of cases) {

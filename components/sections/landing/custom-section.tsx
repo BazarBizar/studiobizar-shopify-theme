@@ -197,7 +197,7 @@ function blockContent(
       if (!s.image && !placeholder) return null;
       const href = s.href && isSafeHref(s.href) ? s.href : "";
       const picture = (
-        <Picture image={s.image} ratio={s.ratio} placeholder={placeholder} sizes="(max-width: 749px) 100vw, 50vw" />
+        <Picture image={s.image} ratio="adapt" placeholder={placeholder} sizes="(max-width: 749px) 100vw, 50vw" />
       );
       return (
         <figure className="sb-bk-row">
@@ -275,7 +275,7 @@ function blockContent(
       return (
         <div className="sb-bk-card" data-style={s.style}>
           {(s.image || placeholder) && (
-            <Picture image={s.image} ratio={s.ratio} placeholder={placeholder} sizes="(max-width: 749px) 100vw, 33vw" className="mb-5" />
+            <Picture image={s.image} ratio="adapt" placeholder={placeholder} sizes="(max-width: 749px) 100vw, 33vw" className="mb-5" />
           )}
           {s.title.trim() && <h3 className="text-h3">{s.title}</h3>}
           <Prose html={html} size="secondary" className={cn(s.title.trim() && "mt-2")} />

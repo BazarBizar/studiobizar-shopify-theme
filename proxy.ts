@@ -50,7 +50,9 @@ function adminCsp(nonce: string, { preview = false }: { preview?: boolean } = {}
     `img-src 'self' blob: data: https://cdn.shopify.com${preview ? " https://*.cdninstagram.com https://*.fbcdn.net https://behold.pictures https://feeds.behold.so" : ""}`,
     "media-src 'self' https://cdn.shopify.com",
     "font-src 'self' data:",
-    "connect-src 'self'",
+    // Development only: the dev server's live reload is a websocket on another local
+    // port. Without it the panel never picks up a code change until a hard reload.
+    `connect-src 'self'${isDevelopment ? " ws://localhost:* ws://127.0.0.1:*" : ""}`,
     // The builder frames its own preview; the preview's Video section frames the
     // two players `parseVideoUrl` allows — and only after play is pressed.
     `frame-src 'self'${preview ? " https://www.youtube-nocookie.com https://player.vimeo.com" : ""}`,
@@ -60,7 +62,7 @@ function adminCsp(nonce: string, { preview = false }: { preview?: boolean } = {}
     // The one difference that matters: the page builder frames its preview, so
     // the preview may be framed — by this origin and nothing else.
     `frame-ancestors ${preview ? "'self'" : "'none'"}`,
-    "upgrade-insecure-requests",
+    ...(isDevelopment ? [] : ["upgrade-insecure-requests"]),
   ].join("; ");
 }
 

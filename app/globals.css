@@ -466,6 +466,21 @@
   --sb-foreground: var(--sb-hdr-over);
 }
 
+/* A Theme Builder element's own Style (theme-elements.tsx `elementLook`): what an inline
+   style cannot say — a hover colour, and padding per device (an empty device follows
+   the larger screen). */
+[data-el-hover] :is(a, button):hover { color: var(--sb-el-hover); }
+[data-el-px~="d"] { padding-inline: var(--sb-el-px); }
+[data-el-py~="d"] { padding-block: var(--sb-el-py); }
+@media (max-width: 1023px) {
+  [data-el-px~="t"] { padding-inline: var(--sb-el-px-t); }
+  [data-el-py~="t"] { padding-block: var(--sb-el-py-t); }
+}
+@media (max-width: 749px) {
+  [data-el-px~="m"] { padding-inline: var(--sb-el-px-m); }
+  [data-el-py~="m"] { padding-block: var(--sb-el-py-m); }
+}
+
 
 /* The 4-up product / collection grid from Shop All, collapsing on mobile. */
 @utility sb-grid-4 {

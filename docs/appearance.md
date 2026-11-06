@@ -5,8 +5,9 @@ Admin: **Website → Appearance** (`/admin/theme-builder`). Formerly "Header & f
 The site's header, footer, site-wide style and promotions, edited beside a live preview of a real
 page. Four tabs: **Header · Footer · Site style · Pop-ups**.
 
-> Next only for now. The Liquid theme does not read the layout yet (by decision); the data is plain
-> JSON on the shop so `sb-header` / `sb-footer` can catch up later.
+> Next only for now. The Liquid theme does not read the layout yet (by decision) — sections and
+> element styles included; the data is plain JSON on the shop so `sb-header` / `sb-footer` can catch
+> up later.
 
 ---
 
@@ -32,51 +33,56 @@ Works as in the page builder.
 
 Two separate arrangements — a phone header is a different composition, not a squeezed one:
 
-| Arrangement | Width |
-|---|---|
-| **Desktop** | 1024px and wider |
-| **Phones & tablets** | narrower than 1024px |
-
-Each has three zones: **left, centre, right**, up to 12 elements per zone. Elements can be added,
-removed, duplicated, reordered and moved between zones — by drag and drop, or ↑ ↓ / "Move to" from
-the keyboard.
+| Arrangement                                                                                        | Width                     |
+| -------------------------------------------------------------------------------------------------- | ------------------------- |
+| **Desktop**                                                                                        | 1024px and wider          |
+| **Phones & tablets**                                                                               | narrower than 1024px sini |
+| Each has three zones: **left, centre, right**, up to 12 elements per zone. Elements can be added,  |
+| removed, duplicated, reordered and moved between zones — by drag and drop, or ↑ ↓ / "Move to" from |
+| the keyboard.                                                                                      |
 
 ### Look
 
-| Setting | Values | Default |
-|---|---|---|
-| Stay at the top while scrolling | on / off | on |
-| Get smaller while scrolling | on / off | off |
-| Shadow while scrolling | on / off | off |
-| Over the top of the page | see-through until the page scrolls, so a photo at the top runs up behind it | off |
-| Text colour over the page | colour; empty = light, for a photo | — |
-| Background | colour; empty = the page's own background | — |
-| Text and icon colour | colour | — |
-| Space above and below | px per device, 0–120 | 20 |
-| Space between elements | px, 0–120 | 36 |
-| Line under the header | on / off + line colour (empty = soft line in the text colour) | off |
-| Shadow | none / soft / medium / strong | none |
-| Dropdown menus | background, text colour | — |
-| Menu typography | font, size, weight … (design value) | — |
+| Setting                         | Values                                                                      | Default |
+| ------------------------------- | --------------------------------------------------------------------------- | ------- |
+| Stay at the top while scrolling | on / off                                                                    | on      |
+| Get smaller while scrolling     | on / off                                                                    | off     |
+| Shadow while scrolling          | on / off                                                                    | off     |
+| Over the top of the page        | see-through until the page scrolls, so a photo at the top runs up behind it | off     |
+| Text colour over the page       | colour; empty = light, for a photo                                          | —       |
+| Background                      | colour; empty = the page's own background                                   | —       |
+| Text and icon colour            | colour                                                                      | —       |
+| Space above and below           | px per device, 0–120                                                        | 20      |
+| Space between elements          | px, 0–120                                                                   | 36      |
+| Line under the header           | on / off + line colour (empty = soft line in the text colour)               | off     |
+| Shadow                          | none / soft / medium / strong                                               | none    |
+| Dropdown menus                  | background, text colour                                                     | —       |
+| Menu typography                 | font, size, weight … (design value)                                         | —       |
+
+### Sections under the header
+
+Any page builder section, on **every page**, right after the header bar — outside it, so they scroll
+with the page while the bar stays sticky (with _Over the top of the page_ the first one runs up behind
+it). See **4b. Sections**.
 
 ### Announcement bar
 
 The bar above the header (`lib/theme-builder/promo.ts`, drawn by
 `components/layout/announcement-bar.tsx`).
 
-| Setting | Values | Default |
-|---|---|---|
-| Show the bar | on / off | off |
-| Messages | up to **8**, each: text (≤ 200 chars), link (the message itself is the link), start and end date | 1 empty |
-| Mode | **One at a time** / **Scrolling across** | one at a time |
-| Seconds per message | 2–30 (one at a time) | 5 |
-| Speed | slow / normal / fast (scrolling) | normal |
-| Direction | left / right (scrolling) | left |
-| Separator | dot / dash / star / none (scrolling) | dot |
-| Text size | standard / small / very small | small |
-| Visitors can close it | on / off | off |
-| Background, text colour | colour; empty = brand off-black / earth | — |
-| Show on | desktop / tablet / mobile | all |
+| Setting                 | Values                                                                                           | Default       |
+| ----------------------- | ------------------------------------------------------------------------------------------------ | ------------- |
+| Show the bar            | on / off                                                                                         | off           |
+| Messages                | up to **8**, each: text (≤ 200 chars), link (the message itself is the link), start and end date | 1 empty       |
+| Mode                    | **One at a time** / **Scrolling across**                                                         | one at a time |
+| Seconds per message     | 2–30 (one at a time)                                                                             | 5             |
+| Speed                   | slow / normal / fast (scrolling)                                                                 | normal        |
+| Direction               | left / right (scrolling)                                                                         | left          |
+| Separator               | dot / dash / star / none (scrolling)                                                             | dot           |
+| Text size               | standard / small / very small                                                                    | small         |
+| Visitors can close it   | on / off                                                                                         | off           |
+| Background, text colour | colour; empty = brand off-black / earth                                                          | —             |
+| Show on                 | desktop / tablet / mobile                                                                        | all           |
 
 - One at a time: arrows, paused under the pointer or keyboard focus.
 - Scrolling: the Scrolling text section's `sb-marquee` loop, paused under the pointer.
@@ -89,6 +95,11 @@ The bar above the header (`lib/theme-builder/promo.ts`, drawn by
 
 ## 3. Footer tab
 
+### Sections
+
+Any page builder section at the **top of the footer**, above the columns, on the footer's ground
+unless the section picks its own. See **4b. Sections**.
+
 ### Layout
 
 - **1–5 columns** of elements.
@@ -97,16 +108,16 @@ The bar above the header (`lib/theme-builder/promo.ts`, drawn by
 
 ### Look
 
-| Setting | Values | Default |
-|---|---|---|
-| Background | colour; empty = each page's footer colour (olive on most) | — |
-| Text colour | colour | — |
-| Space above | px per device, 0–240 | 48 |
-| Space below | px per device, 0–240 | 16 |
-| Space between columns | px, 0–320 | 197 |
-| Columns on phones | one under another / two side by side | one |
-| Line above the footer | on / off + line colour | off |
-| Typography | design value | — |
+| Setting               | Values                                                    | Default |
+| --------------------- | --------------------------------------------------------- | ------- |
+| Background            | colour; empty = each page's footer colour (olive on most) | —       |
+| Text colour           | colour                                                    | —       |
+| Space above           | px per device, 0–240                                      | 48      |
+| Space below           | px per device, 0–240                                      | 16      |
+| Space between columns | px, 0–320                                                 | 197     |
+| Columns on phones     | one under another / two side by side                      | one     |
+| Line above the footer | on / off + line colour                                    | off     |
+| Typography            | design value                                              | —       |
 
 ---
 
@@ -116,21 +127,36 @@ Every element also has:
 
 - **Space before it** — px, 0–240; empty = the zone's own spacing.
 - **Show on** — desktop / tablet / mobile.
+- A **Style** tab (Content | Style, as a section) — only for that element; anything empty looks like
+  the rest of the header or footer. **Reset style** empties it.
 
-| Element | Header | Footer | Settings |
-|---|:-:|:-:|---|
-| **Logo** | ✓ | ✓ | Show: name / symbol · Height 12–160px (20) · Height on phones 0–160px (0 = same) |
-| **Menu** | ✓ | ✓ | Which menu (any menu from Website → Menus; deleted shows "(deleted)") · Heading above the links · Links: side by side / one under another · Link size: standard / small · Space between links 0–120px (36) · Show sub-links in a dropdown (on) |
-| **Search** | ✓ | | — |
-| **Account** | ✓ | | — |
-| **Inquiry bag** | ✓ | | — (shows how many pieces) |
-| **Language** | ✓ | ✓ | — |
-| **Menu button** | ✓ | | — (opens the full menu on phones and tablets) |
-| **Social links** | ✓ | ✓ | — (set under Site-wide) |
-| **Text** | ✓ | ✓ | Text: typed here / footer tagline (Site-wide) / footer bottom line (Site-wide) · Text (≤ 300) and Link when typed · Size: standard / small / very small |
-| **Button** | ✓ | ✓ | Link (required) · Style: filled / outlined / underlined text |
-| **Newsletter sign-up** | | ✓ | Invitation (≤ 300; empty = the Site-wide newsletter text) |
-| **Copyright** | | ✓ | Text (≤ 120), `{year}` becomes the current year — default `© {year} Studio Bizar` |
+| Group           | Settings                                                                                                                                       |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Colours         | text and icons · under the pointer (links and icons) · background                                                                              |
+| Spacing         | space inside left and right, top and bottom — px per device, 0–120                                                                             |
+| Border & shadow | corners 0–100px · line around it 0–10px + colour (empty = text colour) · shadow none / soft / medium / strong                                  |
+| Typography      | headings, text, buttons — only what the element has: Menu (heading, links), Text, Copyright (text), Button (button), Newsletter (text, button) |
+| Buttons         | the buttons' look — Button and Newsletter only                                                                                                 |
+
+Drawn by `lib/theme-builder/element-look.ts`: colours, corners, line and shadow inline; padding per
+device and the hover colour through `data-el-*` rules in `globals.css`; typography and buttons through
+the design value's own rules (`styles/sb-design.css`). An element's `design` holds only `heading`,
+`text`, `button` and `buttonLook` — anything else is refused on write and dropped on read.
+
+| Element                | Header | Footer | Settings                                                                                                                                                                                                                                       |
+| ---------------------- | :----: | :----: | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Logo**               |   ✓    |   ✓    | Show: name / symbol · Height 12–160px (20) · Height on phones 0–160px (0 = same)                                                                                                                                                               |
+| **Menu**               |   ✓    |   ✓    | Which menu (any menu from Website → Menus; deleted shows "(deleted)") · Heading above the links · Links: side by side / one under another · Link size: standard / small · Space between links 0–120px (36) · Show sub-links in a dropdown (on) |
+| **Search**             |   ✓    |        | —                                                                                                                                                                                                                                              |
+| **Account**            |   ✓    |        | —                                                                                                                                                                                                                                              |
+| **Inquiry bag**        |   ✓    |        | — (shows how many pieces)                                                                                                                                                                                                                      |
+| **Language**           |   ✓    |   ✓    | —                                                                                                                                                                                                                                              |
+| **Menu button**        |   ✓    |        | — (opens the full menu on phones and tablets)                                                                                                                                                                                                  |
+| **Social links**       |   ✓    |   ✓    | — (set under Site-wide)                                                                                                                                                                                                                        |
+| **Text**               |   ✓    |   ✓    | Text: typed here / footer tagline (Site-wide) / footer bottom line (Site-wide) · Text (≤ 300) and Link when typed · Size: standard / small / very small                                                                                        |
+| **Button**             |   ✓    |   ✓    | Link (required) · Style: filled / outlined / underlined text                                                                                                                                                                                   |
+| **Newsletter sign-up** |        |   ✓    | Invitation (≤ 300; empty = the Site-wide newsletter text)                                                                                                                                                                                      |
+| **Copyright**          |        |   ✓    | Text (≤ 120), `{year}` becomes the current year — default `© {year} Studio Bizar`                                                                                                                                                              |
 
 Menus on the site:
 
@@ -138,6 +164,22 @@ Menus on the site:
 - **Mega menu** — when a third level exists anywhere under it: a panel the width of the header,
   each second-level link a column.
 - **Phone drawer** — every level opens in place.
+
+---
+
+## 4b. Sections
+
+**Header → Sections under the header** and **Footer → Sections**: up to **8** each.
+
+- **Add section** opens the page builder's own dialog (same presets, same example content), minus
+  **Page heading** (the page's one `h1`) and **Go back** — page-only.
+- A row: open · show / hide · ↑ ↓ · ⋯ duplicate, delete (with Undo).
+- Opening one shows the page builder's section editor — Content | Style, blocks, "Turn into Custom
+  section". Clicking it in the preview opens it too; double-click a line there to type over it.
+- **Publish** is refused while a _visible_ one still misses required content — the editor opens it and
+  says what is missing. A hidden one does not count. Drafts save incomplete.
+- Data loads, rendering and failure handling are the page's: `SectionRenderer`, every section in
+  parallel, a failing one left out.
 
 ---
 
@@ -160,12 +202,12 @@ comes. List row: name, on / off, and "Ended" / "Starts 3 Dec" when outside its d
 
 **Add a pop-up** offers four starts:
 
-| Start | Shape | Opens |
-|---|---|---|
-| Event or news | box in the middle, photo, words, button | — |
-| Newsletter sign-up | invitation + email field | — |
-| Small note in a corner | corner box, left-aligned | after 8 s |
-| Bar along the bottom | one line and a button | after 3 s |
+| Start                  | Shape                                   | Opens     |
+| ---------------------- | --------------------------------------- | --------- |
+| Event or news          | box in the middle, photo, words, button | —         |
+| Newsletter sign-up     | invitation + email field                | —         |
+| Small note in a corner | corner box, left-aligned                | after 8 s |
+| Bar along the bottom   | one line and a button                   | after 3 s |
 
 The pop-up editor looks like a section editor: header (back, name, **Show in preview**, on / off,
 duplicate, delete) and **Content | Style** tabs.
@@ -174,37 +216,37 @@ duplicate, delete) and **Content | Style** tabs.
 
 **What it says**
 
-| Setting | Values |
-|---|---|
-| Name | only the editor sees it (≤ 60) |
-| Photograph | image |
-| Heading | ≤ 120 |
-| Text | ≤ 600 |
-| Button | link — closes the pop-up and goes to the page |
-| Button style | filled / outlined / underlined text |
-| Add the newsletter sign-up | on / off |
+| Setting                    | Values                                        |
+| -------------------------- | --------------------------------------------- |
+| Name                       | only the editor sees it (≤ 60)                |
+| Photograph                 | image                                         |
+| Heading                    | ≤ 120                                         |
+| Text                       | ≤ 600                                         |
+| Button                     | link — closes the pop-up and goes to the page |
+| Button style               | filled / outlined / underlined text           |
+| Add the newsletter sign-up | on / off                                      |
 
 **Layout**
 
-| Setting | Values | Shown when |
-|---|---|---|
-| Shape | box in the middle / small box in a corner / bar along the bottom | always |
-| Corner | bottom right / bottom left | corner |
-| Position on the screen | top / middle / bottom | box in the middle |
-| Photograph | above the text / below / on the left / on the right | box in the middle |
-| Photograph's width | a third / half / two thirds | photo left or right |
-| Text sits | top / middle / bottom | photo left or right |
-| Text | centred / left / right | always |
+| Setting                | Values                                                           | Shown when          |
+| ---------------------- | ---------------------------------------------------------------- | ------------------- |
+| Shape                  | box in the middle / small box in a corner / bar along the bottom | always              |
+| Corner                 | bottom right / bottom left                                       | corner              |
+| Position on the screen | top / middle / bottom                                            | box in the middle   |
+| Photograph             | above the text / below / on the left / on the right              | box in the middle   |
+| Photograph's width     | a third / half / two thirds                                      | photo left or right |
+| Text sits              | top / middle / bottom                                            | photo left or right |
+| Text                   | centred / left / right                                           | always              |
 
 **When it opens**
 
-| Setting | Values | Default |
-|---|---|---|
-| Opens | after a few seconds / after scrolling down / when the visitor is about to leave | — |
-| Seconds after the page opens | 0–120 | 5 |
-| How far down the page | 5–100 % | 40 |
-| How often | once per visit / once every few days / only once, ever / every time a page opens | — |
-| Days before it shows again | 1–365 | 7 |
+| Setting                      | Values                                                                           | Default |
+| ---------------------------- | -------------------------------------------------------------------------------- | ------- |
+| Opens                        | after a few seconds / after scrolling down / when the visitor is about to leave  | —       |
+| Seconds after the page opens | 0–120                                                                            | 5       |
+| How far down the page        | 5–100 %                                                                          | 40      |
+| How often                    | once per visit / once every few days / only once, ever / every time a page opens | —       |
+| Days before it shows again   | 1–365                                                                            | 7       |
 
 "About to leave" = the pointer leaves through the top; never on touch screens.
 
@@ -219,30 +261,30 @@ duplicate, delete) and **Content | Style** tabs.
 
 Same structure as a section's Style tab, with the device switch at the top.
 
-| Group | Settings |
-|---|---|
-| **Background** | own colour (empty = site's light background) · gradient / photo / overlay (the section panel) · text colour · readability warning with a fix button |
-| **Spacing** | padding as four boxes per device (0–200) · distance from the screen's edge (0–120) · space between heading, text and buttons (0–96) |
+| Group               | Settings                                                                                                                                                                                            |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Background**      | own colour (empty = site's light background) · gradient / photo / overlay (the section panel) · text colour · readability warning with a fix button                                                 |
+| **Spacing**         | padding as four boxes per device (0–200) · distance from the screen's edge (0–120) · space between heading, text and buttons (0–96)                                                                 |
 | **Border & shadow** | corners per device (0–48) · photo corners · line around it 0–8px · line style solid / dashed / dotted / double · line colour (empty = text colour) · shadow default / none / soft / medium / strong |
-| **Typography** | headings, text, buttons |
-| **Buttons** | colours, line, corners, padding |
-| **Images** | photograph's shape: to suit the layout / landscape / square / tall / as the photograph is · space around the photograph 0–64px |
-| **Size** | small / medium / large / custom (box in the middle) · custom width per device 240–1200px (also the corner box) |
-| **Page behind it** | box in the middle only: darken (on) · colour (empty = black) · how dark 0–90 % (50) · blur 0–20px |
-| **Close button** | look: on a circle / plain · size: small / medium / large · colour (empty = text colour) · circle colour |
-| **Animation** | rise and fade in / fade in / zoom in / slide up from below / at once · speed slow / normal / fast |
-| **Show on devices** | desktop / tablet / mobile |
+| **Typography**      | headings, text, buttons                                                                                                                                                                             |
+| **Buttons**         | colours, line, corners, padding                                                                                                                                                                     |
+| **Images**          | photograph's shape: to suit the layout / landscape / square / tall / as the photograph is · space around the photograph 0–64px                                                                      |
+| **Size**            | small / medium / large / custom (box in the middle) · custom width per device 240–1200px (also the corner box)                                                                                      |
+| **Page behind it**  | box in the middle only: darken (on) · colour (empty = black) · how dark 0–90 % (50) · blur 0–20px                                                                                                   |
+| **Close button**    | look: on a circle / plain · size: small / medium / large · colour (empty = text colour) · circle colour                                                                                             |
+| **Animation**       | rise and fade in / fade in / zoom in / slide up from below / at once · speed slow / normal / fast                                                                                                   |
+| **Show on devices** | desktop / tablet / mobile                                                                                                                                                                           |
 
 **Reset style** keeps the shape.
 
 Defaults where nothing is set:
 
-| | Box in the middle / corner | Bar |
-|---|---|---|
-| Padding | 32 all sides (phone: 24, top 40 without a photo above) | 16 / 48 / 16 / 32 (phone left 16) |
-| Distance from edge | 16 | 0 |
-| Gap | 16 | 16 |
-| Width | 520 (corner: 384) | — |
+|                    | Box in the middle / corner                             | Bar                               |
+| ------------------ | ------------------------------------------------------ | --------------------------------- |
+| Padding            | 32 all sides (phone: 24, top 40 without a photo above) | 16 / 48 / 16 / 32 (phone left 16) |
+| Distance from edge | 16                                                     | 0                                 |
+| Gap                | 16                                                     | 16                                |
+| Width              | 520 (corner: 384)                                      | —                                 |
 
 Per-device values follow the larger screen when empty (mobile → tablet → desktop).
 
@@ -268,13 +310,16 @@ Per-device values follow the larger screen when empty (mobile → tablet → des
 
 Three JSON **shop** metafields:
 
-| Key | Storefront access | Holds |
-|---|---|---|
-| `custom.theme_layout` | `PUBLIC_READ` | the published layout — the only copy the storefront reads |
-| `custom.theme_layout_draft` | `NONE` | the working copy the editor autosaves |
-| `custom.theme_layout_previous` | `NONE` | the layout the last publish replaced |
+| Key                            | Storefront access | Holds                                                     |
+| ------------------------------ | ----------------- | --------------------------------------------------------- |
+| `custom.theme_layout`          | `PUBLIC_READ`     | the published layout — the only copy the storefront reads |
+| `custom.theme_layout_draft`    | `NONE`            | the working copy the editor autosaves                     |
+| `custom.theme_layout_previous` | `NONE`            | the layout the last publish replaced                      |
 
 - Content: `{ header, footer, global, popups }` + `meta` (revision, saved / published at and by).
+  `header.sections` and `footer.sections` are section lists in the page document's own shape
+  (`sectionListSchema` / `readSections` in `lib/page-builder/document.ts`); an element's look is
+  `style`.
 - Max 120 KB. Every write is one `metafieldsSet` (all or nothing).
 - **Writes are strict** (`themeContentSchema`), **reads are lenient** (`readThemeContent`): a
   damaged value falls back to its default alone; an unknown element is dropped; the rest still
@@ -282,16 +327,16 @@ Three JSON **shop** metafields:
 
 ## 8. Code
 
-| Where | What |
-|---|---|
-| `lib/theme-builder/layout.ts` | elements, zones, defaults, write schema, lenient read |
-| `lib/theme-builder/promo.ts` | announcement bar and pop-ups: fields, per-device box, rules |
-| `lib/admin/theme-builder.ts` | read the three copies; save, publish, discard, rollback |
-| `app/api/admin/theme-builder/route.ts` | the one write endpoint (validates, audits, drops the cache twice on publish) |
-| `components/layout/theme-header.tsx`, `theme-footer.tsx`, `theme-elements.tsx` | storefront header, footer, elements |
-| `components/layout/announcement-bar.tsx`, `popups.tsx` | storefront bar and pop-ups |
-| `components/admin/theme-builder/` | the editor (`theme-builder.tsx`, `panels.tsx`, `promo-panels.tsx`, `ops.ts`) |
-| `app/(admin)/preview/theme/page.tsx` | the preview |
+| Where                                                                          | What                                                                         |
+| ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| `lib/theme-builder/layout.ts`                                                  | elements, zones, defaults, write schema, lenient read                        |
+| `lib/theme-builder/promo.ts`                                                   | announcement bar and pop-ups: fields, per-device box, rules                  |
+| `lib/admin/theme-builder.ts`                                                   | read the three copies; save, publish, discard, rollback                      |
+| `app/api/admin/theme-builder/route.ts`                                         | the one write endpoint (validates, audits, drops the cache twice on publish) |
+| `components/layout/theme-header.tsx`, `theme-footer.tsx`, `theme-elements.tsx` | storefront header, footer, elements                                          |
+| `components/layout/announcement-bar.tsx`, `popups.tsx`                         | storefront bar and pop-ups                                                   |
+| `components/admin/theme-builder/`                                              | the editor (`theme-builder.tsx`, `panels.tsx`, `promo-panels.tsx`, `ops.ts`) |
+| `app/(admin)/preview/theme/page.tsx`                                           | the preview                                                                  |
 
 Elements and pop-up settings use the page builder's field vocabulary, so the editor draws them with
 the same controls and the API validates them with the same schemas.
@@ -301,5 +346,6 @@ the same controls and the API validates them with the same schemas.
 - `yarn check:page-builder` — the layout's schema, round trip, damage handling, promotions and
   pop-ups.
 - `yarn check:theme-builder-ui` — the editor in a browser. **Draft only, never Publish**; ends with
-  *Discard*.
+  _Discard_ — which throws away anyone's unpublished draft too.
+- `yarn check:theme-preview` — sections and element styles in the real preview. Writes nothing.
 - `yarn check:menus` — menu addresses and tree changes.

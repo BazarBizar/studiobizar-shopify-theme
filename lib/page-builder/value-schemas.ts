@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { HEX_COLOR, type ImageRef } from "./value-types";
+import { HEX_COLOR, type ImageCrop, type ImageRef } from "./value-types";
 
 /**
  * Value shapes shared by the field vocabulary (`fields.ts`) and the design value
@@ -8,7 +8,7 @@ import { HEX_COLOR, type ImageRef } from "./value-types";
  * a circular import — `fields.ts` re-exports everything here.
  */
 
-export { HEX_COLOR, type ImageRef };
+export { HEX_COLOR, type ImageCrop, type ImageRef };
 
 /**
  * Only Shopify's CDN. `next.config.ts` allows a handful of image hosts for the
@@ -23,4 +23,19 @@ export const imageRefSchema = z.strictObject({
   altText: z.string().max(512).nullable(),
   width: z.number().int().positive().nullable(),
   height: z.number().int().positive().nullable(),
-});
+  crop: z
+    .strictObject({
+      x: z.number().int().min(0).max(20000),
+      y: z.number().int().min(0).max(20000),
+      width: z.number().int().min(1).max(20000),
+      height: z.number().int().min(1).max(20000),
+    })
+    .optional(),
+}).refine(
+  // Inside the photograph, when its size is known.
+  (image) =>
+    !image.crop ||
+    ((image.width === null || image.crop.x + image.crop.width <= image.width) &&
+      (image.height === null || image.crop.y + image.crop.height <= image.height)),
+  "The crop reaches past the edge of the photo. Crop it again.",
+);

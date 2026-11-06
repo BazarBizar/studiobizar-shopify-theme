@@ -55,11 +55,11 @@ export async function PageShell({
     >
       {/* An uploaded logo, for every <Logo> below — see site-identity-style.tsx. */}
       <SiteIdentityStyle />
-      <Header theme={layout} />
+      <Header theme={layout} preview={theme !== undefined} />
       <main id="main" className="flex-1">
         {children}
       </main>
-      <Footer surface={footerSurface} theme={layout} />
+      <Footer surface={footerSurface} theme={layout} preview={theme !== undefined} />
       <BackToTop />
       <InquiryDrawer />
       <SearchOverlay />

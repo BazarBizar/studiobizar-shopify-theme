@@ -141,7 +141,7 @@
         },
         {
           "value": "center",
-          "label": "Centred"
+          "label": "Centre"
         }
       ],
       "default": "left"
@@ -824,7 +824,7 @@
         },
         {
           "value": "center",
-          "label": "Center"
+          "label": "Centre"
         },
         {
           "value": "right",
@@ -848,7 +848,7 @@
         },
         {
           "value": "center",
-          "label": "Center"
+          "label": "Centre"
         },
         {
           "value": "right",
@@ -922,26 +922,158 @@
       "options": [
         {
           "value": "original",
-          "label": "As uploaded"
+          "label": "Section default"
+        },
+        {
+          "value": "own",
+          "label": "As uploaded (each photo's own shape)"
         },
         {
           "value": "square",
-          "label": "Square"
+          "label": "Square 1:1"
         },
         {
           "value": "portrait",
-          "label": "Tall"
+          "label": "Portrait 4:5"
+        },
+        {
+          "value": "portrait_3_4",
+          "label": "Portrait 3:4"
+        },
+        {
+          "value": "portrait_2_3",
+          "label": "Portrait 2:3"
+        },
+        {
+          "value": "portrait_9_16",
+          "label": "Portrait 9:16"
+        },
+        {
+          "value": "landscape_5_4",
+          "label": "Landscape 5:4"
+        },
+        {
+          "value": "landscape_4_3",
+          "label": "Landscape 4:3"
         },
         {
           "value": "landscape",
-          "label": "Landscape"
+          "label": "Landscape 3:2"
         },
         {
           "value": "wide",
-          "label": "Wide"
+          "label": "Landscape 16:9"
+        },
+        {
+          "value": "landscape_21_9",
+          "label": "Landscape 21:9"
+        },
+        {
+          "value": "custom",
+          "label": "Custom (width : height below)"
         }
       ],
       "default": "original"
+    },
+    {
+      "type": "number",
+      "id": "d_img_ratio_w",
+      "label": "Custom shape: width",
+      "placeholder": "Default",
+      "info": "With Shape on Custom. 4 and 5 make a 4:5 portrait; 16 and 9 a wide landscape."
+    },
+    {
+      "type": "number",
+      "id": "d_img_ratio_h",
+      "label": "Custom shape: height",
+      "placeholder": "Default"
+    },
+    {
+      "type": "number",
+      "id": "d_img_width",
+      "label": "Width (px)",
+      "placeholder": "Default",
+      "info": "Never wider than the column. Empty: the full column."
+    },
+    {
+      "type": "number",
+      "id": "d_img_width_m",
+      "label": "Width on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "number",
+      "id": "d_img_height",
+      "label": "Height (px)",
+      "placeholder": "Default",
+      "info": "Replaces the shape. Empty: the shape decides."
+    },
+    {
+      "type": "number",
+      "id": "d_img_height_m",
+      "label": "Height on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "select",
+      "id": "d_img_fit",
+      "label": "Fit",
+      "options": [
+        {
+          "value": "default",
+          "label": "Fill the shape (trims the edges)"
+        },
+        {
+          "value": "contain",
+          "label": "Show the whole photo"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "select",
+      "id": "d_img_focus",
+      "label": "Keep in view",
+      "options": [
+        {
+          "value": "default",
+          "label": "The middle"
+        },
+        {
+          "value": "left top",
+          "label": "Top left"
+        },
+        {
+          "value": "center top",
+          "label": "Top"
+        },
+        {
+          "value": "right top",
+          "label": "Top right"
+        },
+        {
+          "value": "left center",
+          "label": "Left"
+        },
+        {
+          "value": "right center",
+          "label": "Right"
+        },
+        {
+          "value": "left bottom",
+          "label": "Bottom left"
+        },
+        {
+          "value": "center bottom",
+          "label": "Bottom"
+        },
+        {
+          "value": "right bottom",
+          "label": "Bottom right"
+        }
+      ],
+      "default": "default",
+      "info": "Which part stays when the shape trims the photo."
     },
     {
       "type": "number",

@@ -34,7 +34,8 @@ export const carouselViewFields = (when?: { field: string; is: readonly (string 
     select("perDesktop", "Items across on desktop", PER_VIEW_DESKTOP, { ...opts, default: "auto" }),
     select("perTablet", "Items across on tablets", PER_VIEW_TABLET, { ...opts, default: "auto" }),
     select("perMobile", "Items across on phones", PER_VIEW_MOBILE, { ...opts, default: "auto" }),
-    select("step", "Each arrow moves", CAROUSEL_STEPS, { ...opts, default: "1", display: "buttons" }),
+    // Rarely changed: under Advanced.
+    select("step", "Arrows move", CAROUSEL_STEPS, { ...opts, group: "advanced", default: "1", display: "buttons" }),
   ] as const;
 };
 

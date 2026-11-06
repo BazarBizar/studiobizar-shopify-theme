@@ -162,6 +162,7 @@ export function CustomersTable({ rows }: { rows: CustomerRowData[] }) {
     [],
   );
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table: the compiler leaves this component as it is, which is fine
   const table = useReactTable({
     data: rows,
     columns,

@@ -395,7 +395,7 @@ const loaded = new Map<string, unknown>();
  * checked by hand, with the reason. Shown under "Explained", not counted.
  */
 const EXPLAINED: { section: string; field: RegExp; where?: "Next" | "Liquid"; problem?: RegExp; why: string }[] = [
-  { section: "*", field: /Each arrow moves|Change slides automatically|Seconds per slide/, why: "used by the carousel's script in the browser, not in the page's HTML" },
+  { section: "*", field: /Arrows move|Change slides automatically|Seconds per slide/, why: "used by the carousel's script in the browser, not in the page's HTML" },
   { section: "slideshow", field: /Change between slides/, where: "Next", why: "the sideways slide is chosen in the browser (it respects “reduce motion”)" },
   { section: "*", field: /^Placement$/, why: "decides whether the section sits inside the Page heading above it — a page-level pairing" },
   { section: "*", field: /Video address|→ Video → Video$/, where: "Next", why: "nothing is loaded from YouTube/Vimeo until the visitor presses play (privacy, speed)" },
@@ -408,7 +408,7 @@ const EXPLAINED: { section: string; field: RegExp; where?: "Next" | "Liquid"; pr
   { section: "custom_section", field: /Second button style/, why: "styles the second button, which the example leaves empty" },
   { section: "custom_section", field: /Heading level|Width on tablets/, why: "“Auto” resolves to the option it was compared with" },
   { section: "slideshow", field: /Slide → Darkening$/, why: "a slide's own darkening starts at the slider's 30%" },
-  { section: "multicolumn", field: /Column → Icon$|^Media$/, why: "icons fill only the columns without an image, and the example columns have images — the scenario at the end checks columns without one" },
+  { section: "multicolumn", field: /Column → Icon$|^Columns without an image$/, why: "icons fill only the columns without an image, and the example columns have images — the scenario at the end checks columns without one" },
 ];
 const explained = (finding: { section: string; field: string; where: string; problem: string }) =>
   EXPLAINED.find(

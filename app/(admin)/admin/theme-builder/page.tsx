@@ -1,6 +1,8 @@
 import { ThemeBuilder } from "@/components/admin/theme-builder/theme-builder";
 import { listCollections } from "@/lib/admin/collections";
+import { getExampleMedia } from "@/lib/admin/example-media";
 import { linkTargetsFrom } from "@/lib/admin/link-targets";
+import { listAllEntries } from "@/lib/admin/metaobjects";
 import { listMenus, menuChoices } from "@/lib/admin/menus";
 import { listPages } from "@/lib/admin/pages";
 import { getThemeState } from "@/lib/admin/theme-builder";
@@ -16,12 +18,23 @@ export const metadata = { title: "Appearance" };
  * would have to reconcile its state with a layout it did not write.
  */
 export default async function ThemeBuilderScreen() {
-  const [state, pages, collections, menus] = await Promise.all([
+  const [state, pages, collections, menus, faqEntries] = await Promise.all([
     getThemeState(),
     listPages(),
     listCollections(),
     listMenus().catch(() => []),
+    listAllEntries("faq_item").catch(() => []),
   ]);
+  // For the sections under the header and in the footer, as on a page: what a new one
+  // is filled with, and what the FAQ section's category picker offers.
+  const examples = await getExampleMedia(collections);
+  const faqCategories = [
+    ...new Set(
+      faqEntries
+        .map((entry) => entry.fields.find((field) => field.key === "category")?.value?.trim())
+        .filter((value): value is string => Boolean(value)),
+    ),
+  ];
 
   // The preview can show any visible page; the home page first.
   const visible = pages.filter((page) => page.isPublished);
@@ -42,7 +55,15 @@ export default async function ThemeBuilderScreen() {
         publishedInvalid: state.publishedInvalid,
       }}
       previewPages={previewPages}
-      lookups={{ linkTargets: linkTargetsFrom(pages, collections), faqCategories: [], menus: menuChoices(menus) }}
+      lookups={{ linkTargets: linkTargetsFrom(pages, collections), faqCategories, menus: menuChoices(menus), examples }}
+      collections={collections
+        .filter((collection) => collection.handle !== "frontpage")
+        .map((collection) => ({
+          id: collection.id,
+          handle: collection.handle,
+          title: collection.title,
+          thumbnail: collection.image?.url ?? null,
+        }))}
     />
   );
 }

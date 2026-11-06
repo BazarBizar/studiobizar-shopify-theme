@@ -2,6 +2,7 @@ import Image from "next/image";
 import { ButtonLink, type ButtonVariant } from "@/components/ui/button";
 
 import type { Surface } from "@/components/layout/page-shell";
+import { isCropped, photoFrameStyle } from "@/lib/page-builder/image-crop";
 import { cdnImage } from "@/lib/shopify/transforms";
 import type { ShopifyImage } from "@/lib/shopify/types";
 import { cn } from "@/lib/utils/cn";
@@ -76,7 +77,8 @@ export function MediaText({
   imageWidth?: keyof typeof COLUMNS;
   verticalAlign?: keyof typeof ITEMS;
 }) {
-  const adapt = ratio === "adapt" && image?.width && image.height;
+  // A cropped photo keeps the crop's shape, as "adapt" keeps the photo's own.
+  const adapt = (ratio === "adapt" || isCropped(image)) && image?.width && image.height;
   const content = (
     <div className={cn("py-section", PADDING[padding])}>
       <div
@@ -92,7 +94,7 @@ export function MediaText({
         {image && (
           <figure
             className={cn("relative", !adapt && RATIO[ratio === "adapt" ? "portrait" : ratio], "w-full overflow-hidden bg-foreground/5")}
-            style={adapt ? { aspectRatio: `${image.width} / ${image.height}` } : undefined}
+            style={photoFrameStyle(image, Boolean(adapt))}
           >
             <Image
               src={cdnImage(image.url)}

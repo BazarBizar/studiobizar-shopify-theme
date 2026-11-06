@@ -44,7 +44,7 @@ const ROOT = resolve(__dirname, "..");
 const PARTIAL: Partial<Record<SectionType, { file: string; settings: string[] }>> = {
   media_text: {
     file: "sb-media-text",
-    settings: ["eyebrow", "image_width", "vertical_align", "link_style", "image_ratio", ...STYLE_SETTING_IDS],
+    settings: ["eyebrow", "image_width", "vertical_align", "link_style", ...STYLE_SETTING_IDS],
   },
 };
 

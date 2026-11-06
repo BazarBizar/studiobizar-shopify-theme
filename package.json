@@ -40,6 +40,7 @@
     "check:page-builder-live": "tsx --conditions=react-server scripts/check-page-builder-live.ts",
     "check:page-builder-ui": "tsx --conditions=react-server scripts/check-page-builder-ui.ts",
     "check:theme-builder-ui": "tsx --conditions=react-server scripts/check-theme-builder-ui.ts",
+    "check:theme-preview": "tsx --conditions=react-server scripts/check-theme-preview.ts",
     "check:page-builder-style": "tsx --conditions=react-server scripts/check-page-builder-style.ts",
     "check:liquid": "tsx scripts/check-liquid-parity.ts",
     "check:security": "tsx --conditions=react-server scripts/check-security.ts",

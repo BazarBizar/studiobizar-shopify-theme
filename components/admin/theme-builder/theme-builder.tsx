@@ -27,15 +27,22 @@ import {
 } from "@/components/admin/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/admin/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/admin/ui/tabs";
-import { PREVIEW_MESSAGE } from "@/components/page-builder/preview-bridge";
+import { PREVIEW_MESSAGE, type SectionContents } from "@/components/page-builder/preview-bridge";
+import { frameStyle } from "@/components/page-builder/section-frame";
 import { STAFF_LOGIN_PATH } from "@/lib/admin/cookie";
 import { RequestError, themeActionRequest, themeSaveRequest } from "@/lib/admin/queries";
-import type { Device } from "@/lib/page-builder/design";
-import type { ThemeLayoutContent } from "@/lib/theme-builder/layout";
+import { canConvertToCustom, convertToCustom } from "@/lib/page-builder/convert-custom";
+import type { UniversalSettings } from "@/lib/page-builder/define-section";
+import { designStyle, type Device } from "@/lib/page-builder/design";
+import { NO_EXAMPLE_MEDIA, withExamples } from "@/lib/page-builder/examples";
+import { findTextPath, withText } from "@/lib/page-builder/inline-edit";
+import { sectionFromPreset } from "@/lib/page-builder/presets";
+import type { AreaProblem, ThemeLayoutContent } from "@/lib/theme-builder/layout";
 import { cn } from "@/lib/utils/cn";
 
 import { DeviceSwitch, DeviceViewport, EditorDeviceContext, PaneSwitch } from "../page-builder/editor-device";
-import { EditorLookupsContext, type EditorLookups } from "../page-builder/field-controls";
+import { EditorLookupsContext, type CollectionOption, type EditorLookups } from "../page-builder/field-controls";
+import { SectionEditor } from "../page-builder/section-editor";
 
 import * as ops from "./ops";
 import { ElementEditor, FooterPanel, GlobalPanel, HeaderPanel, type Edits } from "./panels";
@@ -66,6 +73,7 @@ export function ThemeBuilder({
   initial,
   previewPages,
   lookups,
+  collections,
 }: {
   initial: {
     content: ThemeLayoutContent;
@@ -77,6 +85,8 @@ export function ThemeBuilder({
   };
   previewPages: { handle: string; title: string }[];
   lookups: EditorLookups;
+  /** What a section's collection pickers offer. */
+  collections: CollectionOption[];
 }) {
   const router = useRouter();
   const [history, setHistory] = React.useState<History>({ past: [], present: initial.content, future: [] });
@@ -86,6 +96,14 @@ export function ThemeBuilder({
   const [selected, setSelected] = React.useState<string | null>(null);
   // The pop-up being edited — the preview opens it (`#popup-<id>`, see `Popups`).
   const [popup, setPopup] = React.useState<string | null>(null);
+  // The section being edited (under the header or in the footer), its Content or Style
+  // tab, and what the preview says it draws — as in the page builder.
+  const [sectionId, setSectionId] = React.useState<string | null>(null);
+  const [editorTab, setEditorTab] = React.useState<"content" | "style">("content");
+  const [contents, setContents] = React.useState<{ id: string; contents: SectionContents } | null>(null);
+  // Bumped by undo and redo: part of the section form's key, so its rich text editor
+  // (which reads its value once) starts again from the restored layout.
+  const [epoch, setEpoch] = React.useState(0);
   const [device, setDevice] = React.useState<Device>("d");
   // Below 1024px: the settings or the preview, one at a time (`PaneSwitch`).
   const [pane, setPane] = React.useState<"edit" | "preview">("edit");
@@ -130,6 +148,7 @@ export function ThemeBuilder({
         ? { past: current.past.slice(0, -1), present: current.past.at(-1)!, future: [current.present, ...current.future] }
         : current,
     );
+    setEpoch((value) => value + 1);
   }, []);
   const redo = React.useCallback(() => {
     setHistory((current) =>
@@ -137,6 +156,7 @@ export function ThemeBuilder({
         ? { past: [...current.past, current.present], present: current.future[0]!, future: current.future.slice(1) }
         : current,
     );
+    setEpoch((value) => value + 1);
   }, []);
 
   React.useEffect(() => {
@@ -159,10 +179,20 @@ export function ThemeBuilder({
     [lookups, content.global.colors],
   );
 
+  const openSection = React.useCallback((id: string) => {
+    setSelected(null);
+    setPopup(null);
+    setSectionId(id);
+    setEditorTab("content");
+  }, []);
+
   const edits: Edits = {
     content,
     change,
-    select: setSelected,
+    select: (id) => {
+      setSectionId(null);
+      setSelected(id);
+    },
     add: (at, type) => {
       const result = ops.insertElement(content, at, type);
       if (!result.id) {
@@ -180,6 +210,55 @@ export function ThemeBuilder({
     duplicate: (id) => change(ops.duplicateElement(content, id)),
     shift: (id, delta) => change(ops.shiftElement(content, id, delta)),
     move: (id, to) => change(ops.moveElement(content, id, to)),
+    openSection,
+    addSection: (area, preset) => {
+      // Filled with example content, as on a page, so it is plainly there and shows what it can hold.
+      const section = withExamples(sectionFromPreset(preset), lookups.examples ?? NO_EXAMPLE_MEDIA);
+      const next = ops.insertSection(content, area, section);
+      if (!next) {
+        toast.error("There is no room for another section here", { description: "Delete one first." });
+        return;
+      }
+      change(next);
+      openSection(section.id);
+      toast.success(`${preset.label} added`, { description: "It holds example content — replace it with your own." });
+    },
+    removeSection: (id) => {
+      const before = content;
+      change(ops.removeSection(content, id));
+      if (sectionId === id) setSectionId(null);
+      toast("Section deleted", { action: { label: "Undo", onClick: () => change(before) } });
+    },
+    duplicateSection: (id) => {
+      const result = ops.duplicateAreaSection(content, id);
+      if (!result) {
+        toast.error("There is no room for another section here", { description: "Delete one first." });
+        return;
+      }
+      change(result.content);
+      openSection(result.id);
+    },
+  };
+
+  /** "Turn into Custom section", as on a page: the same section rebuilt as blocks; the toast's Undo puts it back. */
+  const convertSection = (id: string) => {
+    const found = ops.locateSection(content, id);
+    const converted = found ? convertToCustom(found.section) : null;
+    if (!found || !converted) return;
+    const before = content;
+    change(ops.updateSection(content, id, () => converted));
+    setEpoch((value) => value + 1);
+    setEditorTab("content");
+    toast.success("Now a Custom section", {
+      description: "Its content is kept as blocks. Add more with Add block.",
+      action: {
+        label: "Undo",
+        onClick: () => {
+          change(before);
+          setEpoch((value) => value + 1);
+        },
+      },
+    });
   };
 
   /* ---- saving ---- */
@@ -234,6 +313,65 @@ export function ThemeBuilder({
     return () => window.clearTimeout(timer);
   }, [content, sendContent]);
 
+  // The section being edited is outlined in the preview and scrolled to.
+  const post = React.useCallback((message: Record<string, unknown>) => {
+    iframeRef.current?.contentWindow?.postMessage(message, window.location.origin);
+  }, []);
+  const selectedSection = sectionId ? ops.locateSection(content, sectionId) : null;
+  const shownSectionId = selectedSection ? sectionId : null;
+  React.useEffect(() => {
+    post({ type: PREVIEW_MESSAGE.select, id: shownSectionId });
+  }, [shownSectionId, post]);
+  // Its Style reaches the preview at once, so a slider moves it as it is dragged.
+  React.useEffect(() => {
+    if (!selectedSection) return;
+    const settings = selectedSection.section.settings as UniversalSettings;
+    const frame = frameStyle(settings);
+    const designed = designStyle(settings.design);
+    post({
+      type: PREVIEW_MESSAGE.style,
+      id: selectedSection.section.id,
+      style: { ...(frame.style as Record<string, string>), ...designed.style },
+      attrs: {
+        ...designed.attrs,
+        ...(frame.padded ? { "data-sb-pad": "" } : {}),
+        ...(settings.surface !== "inherit" ? { "data-surface": settings.surface } : {}),
+      },
+    });
+  }, [selectedSection, post]);
+
+  React.useEffect(() => {
+    function onMessage(event: MessageEvent) {
+      if (event.origin !== window.location.origin || event.source !== iframeRef.current?.contentWindow) return;
+      const data = event.data as { type?: unknown; id?: unknown; text?: unknown; token?: unknown; path?: unknown; value?: unknown } | null;
+      // Only the header's and footer's own sections answer — the page around them is not edited here.
+      const found = typeof data?.id === "string" ? ops.locateSection(contentRef.current, data.id) : null;
+      if (!found) return;
+      if (data?.type === PREVIEW_MESSAGE.clicked) {
+        setTab(found.area);
+        openSection(found.section.id);
+        setPane("edit");
+      }
+      if (data?.type === PREVIEW_MESSAGE.contents) {
+        setContents({ id: found.section.id, contents: (data as { contents: SectionContents }).contents });
+      }
+      // Editing text in the preview (`lib/page-builder/inline-edit.ts`).
+      if (data?.type === PREVIEW_MESSAGE.editRequest && typeof data.text === "string") {
+        const path = findTextPath(found.section.settings as Record<string, unknown>, data.text);
+        post({ type: PREVIEW_MESSAGE.editable, token: data.token, id: found.section.id, path });
+        if (path) setEditorTab("content");
+      }
+      if (data?.type === PREVIEW_MESSAGE.edit && Array.isArray(data.path) && typeof data.value === "string") {
+        const [key, ...rest] = data.path as (string | number)[];
+        if (typeof key !== "string") return;
+        const settings = found.section.settings as Record<string, unknown>;
+        change(ops.setSectionSetting(contentRef.current, found.section.id, key, withText(settings[key], rest, data.value)));
+      }
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [change, openSection, post]);
+
   React.useEffect(() => {
     if (!dirty || saveState === "conflict" || saveState === "signedOut") return;
     if (JSON.stringify(content) === failedJsonRef.current) return;
@@ -253,7 +391,18 @@ export function ThemeBuilder({
       setUnpublished(false);
       toast.success("Published", { description: "Your changes reach every page within about half a minute." });
     } catch (error) {
-      toast.error("Could not publish", { description: error instanceof Error ? error.message : "Something went wrong." });
+      const problems = error instanceof RequestError && Array.isArray(error.detail.problems) ? (error.detail.problems as AreaProblem[]) : [];
+      const first = problems[0];
+      if (first) {
+        // Straight to the section that needs it, as a page's Publish does.
+        setTab(first.area);
+        openSection(first.sectionId);
+        toast.error("Not published", {
+          description: `${first.section} ${first.area === "header" ? "under the header" : "in the footer"} still needs: ${first.fields.join(", ")}.`,
+        });
+      } else {
+        toast.error("Could not publish", { description: error instanceof Error ? error.message : "Something went wrong." });
+      }
     } finally {
       setBusy(null);
     }
@@ -438,8 +587,29 @@ export function ThemeBuilder({
           {/* ---------------- editor + preview ---------------- */}
           <div className="grid min-h-0 flex-1 lg:grid-cols-[22rem_1fr]">
             <aside className={cn("bg-background flex min-h-0 flex-col border-r", pane === "preview" && "max-lg:hidden")}>
-              {selected && ops.locate(content, selected) ? (
-                <ElementEditor id={selected} edits={edits} onBack={() => setSelected(null)} />
+              {selectedSection ? (
+                <SectionEditor
+                  // Keyed so its rich text editor and pickers start fresh per section, and
+                  // again after an undo or redo — see `epoch`.
+                  key={`${selectedSection.section.id}:${epoch}`}
+                  section={selectedSection.section}
+                  previousType={null}
+                  collections={collections}
+                  tab={editorTab}
+                  onTabChange={setEditorTab}
+                  onBack={() => setSectionId(null)}
+                  onOpenHeading={() => undefined}
+                  onChange={(key, value) => change(ops.setSectionSetting(content, selectedSection.section.id, key, value))}
+                  contents={contents?.id === selectedSection.section.id ? contents.contents : null}
+                  onToggle={() =>
+                    change(ops.updateSection(content, selectedSection.section.id, (current) => ({ ...current, visible: !current.visible })))
+                  }
+                  onDuplicate={() => edits.duplicateSection(selectedSection.section.id)}
+                  onRemove={() => edits.removeSection(selectedSection.section.id)}
+                  onConvert={canConvertToCustom(selectedSection.section) ? () => convertSection(selectedSection.section.id) : undefined}
+                />
+              ) : selected && ops.locate(content, selected) ? (
+                <ElementEditor key={selected} id={selected} edits={edits} onBack={() => setSelected(null)} />
               ) : editingPopup ? (
                 <PopupEditor
                   id={editingPopup}
@@ -474,7 +644,13 @@ export function ThemeBuilder({
                     {tab === "header" ? (
                       <HeaderPanel edits={edits} />
                     ) : tab === "popups" ? (
-                      <PopupsPanel edits={edits} onOpen={setPopup} />
+                      <PopupsPanel
+                        edits={edits}
+                        onOpen={(id) => {
+                          setSectionId(null);
+                          setPopup(id);
+                        }}
+                      />
                     ) : tab === "site" ? (
                       <GlobalPanel edits={edits} />
                     ) : (
@@ -501,7 +677,10 @@ export function ThemeBuilder({
                     ref={iframeRef}
                     src={previewSrc}
                     title="Preview of the header, footer and pop-ups"
-                    onLoad={sendContent}
+                    onLoad={() => {
+                      post({ type: PREVIEW_MESSAGE.select, id: shownSectionId });
+                      sendContent();
+                    }}
                     className={cn("border-0 bg-white", device !== "d" && "rounded-lg border shadow-sm")}
                     style={style}
                   />

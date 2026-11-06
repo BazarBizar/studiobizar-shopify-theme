@@ -27,7 +27,7 @@
     body: s.body,
     image: s.image,
     align: s.align,
-    ratio: s.image_ratio,
+    ratio: s.image.aspect_ratio,
     padding: s.padding,
     surface: s.surface,
     rhythm: s.rhythm,
@@ -60,19 +60,6 @@
         { "value": "right", "label": "Right" }
       ],
       "default": "left"
-    },
-    {
-      "type": "select",
-      "id": "image_ratio",
-      "label": "Image shape",
-      "options": [
-        { "value": "2 / 3", "label": "2:3 — tall, as measured" },
-        { "value": "3 / 4", "label": "3:4" },
-        { "value": "4 / 5", "label": "4:5" },
-        { "value": "1 / 1", "label": "1:1 — square" },
-        { "value": "16 / 9", "label": "16:9 — wide" }
-      ],
-      "default": "2 / 3"
     },
     {
       "type": "header",

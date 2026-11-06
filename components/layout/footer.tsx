@@ -33,11 +33,20 @@ async function menuOrFallback(
  * footer is on all twenty-three routes, so no state of that data may leave it
  * blank.
  */
-export async function Footer({ surface = "olive", theme }: { surface?: Surface; theme?: ThemeLayoutContent | null }) {
+export async function Footer({
+  surface = "olive",
+  theme,
+  preview = false,
+}: {
+  surface?: Surface;
+  theme?: ThemeLayoutContent | null;
+  /** The Theme Builder's preview — its sections may draw placeholders. */
+  preview?: boolean;
+}) {
   // The Theme Builder's footer once one is published (or the draft, in its preview);
   // until then, the original below.
   const layout = theme === undefined ? await getThemeLayout() : theme;
-  if (layout) return <ThemeFooter content={layout} surface={surface} />;
+  if (layout) return <ThemeFooter content={layout} surface={surface} preview={preview} />;
 
   const [about, info, legal, settings] = await Promise.all([
     menuOrFallback(MENUS.footerAbout, FALLBACK_NAV.footerAbout),
