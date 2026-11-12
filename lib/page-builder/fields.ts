@@ -394,6 +394,16 @@ export function createBlock(definition: BlockDef): BlockValue {
   };
 }
 
+/** Plain text (a textarea) → Shopify rich text, one paragraph per line. */
+export function richFromPlain(value: unknown): string {
+  const lines = typeof value === "string" ? value.split(/\n+/).map((line) => line.trim()).filter(Boolean) : [];
+  if (lines.length === 0) return "";
+  return JSON.stringify({
+    type: "root",
+    children: lines.map((line) => ({ type: "paragraph", children: [{ type: "text", value: line }] })),
+  });
+}
+
 export function blockDefinition(field: BlocksFieldDef, type: string): BlockDef | null {
   return field.blocks.find((candidate) => candidate.type === type) ?? null;
 }

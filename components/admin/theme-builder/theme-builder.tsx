@@ -96,6 +96,8 @@ export function ThemeBuilder({
   const [selected, setSelected] = React.useState<string | null>(null);
   // The pop-up being edited — the preview opens it (`#popup-<id>`, see `Popups`).
   const [popup, setPopup] = React.useState<string | null>(null);
+  // The pop-up the preview reports closed there — the editor offers it back.
+  const [popupClosed, setPopupClosed] = React.useState<string | null>(null);
   // The section being edited (under the header or in the footer), its Content or Style
   // tab, and what the preview says it draws — as in the page builder.
   const [sectionId, setSectionId] = React.useState<string | null>(null);
@@ -132,6 +134,7 @@ export function ThemeBuilder({
   /** Opens a pop-up in the preview (again) — see `Popups`. */
   const showPopup = React.useCallback((id: string) => {
     iframeRef.current?.contentWindow?.postMessage({ type: PREVIEW_MESSAGE.popup, id }, window.location.origin);
+    setPopupClosed(null);
   }, []);
 
   const dirty = JSON.stringify(content) !== savedJson;
@@ -344,6 +347,10 @@ export function ThemeBuilder({
     function onMessage(event: MessageEvent) {
       if (event.origin !== window.location.origin || event.source !== iframeRef.current?.contentWindow) return;
       const data = event.data as { type?: unknown; id?: unknown; text?: unknown; token?: unknown; path?: unknown; value?: unknown } | null;
+      if (data?.type === PREVIEW_MESSAGE.popupClosed) {
+        setPopupClosed(typeof data.id === "string" ? data.id : null);
+        return;
+      }
       // Only the header's and footer's own sections answer — the page around them is not edited here.
       const found = typeof data?.id === "string" ? ops.locateSection(contentRef.current, data.id) : null;
       if (!found) return;
@@ -615,6 +622,7 @@ export function ThemeBuilder({
                   id={editingPopup}
                   edits={edits}
                   onBack={() => setPopup(null)}
+                  closedInPreview={popupClosed === editingPopup}
                   onPreview={() => {
                     showPopup(editingPopup);
                     setPane("preview");

@@ -16,8 +16,13 @@ import {
  * the page already on screen — same sections, same DOM — so the scroll position, a
  * playing slideshow and an open accordion all stay put; only what changed changes.
  *
- * Several edits in quick succession: only the newest answer is shown, so a slow
- * response can never overwrite a newer one.
+ * ONE DRAW AT A TIME. A draw takes the server a while (a second or more in
+ * development), and edits come faster than that — a word typed is a request per
+ * letter. Sent side by side they slowed one another down, all but the last were
+ * thrown away, and the page lagged and then jumped. Now an edit made while a draw is
+ * on its way waits, and only the newest of those is drawn when it lands: the page
+ * follows steadily, one fresh draw after another, and the server does a fraction
+ * of the work.
  *
  * While a line is being edited in place, redraws WAIT — replacing the element under
  * the caret would lose it — and the newest content is drawn when the edit ends.
@@ -30,8 +35,17 @@ export function LivePreview({
   render: (content: unknown) => Promise<React.ReactNode>;
 }) {
   const [page, setPage] = React.useState<React.ReactNode>(initial);
-  const latest = React.useRef(0);
   const waiting = React.useRef<{ content: unknown } | null>(null);
+  /** A draw is on its way. */
+  const busy = React.useRef(false);
+  /** The newest content that came in meanwhile — drawn next. */
+  const queued = React.useRef<{ content: unknown } | null>(null);
+  /**
+   * Called once a draw is ON SCREEN. The server function's promise settles when the
+   * first part of the page arrives; the rest streams in after it and the transition
+   * commits only then — so "done" is the commit, not the promise.
+   */
+  const onCommit = React.useRef<(() => void) | null>(null);
 
   React.useEffect(() => {
     const origin = window.location.origin;
@@ -41,18 +55,34 @@ export function LivePreview({
         waiting.current = { content };
         return;
       }
-      const mine = ++latest.current;
+      if (busy.current) {
+        queued.current = { content };
+        return;
+      }
+      busy.current = true;
       try {
         const next = await render(content);
-        if (mine !== latest.current || next === null) return;
-        // An edit began while this was being drawn: keep it for when the edit ends.
-        if (isEditingInPlace()) {
-          waiting.current = { content };
-          return;
+        if (next !== null) {
+          // An edit began while this was being drawn: keep it for when the edit ends.
+          if (isEditingInPlace()) waiting.current ??= { content };
+          // Shown even when newer content waits: it is one step behind at most, and the
+          // bridge puts the selected section's newest style straight back on it.
+          else {
+            await new Promise<void>((resolve) => {
+              onCommit.current = resolve;
+              React.startTransition(() => setPage(next));
+              // Never wait for ever: a draw that does not commit must not stop the next.
+              window.setTimeout(resolve, 10_000);
+            });
+          }
         }
-        React.startTransition(() => setPage(next));
       } catch {
         // A failed draw keeps the last good one on screen; the next edit tries again.
+      } finally {
+        busy.current = false;
+        const next = queued.current;
+        queued.current = null;
+        if (next) void draw(next.content);
       }
     }
 
@@ -85,6 +115,8 @@ export function LivePreview({
       return;
     }
     window.dispatchEvent(new Event(PREVIEW_RENDERED));
+    onCommit.current?.();
+    onCommit.current = null;
   }, [page]);
 
   return page;

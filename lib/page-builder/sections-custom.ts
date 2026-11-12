@@ -76,7 +76,7 @@ const LOOK = { group: "layout" } as const;
  * Alignment, space above and devices — the same three on every content block, under
  * "Position & style". `align: false` where there is nothing to line up (some space).
  */
-function placement({ align = true }: { align?: boolean } = {}) {
+export function placement({ align = true }: { align?: boolean } = {}) {
   return [
     ...(align
       ? [
@@ -444,7 +444,7 @@ const productBlock = block(
  * block is easiest understood by seeing two of them side by side. Each adds ordinary
  * blocks (example content is filled in as for any new block).
  */
-const CUSTOM_LAYOUTS: readonly BlockLayout[] = [
+export const CUSTOM_LAYOUTS: readonly BlockLayout[] = [
   {
     id: "two-columns",
     label: "Two columns",

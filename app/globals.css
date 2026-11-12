@@ -953,6 +953,21 @@
 [data-sb-pop~="w"] { max-width: min(var(--sb-pop-w), calc(100% - 2 * var(--sb-pop-off, 1rem))); }
 [data-sb-pop~="r"] { border-radius: var(--sb-pop-r); }
 [data-sb-pop~="pad"] [data-sb-pop-body] { padding: var(--sb-pop-pad); }
-[data-sb-pop~="gap"] [data-sb-pop-body] { gap: var(--sb-pop-gap); }
+[data-sb-pop~="gap"] [data-sb-pop-body],
+[data-sb-pop~="gap"] [data-sb-pop-words] { gap: var(--sb-pop-gap); }
+/* A pop-up built from blocks: "Space between" is the room between its blocks, 16px
+   unless set — the ready-made pop-up's own. */
+[data-sb-pop-body] > .sb-blocks { --bk-gap: 1rem; }
+/* A button never wider than the room it is in: the button's least width (16rem) gives way
+   in a narrow pop-up or column instead of sticking out past the padding. Measured against
+   the pop-up's inside, or the column's; `:where` keeps it below a design's own button
+   padding, which sets no least width at all. */
+[data-sb-pop-body],
+[data-sb-pop-body] .sb-bk-col { container-type: inline-size; }
+:where([data-sb-pop-body]) [data-sb-button]:where(:not([data-sb-button="text"])) { min-width: min(13.25rem, 100cqi); max-width: 100%; }
+@media (min-width: 640px) {
+  :where([data-sb-pop-body]) [data-sb-button]:where(:not([data-sb-button="text"])) { min-width: min(16rem, 100cqi); }
+}
+[data-sb-pop~="gap"] [data-sb-pop-body] > .sb-blocks { --bk-gap: var(--sb-pop-gap); }
 /* The page behind the box in the middle, blurred. */
 [data-sb-pop-blur]::backdrop { backdrop-filter: blur(var(--sb-popup-blur)); }
