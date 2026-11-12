@@ -2,7 +2,11 @@ import { z } from "zod";
 
 import type { Device, Responsive } from "@/lib/page-builder/design";
 import {
+  block,
+  blockDefinition,
+  blocks,
   color,
+  createBlock,
   design,
   fieldDefault,
   fieldSchema,
@@ -12,14 +16,18 @@ import {
   link,
   newBlockId,
   number,
+  richFromPlain,
   select,
   text,
   textarea,
   toggle,
   url,
-  type LeafFieldDef,
+  type BlocksFieldDef,
+  type BlockValue,
+  type FieldDef,
   type LinkValue,
 } from "@/lib/page-builder/fields";
+import { CUSTOM_BLOCKS, CUSTOM_LAYOUTS, placement } from "@/lib/page-builder/sections-custom";
 
 /**
  * PROMOTIONS — the announcement bar above the header and the pop-ups that open over
@@ -185,12 +193,75 @@ export function readAnnouncement(input: unknown): Announcement {
  * -------------------------------------------------------------------------- */
 
 /**
+ * BUILD IT YOURSELF — a pop-up's content as the Custom section's blocks: headings,
+ * text, photos, buttons, icons, cards, lists, video, lines, space and Columns, in any
+ * order, plus the newsletter sign-up as a block of its own. The same editor, the same
+ * look (`styles/sb-blocks.css`), so a pop-up is designed the way a section is. No
+ * Product block: a pop-up is drawn in the browser, where the catalogue is not loaded.
+ */
+const newsletterBlock = block("newsletter", "Newsletter sign-up", [...placement()], {
+  description: "The email field — visitors sign up for the newsletter.",
+});
+
+export const POPUP_BLOCKS = [...CUSTOM_BLOCKS.filter((each) => each.type !== "product"), newsletterBlock];
+
+export const MAX_POPUP_BLOCKS = 24;
+
+const POPUP_LAYOUTS = [
+  ...CUSTOM_LAYOUTS.filter((layout) => layout.id === "photo-text" || layout.id === "two-columns"),
+  {
+    id: "newsletter",
+    label: "Newsletter invitation",
+    description: "A heading, a line of text and the email field.",
+    blocks: [{ type: "heading", settings: { size: "h3" } }, { type: "text" }, { type: "newsletter" }],
+  },
+];
+
+/**
+ * The settings only the ready-made pop-up uses — its photograph, words and button,
+ * and where the photograph sits. Hidden while the pop-up is built from blocks, and
+ * kept, so switching back finds them as they were.
+ */
+export const READY_MADE_ONLY = new Set([
+  "image",
+  "heading",
+  "text",
+  "button",
+  "buttonStyle",
+  "newsletter",
+  "imagePosition",
+  "imageShare",
+  "contentAlign",
+  "imageRatio",
+  "imageInset",
+]);
+
+/** Whether the pop-up is built from blocks rather than the ready-made layout. */
+export const isBuilt = (settings: Record<string, unknown>) => settings.build === "blocks";
+
+/**
  * A pop-up's own settings, in the page builder's field vocabulary — so the editor
  * draws them with the same controls (`FieldControl`) and the write API validates
  * them with the same schemas. `group` says which fold of the editor each sits in.
  */
 export const POPUP_FIELDS = [
-  // What it says
+  // What it says: ready-made (a photograph, words, a button) or built from blocks
+  select(
+    "build",
+    "Content",
+    [
+      { value: "ready", label: "Ready-made" },
+      { value: "blocks", label: "Build it yourself" },
+    ],
+    { default: "ready", group: "content", display: "buttons" },
+  ),
+  blocks("blocks", "Blocks", {
+    max: MAX_POPUP_BLOCKS,
+    blocks: POPUP_BLOCKS,
+    layouts: POPUP_LAYOUTS,
+    group: "content",
+    when: { field: "build", is: ["blocks"] },
+  }),
   image("image", "Photograph", { group: "content" }),
   text("heading", "Heading", { max: 120, group: "content" }),
   textarea("text", "Text", { max: 600, group: "content" }),
@@ -292,6 +363,18 @@ export const POPUP_FIELDS = [
     { default: "auto", group: "style", when: { field: "layout", is: ["center", "corner"] } },
   ),
   number("imageInset", "Space around the photograph (px)", { min: 0, max: 64, default: 0, group: "style", when: { field: "layout", is: ["center", "corner"] } }),
+  select(
+    "columnGap",
+    "Space between columns",
+    [
+      { value: "none", label: "None" },
+      { value: "sm", label: "S" },
+      { value: "md", label: "M" },
+      { value: "lg", label: "L" },
+      { value: "xl", label: "XL" },
+    ],
+    { default: "md", group: "style", when: { field: "build", is: ["blocks"] }, display: "buttons", help: "Only when the pop-up has Column blocks." },
+  ),
   select(
     "align",
     "Text",
@@ -407,7 +490,9 @@ export const POPUP_FIELDS = [
     { group: "advanced" },
   ),
   number("days", "Days before it shows again", { min: 1, max: 365, default: 7, group: "advanced", when: { field: "frequency", is: ["days"] } }),
-] as const satisfies readonly LeafFieldDef[];
+] as const satisfies readonly FieldDef[];
+
+const BLOCKS_FIELD = (POPUP_FIELDS as readonly FieldDef[]).find((field) => field.kind === "blocks") as BlocksFieldDef;
 
 /**
  * The folds of the editor's Style tab — as a section's Style tab: Background, Spacing,
@@ -423,6 +508,7 @@ export const POPUP_STYLE_FOLD: Record<string, PopupStyleFold> = {
   width: "size",
   imageRatio: "images",
   imageInset: "images",
+  columnGap: "spacing",
   background: "background",
   color: "background",
   borderWidth: "border",
@@ -588,8 +674,59 @@ export type Popup = Schedule & {
 export const MAX_POPUPS = 10;
 export const MAX_POPUP_PATHS = 30;
 
+/** A column's width for the photograph's share of a ready-made pop-up, and the words'. */
+const SHARE_WIDTHS: Record<string, [string, string]> = { third: ["33", "67"], half: ["50", "50"], twothirds: ["67", "33"] };
+
+/**
+ * The ready-made pop-up's content as blocks — what "Build it yourself" starts from,
+ * so nothing typed is lost: the photograph, the heading, the text, the sign-up and
+ * the button, in that order. A photograph beside the words becomes two Columns; on
+ * phones the photograph stays on top, as it was.
+ */
+export function popupBlocksFromReady(settings: Record<string, unknown>): BlockValue[] {
+  const make = (type: string, values: Record<string, unknown> = {}): BlockValue => {
+    const made = createBlock(blockDefinition(BLOCKS_FIELD, type)!);
+    return { ...made, settings: { ...made.settings, ...values } };
+  };
+  const heading = String(settings.heading ?? "").trim();
+  const body = String(settings.text ?? "").trim();
+  const button = settings.button as LinkValue | null;
+  // The ready-made sizes: a small heading and the smaller text (smaller still in the bar).
+  const words = [
+    ...(heading ? [make("heading", { title: heading.slice(0, 200), size: settings.layout === "bar" ? "h4" : "h3" })] : []),
+    ...(body ? [make("text", { body: richFromPlain(body), size: "small" })] : []),
+    ...(settings.newsletter ? [make("newsletter")] : []),
+    ...(button?.href && button.label
+      ? [make("button", { link: button, style: ["solid", "outline", "text"].includes(String(settings.buttonStyle)) ? settings.buttonStyle : "solid" })]
+      : []),
+  ];
+  // The bar along the bottom keeps its words and its button side by side.
+  if (settings.layout === "bar") {
+    const last = words.at(-1);
+    if (last?.type !== "button" || words.length < 2) return words;
+    return [
+      make("column", { position: "middle" }),
+      ...words.slice(0, -1),
+      make("column", { width: "25", widthTablet: "33", position: "middle" }),
+      last,
+    ];
+  }
+  const photo = settings.image ? make("image", { image: settings.image }) : null;
+  if (!photo) return words;
+
+  const placed = settings.layout === "center" || settings.layout === undefined ? String(settings.imagePosition ?? "top") : "top";
+  if (placed === "side" || placed === "right") {
+    const [photoWidth, wordsWidth] = SHARE_WIDTHS[String(settings.imageShare)] ?? SHARE_WIDTHS.half!;
+    const position = ["top", "middle", "bottom"].includes(String(settings.contentAlign)) ? settings.contentAlign : "top";
+    const photoColumn = [make("column", { width: photoWidth, mobileFirst: placed === "right" }), photo];
+    const wordsColumn = [make("column", { width: wordsWidth, position }), ...words];
+    return placed === "right" ? [...wordsColumn, ...photoColumn] : [...photoColumn, ...wordsColumn];
+  }
+  return placed === "bottom" ? [...words, photo] : [photo, ...words];
+}
+
 export function createPopup(name: string, settings: Record<string, unknown> = {}): Popup {
-  const fields = POPUP_FIELDS as readonly LeafFieldDef[];
+  const fields = POPUP_FIELDS as readonly FieldDef[];
   return {
     id: newBlockId(),
     name,
@@ -613,7 +750,7 @@ const popupSchema = z.strictObject({
   name: z.string().max(60),
   enabled: z.boolean(),
   settings: z.strictObject(
-    Object.fromEntries((POPUP_FIELDS as readonly LeafFieldDef[]).map((field) => [field.key, fieldSchema(field)])),
+    Object.fromEntries((POPUP_FIELDS as readonly FieldDef[]).map((field) => [field.key, fieldSchema(field)])),
   ),
   box: popupBoxSchema.optional(),
   pages: pagesSchema,
@@ -637,7 +774,7 @@ export const popupsSchema = z
 export function readPopups(input: unknown): Popup[] {
   if (!Array.isArray(input)) return [];
   const seen = new Set<string>();
-  const fields = POPUP_FIELDS as readonly LeafFieldDef[];
+  const fields = POPUP_FIELDS as readonly FieldDef[];
   return input
     .flatMap((candidate): Popup[] => {
       const raw = (candidate && typeof candidate === "object" ? candidate : {}) as Record<string, unknown>;
@@ -687,9 +824,13 @@ export function popupOnPath(pages: PopupPages, pathname: string): boolean {
   }
 }
 
-/** Has something to show: words, a photograph, a button or the sign-up. */
+/** Blocks that only arrange or separate — a pop-up of just these is still empty. */
+const FRAME_BLOCKS = new Set(["column", "space", "line"]);
+
+/** Has something to show: words, a photograph, a button or the sign-up — or, built, a block that says something. */
 export function popupHasContent(popup: Popup): boolean {
   const s = popup.settings;
+  if (isBuilt(s)) return Array.isArray(s.blocks) && (s.blocks as BlockValue[]).some((item) => !FRAME_BLOCKS.has(item.type));
   return Boolean(
     String(s.heading ?? "").trim() || String(s.text ?? "").trim() || s.image || (s.button as LinkValue | null)?.href || s.newsletter,
   );

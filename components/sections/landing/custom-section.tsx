@@ -64,26 +64,67 @@ export function CustomSection({
   /** The builder's preview: draw a box where a photo is still empty, and say where a column is empty. */
   placeholder?: boolean;
 }) {
-  const groups = groupColumns(settings.blocks);
-  if (groups.length === 0) return null;
+  if (settings.blocks.length === 0) return null;
   const full = settings.width === "full";
 
   return (
     <div className={cn("py-section", !full && "sb-container")}>
-      <div
-        className={cn("sb-blocks", WIDTH[settings.width])}
-        data-align={settings.align}
-        data-gap={settings.gap}
-        data-cgap={settings.columnGap}
-      >
-        {groups.map((group, index) => (
-          <Column key={group.column?.id ?? `lead-${index}`} column={group.column as ColumnBlock | null} placeholder={placeholder}>
-            {group.blocks.map((item) => (
-              <BlockView key={item.id} block={item as Exclude<Block, ColumnBlock>} products={products} placeholder={placeholder} />
-            ))}
-          </Column>
-        ))}
-      </div>
+      <CustomBlocks
+        blocks={settings.blocks}
+        className={WIDTH[settings.width]}
+        align={settings.align}
+        gap={settings.gap}
+        columnGap={settings.columnGap}
+        products={products}
+        placeholder={placeholder}
+      />
+    </div>
+  );
+}
+
+/**
+ * The blocks alone, in their columns — the Custom section's inside, and a pop-up
+ * built from blocks (`components/layout/popups.tsx`). `extra` draws block types the
+ * Custom section does not have (the pop-up's newsletter sign-up); a block it returns
+ * nothing for is left out.
+ */
+export function CustomBlocks({
+  blocks,
+  className,
+  align,
+  gap,
+  columnGap,
+  products = {},
+  placeholder = false,
+  extra,
+}: {
+  blocks: readonly { id: string; type: string; settings: Record<string, unknown> }[];
+  className?: string;
+  align?: string;
+  /** Unset: `--bk-gap` as the container sets it. */
+  gap?: string;
+  columnGap?: string;
+  products?: Record<string, ProductCardType>;
+  placeholder?: boolean;
+  extra?: (block: { id: string; type: string; settings: Record<string, unknown> }) => React.ReactNode;
+}) {
+  const groups = groupColumns(blocks);
+  if (groups.length === 0) return null;
+  return (
+    <div className={cn("sb-blocks", className)} data-align={align} data-gap={gap} data-cgap={columnGap}>
+      {groups.map((group, index) => (
+        <Column key={group.column?.id ?? `lead-${index}`} column={group.column as ColumnBlock | null} placeholder={placeholder}>
+          {group.blocks.map((item) => (
+            <BlockView
+              key={item.id}
+              block={item as Exclude<Block, ColumnBlock>}
+              products={products}
+              placeholder={placeholder}
+              extra={extra}
+            />
+          ))}
+        </Column>
+      ))}
     </div>
   );
 }
@@ -137,12 +178,14 @@ function BlockView({
   block,
   products,
   placeholder,
+  extra,
 }: {
   block: Exclude<Block, ColumnBlock>;
   products: Record<string, ProductCardType>;
   placeholder: boolean;
+  extra?: (block: { id: string; type: string; settings: Record<string, unknown> }) => React.ReactNode;
 }) {
-  const content = blockContent(block, products, placeholder);
+  const content = blockContent(block, products, placeholder) ?? extra?.(block as { id: string; type: string; settings: Record<string, unknown> }) ?? null;
   if (content === null) return null;
 
   const s = block.settings as { align?: string; space?: string; hideOn: keyof typeof HIDE; design?: Parameters<typeof designStyle>[0] };

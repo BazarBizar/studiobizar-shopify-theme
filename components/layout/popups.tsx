@@ -1,16 +1,17 @@
 "use client";
 
-import { XIcon } from "lucide-react";
+import { EyeIcon, XIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
 import * as React from "react";
 
 import { NewsletterForm } from "@/components/layout/newsletter-form";
 import { PREVIEW_MESSAGE } from "@/components/page-builder/preview-bridge";
+import { CustomBlocks } from "@/components/sections/landing/custom-section";
 import { Picture } from "@/components/sections/landing/shared";
 import { ButtonLink, type ButtonVariant } from "@/components/ui/button";
 import { designStyle, DEVICES, SHADOWS, type DesignValue, type Device, type Responsive, type ShadowId } from "@/lib/page-builder/design-style";
-import { HEX_COLOR, type ImageRef, type LinkValue } from "@/lib/page-builder/fields";
-import { isScheduledNow, onDevice, paddingOn, popupDefaults, popupOnPath, POPUP_SIDES, type Popup } from "@/lib/theme-builder/promo";
+import { HEX_COLOR, type BlockValue, type ImageRef, type LinkValue } from "@/lib/page-builder/fields";
+import { isBuilt, isScheduledNow, onDevice, paddingOn, popupDefaults, popupOnPath, POPUP_SIDES, type Popup } from "@/lib/theme-builder/promo";
 import { cn } from "@/lib/utils/cn";
 
 /**
@@ -95,6 +96,14 @@ export function Popups({ popups }: { popups: Popup[] }) {
   const [open, setOpen] = React.useState<Popup | null>(null);
   // The preview's: the id the editor named, shown whenever a pop-up by that id is here.
   const [previewId, setPreviewId] = React.useState<string | null>(null);
+  // The preview's: the pop-up being designed, closed here — offered back with a button.
+  // Set only in the preview: only there does the editor name a pop-up (`previewId`).
+  const [closedId, setClosedId] = React.useState<string | null>(null);
+
+  /** Tells the editor, so it can offer "Show it again" too. */
+  const tellEditor = (id: string | null) => {
+    if (window.parent !== window) window.parent.postMessage({ type: PREVIEW_MESSAGE.popupClosed, id }, window.location.origin);
+  };
 
   /* ---- the editor's preview: the named pop-up, at once ---- */
   React.useEffect(() => {
@@ -102,11 +111,16 @@ export function Popups({ popups }: { popups: Popup[] }) {
     const fromHash = () => {
       const id = window.location.hash.startsWith(PREVIEW_HASH) ? window.location.hash.slice(PREVIEW_HASH.length) : "";
       setPreviewId(id || null);
+      setClosedId(null);
+      tellEditor(null);
     };
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
       const data = event.data as { type?: unknown; id?: unknown } | null;
-      if (data?.type === PREVIEW_MESSAGE.popup) setPreviewId(typeof data.id === "string" && data.id ? data.id : null);
+      if (data?.type === PREVIEW_MESSAGE.popup) {
+        setPreviewId(typeof data.id === "string" && data.id ? data.id : null);
+        setClosedId(null);
+      }
     };
     fromHash();
     window.addEventListener("hashchange", fromHash);
@@ -142,15 +156,42 @@ export function Popups({ popups }: { popups: Popup[] }) {
 
   // In the preview the named one follows the editor's changes as they are drawn.
   const shown = previewId ? (popups.find((popup) => popup.id === previewId) ?? null) : open;
-  return shown ? (
-    <PopupView
-      key={shown.id}
-      popup={shown}
-      onClose={() => {
-        setOpen(null);
-        setPreviewId(null);
+  const closed = closedId ? (popups.find((popup) => popup.id === closedId) ?? null) : null;
+
+  if (shown) {
+    return (
+      <PopupView
+        key={shown.id}
+        popup={shown}
+        preview={previewId !== null}
+        onClose={() => {
+          setOpen(null);
+          if (previewId) {
+            setClosedId(previewId);
+            tellEditor(previewId);
+          }
+          setPreviewId(null);
+        }}
+      />
+    );
+  }
+
+  // The preview only: the pop-up being designed was closed — one click brings it back.
+  return closed ? (
+    <button
+      type="button"
+      onClick={() => {
+        setPreviewId(closed.id);
+        setClosedId(null);
+        tellEditor(null);
       }}
-    />
+      className="fixed bottom-6 left-1/2 z-[2147483000] flex -translate-x-1/2 items-center gap-2 rounded-full bg-[#302f2d] px-7 py-4 text-lg font-medium text-white shadow-xl transition-transform hover:scale-[1.03] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563eb]"
+    >
+      <EyeIcon className="size-5" />
+      <span>
+        Pop-up “{closed.name || "Pop-up"}” closed — <span className="underline underline-offset-2">show it again</span>
+      </span>
+    </button>
   ) : null;
 }
 
@@ -159,6 +200,10 @@ export function Popups({ popups }: { popups: Popup[] }) {
  * -------------------------------------------------------------------------- */
 
 const WIDTH = { small: "sm:max-w-sm", medium: "sm:max-w-lg", large: "sm:max-w-3xl" } as const;
+/** The same three sizes in px — what padding at the sides is added to. */
+const PRESET_WIDTH = { small: 384, medium: 512, large: 768 } as const;
+/** The words' share of the box beside a photograph (`SHARE`). */
+const WORDS_SHARE = { third: 2 / 3, half: 1 / 2, twothirds: 1 / 3 } as const;
 const ANIMATION = { rise: "sb-popup-in", fade: "sb-popup-fade", zoom: "sb-popup-zoom", slide: "sb-popup-slide", none: "" } as const;
 const SPEED: Record<string, string | undefined> = { slow: "0.7s", fast: "0.18s" };
 const ALIGN = { left: "items-start text-left", center: "items-center text-center", right: "items-end text-right" } as const;
@@ -183,7 +228,10 @@ function rgba(colour: string, alpha: number): string {
   return `rgb(${r} ${g} ${b} / ${alpha.toFixed(2)})`;
 }
 
-function PopupView({ popup, onClose }: { popup: Popup; onClose: () => void }) {
+function PopupView({ popup, onClose, preview = false }: { popup: Popup; onClose: () => void; preview?: boolean }) {
+  // While it is being designed, only its × and Escape close it: a click around it or on
+  // its button (which goes nowhere in the preview) would close it by accident.
+  const closeByUse = preview ? () => {} : onClose;
   const s = popup.settings;
   const layout = (s.layout as "center" | "corner" | "bar") ?? "center";
   const dialogRef = React.useRef<HTMLDialogElement>(null);
@@ -206,7 +254,8 @@ function PopupView({ popup, onClose }: { popup: Popup; onClose: () => void }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [layout, onClose]);
 
-  const imageRef = (s.image as ImageRef | null) ?? null;
+  const built = isBuilt(s);
+  const imageRef = built ? null : ((s.image as ImageRef | null) ?? null);
   const placed = layout === "center" ? String(s.imagePosition ?? "top") : "top";
   const side = Boolean(imageRef) && (placed === "side" || placed === "right");
   const below = Boolean(imageRef) && layout === "center" && placed === "bottom";
@@ -255,8 +304,27 @@ function PopupView({ popup, onClose }: { popup: Popup; onClose: () => void }) {
     if (input) write(name, (device) => `${between(onDevice(input, device), min, max) ?? fallback}px`);
   };
   const customWidth = layout === "center" && s.width === "custom";
-  if (customWidth) write("w", (device) => `${between(onDevice(box?.width, device), 240, 1200) ?? defaults.width}px`);
-  else if (layout === "corner") sized("w", box?.width, defaults.width, 240, 1200);
+  // Space inside ADDS to the width, as it does around a section's content: more at the
+  // sides makes the box wider rather than the words narrower. The width is the box at
+  // its own padding; each px more (or less) at the left and right is added (or taken).
+  // The screen still caps it (globals.css), so on a phone the words do give way.
+  const baseWidth = (device: Device) =>
+    customWidth || layout === "corner"
+      ? (between(onDevice(box?.width, device), 240, 1200) ?? defaults.width)
+      : (PRESET_WIDTH[(s.width as keyof typeof PRESET_WIDTH) ?? "medium"] ?? PRESET_WIDTH.medium);
+  const extraWidth = (device: Device) => {
+    if (!box?.padding) return 0;
+    const sides = paddingOn(box, device, defaults.padding);
+    const own = defaults.padding[device];
+    const extra = (between(sides.left, 0, 200) ?? own.left) - own.left + (between(sides.right, 0, 200) ?? own.right) - own.right;
+    // Beside a photograph the words have only their share of the box (phones stack them),
+    // so the box grows by as much as keeps their column as wide as before.
+    return side && device !== "m" ? Math.round(extra / WORDS_SHARE[(s.imageShare as keyof typeof WORDS_SHARE) ?? "half"]) : extra;
+  };
+  const grows = layout !== "bar" && DEVICES.some((device) => extraWidth(device) !== 0);
+  if (customWidth || (layout === "corner" && box?.width) || grows) {
+    write("w", (device) => `${Math.max(240, baseWidth(device) + extraWidth(device))}px`);
+  }
   if (box?.padding) {
     write("pad", (device) => {
       const sides = paddingOn(box, device, defaults.padding);
@@ -302,17 +370,22 @@ function PopupView({ popup, onClose }: { popup: Popup; onClose: () => void }) {
     </div>
   ) : null;
 
+  const blocks = built && Array.isArray(s.blocks) ? (s.blocks as BlockValue[]) : [];
+  // Built from blocks, the first heading names the dialog for a screen reader.
+  const firstHeading = blocks.find((item) => item.type === "heading" && String(item.settings.title ?? "").trim());
+  const label = built ? String(firstHeading?.settings.title ?? "").trim() || "Announcement" : undefined;
+
   return (
     <dialog
       ref={dialogRef}
-      aria-labelledby={s.heading ? titleId : undefined}
-      aria-label={s.heading ? undefined : "Announcement"}
+      aria-labelledby={!built && s.heading ? titleId : undefined}
+      aria-label={built ? label : s.heading ? undefined : "Announcement"}
       onCancel={(event) => {
         event.preventDefault();
         onClose();
       }}
       // A click on the dimmed page around the box (the dialog itself, not its content) closes it.
-      onClick={(event) => layout === "center" && event.target === event.currentTarget && onClose()}
+      onClick={(event) => layout === "center" && event.target === event.currentTarget && closeByUse()}
       data-surface="light"
       {...inner.attrs}
       data-sb-pop={perDevice.length ? perDevice.join(" ") : undefined}
@@ -348,7 +421,27 @@ function PopupView({ popup, onClose }: { popup: Popup; onClose: () => void }) {
         <XIcon className={closeIcon} />
       </button>
 
-      {layout === "bar" ? (
+      {built ? (
+        <div
+          data-sb-pop-body=""
+          // A link followed from inside closes it, as the ready-made button does.
+          onClick={(event) => (event.target as HTMLElement).closest("a[href]") && closeByUse()}
+          className={cn(layout === "bar" ? "px-4 py-4 pe-12 sm:px-8" : cn("p-6 sm:p-8", closeRoom && "pt-10"))}
+        >
+          <CustomBlocks
+            blocks={blocks}
+            align={align}
+            columnGap={typeof s.columnGap === "string" ? s.columnGap : undefined}
+            extra={(item) =>
+              item.type === "newsletter" ? (
+                <div className="sb-bk-row">
+                  <NewsletterForm inputId={`${popup.id}-${item.id}-email`} className="w-full max-w-[26.25rem]" />
+                </div>
+              ) : null
+            }
+          />
+        </div>
+      ) : layout === "bar" ? (
         <div
           data-sb-pop-body=""
           className={cn(
@@ -358,14 +451,14 @@ function PopupView({ popup, onClose }: { popup: Popup; onClose: () => void }) {
           )}
         >
           <Words popup={popup} titleId={titleId} compact />
-          <Actions popup={popup} onClose={onClose} align={align} />
+          <Actions popup={popup} onClose={closeByUse} align={align} />
         </div>
       ) : (
         <div className={cn(side && cn("sm:grid", share[placed === "right" ? "right" : "left"]))}>
           {below ? null : photo}
           <div data-sb-pop-body="" className={cn("flex flex-col gap-4 p-6 sm:p-8", ALIGN[align], side && sits, closeRoom && "pt-10")}>
             <Words popup={popup} titleId={titleId} />
-            <Actions popup={popup} onClose={onClose} align={align} />
+            <Actions popup={popup} onClose={closeByUse} align={align} />
           </div>
           {below ? photo : null}
         </div>
@@ -379,7 +472,7 @@ function Words({ popup, titleId, compact = false }: { popup: Popup; titleId: str
   const text = String(popup.settings.text ?? "").trim();
   if (!heading && !text) return null;
   return (
-    <div className={cn("space-y-2", compact && "min-w-0")}>
+    <div data-sb-pop-words="" className={cn("flex flex-col gap-2", compact && "min-w-0")}>
       {heading ? (
         <h2 id={titleId} className={compact ? "text-body font-medium" : "text-h3"}>
           {heading}

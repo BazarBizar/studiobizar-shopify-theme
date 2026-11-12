@@ -43,6 +43,8 @@ export const PREVIEW_MESSAGE = {
   contents: "sb-preview:contents",
   /** Theme Builder → preview: open this pop-up (again) — see `Popups`. */
   popup: "sb-preview:popup",
+  /** Preview → Theme Builder: the pop-up being edited was closed there (`id`), or shown again (`null`). */
+  popupClosed: "sb-preview:popup-closed",
 } as const;
 
 /** Dispatched on the preview's window when an in-place text edit ends. */
@@ -100,6 +102,15 @@ export function PreviewBridge() {
   const nextToken = useRef(0);
   /** The section just clicked HERE: selecting it must not scroll the page out from under the pointer. */
   const clickedHere = useRef<string | null>(null);
+  /**
+   * The selected section's newest Style, as the editor last sent it. A redraw can be
+   * of content a step older (`LivePreview` shows one while the next is drawn), and
+   * would put the section back to an older padding or colour for a moment — the
+   * section jumping back and forth under a slider. So it is put straight back on
+   * after every redraw. Only the selected section's: it is the one the editor keeps
+   * sending, so the one whose newest values are known here.
+   */
+  const lastStyle = useRef<{ id: string; style: Record<string, string>; attrs: Record<string, string> } | null>(null);
 
   useEffect(() => {
     const origin = window.location.origin;
@@ -122,7 +133,8 @@ export function PreviewBridge() {
       if (data?.type === PREVIEW_MESSAGE.refresh) router.refresh();
 
       if (data?.type === PREVIEW_MESSAGE.style && typeof data.id === "string" && SECTION_ID.test(data.id)) {
-        restyle(data.id, data.style ?? {}, data.attrs ?? {});
+        lastStyle.current = { id: data.id, style: data.style ?? {}, attrs: data.attrs ?? {} };
+        restyle(data.id, lastStyle.current.style, lastStyle.current.attrs);
       }
 
       if (data?.type === PREVIEW_MESSAGE.editable) {
@@ -136,6 +148,7 @@ export function PreviewBridge() {
         const id = typeof data.id === "string" && SECTION_ID.test(data.id) ? data.id : null;
         setSelected(id);
         selectedRef.current = id;
+        if (lastStyle.current?.id !== id) lastStyle.current = null;
         if (id) report(id);
         if (id && id === clickedHere.current) {
           clickedHere.current = null;
@@ -226,6 +239,9 @@ export function PreviewBridge() {
     }
 
     function onRendered() {
+      // The newest Style first, so what is reported back is what the editor shows.
+      const style = lastStyle.current;
+      if (style && style.id === selectedRef.current) restyle(style.id, style.style, style.attrs);
       if (selectedRef.current) report(selectedRef.current);
       if (pendingScroll.current && scrollTo(pendingScroll.current)) pendingScroll.current = null;
     }

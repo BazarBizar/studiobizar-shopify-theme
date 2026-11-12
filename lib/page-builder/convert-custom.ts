@@ -1,6 +1,6 @@
 import { STYLE_KEYS } from "./define-section";
 import type { SectionInstance } from "./document";
-import { blockDefinition, createBlock, type BlocksFieldDef, type BlockValue, type FieldDef } from "./fields";
+import { blockDefinition, createBlock, richFromPlain, type BlocksFieldDef, type BlockValue, type FieldDef } from "./fields";
 import { SECTIONS } from "./registry";
 import { customSection } from "./sections-custom";
 
@@ -22,15 +22,6 @@ type Draft = { type: string; settings?: S };
 
 const BLOCKS = (customSection.fields as readonly FieldDef[]).find((field) => field.kind === "blocks") as BlocksFieldDef;
 
-/** Plain text (a textarea) → Shopify rich text, one paragraph per line. */
-function richFromPlain(value: unknown): string {
-  const lines = typeof value === "string" ? value.split(/\n+/).map((line) => line.trim()).filter(Boolean) : [];
-  if (lines.length === 0) return "";
-  return JSON.stringify({
-    type: "root",
-    children: lines.map((line) => ({ type: "paragraph", children: [{ type: "text", value: line }] })),
-  });
-}
 
 const str = (value: unknown) => (typeof value === "string" ? value : "");
 const filled = (value: unknown) => str(value).trim() !== "";

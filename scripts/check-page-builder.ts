@@ -38,7 +38,19 @@ import {
   themePublishProblems,
 } from "../lib/theme-builder/layout";
 import { elementLook } from "../lib/theme-builder/element-look";
-import { createMessage, createPopup, isScheduledNow, onDevice, paddingOn, popupDefaults, popupHasContent, popupOnPath } from "../lib/theme-builder/promo";
+import {
+  createMessage,
+  createPopup,
+  isBuilt,
+  isScheduledNow,
+  onDevice,
+  paddingOn,
+  popupBlocksFromReady,
+  popupDefaults,
+  popupHasContent,
+  popupOnPath,
+  readPopups,
+} from "../lib/theme-builder/promo";
 import { PAGE_TEMPLATES, documentFromTemplate } from "../lib/page-builder/templates";
 
 let failures = 0;
@@ -676,6 +688,43 @@ check(
   check("only listed: /products/* does not cover /productsale", !popupOnPath({ mode: "only", paths: ["/products/*"] }, "/productsale"));
   check("except listed: stays away from the listed page", !popupOnPath({ mode: "except", paths: ["/contact"] }, "/contact"));
   check("a pop-up with a heading has content; a blank one has none", popupHasContent(popup) && !popupHasContent(createPopup("Blank")));
+
+  // Built from blocks: the ready-made content becomes blocks, saves, reads back and counts as content.
+  const IMG = { id: "gid://shopify/MediaImage/1", url: "https://cdn.shopify.com/s/files/1/example.jpg", altText: null, width: 1600, height: 1000 };
+  const ready = createPopup("Event", {
+    heading: "Join us",
+    text: "Drinks\nNew pieces",
+    image: IMG,
+    imagePosition: "right",
+    imageShare: "third",
+    button: { label: "Book", href: "/contact" },
+    newsletter: true,
+  });
+  const converted = popupBlocksFromReady(ready.settings);
+  check(
+    "ready-made → blocks: words column then photo column, photo first on phones, nothing lost",
+    JSON.stringify(converted.map((item) => item.type)) === JSON.stringify(["column", "heading", "text", "newsletter", "button", "column", "image"]) &&
+      converted[0]!.settings.width === "67" &&
+      converted[5]!.settings.width === "33" &&
+      converted[5]!.settings.mobileFirst === true &&
+      String(converted[2]!.settings.body).includes("New pieces"),
+  );
+  const bar = popupBlocksFromReady(createPopup("Bar", { layout: "bar", text: "Open Sundays", button: { label: "Visit", href: "/visit" } }).settings);
+  check("a bar's words and button stay side by side", JSON.stringify(bar.map((item) => item.type)) === JSON.stringify(["column", "text", "column", "button"]));
+
+  const built = { ...ready, settings: { ...ready.settings, build: "blocks", blocks: converted } };
+  const withBuilt = { ...withPromo, popups: [built] };
+  check("a built pop-up saves", themeContentSchema.safeParse(withBuilt).success);
+  const builtBack = parseThemeLayout(JSON.stringify(withBuilt));
+  check(
+    "a built pop-up reads back with its blocks",
+    builtBack.ok && (builtBack.layout.popups[0]!.settings.blocks as unknown[]).length === converted.length && isBuilt(builtBack.layout.popups[0]!.settings),
+  );
+  const frameOnly = createPopup("Frame", { build: "blocks", blocks: converted.filter((item) => item.type === "column") });
+  check("built from only columns: empty; with a heading: content", !popupHasContent(frameOnly) && popupHasContent(built));
+  check("an earlier pop-up reads as ready-made", !isBuilt(readPopups([{ ...popup, settings: { heading: "Hi" } }])[0]!.settings));
+  const productBlock = { ...withPromo, popups: [{ ...built, settings: { ...built.settings, blocks: [{ id: "b_product01", type: "product", settings: {} }] } }] };
+  check("a Product block is refused in a pop-up", !themeContentSchema.safeParse(productBlock).success);
 }
 
 

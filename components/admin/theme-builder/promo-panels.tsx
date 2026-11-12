@@ -27,10 +27,24 @@ import { Separator } from "@/components/admin/ui/separator";
 import { Switch } from "@/components/admin/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/admin/ui/tabs";
 import { contrastRatio, DEVICES, getAt, setAt, type DesignValue } from "@/lib/page-builder/design-style";
-import { fieldDefault, isFieldActive, newBlockId, type ImageRef, type LeafFieldDef, type LinkValue } from "@/lib/page-builder/fields";
+import { blockWithExamples, NO_EXAMPLE_MEDIA } from "@/lib/page-builder/examples";
+import {
+  createBlock,
+  fieldDefault,
+  isFieldActive,
+  newBlockId,
+  type BlockValue,
+  type FieldDef,
+  type ImageRef,
+  type LinkValue,
+} from "@/lib/page-builder/fields";
 import {
   createMessage,
   createPopup,
+  isBuilt,
+  POPUP_BLOCKS,
+  popupBlocksFromReady,
+  READY_MADE_ONLY,
   MAX_MESSAGES,
   MAX_POPUP_PATHS,
   MAX_POPUPS,
@@ -322,8 +336,19 @@ export function AnnouncementGroup({ edits }: { edits: Edits }) {
  * The Pop-ups tab
  * -------------------------------------------------------------------------- */
 
-/** Ready-made starts, so a new pop-up opens with something to change rather than nothing. */
-const STARTERS: { label: string; description: string; name: string; settings: Record<string, unknown> }[] = [
+/**
+ * Starts, so a new pop-up opens with something to change rather than nothing. Each is
+ * built from blocks — every part can be moved, removed, restyled or added to. The
+ * first starts with a heading, text and a button filled with examples.
+ */
+const STARTERS: { label: string; description: string; name: string; settings: Record<string, unknown>; blank?: boolean }[] = [
+  {
+    label: "Design it yourself",
+    description: "A heading, text and a button to start — add photos, columns, icons and more.",
+    name: "Pop-up",
+    settings: { trigger: "delay", delay: 5 },
+    blank: true,
+  },
   {
     label: "Event or news",
     description: "A box in the middle with a photograph, a few words and a button.",
@@ -380,7 +405,15 @@ function popupSummary(popup: Popup): string {
   return `${where}, ${TRIGGER_NOTE[String(popup.settings.trigger)]?.(popup.settings) ?? ""}`;
 }
 
+/** A new block of a pop-up, filled with examples as one added in the editor is. */
+function exampleBlock(type: string, examples: Parameters<typeof blockWithExamples>[2], settings: Record<string, unknown> = {}): BlockValue {
+  const definition = POPUP_BLOCKS.find((each) => each.type === type)!;
+  const made = blockWithExamples(definition, createBlock(definition), examples);
+  return { ...made, settings: { ...made.settings, ...settings } };
+}
+
 export function PopupsPanel({ edits, onOpen }: { edits: Edits; onOpen: (id: string) => void }) {
+  const { examples = NO_EXAMPLE_MEDIA } = React.useContext(EditorLookupsContext);
   const popups = edits.content.popups;
   const setPopups = (next: Popup[]) => edits.change({ ...edits.content, popups: next });
   const full = popups.length >= MAX_POPUPS;
@@ -453,7 +486,10 @@ export function PopupsPanel({ edits, onOpen }: { edits: Edits; onOpen: (id: stri
               key={starter.label}
               className="flex-col items-start gap-0"
               onSelect={() => {
-                const popup = createPopup(starter.name, starter.settings);
+                const blocks = starter.blank
+                  ? [exampleBlock("heading", examples, { size: "h3" }), exampleBlock("text", examples), exampleBlock("button", examples)]
+                  : popupBlocksFromReady(starter.settings);
+                const popup = createPopup(starter.name, { ...starter.settings, build: "blocks", blocks });
                 setPopups([...popups, popup]);
                 onOpen(popup.id);
               }}
@@ -515,12 +551,15 @@ export function PopupEditor({
   edits,
   onBack,
   onPreview,
+  closedInPreview = false,
 }: {
   id: string;
   edits: Edits;
   onBack: () => void;
   /** Opens it in the preview again — after it was closed there, say. */
   onPreview: () => void;
+  /** It was closed in the preview: say so, with the way back, on both tabs. */
+  closedInPreview?: boolean;
 }) {
   const [tab, setTab] = React.useState<"content" | "style">("content");
   const popup = edits.content.popups.find((candidate) => candidate.id === id);
@@ -532,17 +571,30 @@ export function PopupEditor({
   const replace = (next: Popup) =>
     edits.change({ ...edits.content, popups: edits.content.popups.map((other) => (other.id === id ? next : other)) });
   const s = popup.settings;
+  const built = isBuilt(s);
   const hasButton = Boolean((s.button as LinkValue | null)?.href);
-  const fields = (POPUP_FIELDS as readonly LeafFieldDef[]).filter(
+  const fields = (POPUP_FIELDS as readonly FieldDef[]).filter(
     (field) =>
       isFieldActive(field, s) &&
+      // Built from blocks, the ready-made photograph, words and button are kept but put away.
+      !(built && READY_MADE_ONLY.has(field.key)) &&
       // The page behind is darkened or blurred only behind the box in the middle.
       (POPUP_STYLE_FOLD[field.key] !== "behind" || s.layout === "center") &&
       (field.key !== "buttonStyle" || hasButton) &&
       ((field.key !== "borderStyle" && field.key !== "borderColor") || Number(s.borderWidth) > 0),
   );
 
-  const renderField = (field: LeafFieldDef) => {
+  /**
+   * Ready-made → built: the first time, its photograph, words and button become the
+   * blocks, so nothing typed is lost. Back to ready-made, the blocks are kept for later.
+   */
+  const changeBuild = (next: unknown) => {
+    const toBlocks = next === "blocks";
+    const empty = !Array.isArray(s.blocks) || (s.blocks as BlockValue[]).length === 0;
+    set({ settings: { ...s, build: toBlocks ? "blocks" : "ready", ...(toBlocks && empty ? { blocks: popupBlocksFromReady(s) } : {}) } });
+  };
+
+  const renderField = (field: FieldDef) => {
     const inputId = `${id}-${field.key}`;
     const inline = field.kind === "toggle";
     return (
@@ -550,8 +602,21 @@ export function PopupEditor({
         <Label htmlFor={inputId} className="text-xs">
           {field.label}
         </Label>
-        <FieldControl field={field} value={s[field.key]} inputId={inputId} collections={[]} onChange={(next) => setSetting(field.key, next)} />
+        <FieldControl
+          field={field}
+          value={s[field.key]}
+          inputId={inputId}
+          collections={[]}
+          onChange={(next) => (field.key === "build" ? changeBuild(next) : setSetting(field.key, next))}
+        />
         {field.help && !inline ? <p className="text-muted-foreground text-xs">{field.help}</p> : null}
+        {field.key === "build" ? (
+          <p className="text-muted-foreground text-xs">
+            {built
+              ? "Add, move and style any block — headings, text, photos, buttons, icons, columns, video, the newsletter sign-up. Ready-made keeps what you typed there."
+              : "A photograph, a heading, text and a button in a fixed order. Build it yourself to arrange your own blocks — what you typed here comes along."}
+          </p>
+        ) : null}
       </div>
     );
   };
@@ -573,14 +638,14 @@ export function PopupEditor({
         </div>
         <Button
           type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Show in preview"
-          title="Show in preview"
+          variant="outline"
+          size="xs"
+          title="Open the pop-up in the preview again"
           onClick={onPreview}
           disabled={!popupHasContent(popup)}
         >
           <MonitorPlayIcon />
+          Show
         </Button>
         <Button
           type="button"
@@ -607,6 +672,20 @@ export function PopupEditor({
           <Trash2Icon />
         </Button>
       </div>
+
+      {/* Closed in the preview — by its × or Escape. One click brings it back, from either tab. */}
+      {closedInPreview && popupHasContent(popup) ? (
+        <div
+          role="status"
+          className="flex items-center justify-between gap-3 border-b bg-blue-50 px-4 py-2 text-xs text-blue-950 dark:bg-blue-950 dark:text-blue-100"
+        >
+          <p>The pop-up is closed in the preview. Your design is kept.</p>
+          <Button type="button" size="xs" onClick={onPreview}>
+            <EyeIcon />
+            Show it again
+          </Button>
+        </div>
+      ) : null}
 
       {/* Content | Style, as on a section: what it says and when, then how it looks. */}
       <div className="border-b px-4 py-2">
@@ -647,7 +726,9 @@ export function PopupEditor({
           {!popupHasContent(popup) ? (
             <p className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-500">
               <TriangleAlertIcon className="mt-0.5 size-3.5 shrink-0" />
-              Add a heading, some text, a photograph, a button or the sign-up — an empty pop-up never opens.
+              {built
+                ? "Add a block that says something — a heading, text, a photo, a button or the sign-up. An empty pop-up never opens."
+                : "Add a heading, some text, a photograph, a button or the sign-up — an empty pop-up never opens."}
             </p>
           ) : null}
 
@@ -739,8 +820,8 @@ function PopupStyle({
 }: {
   popup: Popup;
   /** The look's settings that apply now. */
-  fields: LeafFieldDef[];
-  renderField: (field: LeafFieldDef) => React.ReactNode;
+  fields: FieldDef[];
+  renderField: (field: FieldDef) => React.ReactNode;
   /** Several settings in one change, so none overwrites another. */
   onSettings: (change: Record<string, unknown>) => void;
   onBox: (box: PopupBox) => void;
@@ -762,7 +843,7 @@ function PopupStyle({
     onBox(next);
   };
 
-  const all = POPUP_FIELDS as readonly LeafFieldDef[];
+  const all = POPUP_FIELDS as readonly FieldDef[];
   const differs = (key: string) => {
     const field = all.find((candidate) => candidate.key === key);
     return field ? s[key] !== undefined && JSON.stringify(s[key]) !== JSON.stringify(fieldDefault(field)) : false;
@@ -771,12 +852,17 @@ function PopupStyle({
   const foldChanged = (fold: PopupStyleFold) =>
     Object.entries(POPUP_STYLE_FOLD).some(([key, each]) => each === fold && differs(key));
 
-  const image = s.image as ImageRef | null | undefined;
+  const built = isBuilt(s);
+  const blockTypes = new Set(built && Array.isArray(s.blocks) ? (s.blocks as BlockValue[]).map((item) => item.type) : []);
+  const has = (...types: string[]) => types.some((type) => blockTypes.has(type));
+  const image = built ? null : (s.image as ImageRef | null | undefined);
   const placed = layout === "center" ? String(s.imagePosition ?? "top") : "top";
   const closeRoom = !image || (layout === "center" && (placed === "bottom" || placed === "side"));
   const defaults = popupDefaults(layout, !closeRoom);
   // As a section's: photo controls only where there is a photograph to shape.
   const photo = Boolean(image) && layout !== "bar";
+  // Built from blocks, the photos are blocks: only their corners are set here.
+  const blockPhotos = built && has("image", "card", "video");
 
   /* Background */
   const background = typeof s.background === "string" && s.background ? s.background : LIGHT.background;
@@ -808,7 +894,7 @@ function PopupStyle({
 
   const changed = {
     background: foldChanged("background") || Boolean(design.background),
-    spacing: Boolean(box.padding || box.offset || box.gap),
+    spacing: Boolean(box.padding || box.offset || box.gap) || foldChanged("spacing"),
     border: foldChanged("border") || Boolean(box.radius || design.images?.radius),
     size: foldChanged("size") || Boolean(box.width),
   };
@@ -859,9 +945,12 @@ function PopupStyle({
                 left: String(inherited.left),
               }}
               hint={
-                layout === "bar"
-                  ? "Space around the words and buttons. Keep some on the right for the close button."
-                  : "Space around the words and buttons. The photograph runs to the edge — for space around it, see Images."
+                (built
+                  ? "Space around the blocks. 0 lets a photo run to the edge — keep some at the top right for the close button."
+                  : layout === "bar"
+                    ? "Space around the words and buttons. Keep some on the right for the close button."
+                    : "Space around the words and buttons. The photograph runs to the edge — for space around it, see Images.") +
+                (layout === "bar" ? "" : " More at the sides makes the pop-up wider, up to the width of the screen — on phones, set less.")
               }
               onChange={changePadding}
             />
@@ -877,8 +966,8 @@ function PopupStyle({
               onChange={(next) => setBox("offset", next)}
             />
             <ResponsiveSlider
-              label="Space between"
-              hint="Between the heading and text, and the buttons."
+              label={built ? "Space between blocks" : "Space between"}
+              hint={built ? "A block's own “Space above” overrides it." : "Between the heading and text, and the buttons."}
               unit="px"
               min={POPUP_LIMITS.gap.min}
               max={POPUP_LIMITS.gap.max}
@@ -887,6 +976,7 @@ function PopupStyle({
               placeholder={String(defaults.gap)}
               onChange={(next) => setBox("gap", next)}
             />
+            {inFold("spacing").map(renderField)}
           </div>
         </Part>
 
@@ -902,10 +992,10 @@ function PopupStyle({
               placeholder="0"
               onChange={(next) => setBox("radius", next)}
             />
-            {photo ? (
+            {photo || blockPhotos ? (
               <Slider
                 label="Photo corners"
-                hint="Rounds the photograph — best with some space around it (Images)."
+                hint={built ? "Rounds every photo in the pop-up." : "Rounds the photograph — best with some space around it (Images)."}
                 unit="px"
                 min={0}
                 max={120}
@@ -922,11 +1012,19 @@ function PopupStyle({
         <DesignControls
           value={design}
           parts={["typography", "buttons"]}
-          contents={{
-            heading: Boolean(String(s.heading ?? "").trim()),
-            text: Boolean(String(s.text ?? "").trim()),
-            button: Boolean((s.button as LinkValue | null)?.href),
-          }}
+          contents={
+            built
+              ? {
+                  heading: has("heading", "icon", "card", "fold"),
+                  text: has("text", "eyebrow", "icon", "card", "list", "quote", "fold"),
+                  button: has("button", "newsletter"),
+                }
+              : {
+                  heading: Boolean(String(s.heading ?? "").trim()),
+                  text: Boolean(String(s.text ?? "").trim()),
+                  button: Boolean((s.button as LinkValue | null)?.href),
+                }
+          }
           onChange={(next) => onSettings({ design: next })}
         />
 
@@ -943,7 +1041,7 @@ function PopupStyle({
               {widthShown ? (
                 <ResponsiveSlider
                   label="Width"
-                  hint={layout === "corner" ? "Empty: 384px. It never gets wider than the screen." : "It never gets wider than the screen."}
+                  hint={`${layout === "corner" ? "Empty: 384px. " : ""}With the normal padding; more padding at the sides adds to it. It never gets wider than the screen.`}
                   unit="px"
                   min={POPUP_LIMITS.width.min}
                   max={POPUP_LIMITS.width.max}
