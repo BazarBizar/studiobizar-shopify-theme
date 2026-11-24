@@ -14,13 +14,19 @@ import { resolve } from "node:path";
 
 import type { SectionType } from "../lib/page-builder/registry";
 
-import { LIQUID_SECTIONS, SCHEMA_PATTERN, schemaBlock } from "./lib/liquid";
+import { LIQUID_SECTIONS, POPUP_FILE, popupSchemaBlock, SCHEMA_PATTERN, schemaBlock } from "./lib/liquid";
 
 const ROOT = resolve(__dirname, "..");
 const checkOnly = process.argv.includes("--check");
 let stale = 0;
 
-for (const [type, file] of Object.entries(LIQUID_SECTIONS) as [SectionType, string][]) {
+// Every builder section's theme twin, then the pop-up (Appearance → Pop-ups).
+const targets: [string, () => string][] = [
+  ...(Object.entries(LIQUID_SECTIONS) as [SectionType, string][]).map(([type, file]): [string, () => string] => [file, () => schemaBlock(type)]),
+  [POPUP_FILE, popupSchemaBlock],
+];
+
+for (const [file, schemaOf] of targets) {
   const path = resolve(ROOT, "theme/sections", `${file}.liquid`);
   if (!existsSync(path)) {
     console.error(`✗ theme/sections/${file}.liquid is missing — write its markup, ending in an empty {% schema %}{% endschema %}`);
@@ -33,7 +39,7 @@ for (const [type, file] of Object.entries(LIQUID_SECTIONS) as [SectionType, stri
     stale += 1;
     continue;
   }
-  const next = source.replace(SCHEMA_PATTERN, schemaBlock(type));
+  const next = source.replace(SCHEMA_PATTERN, schemaOf());
   if (next === source) continue;
   if (checkOnly) {
     console.error(`✗ ${file}.liquid: schema is out of date — run: yarn liquid:schemas`);

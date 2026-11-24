@@ -3,6 +3,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 
 import { PageShell } from "@/components/layout/page-shell";
+import { BuilderPage } from "@/components/page-builder/builder-page";
 import { ProductRail } from "@/components/product/product-rail";
 import { ProjectCard } from "@/components/project/project-card";
 import { ProjectGallery } from "@/components/project/project-gallery";
@@ -13,11 +14,23 @@ import {
   getMetaobject,
   getMetaobjects,
   getProductsByIds,
+  getPublishedTemplate,
   getSiteTexts,
 } from "@/lib/shopify";
 import { normalizeProject, normalizeProjectCard, sortProjects } from "@/lib/shopify/entities";
 import { cdnImage } from "@/lib/shopify/transforms";
 import type { Project } from "@/lib/shopify/entities";
+
+/**
+ * Empty `generateStaticParams`: nothing is built ahead, but each project page is drawn on
+ * its first visit and then served from the cache (ISR) — not drawn again for every
+ * visitor and every crawler, as it was while this route was dynamic. A change reaches it
+ * through its cache tag (the panel's writes, Shopify's webhooks); `REVALIDATE` is only
+ * the safety net. An unknown handle is a cached 404 like any other page.
+ */
+export function generateStaticParams() {
+  return [];
+}
 
 export async function generateMetadata({
   params,
@@ -81,10 +94,25 @@ function MetaRow({ label, value }: { label: string; value: string }) {
 
 export default async function ProjectPage({ params }: PageProps<"/projects/[handle]">) {
   const { handle } = await params;
-  const entry = await getMetaobject(METAOBJECT_TYPES.project, handle);
+  const [entry, template] = await Promise.all([
+    getMetaobject(METAOBJECT_TYPES.project, handle),
+    getPublishedTemplate("project"),
+  ]);
   if (!entry) notFound();
 
   const project = normalizeProject(entry);
+
+  // Website → Templates → Project page, once published; until then the layout below.
+  if (template) {
+    return (
+      <BuilderPage
+        doc={template}
+        title={project.title}
+        record={{ kind: "project", project }}
+        before={<ProjectJsonLd project={project} />}
+      />
+    );
+  }
 
   const [featured, others, texts] = await Promise.all([
     getProductsByIds(project.featuredProductIds).catch((error: unknown) => {

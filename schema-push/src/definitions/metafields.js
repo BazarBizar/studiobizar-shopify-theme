@@ -222,6 +222,38 @@ const shop = [
     pin: false,
     description: 'Changed wording of the website, managed under Settings → Site texts in the admin panel. Do not edit by hand.',
   },
+  /*
+   * Website → Templates (lib/page-builder/template-kinds.ts): one layout per kind of
+   * page drawn from an item, three copies each like the header and footer — only the
+   * PUBLISHED copy is storefront-readable. The admin's first publish of a template
+   * creates its published definition itself when it is missing; listed here so a fresh
+   * store gets them from one push. Keep the kinds in step with TEMPLATE_KINDS.
+   */
+  ...['product', 'collection', 'project', 'designer', 'shop', 'search', 'collections', 'projects'].flatMap((kind) => [
+    {
+      key: `template_${kind}`,
+      name: `Template (${kind}) — Published`,
+      type: 'json',
+      pin: false,
+      description: 'A page layout, managed under Website → Templates in the admin panel. Do not edit by hand.',
+    },
+    {
+      key: `template_${kind}_draft`,
+      name: `Template (${kind}) — Draft`,
+      type: 'json',
+      storefrontAccess: 'NONE',
+      pin: false,
+      description: 'A page layout, managed under Website → Templates in the admin panel. Do not edit by hand.',
+    },
+    {
+      key: `template_${kind}_previous`,
+      name: `Template (${kind}) — Previous version`,
+      type: 'json',
+      storefrontAccess: 'NONE',
+      pin: false,
+      description: 'A page layout, managed under Website → Templates in the admin panel. Do not edit by hand.',
+    },
+  ]),
 ];
 
 /**

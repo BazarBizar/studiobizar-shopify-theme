@@ -1,0 +1,72 @@
+/*
+ * The templates' card settings (lib/page-builder/template-look.ts): a wrapper with
+ * `data-tl-*` attributes restyles the cards inside it — the cards' own components are
+ * unchanged. A card is a list item or a carousel slide; its photo is the box that holds
+ * the <img>; its name is the h2/h3 in it. Nothing here applies without the attribute.
+ */
+
+/* Columns and spacing (a grid of cards) */
+@media (max-width: 749.98px) {
+  [data-tl-cols-m] ul {
+    grid-template-columns: repeat(var(--tl-cols-m), minmax(0, 1fr));
+  }
+}
+@media (min-width: 1024px) {
+  [data-tl-cols-d] ul {
+    grid-template-columns: repeat(var(--tl-cols-d), minmax(0, 1fr));
+  }
+}
+[data-tl-gap] ul {
+  gap: var(--tl-gap);
+}
+
+/* The photo */
+[data-tl-shape] :is(li, .min-w-0.shrink-0) div:has(> img) {
+  aspect-ratio: var(--tl-ratio);
+  height: auto;
+}
+[data-tl-radius] :is(li, .min-w-0.shrink-0) div:has(> img) {
+  border-radius: var(--tl-radius);
+  overflow: hidden;
+}
+[data-tl-overlay] :is(li, .min-w-0.shrink-0) div:has(> img)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--tl-overlay);
+  pointer-events: none;
+}
+
+/* The card */
+[data-tl-card="card"] :is(li, .min-w-0.shrink-0) {
+  background: var(--tl-card, color-mix(in srgb, currentColor 6%, transparent));
+  padding: 0.75rem;
+  border-radius: var(--tl-radius, 0);
+}
+[data-tl-card="box"] :is(li, .min-w-0.shrink-0) {
+  border: 1px solid var(--tl-border, color-mix(in srgb, currentColor 20%, transparent));
+  padding: 0.75rem;
+  border-radius: var(--tl-radius, 0);
+}
+[data-tl-card="lines"] :is(li, .min-w-0.shrink-0) {
+  border-top: 1px solid var(--tl-border, color-mix(in srgb, currentColor 20%, transparent));
+  padding-top: 1rem;
+}
+
+/* The name */
+[data-tl-title] :is(li, .min-w-0.shrink-0) :is(h2, h3) {
+  font-size: var(--tl-title);
+  line-height: normal;
+}
+[data-tl-title-color] :is(li, .min-w-0.shrink-0) :is(h2, h3) {
+  color: var(--tl-title-color);
+}
+[data-tl-align="center"] :is(li, .min-w-0.shrink-0) {
+  text-align: center;
+}
+[data-tl-align="center"] :is(li, .min-w-0.shrink-0) .flex {
+  justify-content: center;
+}
+[data-tl-align="left"] :is(li, .min-w-0.shrink-0) {
+  text-align: left;
+}

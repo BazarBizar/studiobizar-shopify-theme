@@ -11,7 +11,7 @@ import { SectionBoundary } from "./section-boundary";
 import { SectionFrame } from "./section-frame";
 
 /**
- * Draws a page's sections. The SAME component renders the live page and the
+ * Draws a page's (or a template's) sections. The SAME component renders the live page and the
  * panel's preview — there is no preview-only version of anything.
  *
  * Every visible section's data loads in parallel, so a page of ten sections
@@ -29,7 +29,7 @@ import { SectionFrame } from "./section-frame";
  */
 
 type AnyRenderer = {
-  load?: (settings: unknown) => Promise<unknown>;
+  load?: (settings: unknown, context: RenderContext) => Promise<unknown>;
   render: (settings: unknown, data: unknown, context: SectionContext) => React.ReactNode;
 };
 
@@ -37,10 +37,10 @@ type Loaded = { section: SectionInstance; data: unknown; ok: boolean };
 
 const rendererFor = (section: SectionInstance) => RENDERERS[section.type] as unknown as AnyRenderer;
 
-async function load(section: SectionInstance): Promise<Loaded> {
+async function load(section: SectionInstance, context: RenderContext): Promise<Loaded> {
   try {
     const renderer = rendererFor(section);
-    return { section, data: renderer.load ? await renderer.load(section.settings) : undefined, ok: true };
+    return { section, data: renderer.load ? await renderer.load(section.settings, context) : undefined, ok: true };
   } catch (error) {
     // `notFound()`, `redirect()` and Next's dynamic-usage signal are control flow,
     // not failures, and must reach Next.
@@ -76,7 +76,7 @@ const sitsUnderHeading = (section: SectionInstance | undefined) =>
 export async function SectionRenderer({ sections, context }: { sections: SectionInstance[]; context: RenderContext }) {
   // A cropped photo becomes just its cropped part here, before any component sees it.
   const visible = sections.filter((section) => section.visible).map((section) => withCrops(section));
-  const loaded = await Promise.all(visible.map(load));
+  const loaded = await Promise.all(visible.map((section) => load(section, context)));
 
   const out: React.ReactNode[] = [];
 

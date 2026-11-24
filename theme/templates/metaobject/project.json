@@ -1,15 +1,33 @@
 {
   "sections": {
-    "main": {
-      "type": "sb-main-project",
+    "project-hero-1": {
+      "type": "sb-t-project-hero",
+      "settings": {}
+    },
+    "project-details-2": {
+      "type": "sb-t-project-details",
+      "settings": {}
+    },
+    "project-featured-3": {
+      "type": "sb-t-project-featured",
+      "settings": {}
+    },
+    "project-others-4": {
+      "type": "sb-t-project-others",
+      "settings": {}
+    },
+    "go-back-5": {
+      "type": "sb-go-back",
       "settings": {
-        "hero_ratio": "2 / 1",
-        "surface": "black",
-        "rhythm": "theme"
+        "href": "/projects"
       }
     }
   },
   "order": [
-    "main"
+    "project-hero-1",
+    "project-details-2",
+    "project-featured-3",
+    "project-others-4",
+    "go-back-5"
   ]
 }

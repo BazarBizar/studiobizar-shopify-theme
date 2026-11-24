@@ -1,0 +1,11 @@
+{
+  "sections": {
+    "shop-main-1": {
+      "type": "sb-t-shop-main",
+      "settings": {}
+    }
+  },
+  "order": [
+    "shop-main-1"
+  ]
+}

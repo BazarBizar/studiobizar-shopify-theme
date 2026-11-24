@@ -1,15 +1,11 @@
 {
   "sections": {
-    "main": {
-      "type": "sb-main-list-collections",
-      "settings": {
-        "heading": "Collections",
-        "surface": "inherit",
-        "rhythm": "theme"
-      }
+    "collections-main-1": {
+      "type": "sb-t-collections-main",
+      "settings": {}
     }
   },
   "order": [
-    "main"
+    "collections-main-1"
   ]
 }

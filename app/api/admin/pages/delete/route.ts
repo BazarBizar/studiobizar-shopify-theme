@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     const deleted = await deleteBuilderPage(parsed.data.id);
     audit({ action: "page.delete", actor: staff.email, outcome: "ok", type: "page", entryId: deleted.id, ip });
 
-    const tags = await revalidateForType("page", { settle: false });
+    const tags = await revalidateForType("page", { settle: false, handle: deleted.handle });
     // Again once Shopify has stopped serving it — the first drop can refill from
     // the Storefront API's cached copy. A fresh request, because a second
     // `revalidateTag` in this one would be ignored. See `waitForStorefront`.

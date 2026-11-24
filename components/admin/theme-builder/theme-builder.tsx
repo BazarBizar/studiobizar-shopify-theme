@@ -312,7 +312,8 @@ export function ThemeBuilder({
     if (editingPopupRef.current) showPopup(editingPopupRef.current);
   }, [showPopup]);
   React.useEffect(() => {
-    const timer = window.setTimeout(sendContent, 150);
+    // 300 ms: a pause in typing, not every keystroke — each redraw is a full server render.
+    const timer = window.setTimeout(sendContent, 300);
     return () => window.clearTimeout(timer);
   }, [content, sendContent]);
 

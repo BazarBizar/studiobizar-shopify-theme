@@ -79,14 +79,21 @@ const snake = (key: string) => key.replace(/[A-Z]/g, (letter) => `_${letter.toLo
 
 /** Every setting a schema declares must be READ by the markup, or a builder option would do nothing in the theme. */
 function markupReadsEverySetting(file: string, schema: Schema) {
-  const source = readFileSync(resolve(ROOT, "theme/sections", `${file}.liquid`), "utf8").replace(/\{%-?\s*schema[\s\S]*$/, "");
+  const own = readFileSync(resolve(ROOT, "theme/sections", `${file}.liquid`), "utf8").replace(/\{%-?\s*schema[\s\S]*$/, "");
+  // A snippet handed the blocks (`render 'sb-custom-blocks', blocks: section.blocks`) reads
+  // their settings itself: the snippets the section renders count as its markup.
+  const snippets = [...own.matchAll(/render\s+'([a-z0-9-]+)'/g)]
+    .map(([, name]) => resolve(ROOT, "theme/snippets", `${name}.liquid`))
+    .filter((path) => existsSync(path))
+    .map((path) => readFileSync(path, "utf8"));
+  const source = [own, ...snippets].join("\n");
   const ids = [
     ...(schema.settings ?? []).filter((setting) => setting.id).map((setting) => setting.id!),
     ...(schema.blocks ?? []).flatMap((block) => (block.settings ?? []).filter((setting) => setting.id).map((setting) => setting.id!)),
   ];
   // The Style tab's settings are read by one snippet, handed the whole settings object;
   // it hands the design settings (`d_*`) on to `sb-design`.
-  const styled = new RegExp(`render\\s+'${STYLE_SNIPPET}',\\s*settings:\\s*(section\\.settings|s)\\b`).test(source);
+  const styled = new RegExp(`render\\s+'${STYLE_SNIPPET}',\\s*settings:\\s*(section\\.settings|s)\\b`).test(own);
   for (const id of new Set(ids)) {
     if (styled && (STYLE_SETTING_IDS.includes(id) || id.startsWith(SECTION_PREFIX))) continue;
     check(`${file}: the markup reads "${id}"`, new RegExp(`\\.${id}\\b`).test(source), "a setting the theme offers but never uses");
@@ -250,8 +257,15 @@ for (const [type, partial] of Object.entries(PARTIAL) as [SectionType, { file: s
   }
 }
 
+// The announcement bar and the pop-ups (Appearance): every setting they offer is read,
+// and the pop-up's schema is the panel's (checked with the others by liquid:schemas --check).
+for (const file of ["sb-announcement-bar", "sb-popup"]) {
+  const schema = schemaOf(file);
+  if (check(`theme/sections/${file}.liquid exists with a {% schema %}`, schema !== null)) markupReadsEverySetting(file, schema!);
+}
+
 // Every rendered snippet exists.
-for (const file of [...Object.values(LIQUID_SECTIONS), ...Object.values(PARTIAL).map((partial) => partial!.file)]) {
+for (const file of [...Object.values(LIQUID_SECTIONS), ...Object.values(PARTIAL).map((partial) => partial!.file), "sb-announcement-bar", "sb-popup"]) {
   const path = resolve(ROOT, "theme/sections", `${file}.liquid`);
   if (!existsSync(path)) continue;
   for (const [, name] of readFileSync(path, "utf8").matchAll(/render\s+'([a-z0-9-]+)'/g)) {

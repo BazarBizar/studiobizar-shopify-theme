@@ -1,6 +1,14 @@
 import { z } from "zod";
 
-import { SECTIONS, isSectionType, sectionDefinition, type SectionType, type SettingsFor } from "./registry";
+import {
+  SECTIONS,
+  isSectionAllowedIn,
+  isSectionType,
+  sectionDefinition,
+  type SectionType,
+  type SettingsFor,
+} from "./registry";
+import type { TemplateKind } from "./template-kinds";
 
 /**
  * The page document: which sections a page has, in what order, with what
@@ -296,4 +304,15 @@ export function publishProblems(content: DocumentContent): PublishProblem[] {
     const fields = definition.missing(section.settings as Record<string, unknown>);
     return fields.length ? [{ sectionId: section.id, section: definition.label, fields }] : [];
   });
+}
+
+/**
+ * Sections that do not belong where they are: a template's own section (a product's
+ * details) on a page or in another template, where there is no item for it to draw.
+ * The write paths refuse a document with any — `template` null for a page.
+ */
+export function misplacedSections(sections: readonly SectionInstance[], template: TemplateKind | null): string[] {
+  return sections
+    .filter((section) => !isSectionAllowedIn(section.type, template))
+    .map((section) => sectionDefinition(section.type)?.label ?? section.type);
 }

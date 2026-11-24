@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { PageShell } from "@/components/layout/page-shell";
+import { BuilderPage } from "@/components/page-builder/builder-page";
 import { ProductGrid } from "@/components/shop/product-grid";
 import { Container } from "@/components/ui/container";
-import { PRODUCTS_PER_PAGE, getSiteTexts, searchProducts } from "@/lib/shopify";
+import { PRODUCTS_PER_PAGE, getPublishedTemplate, getSiteTexts, searchProducts } from "@/lib/shopify";
 
 export const metadata: Metadata = {
   title: "Search",
@@ -18,6 +19,10 @@ export const metadata: Metadata = {
 export default async function SearchPage({ searchParams }: PageProps<"/search">) {
   const { q } = await searchParams;
   const query = typeof q === "string" ? q.trim() : "";
+
+  // Website → Templates → Search results, once published; until then the layout below.
+  const template = await getPublishedTemplate("search");
+  if (template) return <BuilderPage doc={template} title="Search" record={{ kind: "search", query }} />;
 
   const [results, texts] = await Promise.all([
     query ? searchProducts({ query, first: PRODUCTS_PER_PAGE }) : Promise.resolve(null),

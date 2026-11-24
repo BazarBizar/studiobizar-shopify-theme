@@ -4,6 +4,7 @@ import {
   BUILDER_METAFIELDS,
   DOCUMENT_VERSION,
   MAX_DOCUMENT_BYTES,
+  misplacedSections,
   parsePageDocument,
   publishProblems,
   sameContent,
@@ -169,6 +170,11 @@ export async function saveDraft(pageId: string, content: DocumentContent, baseRe
     throw new BuilderError("NOT_ALLOWED", "Move this page to the page builder first.");
   }
   assertRevision(state, baseRevision);
+  // A template's own sections draw a product, a collection… — a page has none to draw.
+  const misplaced = misplacedSections(content.sections, null);
+  if (misplaced.length) {
+    throw new BuilderError("NOT_ALLOWED", `${misplaced.join(", ")} can only be used in its template, under Website → Templates.`);
+  }
 
   const next: PageDocument = {
     version: DOCUMENT_VERSION,

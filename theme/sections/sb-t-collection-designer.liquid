@@ -1,0 +1,1058 @@
+{% comment %}
+  Website → Templates → Collection page → "About the designer" (collection_designer).
+  The designer's portrait and biography; left out when the collection names no
+  designer with a biography.
+  The schema is generated (`yarn liquid:schemas`); change the section in Next.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+  assign designer = collection.metafields.custom.designer.value
+  assign body = designer.bio_full.value | default: designer.bio_short.value
+  assign image = designer.portrait.value
+
+  capture rhythm_class
+    render 'sb-section-classes', rhythm: s.rhythm, pad: 'none'
+  endcapture
+  capture hide_class
+    render 'sb-hide-on', hide_on: s.hide_on
+  endcapture
+  assign paints = false
+  if s.surface != blank and s.surface != 'inherit'
+    assign paints = true
+  endif
+
+  assign heading = s.title
+  if heading == blank
+    assign heading = 'collection.the_designer' | t
+  endif
+  assign link_label = s.link_label | default: 'learn more'
+  case s.ratio
+    when 'square'
+      assign ratio = '1 / 1'
+    when 'landscape'
+      assign ratio = '4 / 3'
+    when 'adapt'
+      assign ratio = image.aspect_ratio | default: '2 / 3'
+    else
+      assign ratio = '2 / 3'
+  endcase
+  assign block_surface = 'inherit'
+  if s.tone == 'olive'
+    assign block_surface = 'olive'
+  endif
+-%}
+
+{%- if body != blank -%}
+  <div
+    {% if paints %}data-surface="{{ s.surface }}" {% endif %}class="{% if paints %}flow-root bg-background text-foreground {% endif %}{{ rhythm_class }} {{ hide_class }}"
+    {% render 'sb-section-style', settings: s %}
+    {{ section.shopify_attributes }}
+  >
+    {%- render 'sb-media-text-block',
+      heading: heading,
+      body: body,
+      image: image,
+      align: s.align,
+      ratio: ratio,
+      padding: s.padding,
+      surface: block_surface,
+      link_label: link_label,
+      link_url: designer.system.url,
+      link_style: s.button_style,
+      image_width: s.image_width,
+      vertical_align: s.vertical_align
+    -%}
+  </div>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "About the designer",
+  "tag": "section",
+  "class": "sb-section-collection-designer",
+  "settings": [
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Heading",
+      "info": "Leave empty to use the wording under Settings → Site texts."
+    },
+    {
+      "type": "text",
+      "id": "link_label",
+      "label": "Link text",
+      "default": "learn more"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "align",
+      "label": "Portrait on the",
+      "options": [
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "right"
+    },
+    {
+      "type": "select",
+      "id": "tone",
+      "label": "Background",
+      "options": [
+        {
+          "value": "olive",
+          "label": "Black olive"
+        },
+        {
+          "value": "page",
+          "label": "Same as page"
+        }
+      ],
+      "default": "olive"
+    },
+    {
+      "type": "select",
+      "id": "image_width",
+      "label": "Photo width",
+      "options": [
+        {
+          "value": "half",
+          "label": "Half"
+        },
+        {
+          "value": "narrow",
+          "label": "Smaller"
+        },
+        {
+          "value": "wide",
+          "label": "Larger"
+        }
+      ],
+      "default": "half"
+    },
+    {
+      "type": "select",
+      "id": "ratio",
+      "label": "Photo shape",
+      "options": [
+        {
+          "value": "portrait",
+          "label": "Portrait (2:3)"
+        },
+        {
+          "value": "square",
+          "label": "Square"
+        },
+        {
+          "value": "landscape",
+          "label": "Landscape (4:3)"
+        },
+        {
+          "value": "adapt",
+          "label": "As the photo is"
+        }
+      ],
+      "default": "portrait"
+    },
+    {
+      "type": "select",
+      "id": "vertical_align",
+      "label": "Text beside the photo",
+      "options": [
+        {
+          "value": "center",
+          "label": "Middle"
+        },
+        {
+          "value": "top",
+          "label": "Top"
+        },
+        {
+          "value": "bottom",
+          "label": "Bottom"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "select",
+      "id": "padding",
+      "label": "Width",
+      "options": [
+        {
+          "value": "wide",
+          "label": "Inset"
+        },
+        {
+          "value": "normal",
+          "label": "Standard"
+        }
+      ],
+      "default": "wide"
+    },
+    {
+      "type": "select",
+      "id": "button_style",
+      "label": "Link style",
+      "options": [
+        {
+          "value": "outline",
+          "label": "Outlined"
+        },
+        {
+          "value": "solid",
+          "label": "Filled"
+        },
+        {
+          "value": "text",
+          "label": "Underlined text"
+        }
+      ],
+      "default": "outline"
+    },
+    {
+      "type": "select",
+      "id": "hide_on",
+      "label": "Show on",
+      "options": [
+        {
+          "value": "none",
+          "label": "All devices"
+        },
+        {
+          "value": "mobile",
+          "label": "Desktop only"
+        },
+        {
+          "value": "desktop",
+          "label": "Mobile only"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "header",
+      "content": "Style"
+    },
+    {
+      "type": "color",
+      "id": "bg_color",
+      "label": "Background colour",
+      "info": "Your own colour instead of the Background choice above. Leave empty to keep that choice."
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Text colour",
+      "info": "Headings, text and buttons in this section."
+    },
+    {
+      "type": "checkbox",
+      "id": "custom_spacing",
+      "label": "Custom spacing",
+      "default": false,
+      "info": "Set the space inside and around this section yourself, in pixels. Replaces Vertical spacing."
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "Space inside, top",
+      "min": 0,
+      "max": 200,
+      "step": 2,
+      "unit": "px",
+      "default": 64
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "Space inside, bottom",
+      "min": 0,
+      "max": 200,
+      "step": 2,
+      "unit": "px",
+      "default": 64
+    },
+    {
+      "type": "range",
+      "id": "margin_top",
+      "label": "Space above the section",
+      "min": 0,
+      "max": 200,
+      "step": 2,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "margin_bottom",
+      "label": "Space below the section",
+      "min": 0,
+      "max": 200,
+      "step": 2,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "select",
+      "id": "border",
+      "label": "Line",
+      "options": [
+        {
+          "value": "none",
+          "label": "No line"
+        },
+        {
+          "value": "all",
+          "label": "Box around"
+        },
+        {
+          "value": "top",
+          "label": "Line above"
+        },
+        {
+          "value": "bottom",
+          "label": "Line below"
+        },
+        {
+          "value": "y",
+          "label": "Lines above and below"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "range",
+      "id": "border_width",
+      "label": "Line thickness",
+      "min": 1,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "default": 1
+    },
+    {
+      "type": "color",
+      "id": "border_color",
+      "label": "Line colour",
+      "info": "Leave empty for a soft line in the text colour."
+    },
+    {
+      "type": "range",
+      "id": "radius",
+      "label": "Rounded corners",
+      "min": 0,
+      "max": 48,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "paragraph",
+      "content": "Design — empty uses the design’s own value. “On phones” is for screens narrower than 750px."
+    },
+    {
+      "type": "header",
+      "content": "Headings"
+    },
+    {
+      "type": "select",
+      "id": "d_h_font",
+      "label": "Font",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default (Helvetica Neue)"
+        },
+        {
+          "value": "inter",
+          "label": "Inter"
+        },
+        {
+          "value": "dm-sans",
+          "label": "DM Sans"
+        },
+        {
+          "value": "manrope",
+          "label": "Manrope"
+        },
+        {
+          "value": "work-sans",
+          "label": "Work Sans"
+        },
+        {
+          "value": "space-grotesk",
+          "label": "Space Grotesk"
+        },
+        {
+          "value": "syne",
+          "label": "Syne"
+        },
+        {
+          "value": "playfair-display",
+          "label": "Playfair Display"
+        },
+        {
+          "value": "cormorant-garamond",
+          "label": "Cormorant Garamond"
+        },
+        {
+          "value": "fraunces",
+          "label": "Fraunces"
+        },
+        {
+          "value": "eb-garamond",
+          "label": "EB Garamond"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "number",
+      "id": "d_h_size",
+      "label": "Size (px)",
+      "placeholder": "Default"
+    },
+    {
+      "type": "number",
+      "id": "d_h_size_m",
+      "label": "Size on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "select",
+      "id": "d_h_weight",
+      "label": "Weight",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default"
+        },
+        {
+          "value": "300",
+          "label": "Light"
+        },
+        {
+          "value": "400",
+          "label": "Regular"
+        },
+        {
+          "value": "500",
+          "label": "Medium"
+        },
+        {
+          "value": "600",
+          "label": "Semibold"
+        },
+        {
+          "value": "700",
+          "label": "Bold"
+        },
+        {
+          "value": "800",
+          "label": "Extra bold"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "color",
+      "id": "d_h_color",
+      "label": "Colour"
+    },
+    {
+      "type": "select",
+      "id": "d_h_case",
+      "label": "Letter case",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default"
+        },
+        {
+          "value": "none",
+          "label": "As typed"
+        },
+        {
+          "value": "uppercase",
+          "label": "UPPERCASE"
+        },
+        {
+          "value": "lowercase",
+          "label": "lowercase"
+        },
+        {
+          "value": "capitalize",
+          "label": "Each Word"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "header",
+      "content": "Text"
+    },
+    {
+      "type": "select",
+      "id": "d_p_font",
+      "label": "Font",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default (Helvetica Neue)"
+        },
+        {
+          "value": "inter",
+          "label": "Inter"
+        },
+        {
+          "value": "dm-sans",
+          "label": "DM Sans"
+        },
+        {
+          "value": "manrope",
+          "label": "Manrope"
+        },
+        {
+          "value": "work-sans",
+          "label": "Work Sans"
+        },
+        {
+          "value": "space-grotesk",
+          "label": "Space Grotesk"
+        },
+        {
+          "value": "syne",
+          "label": "Syne"
+        },
+        {
+          "value": "playfair-display",
+          "label": "Playfair Display"
+        },
+        {
+          "value": "cormorant-garamond",
+          "label": "Cormorant Garamond"
+        },
+        {
+          "value": "fraunces",
+          "label": "Fraunces"
+        },
+        {
+          "value": "eb-garamond",
+          "label": "EB Garamond"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "number",
+      "id": "d_p_size",
+      "label": "Size (px)",
+      "placeholder": "Default"
+    },
+    {
+      "type": "number",
+      "id": "d_p_size_m",
+      "label": "Size on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "select",
+      "id": "d_p_weight",
+      "label": "Weight",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default"
+        },
+        {
+          "value": "300",
+          "label": "Light"
+        },
+        {
+          "value": "400",
+          "label": "Regular"
+        },
+        {
+          "value": "500",
+          "label": "Medium"
+        },
+        {
+          "value": "600",
+          "label": "Semibold"
+        },
+        {
+          "value": "700",
+          "label": "Bold"
+        },
+        {
+          "value": "800",
+          "label": "Extra bold"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "color",
+      "id": "d_p_color",
+      "label": "Colour"
+    },
+    {
+      "type": "select",
+      "id": "d_p_case",
+      "label": "Letter case",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default"
+        },
+        {
+          "value": "none",
+          "label": "As typed"
+        },
+        {
+          "value": "uppercase",
+          "label": "UPPERCASE"
+        },
+        {
+          "value": "lowercase",
+          "label": "lowercase"
+        },
+        {
+          "value": "capitalize",
+          "label": "Each Word"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "header",
+      "content": "Buttons"
+    },
+    {
+      "type": "select",
+      "id": "d_b_font",
+      "label": "Font",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default (Helvetica Neue)"
+        },
+        {
+          "value": "inter",
+          "label": "Inter"
+        },
+        {
+          "value": "dm-sans",
+          "label": "DM Sans"
+        },
+        {
+          "value": "manrope",
+          "label": "Manrope"
+        },
+        {
+          "value": "work-sans",
+          "label": "Work Sans"
+        },
+        {
+          "value": "space-grotesk",
+          "label": "Space Grotesk"
+        },
+        {
+          "value": "syne",
+          "label": "Syne"
+        },
+        {
+          "value": "playfair-display",
+          "label": "Playfair Display"
+        },
+        {
+          "value": "cormorant-garamond",
+          "label": "Cormorant Garamond"
+        },
+        {
+          "value": "fraunces",
+          "label": "Fraunces"
+        },
+        {
+          "value": "eb-garamond",
+          "label": "EB Garamond"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "number",
+      "id": "d_b_size",
+      "label": "Size (px)",
+      "placeholder": "Default"
+    },
+    {
+      "type": "number",
+      "id": "d_b_size_m",
+      "label": "Size on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "select",
+      "id": "d_b_weight",
+      "label": "Weight",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default"
+        },
+        {
+          "value": "300",
+          "label": "Light"
+        },
+        {
+          "value": "400",
+          "label": "Regular"
+        },
+        {
+          "value": "500",
+          "label": "Medium"
+        },
+        {
+          "value": "600",
+          "label": "Semibold"
+        },
+        {
+          "value": "700",
+          "label": "Bold"
+        },
+        {
+          "value": "800",
+          "label": "Extra bold"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "select",
+      "id": "d_b_case",
+      "label": "Letter case",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default"
+        },
+        {
+          "value": "none",
+          "label": "As typed"
+        },
+        {
+          "value": "uppercase",
+          "label": "UPPERCASE"
+        },
+        {
+          "value": "lowercase",
+          "label": "lowercase"
+        },
+        {
+          "value": "capitalize",
+          "label": "Each Word"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "header",
+      "content": "Text"
+    },
+    {
+      "type": "select",
+      "id": "d_align",
+      "label": "Alignment",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default"
+        },
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Centre"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "select",
+      "id": "d_align_m",
+      "label": "Alignment on phones",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default"
+        },
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Centre"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "header",
+      "content": "Buttons"
+    },
+    {
+      "type": "color",
+      "id": "d_btn_bg",
+      "label": "Background",
+      "info": "Filled and outlined buttons take all of these; a text link only its colours."
+    },
+    {
+      "type": "color",
+      "id": "d_btn_color",
+      "label": "Text colour"
+    },
+    {
+      "type": "color",
+      "id": "d_btn_line",
+      "label": "Line colour"
+    },
+    {
+      "type": "color",
+      "id": "d_btn_hover_bg",
+      "label": "Background under the pointer"
+    },
+    {
+      "type": "color",
+      "id": "d_btn_hover_color",
+      "label": "Text colour under the pointer"
+    },
+    {
+      "type": "color",
+      "id": "d_btn_hover_line",
+      "label": "Line colour under the pointer",
+      "info": "Empty: the button keeps its colours and dims slightly."
+    },
+    {
+      "type": "number",
+      "id": "d_btn_line_width",
+      "label": "Line thickness (px)",
+      "placeholder": "Default"
+    },
+    {
+      "type": "number",
+      "id": "d_btn_radius",
+      "label": "Rounded corners (px)",
+      "placeholder": "Default"
+    },
+    {
+      "type": "number",
+      "id": "d_btn_pad_x",
+      "label": "Space inside, left and right (px)",
+      "placeholder": "Default"
+    },
+    {
+      "type": "number",
+      "id": "d_btn_pad_x_m",
+      "label": "Space inside, left and right on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "number",
+      "id": "d_btn_pad_y",
+      "label": "Space inside, top and bottom (px)",
+      "placeholder": "Default"
+    },
+    {
+      "type": "number",
+      "id": "d_btn_pad_y_m",
+      "label": "Space inside, top and bottom on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "number",
+      "id": "d_btn_space_above",
+      "label": "Space above the buttons (px)",
+      "placeholder": "Default"
+    },
+    {
+      "type": "number",
+      "id": "d_btn_space_above_m",
+      "label": "Space above the buttons on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "number",
+      "id": "d_btn_gap",
+      "label": "Space between buttons (px)",
+      "placeholder": "Default"
+    },
+    {
+      "type": "number",
+      "id": "d_btn_gap_m",
+      "label": "Space between buttons on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "header",
+      "content": "Spacing at the sides"
+    },
+    {
+      "type": "number",
+      "id": "d_pad_left",
+      "label": "Space inside, left (px)",
+      "placeholder": "Default",
+      "info": "With Custom spacing on. Empty keeps the design’s own gutter."
+    },
+    {
+      "type": "number",
+      "id": "d_pad_left_m",
+      "label": "Space inside, left on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "number",
+      "id": "d_pad_right",
+      "label": "Space inside, right (px)",
+      "placeholder": "Default"
+    },
+    {
+      "type": "number",
+      "id": "d_pad_right_m",
+      "label": "Space inside, right on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "number",
+      "id": "d_margin_left",
+      "label": "Space outside, left (px)",
+      "placeholder": "Default",
+      "info": "Narrows the section — with a colour and corners, a card."
+    },
+    {
+      "type": "number",
+      "id": "d_margin_left_m",
+      "label": "Space outside, left on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "number",
+      "id": "d_margin_right",
+      "label": "Space outside, right (px)",
+      "placeholder": "Default"
+    },
+    {
+      "type": "number",
+      "id": "d_margin_right_m",
+      "label": "Space outside, right on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "header",
+      "content": "Shadow & size"
+    },
+    {
+      "type": "select",
+      "id": "d_shadow",
+      "label": "Shadow",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "soft",
+          "label": "Soft"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "strong",
+          "label": "Strong"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "number",
+      "id": "d_max_width",
+      "label": "Content width (px)",
+      "placeholder": "Default",
+      "info": "The widest the content may get. Empty uses the design’s width."
+    },
+    {
+      "type": "number",
+      "id": "d_max_width_m",
+      "label": "Content width on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "number",
+      "id": "d_min_height",
+      "label": "Minimum height (px)",
+      "placeholder": "Default"
+    },
+    {
+      "type": "number",
+      "id": "d_min_height_m",
+      "label": "Minimum height on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "select",
+      "id": "d_valign",
+      "label": "Content sits",
+      "options": [
+        {
+          "value": "top",
+          "label": "Top"
+        },
+        {
+          "value": "center",
+          "label": "Middle"
+        },
+        {
+          "value": "bottom",
+          "label": "Bottom"
+        }
+      ],
+      "default": "top",
+      "info": "When the section is taller than its content."
+    }
+  ],
+  "enabled_on": {
+    "templates": [
+      "collection"
+    ]
+  },
+  "presets": [
+    {
+      "name": "About the designer"
+    }
+  ]
+}
+{% endschema %}

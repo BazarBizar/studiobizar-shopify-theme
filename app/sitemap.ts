@@ -41,7 +41,6 @@ const STATIC_PATHS = [
   "/our-locations",
   "/care-maintenance",
   "/careers",
-  "/professionals",
   "/faq",
   "/contact",
 ];

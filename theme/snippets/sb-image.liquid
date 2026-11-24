@@ -25,6 +25,22 @@
   assign sizes = sizes | default: '100vw'
   assign alt_text = alt | default: image.alt | escape
 
+  comment
+    The photo's focal point, set by the merchant on the photo itself in Shopify (Content →
+    Files, or the theme editor's image picker): what stays in view when the frame cuts the
+    photo — the theme's counterpart of the page builder's per-photo Crop. A custom property,
+    not an inline object-position, so a section's own Style → Images focus still wins
+    (`[data-sb-imgpos]` in styles/sb-design.css; `.sb-focal` in theme-build/sb-theme.css).
+    Not set (50% 50%): nothing is added.
+  endcomment
+  assign focal = ''
+  assign point = image.presentation.focal_point
+  if point != blank
+    if point.x != 50 or point.y != 50
+      assign focal = point.x | append: '% ' | append: point.y | append: '%'
+    endif
+  endif
+
   if priority
     assign loading_attr = 'eager'
     assign priority_attr = 'high'
@@ -62,7 +78,8 @@
       loading="{{ loading_attr }}"
       fetchpriority="{{ priority_attr }}"
       decoding="async"
-      class="{% if ratio != blank %}h-full w-full object-cover {% endif %}{{ class }}"
+      class="{% if ratio != blank %}h-full w-full object-cover {% endif %}{% if focal != '' %}sb-focal {% endif %}{{ class }}"
+      {% if focal != '' %}style="--sb-focal: {{ focal }}"{% endif %}
     >
   {%- endcapture -%}
 

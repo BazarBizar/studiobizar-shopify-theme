@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { CrumbLabel } from "@/components/admin/crumbs";
 import { Badge } from "@/components/admin/ui/badge";
 import { Button } from "@/components/admin/ui/button";
-import { pageStatus, STATUS_TONE, type ContentStatus } from "@/lib/admin/page-status";
+import { pageStatus, STATUS_TONE, type ContentStatus, type PageStatus } from "@/lib/admin/page-status";
 import { cn } from "@/lib/utils/cn";
 
 import { useRememberPageBar } from "./page-bar-memory";
@@ -52,6 +52,8 @@ export function PageEditorBar({
   onLeave,
   children,
   className,
+  back,
+  status,
 }: {
   title: string;
   /** The page's address on the site. */
@@ -66,8 +68,13 @@ export function PageEditorBar({
   /** This tab's actions, on the right. */
   children?: React.ReactNode;
   className?: string;
+  /** Where the back arrow goes — Pages unless said otherwise (a template goes back to Templates). */
+  back?: { href: string; label: string };
+  /** A status of its own instead of the page's — a template is never hidden, only in use or not. */
+  status?: PageStatus;
 }) {
   const router = useRouter();
+  const backTo = back ?? { href: "/admin/pages", label: "Back to pages" };
   useRememberPageBar(param ? { param, title, path, isPublished, content } : null);
 
   return (
@@ -78,10 +85,10 @@ export function PageEditorBar({
         type="button"
         variant="ghost"
         size="icon-sm"
-        aria-label="Back to pages"
-        title="Back to pages"
+        aria-label={backTo.label}
+        title={backTo.label}
         onClick={async () => {
-          if (!onLeave || (await onLeave())) router.push("/admin/pages");
+          if (!onLeave || (await onLeave())) router.push(backTo.href);
         }}
       >
         <ArrowLeftIcon />
@@ -95,7 +102,13 @@ export function PageEditorBar({
       {param ? <PageTabs param={param} active={active} beforeLeave={onLeave} /> : null}
 
       <div className="flex items-center gap-1.5">
-        <PageStatusBadge isPublished={isPublished} content={content} />
+        {status ? (
+          <Badge variant="outline" className={STATUS_TONE[status.tone]} title={status.hint}>
+            {status.label}
+          </Badge>
+        ) : (
+          <PageStatusBadge isPublished={isPublished} content={content} />
+        )}
       </div>
 
       <div className="ms-auto flex items-center gap-1.5">{children}</div>

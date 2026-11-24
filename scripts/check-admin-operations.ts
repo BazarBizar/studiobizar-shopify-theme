@@ -232,6 +232,14 @@ async function main() {
     metafields: [{ ownerId: "gid://shopify/Shop/0", namespace: "custom", key: "theme_layout_draft", type: "json", value: "{}" }],
   });
 
+  // Templates. Read-only lookups, then a write naming shop 0, so nothing is set.
+  await run("templateDocuments", { published: "template_product", draft: "template_product_draft", previous: "template_product_previous" });
+  await run("templateList", { keys: ["custom.template_product", "custom.template_product_draft"] });
+  await run("templateSet", {
+    metafields: [{ ownerId: "gid://shopify/Shop/0", namespace: "custom", key: "template_product_draft", type: "json", value: "{}" }],
+  });
+  await run("templateClear", { metafields: [{ ownerId: "gid://shopify/Shop/0", namespace: "custom", key: "template_product" }] });
+
   // Staff & sign-in. The same: the write names shop 0, so nothing is set.
   await run("staffAccounts", {});
   await run("staffAccountsSet", {

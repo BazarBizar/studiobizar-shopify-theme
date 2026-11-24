@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { PageShell } from "@/components/layout/page-shell";
+import { BuilderPage } from "@/components/page-builder/builder-page";
 import { ProductGrid } from "@/components/shop/product-grid";
 import { ShopControls } from "@/components/shop/shop-controls";
 import { Container } from "@/components/ui/container";
@@ -14,6 +15,7 @@ import {
   getListedCollections,
   getPage,
   getProducts,
+  getPublishedTemplate,
   getShopCategories,
   getSiteTexts,
 } from "@/lib/shopify";
@@ -36,7 +38,11 @@ export const metadata: Metadata = {
 };
 
 export default async function ShopPage({ searchParams }: PageProps<"/shop">) {
-  const params = await searchParams;
+  const [params, template] = await Promise.all([searchParams, getPublishedTemplate("shop")]);
+
+  // Website → Templates → All products, once published; until then the layout below.
+  if (template) return <BuilderPage doc={template} title="Products" record={{ kind: "shop", params }} />;
+
   const sort = typeof params.sort === "string" ? params.sort : undefined;
 
   // `view` decides which row of chips filters the grid, so only that view's

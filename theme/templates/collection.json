@@ -1,38 +1,38 @@
 {
   "sections": {
-    "hero": {
-      "type": "sb-collection-hero",
-      "settings": {
-        "show_wordmark": true,
-        "ratio": "2 / 1",
-        "surface": "dark"
-      }
+    "collection-hero-1": {
+      "type": "sb-t-collection-hero",
+      "settings": {}
     },
-    "story": {
-      "type": "sb-collection-story",
-      "settings": {
-        "idea_align": "left",
-        "idea_surface": "blue",
-        "designer_align": "right",
-        "designer_surface": "inherit",
-        "rhythm": "theme"
-      }
+    "collection-idea-2": {
+      "type": "sb-t-collection-idea",
+      "settings": {}
     },
-    "main": {
-      "type": "sb-main-collection",
+    "collection-designer-3": {
+      "type": "sb-t-collection-designer",
+      "settings": {}
+    },
+    "collection-products-4": {
+      "type": "sb-t-collection-products",
+      "settings": {}
+    },
+    "collection-in-context-5": {
+      "type": "sb-t-collection-in-context",
+      "settings": {}
+    },
+    "go-back-7": {
+      "type": "sb-go-back",
       "settings": {
-        "show_title": false,
-        "show_filters": true,
-        "show_sort": true,
-        "products_per_page": 24,
-        "surface": "inherit",
-        "rhythm": "theme"
+        "href": "/collections"
       }
     }
   },
   "order": [
-    "hero",
-    "story",
-    "main"
+    "collection-hero-1",
+    "collection-idea-2",
+    "collection-designer-3",
+    "collection-products-4",
+    "collection-in-context-5",
+    "go-back-7"
   ]
 }

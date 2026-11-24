@@ -2,9 +2,11 @@
 
 import { PageShell } from "@/components/layout/page-shell";
 import { BuilderPage, publishedDocument } from "@/components/page-builder/builder-page";
+import { loadTemplateRecord } from "@/components/page-builder/template-record";
 import { Container } from "@/components/ui/container";
 import { currentStaff } from "@/lib/admin/auth";
-import { parsePageDocument } from "@/lib/page-builder/document";
+import { misplacedSections, parsePageDocument } from "@/lib/page-builder/document";
+import { isTemplateKind } from "@/lib/page-builder/template-kinds";
 import { getPage } from "@/lib/shopify";
 import { readThemeContent } from "@/lib/theme-builder/layout";
 
@@ -46,4 +48,15 @@ export async function renderThemePreview(handle: string, content: unknown) {
       </Container>
     </PageShell>
   );
+}
+
+/** A template being built, drawn from the editor's current content around the item it previews with. */
+export async function renderTemplatePreview(kind: string, item: string, content: unknown) {
+  await assertStaff();
+  if (!isTemplateKind(kind)) return null;
+  const parsed = parsePageDocument(JSON.stringify(content ?? null));
+  if (!parsed.ok || misplacedSections(parsed.doc.sections, kind).length) return null;
+  const loaded = await loadTemplateRecord(kind, item || undefined);
+  if (!loaded) return null;
+  return <BuilderPage doc={parsed.doc} title={loaded.title} record={loaded.record} preview />;
 }

@@ -5,14 +5,16 @@ import type { Metadata } from "next";
 import { PageShell } from "@/components/layout/page-shell";
 import { Container } from "@/components/ui/container";
 import { BUILDER_METAFIELDS, parsePageDocument, type PageDocument } from "@/lib/page-builder/document";
+import { sectionDefinition } from "@/lib/page-builder/registry";
 import type { Maybe, ShopifyPage } from "@/lib/shopify/types";
 import type { ThemeLayoutContent } from "@/lib/theme-builder/layout";
 import { toMetafieldMap } from "@/lib/shopify/transforms";
 
+import type { TemplateRecord } from "./renderer-kit";
 import { SectionRenderer } from "./section-renderer";
 
 /**
- * A whole builder page: the shell in the document's chosen ground, then its
+ * A whole builder page (or a template page, with its item): the shell in the document's chosen ground, then its
  * sections.
  *
  * The page has exactly one `h1`. When the operator has placed a Page heading
@@ -25,19 +27,27 @@ export function BuilderPage({
   title,
   preview = false,
   theme,
+  record,
+  before,
 }: {
   doc: PageDocument;
   title: string;
   preview?: boolean;
   /** The Theme Builder's preview: its draft header and footer. */
   theme?: ThemeLayoutContent | null;
+  /** A template's item — the product, collection… its own sections draw. */
+  record?: TemplateRecord;
+  /** Drawn before the sections, inside the page — a template route's structured data. */
+  before?: React.ReactNode;
 }) {
-  const hasHeading = doc.sections.some((section) => section.visible && section.type === "page_heading");
+  // A Page heading, or a template section that draws the item's name as the heading.
+  const hasHeading = doc.sections.some((section) => section.visible && sectionDefinition(section.type)?.heading);
 
   return (
     <PageShell surface={doc.page.surface} footerSurface={doc.page.footerSurface} theme={theme}>
       {!hasHeading && <h1 className="sr-only">{title}</h1>}
-      <SectionRenderer sections={doc.sections} context={{ pageTitle: title, preview }} />
+      {before}
+      <SectionRenderer sections={doc.sections} context={{ pageTitle: title, preview, record }} />
     </PageShell>
   );
 }

@@ -106,6 +106,7 @@ export const pageHeading = defineSection({
   ],
   universal: ["surface", "rhythm"],
   summaryKey: "title",
+  heading: true,
 });
 
 export const hero = defineSection({

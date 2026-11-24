@@ -1,0 +1,11 @@
+{
+  "sections": {
+    "projects-main-1": {
+      "type": "sb-t-projects-main",
+      "settings": {}
+    }
+  },
+  "order": [
+    "projects-main-1"
+  ]
+}

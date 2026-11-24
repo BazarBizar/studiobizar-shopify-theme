@@ -133,3 +133,17 @@ export const getPageBuilderDocumentQuery = /* GraphQL */ `
     }
   }
 `;
+
+/**
+ * A template's PUBLISHED document — `custom.template_<kind>` on the shop, the only one
+ * of its three copies the Storefront API can read. See `lib/page-builder/template-kinds.ts`.
+ */
+export const getTemplateDocumentQuery = /* GraphQL */ `
+  query GetTemplateDocument($key: String!) {
+    shop {
+      template: metafield(namespace: "custom", key: $key) {
+        value
+      }
+    }
+  }
+`;

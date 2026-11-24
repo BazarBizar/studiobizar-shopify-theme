@@ -61,9 +61,10 @@ import { richTextToHtml } from "@/lib/shopify/transforms";
 
 import { renderer, type SomeRenderer } from "./renderer-kit";
 import { LANDING_RENDERERS } from "./renderers-landing";
+import { TEMPLATE_RENDERERS } from "./renderers-template";
 
 /**
- * Section type → how to fetch what it needs and which EXISTING component draws
+ * Section type → how to fetch what it needs (a template's item comes in `context`) and which EXISTING component draws
  * it. This is the adapter layer and only that: settings in, the component's own
  * props out. No markup is invented here beyond a heading where a component has
  * none of its own.
@@ -518,4 +519,5 @@ export const RENDERERS = {
   }),
 
   ...LANDING_RENDERERS,
+  ...TEMPLATE_RENDERERS,
 } satisfies { [K in SectionType]: SomeRenderer<K> };

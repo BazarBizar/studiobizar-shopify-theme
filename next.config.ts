@@ -1,6 +1,26 @@
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
+
 import type { NextConfig } from "next";
 
 const isDevelopment = process.env.NODE_ENV === "development";
+
+/**
+ * The files at the root of `public/` (`favicon.ico`, …), read at build time and inlined
+ * for `proxy.ts`. A one-segment address the proxy does not recognise is sent to the
+ * shared not-found page — so it has to know these real files, and reading the folder
+ * means the list can never fall behind it.
+ */
+function publicRootFiles(): string {
+  try {
+    return readdirSync(join(process.cwd(), "public"), { withFileTypes: true })
+      .filter((entry) => entry.isFile())
+      .map((entry) => entry.name)
+      .join("/");
+  } catch {
+    return "";
+  }
+}
 
 /**
  * THE STOREFRONT'S CSP — its own policy, not a relaxed copy of the admin one.
@@ -38,6 +58,10 @@ const nextConfig: NextConfig = {
   /** The version banner is free reconnaissance. Nothing needs it. */
   poweredByHeader: false,
 
+  env: {
+    PUBLIC_ROOT_FILES: publicRootFiles(),
+  },
+
   images: {
     // Images are served straight from the Shopify CDN and sized with its own
     // `?width=` transform, so Vercel's optimizer is deliberately bypassed.
@@ -50,6 +74,15 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "feeds.behold.so" },
       { protocol: "https", hostname: "behold.pictures" },
     ],
+  },
+
+  /**
+   * Old addresses with no route of their own — answered by the platform before any
+   * function runs. `/professionals` was linked from the footer and the sitemap, but the
+   * `professionals` page has always been drawn at `/designers`.
+   */
+  async redirects() {
+    return [{ source: "/professionals", destination: "/designers", permanent: true }];
   },
 
   /**

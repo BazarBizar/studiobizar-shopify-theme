@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { NO_STORE_HEADERS, PUBLIC_CACHE_HEADERS, boundedParams } from "@/lib/public-api";
 import { categoryQuery, findCategory } from "@/lib/shopify/categories";
 import {
   catalogueFilterQuery,
@@ -19,9 +20,16 @@ import {
  * Feeds the client-side infinite scroll on Shop All, collection pages and
  * search. The first page is rendered by the Server Component; this serves every
  * page after it.
+ *
+ * Cached at the CDN for a few minutes (`lib/public-api.ts`): every visitor scrolling the
+ * same grid asks for the same pages.
  */
 export async function GET(request: Request) {
-  const params = new URL(request.url).searchParams;
+  const url = new URL(request.url);
+  if (!boundedParams(url)) {
+    return NextResponse.json({ message: "That request is too long." }, { status: 400, headers: NO_STORE_HEADERS });
+  }
+  const params = url.searchParams;
   const category = findCategory(await getShopCategories(), params.get("category"));
   const filter = readCatalogueFilter((key) => params.get(key));
 
@@ -52,9 +60,9 @@ export async function GET(request: Request) {
             query: combineQueries(categoryQuery(category), catalogueFilterQuery(filter)),
           });
 
-    return NextResponse.json(page);
+    return NextResponse.json(page, { headers: PUBLIC_CACHE_HEADERS });
   } catch (error) {
     console.error("[api/products]", error);
-    return NextResponse.json({ message: "Could not load more products." }, { status: 502 });
+    return NextResponse.json({ message: "Could not load more products." }, { status: 502, headers: NO_STORE_HEADERS });
   }
 }

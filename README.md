@@ -42,10 +42,15 @@ that dodge the `@/` alias. If you need Shopify data on a public page, go through
 
 ## Storefront caching
 
-Storefront fetches carry cache tags (`lib/shopify/constants.ts`) with per-entity
-ISR windows. `POST /api/revalidate?tag=<tag>&secret=…` drops one entity class.
-`REVALIDATE_SECRET` is required in production, where the route otherwise refuses
-every request.
+Every storefront page is cached (ISR) — product, collection, designer and project
+pages too — with a one-day window that is only a safety net. Changes arrive through
+cache tags (`lib/shopify/constants.ts`): the panel drops the matching tag on every
+save, and Shopify webhooks to `/api/webhooks/shopify` (signed, `SHOPIFY_WEBHOOK_SECRET`)
+do the same for changes made in Shopify itself. See `docs/modules/caching.md`.
+
+`POST /api/revalidate?tag=<tag>` with header `x-revalidate-secret: …` drops one
+entity class by hand (`?tag=all` for every one). `REVALIDATE_SECRET` is required in
+production, where the route otherwise refuses every request.
 
 Admin fetches are always `no-store`: an operator must see the store as it is now,
 not a snapshot they might overwrite.

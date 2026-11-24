@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PageShell } from "@/components/layout/page-shell";
+import { BuilderPage } from "@/components/page-builder/builder-page";
 import { AddToInquiry } from "@/components/product/add-to-inquiry";
 import { InContextGallery } from "@/components/product/in-context-gallery";
 import { ProductGallery } from "@/components/product/product-gallery";
@@ -16,6 +17,7 @@ import {
   getProductRecommendations,
   getProductDetails,
   getProducts,
+  getPublishedTemplate,
   getSiteTexts,
 } from "@/lib/shopify";
 import { normalizeCaptionedImage } from "@/lib/shopify/entities";
@@ -50,6 +52,17 @@ function designerOf(metafields: MetafieldMap) {
     bio: fieldRichText(fields, "bio_full") || fieldRichText(fields, "bio_short"),
     portrait: fieldImage(fields, "portrait"),
   };
+}
+
+/**
+ * Empty `generateStaticParams`: nothing is built ahead, but each product page is drawn on
+ * its first visit and then served from the cache (ISR) — not drawn again for every
+ * visitor and every crawler, as it was while this route was dynamic. A change reaches it
+ * through its cache tag (the panel's writes, Shopify's webhooks); `REVALIDATE` is only
+ * the safety net. An unknown handle is a cached 404 like any other page.
+ */
+export function generateStaticParams() {
+  return [];
 }
 
 export async function generateMetadata({
@@ -95,8 +108,21 @@ function ProductJsonLd({ product }: { product: Product }) {
 
 export default async function ProductPage({ params }: PageProps<"/shop/[handle]">) {
   const { handle } = await params;
-  const product = await getProduct(handle);
+  const [product, template] = await Promise.all([getProduct(handle), getPublishedTemplate("product")]);
   if (!product) notFound();
+
+  // Website → Templates → Product page, once published. Until then — and if it is
+  // ever unreadable — the layout below, unchanged.
+  if (template) {
+    return (
+      <BuilderPage
+        doc={template}
+        title={product.title}
+        record={{ kind: "product", product }}
+        before={<ProductJsonLd product={product} />}
+      />
+    );
+  }
 
   const metafields = product.metafields;
   const designer = designerOf(metafields);

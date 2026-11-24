@@ -1157,8 +1157,8 @@ export function PageSettingsEditor({
   onChange,
 }: {
   settings: PageSettings;
-  /** The page's own settings screen — title, address, SEO. */
-  settingsHref: string;
+  /** The page's own settings screen — title, address, SEO. None for a template. */
+  settingsHref?: string;
   onBack: () => void;
   onChange: (key: keyof PageSettings, value: string) => void;
 }) {
@@ -1190,13 +1190,15 @@ export function PageSettingsEditor({
           />
         </div>
 
-        <p className="text-muted-foreground text-xs">
-          The page’s title, web address, visibility and Google listing are set in{" "}
-          <a href={settingsHref} className="text-foreground font-medium underline underline-offset-2">
-            page settings
-          </a>
-          .
-        </p>
+        {settingsHref ? (
+          <p className="text-muted-foreground text-xs">
+            The page’s title, web address, visibility and Google listing are set in{" "}
+            <a href={settingsHref} className="text-foreground font-medium underline underline-offset-2">
+              page settings
+            </a>
+            .
+          </p>
+        ) : null}
       </div>
     </div>
   );

@@ -78,7 +78,8 @@
     "title": "Collections",
     "none": "No collections published yet.",
     "the_idea": "The Idea",
-    "the_designer": "The Designer"
+    "the_designer": "The Designer",
+    "in_context": "In Context"
   },
   "product": {
     "view_image": "View image {{ index }} of {{ total }}",
@@ -142,7 +143,9 @@
     "location": "Location",
     "year": "Year",
     "category": "Category",
-    "creative_lead": "Creative lead"
+    "creative_lead": "Creative lead",
+    "collaborators": "Collaborators",
+    "photography": "Photography"
   },
   "sections": {
     "slideshow": {
@@ -156,5 +159,17 @@
     "video": {
       "play": "Play: {{ name }}"
     }
+  },
+  "shop": {
+    "title": "Products"
+  },
+  "search": {
+    "title": "Search",
+    "label": "Search products",
+    "results": {
+      "one": "{{ count }} result for “{{ terms }}”",
+      "other": "{{ count }} results for “{{ terms }}”"
+    },
+    "all_products": "all products"
   }
 }

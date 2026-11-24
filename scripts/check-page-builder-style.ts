@@ -74,7 +74,10 @@ async function main() {
   }
 
   const only = process.env.ONLY?.split(",");
-  const types = Object.keys(SECTIONS).filter((type) => !SECTIONS[type].hidden && (!only || only.includes(type)));
+  // A template's own sections draw an item (a product…) a test page does not have — `check:templates` covers them.
+  const types = Object.keys(SECTIONS).filter(
+    (type) => !SECTIONS[type].hidden && !SECTIONS[type].template && (!only || only.includes(type)),
+  );
   const base = (type: string) => {
     const found = real.get(type);
     if (found) return { id: newSectionId(), type, visible: true, settings: { ...SECTIONS[type].defaults(), ...found.settings } };

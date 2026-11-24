@@ -15,9 +15,10 @@ import {
   type FieldDef,
   type SettingsOf,
 } from "./fields";
+import type { TemplateCategory, TemplateKind } from "./template-kinds";
 
 /**
- * One section type, declared once.
+ * One section type, declared once — a page section, or a template's own.
  *
  * `defineSection` takes the developer's field list and returns everything the
  * three consumers need — the panel's form, the write API's validation, the
@@ -158,7 +159,9 @@ export type SectionCategory =
   | "Social proof"
   | "Catalogue"
   | "Layout"
-  | "Site";
+  | "Site"
+  // A template's own sections, offered only in that template — see `template-kinds.ts`.
+  | TemplateCategory;
 
 export type SectionDefinition<
   T extends string = string,
@@ -190,6 +193,14 @@ export type SectionDefinition<
   source: (settings: S) => ContentSource | null;
   /** Whether the Style tab offers "Text alignment" — off where the section places its text itself. */
   textAlign: boolean;
+  /**
+   * The template this section belongs to: it draws the item that template's pages
+   * show (a product, a collection…), so it is offered — and accepted on save — only
+   * there. null: an ordinary section, usable on any page and in any template.
+   */
+  template: TemplateKind | null;
+  /** Draws the page's one `h1` — so the builder does not add a hidden one of its own. */
+  heading: boolean;
 };
 
 /** A screen in the panel that holds what a section shows. */
@@ -231,6 +242,10 @@ export function defineSection<
   summaryKey?: F[number]["key"];
   hidden?: boolean;
   source?: (settings: SettingsOf<F> & UniversalSettings) => ContentSource | null;
+  /** See `SectionDefinition.template`. */
+  template?: TemplateKind;
+  /** See `SectionDefinition.heading`. */
+  heading?: boolean;
 }): SectionDefinition<T, SettingsOf<F> & UniversalSettings> {
   type S = SettingsOf<F> & UniversalSettings;
 
@@ -291,5 +306,7 @@ export function defineSection<
     hidden: definition.hidden ?? false,
     source: definition.source ?? (() => null),
     textAlign: definition.textAlign ?? true,
+    template: definition.template ?? null,
+    heading: definition.heading ?? false,
   };
 }

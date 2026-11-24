@@ -1,0 +1,93 @@
+{% comment %}
+  A heading, a scrolling row of product cards and a "view all" link — the templates'
+  product rows (components/product/product-rail.tsx with its Carousel). Renders nothing
+  when there are no products to show.
+
+  Accepts:
+    heading        — the row title
+    products       — an array or a paginated drop of products
+    limit          — how many to show, default 4
+    exclude        — a product handle to leave out (the product being viewed)
+    view_all       — url for the "view all" link; blank: no link
+    view_all_label — its text, default "view all"
+    placement      — below | heading: the link under the row, or beside the heading
+    per_desktop, per_tablet, per_mobile — items across ("auto": as designed, 4 / 2.15 / 1.28)
+    step           — how far one arrow moves: 1 | 2 | 3 | page
+    look           — the card look attributes (sb-template-look), already captured
+{% endcomment %}
+
+{%- liquid
+  assign limit = limit | default: 4
+  assign label = view_all_label | default: 'view all'
+  if label == blank
+    assign label = 'view all'
+  endif
+
+  assign per_d = '4'
+  assign per_t = '2.15'
+  assign per_m = '1.28'
+  if per_desktop != blank and per_desktop != 'auto'
+    assign per_d = per_desktop
+  endif
+  if per_tablet != blank and per_tablet != 'auto'
+    assign per_t = per_tablet
+  endif
+  if per_mobile != blank and per_mobile != 'auto'
+    assign per_m = per_mobile
+  endif
+  assign gaps_d = per_d | plus: 0 | ceil | minus: 1
+  assign gaps_t = per_t | plus: 0 | ceil | minus: 1
+  assign gaps_m = per_m | plus: 0 | ceil | minus: 1
+  assign cv_style = '--cv-d:' | append: per_d | append: ';--cv-t:' | append: per_t | append: ';--cv-m:' | append: per_m
+  assign cv_style = cv_style | append: ';--cv-d-gaps:' | append: gaps_d | append: ';--cv-t-gaps:' | append: gaps_t | append: ';--cv-m-gaps:' | append: gaps_m
+  assign step = step | default: '1'
+
+  assign label_previous = 'sections.slideshow.previous' | t
+  assign label_next = 'sections.slideshow.next' | t
+
+  assign count = 0
+-%}
+
+{%- capture slides -%}
+  {%- for item in products -%}
+    {%- if count >= limit -%}{%- break -%}{%- endif -%}
+    {%- if exclude != blank and item.handle == exclude -%}{%- continue -%}{%- endif -%}
+    {%- assign count = count | plus: 1 -%}
+    <div class="min-w-0 shrink-0">{%- render 'sb-product-card', product: item -%}</div>
+  {%- endfor -%}
+{%- endcapture -%}
+
+{%- if count > 0 -%}
+  <div class="sb-container pb-section"{% if look != blank %} {{ look }}{% endif %}>
+    {%- if placement == 'heading' -%}
+      <div class="mb-8 flex items-end justify-between gap-6">
+        <h2 class="text-h2">{{ heading }}</h2>
+        {%- if view_all != blank -%}
+          {%- render 'sb-button', label: label, href: view_all, class: 'shrink-0' -%}
+        {%- endif -%}
+      </div>
+    {%- else -%}
+      <h2 class="text-h2 mb-8">{{ heading }}</h2>
+    {%- endif -%}
+
+    <div data-sb-carousel data-sb-carousel-step="{{ step | escape }}" role="region" aria-roledescription="carousel" aria-label="{{ heading | escape }}">
+      <div class="sb-track gap-[var(--sb-grid-gap)]" data-sb-carousel-track data-cv style="{{ cv_style | escape }}">
+        {{- slides -}}
+      </div>
+      <div data-sb-carousel-controls hidden class="mt-6 flex justify-end gap-1">
+        <button type="button" data-sb-carousel-prev aria-label="{{ label_previous }}" class="flex size-9 items-center justify-center opacity-80 hover:opacity-100">
+          {%- render 'sb-icon', icon: 'arrow-left', class: 'size-5', size: 1.25 -%}
+        </button>
+        <button type="button" data-sb-carousel-next aria-label="{{ label_next }}" class="flex size-9 items-center justify-center opacity-80 hover:opacity-100">
+          {%- render 'sb-icon', icon: 'arrow-right', class: 'size-5', size: 1.25 -%}
+        </button>
+      </div>
+    </div>
+
+    {%- if placement != 'heading' and view_all != blank -%}
+      <div class="mt-8">
+        {%- render 'sb-button', label: label, href: view_all, variant: 'outline' -%}
+      </div>
+    {%- endif -%}
+  </div>
+{%- endif -%}

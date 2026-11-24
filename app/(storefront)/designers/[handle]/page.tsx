@@ -4,12 +4,24 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PageShell } from "@/components/layout/page-shell";
+import { BuilderPage } from "@/components/page-builder/builder-page";
 import { ProductCardGrid } from "@/components/product/product-card-grid";
 import { Container } from "@/components/ui/container";
 import { GoBack } from "@/components/ui/go-back";
-import { METAOBJECT_TYPES, getMetaobject, getProductsByDesigner } from "@/lib/shopify";
+import { METAOBJECT_TYPES, getMetaobject, getProductsByDesigner, getPublishedTemplate } from "@/lib/shopify";
 import { normalizeDesigner, type Designer } from "@/lib/shopify/entities";
 import { cdnImage } from "@/lib/shopify/transforms";
+
+/**
+ * Empty `generateStaticParams`: nothing is built ahead, but each designer page is drawn on
+ * its first visit and then served from the cache (ISR) — not drawn again for every
+ * visitor and every crawler, as it was while this route was dynamic. A change reaches it
+ * through its cache tag (the panel's writes, Shopify's webhooks); `REVALIDATE` is only
+ * the safety net. An unknown handle is a cached 404 like any other page.
+ */
+export function generateStaticParams() {
+  return [];
+}
 
 export async function generateMetadata({
   params,
@@ -56,10 +68,25 @@ function DesignerJsonLd({ designer }: { designer: Designer }) {
 
 export default async function DesignerPage({ params }: PageProps<"/designers/[handle]">) {
   const { handle } = await params;
-  const entry = await getMetaobject(METAOBJECT_TYPES.designer, handle);
+  const [entry, template] = await Promise.all([
+    getMetaobject(METAOBJECT_TYPES.designer, handle),
+    getPublishedTemplate("designer"),
+  ]);
   if (!entry) notFound();
 
   const designer = normalizeDesigner(entry);
+
+  // Website → Templates → Designer page, once published; until then the layout below.
+  if (template) {
+    return (
+      <BuilderPage
+        doc={template}
+        title={designer.name}
+        record={{ kind: "designer", designer }}
+        before={<DesignerJsonLd designer={designer} />}
+      />
+    );
+  }
 
   // No metafield filter exists on the Storefront product query, so a designer's
   // work is reached through the collections that credit them.

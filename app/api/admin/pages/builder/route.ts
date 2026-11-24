@@ -105,7 +105,7 @@ export async function POST(request: Request) {
         break;
       case "builderPublish": {
         const published = await publish(input.id, input.baseRevision, staff.email);
-        const tags = await revalidateForType("page", { settle: false });
+        const tags = await revalidateForType("page", { settle: false, handle: published.handle });
         revalidateWhenLive(published.handle, published.publishedAt, tags);
         result = published;
         break;

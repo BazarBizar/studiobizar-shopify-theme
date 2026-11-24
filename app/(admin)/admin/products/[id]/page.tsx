@@ -1,4 +1,4 @@
-import { ExternalLinkIcon } from "lucide-react";
+import { LayoutTemplateIcon, ExternalLinkIcon } from "lucide-react";
 
 import { AppLink } from "@/components/admin/app-link";
 import { ScreenNotFound } from "@/components/admin/screen-not-found";
@@ -83,6 +83,13 @@ export default async function ProductDetailPage({ params }: PageProps<"/admin/pr
                 </a>
               </Button>
             ) : null}
+            {/* Every product page shares one layout — Website → Templates. */}
+            <Button asChild variant="outline" size="sm" title="The layout every product page shares">
+              <AppLink href="/admin/templates/product">
+                <LayoutTemplateIcon className="size-3.5" />
+                Page layout
+              </AppLink>
+            </Button>
             {shopDomain ? (
               <Button asChild variant="outline" size="sm">
                 <a
@@ -103,6 +110,9 @@ export default async function ProductDetailPage({ params }: PageProps<"/admin/pr
         <ProductMedia productId={product.id} media={product.media} />
 
         <ProductEditor
+          // Re-seeded from what Shopify stored after every save — see `CollectionForm`'s key.
+          // (A details-only save may not change updatedAt, so the stored values count too.)
+          key={`${product.updatedAt}:${JSON.stringify(specs.map((spec) => spec.initialValue))}`}
           productId={product.id}
           initialCore={{
             title: product.title,

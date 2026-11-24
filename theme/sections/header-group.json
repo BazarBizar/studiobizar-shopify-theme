@@ -2,6 +2,22 @@
   "name": "Header",
   "type": "header",
   "sections": {
+    "announcement-bar": {
+      "type": "sb-announcement-bar",
+      "disabled": true,
+      "settings": {},
+      "blocks": {
+        "message-1": {
+          "type": "message",
+          "settings": {
+            "text": "Write your announcement here"
+          }
+        }
+      },
+      "block_order": [
+        "message-1"
+      ]
+    },
     "header": {
       "type": "sb-header",
       "settings": {
@@ -15,5 +31,8 @@
       }
     }
   },
-  "order": ["header"]
+  "order": [
+    "announcement-bar",
+    "header"
+  ]
 }

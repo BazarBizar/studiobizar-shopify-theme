@@ -42,7 +42,7 @@ export const FALLBACK_NAV: Record<keyof typeof MENUS, MenuLink[]> = {
         { id: "f-contact-sub", title: "Contact", href: "/contact", items: [] },
       ],
     },
-    { id: "f-professionals", title: "Professionals", href: "/professionals", items: [] },
+    { id: "f-professionals", title: "Professionals", href: "/designers", items: [] },
   ],
   footerAbout: [
     { id: "f-our-story", title: "Our Story", href: "/our-story", items: [] },

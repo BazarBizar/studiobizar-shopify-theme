@@ -3,6 +3,7 @@
 import { Check, Plus } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { cdnImage } from "@/lib/shopify/transforms";
@@ -32,6 +33,12 @@ const ASPECT = {
  * so it only ever adds one of whatever that default variant is.
  *
  * `compact` is the Shop's S density: image only, no title, label or `+`.
+ *
+ * PREFETCHED ON INTENT, not on sight. A grid puts dozens of cards on screen and infinite
+ * scroll keeps adding more; prefetching every one as it scrolls past was a request per
+ * card, almost none of them ever opened. The product page is fetched the moment the
+ * pointer rests on a card, it takes focus, or a finger touches it — a few hundred
+ * milliseconds before the click, which is enough for the page to open at once.
  */
 export function ProductCard({
   product,
@@ -46,7 +53,15 @@ export function ProductCard({
 }) {
   const [added, setAdded] = useState(false);
   const add = useInquiryCart((state) => state.add);
+  const router = useRouter();
   const tag = product.tags[0];
+  const href = `/shop/${product.handle}`;
+  const intent = {
+    prefetch: false,
+    onPointerEnter: () => router.prefetch(href),
+    onFocus: () => router.prefetch(href),
+    onTouchStart: () => router.prefetch(href),
+  } as const;
 
   function quickAdd() {
     if (!product.defaultVariantId) return;
@@ -65,7 +80,8 @@ export function ProductCard({
   return (
     <article>
       <Link
-        href={`/shop/${product.handle}`}
+        href={href}
+        {...intent}
         aria-label={compact ? product.title : undefined}
         className="group block"
       >
@@ -100,7 +116,7 @@ export function ProductCard({
 
       {!compact && (
         <div className="mt-3 flex items-start justify-between gap-3">
-          <Link href={`/shop/${product.handle}`} className="min-w-0">
+          <Link href={href} {...intent} className="min-w-0">
             <h3 className="text-secondary line-clamp-2 font-medium">{product.title}</h3>
             {product.collectionLabel && (
               <p className="text-tertiary mt-1 truncate text-muted">{product.collectionLabel}</p>

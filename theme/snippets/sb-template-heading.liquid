@@ -1,0 +1,31 @@
+{% comment %}
+  A template section's heading look — `headingLook` in lib/page-builder/template-look.ts.
+  Prints the class string: the chosen size (else `fallback`, the size as designed) and
+  the alignment. The colour is the section's own `style` attribute.
+
+  The classes are written out in full so Tailwind finds them (see sb-section-classes).
+
+  Accepts:
+    size     — auto | h3 | h2 | h1 | display
+    align    — auto | left | center
+    fallback — the class it is drawn with as designed, e.g. 'text-h1'
+{% endcomment %}
+{%- liquid
+  case size
+    when 'h3'
+      echo 'text-h3'
+    when 'h2'
+      echo 'text-h2'
+    when 'h1'
+      echo 'text-h1'
+    when 'display'
+      echo 'text-display'
+    else
+      echo fallback
+  endcase
+  if align == 'center'
+    echo ' text-center'
+  elsif align == 'left'
+    echo ' text-left'
+  endif
+-%}

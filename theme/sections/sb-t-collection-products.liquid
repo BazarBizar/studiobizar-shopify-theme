@@ -1,0 +1,1231 @@
+{% comment %}
+  Website → Templates → Collection page → "Collection pieces" (collection_products).
+  The collection's name and description, then its products: the design's mosaic of
+  large and small (CollectionHighlightGrid — rows of 1·1·1·1, 1·1·2, 2·1·1, up to ten)
+  or an even grid.
+  The schema is generated (`yarn liquid:schemas`); change the section in Next.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+
+  capture rhythm_class
+    render 'sb-section-classes', rhythm: s.rhythm, pad: 'none'
+  endcapture
+  capture hide_class
+    render 'sb-hide-on', hide_on: s.hide_on
+  endcapture
+  assign paints = false
+  if s.surface != blank and s.surface != 'inherit'
+    assign paints = true
+  endif
+
+  capture title_class
+    render 'sb-template-heading', size: s.heading_size, align: s.heading_align, fallback: 'text-h1'
+  endcapture
+  capture look
+    render 'sb-template-look', columns_desktop: s.columns_desktop, columns_mobile: s.columns_mobile, gap: s.gap, image_shape: s.image_shape, image_radius: s.image_radius, image_overlay: s.image_overlay, overlay_color: s.overlay_color, overlay_opacity: s.overlay_opacity, card_style: s.card_style, card_color: s.card_color, card_border_color: s.card_border_color, title_size: s.title_size, title_color: s.title_color, card_align: s.card_align
+  endcapture
+
+  comment
+    The mosaic takes at most ten, and only whole rows: 4, then 3, then 3.
+  endcomment
+  assign limit = s.limit
+  if s.layout != 'grid'
+    if limit > 10
+      assign limit = 10
+    endif
+    assign in_collection = collection.products_count
+    if in_collection < limit
+      assign limit = in_collection
+    endif
+    if limit >= 10
+      assign limit = 10
+    elsif limit >= 7
+      assign limit = 7
+    elsif limit >= 4
+      assign limit = 4
+    else
+      assign limit = 0
+    endif
+  endif
+-%}
+
+{%- if collection != blank -%}
+  <div
+    {% if paints %}data-surface="{{ s.surface }}" {% endif %}class="{% if paints %}flow-root bg-background text-foreground {% endif %}{{ rhythm_class }} {{ hide_class }}"
+    {% render 'sb-section-style', settings: s %}
+    {{ section.shopify_attributes }}
+  >
+    <div class="sb-container pb-section">
+      {%- if s.show_title -%}
+        <h2 class="{{ title_class }}"{% if s.heading_color != blank %} style="color: {{ s.heading_color }}"{% endif %}>{{ collection.title }}</h2>
+      {%- endif -%}
+      {%- if s.show_description and collection.description != blank -%}
+        <div class="sb-prose mt-6 max-w-[46rem]">{{ collection.description }}</div>
+      {%- endif -%}
+
+      <div class="{% if s.show_title or s.show_description %}mt-12{% endif %}">
+        {%- if look != blank -%}<div {{ look }}>{%- endif -%}
+        {%- if s.layout == 'grid' -%}
+          <ul class="sb-grid-4">
+            {%- for item in collection.products limit: limit -%}
+              <li>{%- render 'sb-product-card', product: item, priority: forloop.first -%}</li>
+            {%- endfor -%}
+          </ul>
+        {%- elsif limit > 0 -%}
+          <div class="flex flex-col gap-grid-gap">
+            {%- for item in collection.products limit: limit -%}
+              {%- liquid
+                assign i = forloop.index0
+                comment
+                  Row 1: four singles (0–3). Row 2: single, single, double (4–6).
+                  Row 3: double, single, single (7–9).
+                endcomment
+                assign wide = false
+                if i == 6 or i == 7
+                  assign wide = true
+                endif
+                assign opens_row = false
+                if i == 0 or i == 4 or i == 7
+                  assign opens_row = true
+                endif
+                assign closes_row = false
+                if i == 3 or i == 6 or i == 9
+                  assign closes_row = true
+                endif
+                assign first_row = false
+                if i < 4
+                  assign first_row = true
+                endif
+              -%}
+              {%- if opens_row -%}<ul class="grid grid-cols-4 gap-grid-gap">{%- endif -%}
+              {%- if wide -%}
+                <li class="col-span-4 sm:col-span-2">{%- render 'sb-product-card', product: item, aspect: 'wide', priority: first_row -%}</li>
+              {%- else -%}
+                <li class="col-span-2 sm:col-span-1">{%- render 'sb-product-card', product: item, priority: first_row -%}</li>
+              {%- endif -%}
+              {%- if closes_row -%}</ul>{%- endif -%}
+            {%- endfor -%}
+          </div>
+        {%- endif -%}
+        {%- if look != blank -%}</div>{%- endif -%}
+      </div>
+    </div>
+  </div>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Collection pieces",
+  "tag": "section",
+  "class": "sb-section-collection-products",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "show_title",
+      "label": "Show the collection's name",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_description",
+      "label": "Show the description",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "layout",
+      "label": "Products as",
+      "options": [
+        {
+          "value": "mosaic",
+          "label": "Mosaic (large and small)"
+        },
+        {
+          "value": "grid",
+          "label": "Even grid"
+        }
+      ],
+      "default": "mosaic"
+    },
+    {
+      "type": "range",
+      "id": "limit",
+      "label": "How many products",
+      "min": 1,
+      "max": 24,
+      "step": 1,
+      "default": 10
+    },
+    {
+      "type": "select",
+      "id": "heading_size",
+      "label": "Name size",
+      "options": [
+        {
+          "value": "auto",
+          "label": "As designed"
+        },
+        {
+          "value": "h3",
+          "label": "Small"
+        },
+        {
+          "value": "h2",
+          "label": "Standard"
+        },
+        {
+          "value": "h1",
+          "label": "Large"
+        },
+        {
+          "value": "display",
+          "label": "Extra large"
+        }
+      ],
+      "default": "auto"
+    },
+    {
+      "type": "color",
+      "id": "heading_color",
+      "label": "Name colour",
+      "info": "Leave empty for the section's text colour."
+    },
+    {
+      "type": "select",
+      "id": "heading_align",
+      "label": "Name alignment",
+      "options": [
+        {
+          "value": "auto",
+          "label": "As designed"
+        },
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Centre"
+        }
+      ],
+      "default": "auto"
+    },
+    {
+      "type": "select",
+      "id": "columns_desktop",
+      "label": "Cards across on desktop",
+      "options": [
+        {
+          "value": "auto",
+          "label": "As designed"
+        },
+        {
+          "value": "2",
+          "label": "2"
+        },
+        {
+          "value": "3",
+          "label": "3"
+        },
+        {
+          "value": "4",
+          "label": "4"
+        },
+        {
+          "value": "5",
+          "label": "5"
+        }
+      ],
+      "default": "auto"
+    },
+    {
+      "type": "select",
+      "id": "columns_mobile",
+      "label": "Cards across on phones",
+      "options": [
+        {
+          "value": "auto",
+          "label": "As designed"
+        },
+        {
+          "value": "1",
+          "label": "1"
+        },
+        {
+          "value": "2",
+          "label": "2"
+        }
+      ],
+      "default": "auto"
+    },
+    {
+      "type": "select",
+      "id": "gap",
+      "label": "Space between cards",
+      "options": [
+        {
+          "value": "auto",
+          "label": "As designed"
+        },
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "tight",
+          "label": "Tight"
+        },
+        {
+          "value": "roomy",
+          "label": "Roomy"
+        }
+      ],
+      "default": "auto"
+    },
+    {
+      "type": "select",
+      "id": "image_shape",
+      "label": "Photo shape",
+      "options": [
+        {
+          "value": "auto",
+          "label": "As designed"
+        },
+        {
+          "value": "portrait",
+          "label": "Portrait (3:4)"
+        },
+        {
+          "value": "tall",
+          "label": "Tall (2:3)"
+        },
+        {
+          "value": "square",
+          "label": "Square"
+        },
+        {
+          "value": "landscape",
+          "label": "Landscape (4:3)"
+        },
+        {
+          "value": "wide",
+          "label": "Wide (16:9)"
+        }
+      ],
+      "default": "auto"
+    },
+    {
+      "type": "range",
+      "id": "image_radius",
+      "label": "Photo corners",
+      "min": 0,
+      "max": 40,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "select",
+      "id": "image_overlay",
+      "label": "Colour over the photos",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "color",
+          "label": "A colour"
+        }
+      ],
+      "default": "none",
+      "info": "Tints every photo, so they look alike or text on them reads better."
+    },
+    {
+      "type": "color",
+      "id": "overlay_color",
+      "label": "Overlay colour",
+      "info": "Empty: black."
+    },
+    {
+      "type": "range",
+      "id": "overlay_opacity",
+      "label": "Overlay strength",
+      "min": 5,
+      "max": 90,
+      "step": 1,
+      "unit": "%",
+      "default": 30
+    },
+    {
+      "type": "select",
+      "id": "card_style",
+      "label": "Card style",
+      "options": [
+        {
+          "value": "plain",
+          "label": "Plain"
+        },
+        {
+          "value": "card",
+          "label": "On a coloured card"
+        },
+        {
+          "value": "box",
+          "label": "With a border"
+        },
+        {
+          "value": "lines",
+          "label": "Divided by lines"
+        }
+      ],
+      "default": "plain"
+    },
+    {
+      "type": "color",
+      "id": "card_color",
+      "label": "Card colour",
+      "info": "Empty: a light tint of the text colour."
+    },
+    {
+      "type": "color",
+      "id": "card_border_color",
+      "label": "Border colour",
+      "info": "Empty: a soft line in the text colour."
+    },
+    {
+      "type": "select",
+      "id": "title_size",
+      "label": "Name size",
+      "options": [
+        {
+          "value": "auto",
+          "label": "As designed"
+        },
+        {
+          "value": "small",
+          "label": "Small"
+        },
+        {
+          "value": "standard",
+          "label": "Standard"
+        },
+        {
+          "value": "large",
+          "label": "Large"
+        },
+        {
+          "value": "xlarge",
+          "label": "Extra large"
+        }
+      ],
+      "default": "auto"
+    },
+    {
+      "type": "color",
+      "id": "title_color",
+      "label": "Name colour",
+      "info": "Leave empty for the section's text colour."
+    },
+    {
+      "type": "select",
+      "id": "card_align",
+      "label": "Text in the cards",
+      "options": [
+        {
+          "value": "auto",
+          "label": "As designed"
+        },
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Centre"
+        }
+      ],
+      "default": "auto"
+    },
+    {
+      "type": "select",
+      "id": "hide_on",
+      "label": "Show on",
+      "options": [
+        {
+          "value": "none",
+          "label": "All devices"
+        },
+        {
+          "value": "mobile",
+          "label": "Desktop only"
+        },
+        {
+          "value": "desktop",
+          "label": "Mobile only"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "header",
+      "content": "Style"
+    },
+    {
+      "type": "select",
+      "id": "surface",
+      "label": "Background",
+      "options": [
+        {
+          "value": "inherit",
+          "label": "Same as page"
+        },
+        {
+          "value": "light",
+          "label": "Earth"
+        },
+        {
+          "value": "dark",
+          "label": "Dark wood"
+        },
+        {
+          "value": "olive",
+          "label": "Black olive"
+        },
+        {
+          "value": "blue",
+          "label": "Charcoal blue"
+        },
+        {
+          "value": "mocha",
+          "label": "Deep mocha"
+        },
+        {
+          "value": "black",
+          "label": "Off-black"
+        }
+      ],
+      "default": "inherit"
+    },
+    {
+      "type": "color",
+      "id": "bg_color",
+      "label": "Background colour",
+      "info": "Your own colour instead of the Background choice above. Leave empty to keep that choice."
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Text colour",
+      "info": "Headings, text and buttons in this section."
+    },
+    {
+      "type": "checkbox",
+      "id": "custom_spacing",
+      "label": "Custom spacing",
+      "default": false,
+      "info": "Set the space inside and around this section yourself, in pixels. Replaces Vertical spacing."
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "Space inside, top",
+      "min": 0,
+      "max": 200,
+      "step": 2,
+      "unit": "px",
+      "default": 64
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "Space inside, bottom",
+      "min": 0,
+      "max": 200,
+      "step": 2,
+      "unit": "px",
+      "default": 64
+    },
+    {
+      "type": "range",
+      "id": "margin_top",
+      "label": "Space above the section",
+      "min": 0,
+      "max": 200,
+      "step": 2,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "margin_bottom",
+      "label": "Space below the section",
+      "min": 0,
+      "max": 200,
+      "step": 2,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "select",
+      "id": "border",
+      "label": "Line",
+      "options": [
+        {
+          "value": "none",
+          "label": "No line"
+        },
+        {
+          "value": "all",
+          "label": "Box around"
+        },
+        {
+          "value": "top",
+          "label": "Line above"
+        },
+        {
+          "value": "bottom",
+          "label": "Line below"
+        },
+        {
+          "value": "y",
+          "label": "Lines above and below"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "range",
+      "id": "border_width",
+      "label": "Line thickness",
+      "min": 1,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "default": 1
+    },
+    {
+      "type": "color",
+      "id": "border_color",
+      "label": "Line colour",
+      "info": "Leave empty for a soft line in the text colour."
+    },
+    {
+      "type": "range",
+      "id": "radius",
+      "label": "Rounded corners",
+      "min": 0,
+      "max": 48,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "paragraph",
+      "content": "Design — empty uses the design’s own value. “On phones” is for screens narrower than 750px."
+    },
+    {
+      "type": "header",
+      "content": "Headings"
+    },
+    {
+      "type": "select",
+      "id": "d_h_font",
+      "label": "Font",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default (Helvetica Neue)"
+        },
+        {
+          "value": "inter",
+          "label": "Inter"
+        },
+        {
+          "value": "dm-sans",
+          "label": "DM Sans"
+        },
+        {
+          "value": "manrope",
+          "label": "Manrope"
+        },
+        {
+          "value": "work-sans",
+          "label": "Work Sans"
+        },
+        {
+          "value": "space-grotesk",
+          "label": "Space Grotesk"
+        },
+        {
+          "value": "syne",
+          "label": "Syne"
+        },
+        {
+          "value": "playfair-display",
+          "label": "Playfair Display"
+        },
+        {
+          "value": "cormorant-garamond",
+          "label": "Cormorant Garamond"
+        },
+        {
+          "value": "fraunces",
+          "label": "Fraunces"
+        },
+        {
+          "value": "eb-garamond",
+          "label": "EB Garamond"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "number",
+      "id": "d_h_size",
+      "label": "Size (px)",
+      "placeholder": "Default"
+    },
+    {
+      "type": "number",
+      "id": "d_h_size_m",
+      "label": "Size on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "select",
+      "id": "d_h_weight",
+      "label": "Weight",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default"
+        },
+        {
+          "value": "300",
+          "label": "Light"
+        },
+        {
+          "value": "400",
+          "label": "Regular"
+        },
+        {
+          "value": "500",
+          "label": "Medium"
+        },
+        {
+          "value": "600",
+          "label": "Semibold"
+        },
+        {
+          "value": "700",
+          "label": "Bold"
+        },
+        {
+          "value": "800",
+          "label": "Extra bold"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "color",
+      "id": "d_h_color",
+      "label": "Colour"
+    },
+    {
+      "type": "select",
+      "id": "d_h_case",
+      "label": "Letter case",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default"
+        },
+        {
+          "value": "none",
+          "label": "As typed"
+        },
+        {
+          "value": "uppercase",
+          "label": "UPPERCASE"
+        },
+        {
+          "value": "lowercase",
+          "label": "lowercase"
+        },
+        {
+          "value": "capitalize",
+          "label": "Each Word"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "header",
+      "content": "Text"
+    },
+    {
+      "type": "select",
+      "id": "d_p_font",
+      "label": "Font",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default (Helvetica Neue)"
+        },
+        {
+          "value": "inter",
+          "label": "Inter"
+        },
+        {
+          "value": "dm-sans",
+          "label": "DM Sans"
+        },
+        {
+          "value": "manrope",
+          "label": "Manrope"
+        },
+        {
+          "value": "work-sans",
+          "label": "Work Sans"
+        },
+        {
+          "value": "space-grotesk",
+          "label": "Space Grotesk"
+        },
+        {
+          "value": "syne",
+          "label": "Syne"
+        },
+        {
+          "value": "playfair-display",
+          "label": "Playfair Display"
+        },
+        {
+          "value": "cormorant-garamond",
+          "label": "Cormorant Garamond"
+        },
+        {
+          "value": "fraunces",
+          "label": "Fraunces"
+        },
+        {
+          "value": "eb-garamond",
+          "label": "EB Garamond"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "number",
+      "id": "d_p_size",
+      "label": "Size (px)",
+      "placeholder": "Default"
+    },
+    {
+      "type": "number",
+      "id": "d_p_size_m",
+      "label": "Size on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "select",
+      "id": "d_p_weight",
+      "label": "Weight",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default"
+        },
+        {
+          "value": "300",
+          "label": "Light"
+        },
+        {
+          "value": "400",
+          "label": "Regular"
+        },
+        {
+          "value": "500",
+          "label": "Medium"
+        },
+        {
+          "value": "600",
+          "label": "Semibold"
+        },
+        {
+          "value": "700",
+          "label": "Bold"
+        },
+        {
+          "value": "800",
+          "label": "Extra bold"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "color",
+      "id": "d_p_color",
+      "label": "Colour"
+    },
+    {
+      "type": "select",
+      "id": "d_p_case",
+      "label": "Letter case",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default"
+        },
+        {
+          "value": "none",
+          "label": "As typed"
+        },
+        {
+          "value": "uppercase",
+          "label": "UPPERCASE"
+        },
+        {
+          "value": "lowercase",
+          "label": "lowercase"
+        },
+        {
+          "value": "capitalize",
+          "label": "Each Word"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "header",
+      "content": "Buttons"
+    },
+    {
+      "type": "select",
+      "id": "d_b_font",
+      "label": "Font",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default (Helvetica Neue)"
+        },
+        {
+          "value": "inter",
+          "label": "Inter"
+        },
+        {
+          "value": "dm-sans",
+          "label": "DM Sans"
+        },
+        {
+          "value": "manrope",
+          "label": "Manrope"
+        },
+        {
+          "value": "work-sans",
+          "label": "Work Sans"
+        },
+        {
+          "value": "space-grotesk",
+          "label": "Space Grotesk"
+        },
+        {
+          "value": "syne",
+          "label": "Syne"
+        },
+        {
+          "value": "playfair-display",
+          "label": "Playfair Display"
+        },
+        {
+          "value": "cormorant-garamond",
+          "label": "Cormorant Garamond"
+        },
+        {
+          "value": "fraunces",
+          "label": "Fraunces"
+        },
+        {
+          "value": "eb-garamond",
+          "label": "EB Garamond"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "number",
+      "id": "d_b_size",
+      "label": "Size (px)",
+      "placeholder": "Default"
+    },
+    {
+      "type": "number",
+      "id": "d_b_size_m",
+      "label": "Size on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "select",
+      "id": "d_b_weight",
+      "label": "Weight",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default"
+        },
+        {
+          "value": "300",
+          "label": "Light"
+        },
+        {
+          "value": "400",
+          "label": "Regular"
+        },
+        {
+          "value": "500",
+          "label": "Medium"
+        },
+        {
+          "value": "600",
+          "label": "Semibold"
+        },
+        {
+          "value": "700",
+          "label": "Bold"
+        },
+        {
+          "value": "800",
+          "label": "Extra bold"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "select",
+      "id": "d_b_case",
+      "label": "Letter case",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default"
+        },
+        {
+          "value": "none",
+          "label": "As typed"
+        },
+        {
+          "value": "uppercase",
+          "label": "UPPERCASE"
+        },
+        {
+          "value": "lowercase",
+          "label": "lowercase"
+        },
+        {
+          "value": "capitalize",
+          "label": "Each Word"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "header",
+      "content": "Text"
+    },
+    {
+      "type": "select",
+      "id": "d_align",
+      "label": "Alignment",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default"
+        },
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Centre"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "select",
+      "id": "d_align_m",
+      "label": "Alignment on phones",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default"
+        },
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Centre"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "header",
+      "content": "Spacing at the sides"
+    },
+    {
+      "type": "number",
+      "id": "d_pad_left",
+      "label": "Space inside, left (px)",
+      "placeholder": "Default",
+      "info": "With Custom spacing on. Empty keeps the design’s own gutter."
+    },
+    {
+      "type": "number",
+      "id": "d_pad_left_m",
+      "label": "Space inside, left on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "number",
+      "id": "d_pad_right",
+      "label": "Space inside, right (px)",
+      "placeholder": "Default"
+    },
+    {
+      "type": "number",
+      "id": "d_pad_right_m",
+      "label": "Space inside, right on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "number",
+      "id": "d_margin_left",
+      "label": "Space outside, left (px)",
+      "placeholder": "Default",
+      "info": "Narrows the section — with a colour and corners, a card."
+    },
+    {
+      "type": "number",
+      "id": "d_margin_left_m",
+      "label": "Space outside, left on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "number",
+      "id": "d_margin_right",
+      "label": "Space outside, right (px)",
+      "placeholder": "Default"
+    },
+    {
+      "type": "number",
+      "id": "d_margin_right_m",
+      "label": "Space outside, right on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "header",
+      "content": "Shadow & size"
+    },
+    {
+      "type": "select",
+      "id": "d_shadow",
+      "label": "Shadow",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "soft",
+          "label": "Soft"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "strong",
+          "label": "Strong"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "number",
+      "id": "d_max_width",
+      "label": "Content width (px)",
+      "placeholder": "Default",
+      "info": "The widest the content may get. Empty uses the design’s width."
+    },
+    {
+      "type": "number",
+      "id": "d_max_width_m",
+      "label": "Content width on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "number",
+      "id": "d_min_height",
+      "label": "Minimum height (px)",
+      "placeholder": "Default"
+    },
+    {
+      "type": "number",
+      "id": "d_min_height_m",
+      "label": "Minimum height on phones (px)",
+      "placeholder": "Same as desktop"
+    },
+    {
+      "type": "select",
+      "id": "d_valign",
+      "label": "Content sits",
+      "options": [
+        {
+          "value": "top",
+          "label": "Top"
+        },
+        {
+          "value": "center",
+          "label": "Middle"
+        },
+        {
+          "value": "bottom",
+          "label": "Bottom"
+        }
+      ],
+      "default": "top",
+      "info": "When the section is taller than its content."
+    }
+  ],
+  "enabled_on": {
+    "templates": [
+      "collection"
+    ]
+  },
+  "presets": [
+    {
+      "name": "Collection pieces"
+    }
+  ]
+}
+{% endschema %}

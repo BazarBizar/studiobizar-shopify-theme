@@ -29,6 +29,7 @@
  * First run on a machine: `npx playwright install chromium`.
  */
 
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -45,6 +46,7 @@ import {
 import { chromium } from "playwright";
 
 import { designStyle, type DesignValue } from "../lib/page-builder/design-style";
+import { cardLook } from "../lib/page-builder/template-look";
 
 import { LIQUID_SECTIONS } from "./lib/liquid";
 import { DESIGN_SNIPPET, designSettings, FONT_SNIPPET, SECTION_PREFIX, SITE_PREFIX, themeSettingsFor } from "./lib/liquid-design";
@@ -115,6 +117,11 @@ engine.registerFilter("t", (key: string, ...args: unknown[]) => {
       (node, part) => (node as Record<string, unknown> | undefined)?.[part],
       locale,
     );
+  // Shopify picks `one` / `other` by the `count` argument.
+  if (value && typeof value === "object" && "other" in (value as object)) {
+    const count = Number(keywords(args).count);
+    value = (value as Record<string, string>)[count === 1 && "one" in (value as object) ? "one" : "other"];
+  }
   // A missing key is a real bug: Shopify would print "translation missing" on the page.
   if (typeof value !== "string") throw new Error(`translation missing: ${key}`);
   for (const [name, replacement] of Object.entries(keywords(args)))
@@ -135,6 +142,7 @@ engine.registerFilter(
     `<svg class="${klass ?? ""}" viewBox="0 0 10 10" data-placeholder><rect width="10" height="10"/></svg>`,
 );
 engine.registerFilter("asset_url", (name: string) => name);
+engine.registerFilter("md5", (value: string) => createHash("md5").update(String(value ?? "")).digest("hex"));
 
 engine.registerTag(
   "schema",
@@ -146,6 +154,30 @@ engine.registerTag(
       throw new Error("schema is not closed");
     }
     *render() {}
+  },
+);
+
+/** `{% paginate collection.products by 24 %}` — the body, once, with no next page. */
+engine.registerTag(
+  "paginate",
+  class extends Tag {
+    private templates: unknown[] = [];
+    constructor(token: TagToken, remain: TopLevelToken[], liquid: Liquid) {
+      super(token, remain, liquid);
+      const stream = liquid.parser
+        .parseStream(remain)
+        .on("tag:endpaginate", () => stream.stop())
+        .on("template", (template: unknown) => this.templates.push(template))
+        .on("end", () => {
+          throw new Error("paginate is not closed");
+        });
+      stream.start();
+    }
+    *render(context: Context, emitter: Emitter): Generator<unknown, void, unknown> {
+      context.push({ paginate: { next: null, previous: null, pages: 1 } });
+      yield this.liquid.renderer.renderTemplates(this.templates as never, context, emitter);
+      context.pop();
+    }
   },
 );
 
@@ -211,6 +243,106 @@ const product = () => ({
   images: [image(), image(), image()],
 });
 
+/**
+ * The store, as the templates' sections (Website → Templates, `sb-t-*`) read it: one
+ * product, collection, project and designer with every field they show filled in.
+ * `metaobject` carries the project's and the designer's fields at once, so both kinds
+ * of section draw from it.
+ */
+const richText = "<p>Made by hand in Bali, from water hyacinth woven over a rattan frame.</p>";
+const designerEntry = {
+  system: { id: "gid://shopify/Metaobject/1", handle: "adelie-ducasse", url: "/pages/designer/adelie-ducasse" },
+  name: "Adélie Ducasse",
+  studio: "Atelier Ducasse",
+  byline: "Furniture that earns its keep",
+  portrait: { value: image() },
+  bio_full: { value: richText },
+  bio_short: { value: "Works in solid oak and hand-thrown ceramic." },
+};
+const storeProduct = (handle: string, title: string) => ({
+  ...product(),
+  id: 1,
+  handle,
+  title,
+  url: `/products/${handle}`,
+  type: "Baskets",
+  tags: ["New"],
+  featured_image: image(),
+  variants: [{ id: 11, title: "Default Title" }],
+  metafields: {
+    custom: {
+      designer: { value: designerEntry },
+      idea_body: { value: richText },
+      idea_image: { value: image() },
+      material_finish: { value: "Water hyacinth" },
+      colour: { value: "Natural" },
+      availability: { value: "Made to order" },
+      lead_time_weeks: { value: "12–16 weeks" },
+      dimensions: { value: "<p>40 × 40 × 30 cm</p>" },
+      care_maintenance: { value: "<p>Dust with a dry cloth.</p>" },
+      collection_label: { value: "Arc Teak" },
+      moq: { value: 1 },
+      in_context_images: { value: [{ image: image(), caption: "In the long room", alt_text: "" }] },
+    },
+  },
+});
+const products = Array.from({ length: 10 }, (_, index) => storeProduct(`piece-${index + 1}`, `The Piece ${index + 1}`));
+const projectEntry = (handle: string) => ({
+  system: { id: `gid://shopify/Metaobject/p-${handle}`, handle, url: `/pages/project/${handle}` },
+  title: "Casa Vitro",
+  subtitle: "A house built around the light it lets in.",
+  location: "Ibiza, Spain",
+  year: "2023",
+  category: "Residential",
+  creative_lead: "Studio Bizar",
+  collaborators: "Atelier Ducasse\nAède Studios",
+  photography: "Studio Bizar",
+  sort_order: 1,
+  body: richText,
+  hero_image: { value: image() },
+  card_image: { value: image() },
+  gallery: { value: [{ image: image(), caption: "The terrace", alt_text: "", credit: "" }, { image: image(), caption: "", alt_text: "", credit: "" }] },
+  featured_items: { value: products.slice(0, 5) },
+  related_projects: { value: [] },
+});
+const storeCollection = {
+  id: 2,
+  handle: "arc-teak",
+  title: "The Arc Teak Collection",
+  url: "/collections/arc-teak",
+  description: "<p>Teak, bent and joined by hand.</p>",
+  image: image(),
+  products,
+  products_count: products.length,
+  filters: [],
+  sort_options: [],
+  sort_by: "manual",
+  default_sort_by: "manual",
+  metafields: {
+    custom: {
+      hero_image: { value: image() },
+      idea_body: { value: richText },
+      idea_image: { value: image() },
+      idea_title: { value: "The Idea" },
+      designer: { value: designerEntry },
+      in_context_projects: { value: [projectEntry("casa-vitro"), projectEntry("villa-mimosa")] },
+    },
+  },
+};
+const storeMain = storeProduct("the-chunky-basket", "The Chunky Basket");
+(storeMain.metafields.custom as Record<string, unknown>).signature_collection = { value: storeCollection };
+const STORE = {
+  product: storeMain,
+  collection: storeCollection,
+  collections: Object.assign([storeCollection], { "arc-teak": storeCollection, all: storeCollection }),
+  metaobject: { ...projectEntry("casa-vitro"), ...designerEntry },
+  shop: { metaobjects: { project: { values: [projectEntry("casa-vitro"), projectEntry("villa-mimosa"), projectEntry("the-salt-room")] } }, metafields: { custom: {} } },
+  search: { performed: true, terms: "basket <b>", results: products.map((item) => ({ ...item, object_type: "product" })), results_count: products.length },
+  recommendations: { performed: true, products_count: 4, products: products.slice(0, 4) },
+  routes: { all_products_collection_url: "/collections/all", search_url: "/search", product_recommendations_url: "/recommendations/products" },
+  current_tags: [],
+};
+
 type Setting = { id?: string; type: string; default?: unknown };
 type Schema = {
   settings?: Setting[];
@@ -270,7 +402,7 @@ function emptied(definitions: Setting[] | undefined) {
  * Render
  * -------------------------------------------------------------------------- */
 
-const FILES = [...Object.values(LIQUID_SECTIONS), "sb-media-text"].filter(
+const FILES = [...Object.values(LIQUID_SECTIONS), "sb-media-text", "sb-announcement-bar", "sb-popup"].filter(
   (file) => !only || only.has(file!),
 ) as string[];
 
@@ -293,8 +425,9 @@ async function render(
     shopify_attributes: "",
   };
   return engine.parseAndRender(stripComments(source), {
+    ...STORE,
     section,
-    request: { design_mode: designMode },
+    request: { design_mode: designMode, query_string: "", path: "/" },
     page: {},
     pages: {},
   });
@@ -346,6 +479,47 @@ async function renderAll() {
       const preset = schema.presets[0];
       const html = await render(source, { ...settingsFrom(schema.settings, preset.settings), ...themeSettingsFor(DESIGN_SAMPLE) }, [], false);
       rendered.push({ name: `${file}--design`, html });
+    }
+
+    // The templates' card settings: the theme writes what Next's `cardLook` writes.
+    if (file === "sb-t-collections-main" && schema.presets?.[0]) {
+      const look = {
+        columnsDesktop: "2",
+        columnsMobile: "1",
+        gap: "roomy",
+        imageShape: "square",
+        imageRadius: 12,
+        imageOverlay: "color",
+        overlayColor: "#a65a3f",
+        overlayOpacity: 40,
+        cardStyle: "box",
+        cardColor: "",
+        cardBorderColor: "#302f2d",
+        titleSize: "large",
+        titleColor: "#47515c",
+        cardAlign: "center",
+      };
+      const settings = {
+        ...settingsFrom(schema.settings, {}),
+        ...Object.fromEntries(Object.entries(look).map(([key, value]) => [key.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`), value])),
+      };
+      const html = await render(source, settings, [], false);
+      const wrapper = html.match(/<div data-tl[^>]*>/)?.[0] ?? "";
+      const expected = cardLook(look)!;
+      const decode = (text: string) => text.replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+      const gotStyle = Object.fromEntries(
+        decode(wrapper.match(/style="([^"]*)"/)?.[1] ?? "")
+          .split(";")
+          .filter(Boolean)
+          .map((d) => [d.slice(0, d.indexOf(":")).trim(), d.slice(d.indexOf(":") + 1).trim()]),
+      );
+      for (const [name, value] of Object.entries(expected.attrs)) {
+        check(`card look: the theme writes ${name}${value ? `="${value}"` : ""}`, wrapper.includes(value ? `${name}="${value}"` : name), wrapper);
+      }
+      for (const [name, value] of Object.entries(expected.style)) {
+        check(`card look: the theme writes ${name}: ${value}`, gotStyle[name] === value, `theme ${gotStyle[name]}`);
+      }
+      rendered.push({ name: `${file}--card-look`, html });
     }
 
     // The carousel settings: two across and two per arrow, with a "read more" button.
@@ -537,7 +711,99 @@ async function designDrawn(tab: import("playwright").Page, label: "desktop" | "p
   check(`design drawn (${label}): shadow and minimum height`, looks.shadow && looks.minHeight === (phone ? "400px" : "600px"), `${looks.shadow} ${looks.minHeight}`);
 }
 
+/** A photo's focal point (set on the photo in Shopify) reaches the <img>; an unset one adds nothing. */
+async function focalPoint() {
+  const draw = (point: { x: number; y: number }) =>
+    engine.parseAndRender(`{% render 'sb-image', image: photo, ratio: '1 / 1' %}`, {
+      photo: { ...image(), presentation: { focal_point: point } },
+    });
+  const set = await draw({ x: 20, y: 80 });
+  check("focal point: a photo's own focal point is kept in view", set.includes("sb-focal") && set.includes("--sb-focal: 20% 80%"), set);
+  const unset = await draw({ x: 50, y: 50 });
+  check("focal point: an unset focal point adds nothing", !unset.includes("sb-focal"), unset);
+}
+
+/**
+ * The announcement bar and a pop-up, driven by assets/sb-promo.js in Chromium: messages
+ * rotate, a past message is left out, a closed bar stays closed; the pop-up opens on its
+ * own, closes, and — once per visit — does not open again.
+ */
+async function promoBehaviour(browser: import("playwright").Browser) {
+  const read = (file: string) => fs.readFileSync(path.join(THEME, "sections", `${file}.liquid`), "utf8");
+  const schemaIn = (source: string) =>
+    JSON.parse(source.match(/\{%-?\s*schema\s*-?%\}([\s\S]*?)\{%-?\s*endschema\s*-?%\}/)![1]!) as Schema;
+
+  const barSource = read("sb-announcement-bar");
+  const message = (id: string, text: string, ends = "") => ({
+    id,
+    type: "message",
+    shopify_attributes: "",
+    settings: { text, link: "", starts_at: "", ends_at: ends },
+  });
+  const bar = await render(
+    barSource,
+    settingsFrom(schemaIn(barSource).settings, { dismissible: true, interval: 2 }),
+    [message("m1", "First message"), message("m2", "Second message"), message("m3", "Ended message", "2000-01-01 00:00")],
+    false,
+  );
+  const popupSource = read("sb-popup");
+  const popup = await render(
+    popupSource,
+    settingsFrom(schemaIn(popupSource).settings, {
+      heading: "Join the newsletter",
+      text: "A few times a year.",
+      newsletter: true,
+      trigger: "delay",
+      delay: 0,
+      frequency: "session",
+    }),
+    [],
+    false,
+  );
+
+  const file = path.join(OUT, "promo.html");
+  const asset = (name: string) => pathToFileURL(path.join(THEME, "assets", name)).href;
+  fs.writeFileSync(
+    file,
+    `<!doctype html><html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="${asset("sb-theme.css")}"><script src="${asset("sb-promo.js")}" defer></script></head><body data-surface="light" class="bg-background text-foreground">${bar}<main style="height:2000px"></main>${popup}</body></html>`,
+  );
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const tab = await context.newPage();
+  const errors: string[] = [];
+  tab.on("pageerror", (error) => errors.push(error.message));
+  await tab.goto(pathToFileURL(file).href, { waitUntil: "load" });
+
+  const open = () => tab.evaluate(() => (document.querySelector("dialog[data-sb-popup]") as HTMLDialogElement).open);
+  await tab.waitForFunction(() => (document.querySelector("dialog[data-sb-popup]") as HTMLDialogElement).open, null, { timeout: 5000 }).catch(() => {});
+  check("pop-up: opens on its own", await open());
+  const box = await tab.locator("dialog[data-sb-popup]").boundingBox();
+  check("pop-up: the box sits in the middle", Boolean(box && Math.abs(box.x + box.width / 2 - 720) < 4), JSON.stringify(box));
+  await tab.waitForTimeout(800); // past the way in (sb-popup-in)
+  await tab.screenshot({ path: path.join(OUT, "desktop--sb-popup--open.png") });
+  await tab.click("[data-sb-popup-close]");
+  check("pop-up: × closes it", !(await open()));
+
+  const visible = () =>
+    tab.evaluate(() => [...document.querySelectorAll("p[data-sb-message]")].filter((p) => !p.classList.contains("invisible")).map((p) => p.textContent?.trim()));
+  check("bar: the first message shows", (await visible()).join() === "First message", (await visible()).join());
+  check("bar: a message whose dates are past is left out", (await tab.locator("text=Ended message").count()) === 0);
+  await tab.click("[data-sb-announcement-next]");
+  check("bar: the arrow shows the next message", (await visible()).join() === "Second message", (await visible()).join());
+
+
+  await tab.click("[data-sb-announcement-close]");
+  check("bar: × hides it", await tab.locator("[data-sb-announcement]").isHidden());
+
+  await tab.reload({ waitUntil: "load" });
+  await tab.waitForTimeout(500);
+  check("bar: a closed bar stays closed", await tab.locator("[data-sb-announcement]").isHidden());
+  check("pop-up: once per visit — not again on the next page", !(await open()));
+  check("promo: no script errors", errors.length === 0, errors.join(" | "));
+  await context.close();
+}
+
 async function main() {
+  await focalPoint();
   await designParity();
   await renderAll();
   fs.rmSync(OUT, { recursive: true, force: true });
@@ -610,6 +876,7 @@ async function main() {
     if (label === "desktop") await interactions(tab);
     await context.close();
   }
+  await promoBehaviour(browser);
   await browser.close();
 
   const total = rendered.length;
