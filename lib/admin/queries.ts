@@ -356,6 +356,26 @@ export async function builderActionRequest(
   return post<{ revision: number }>("/api/admin/pages/builder", { operation, ...input });
 }
 
+/** Website → Templates — the page builder's writes, for a template instead of a page. */
+export async function templateSaveRequest(input: {
+  kind: string;
+  baseRevision: number;
+  content: unknown;
+}): Promise<BuilderSaveResult> {
+  return post<BuilderSaveResult>("/api/admin/templates", { operation: "templateSaveDraft", ...input });
+}
+
+export async function templateActionRequest(
+  operation: "templatePublish" | "templateDiscard" | "templateRollback" | "templateUnpublish",
+  input: { kind: string; baseRevision: number },
+): Promise<{ revision: number }> {
+  return post<{ revision: number }>("/api/admin/templates", { operation, ...input });
+}
+
+export async function templateRevisionRequest(kind: string): Promise<{ revision: number }> {
+  return post<{ revision: number }>("/api/admin/templates", { operation: "templateRevision", kind });
+}
+
 export type ProductOption = { id: string; title: string; handle: string; thumbnail: string | null; status: string };
 
 /**

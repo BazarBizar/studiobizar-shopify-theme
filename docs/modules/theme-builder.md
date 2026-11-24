@@ -139,6 +139,31 @@ so the editor draws them with the same controls and the API validates them with 
 
 ## Liquid
 
-Not rendered by the theme yet (Next first, by decision) — nor the announcement bar's messages, the
-pop-ups, the header's and footer's sections or element styles. The layout is plain JSON on the shop, so
+**The announcement bar and the pop-ups** have theme twins, edited in Shopify's theme editor:
+
+- `sections/sb-announcement-bar.liquid`: in the header group, above the header, switched off
+  until used. Messages are blocks (text, link, "Show from" / "Show until" as `2026-12-01 09:00`).
+  One at a time or moving across, speed, direction, separator, size, can be closed, colours,
+  Show on.
+- `sections/sb-popup.liquid`: one section per pop-up, in the new `overlay-group` section group
+  (rendered by `layout/theme.liquid` after the footer). Its schema is generated from
+  `POPUP_FIELDS` (`popupSchema` in `scripts/lib/liquid.ts`), so it offers the panel's settings
+  and, for Build it yourself, the Custom section's blocks plus the newsletter sign-up. Beside
+  them: custom width, space inside and corners (one value for every screen — the panel can set
+  them per device), dates, pages (all / home / only / except, one address per line, `/*` for
+  everything under one) and Show on.
+- `assets/sb-promo.js` decides in the browser what depends on the visitor, as the Next
+  components do: dates, a closed bar (`sb-announcement-closed`), when a pop-up opens (seconds,
+  scroll, leaving), how often (`sb-popup-<id>` in session or local storage). In the theme
+  editor everything shows at once.
+- `snippets/sb-custom-blocks.liquid` draws the Custom section's blocks for both `sb-custom`
+  and the pop-up; `styles/sb-popup.css` is in both stylesheets.
+
+The theme does not read the panel's saved layout (`theme_layout`): its bar and pop-ups are set
+in the theme editor, as Shopify themes are. Still Next only: the header's and footer's
+arrangement, their sections and the element styles. The layout is plain JSON on the shop, so
 `sb-header` / `sb-footer` can read `shop.metafields.custom.theme_layout.value` when they catch up.
+
+Checked by `yarn check:liquid` (every setting read, the pop-up schema the panel's) and
+`yarn check:liquid-render` (drawn, and driven in Chromium: rotating, closing, dates, opening,
+once per visit).

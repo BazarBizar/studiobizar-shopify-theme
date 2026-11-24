@@ -1,8 +1,9 @@
-import { ExternalLinkIcon } from "lucide-react";
+import { LayoutTemplateIcon, ExternalLinkIcon } from "lucide-react";
 
 import { CollectionForm, type CollectionFormState } from "@/components/admin/collections-table/collection-form";
 import { CollectionProducts } from "@/components/admin/collections-table/collection-products";
 import { ScreenNotFound } from "@/components/admin/screen-not-found";
+import { AppLink } from "@/components/admin/app-link";
 import { DetailHeader } from "@/components/admin/detail-header";
 import { Button } from "@/components/admin/ui/button";
 import {
@@ -70,6 +71,13 @@ export default async function CollectionDetailPage({ params }: PageProps<"/admin
                 </a>
               </Button>
             ) : null}
+            {/* Every collection page shares one layout — Website → Templates. */}
+            <Button asChild variant="outline" size="sm" title="The layout every collection page shares">
+              <AppLink href="/admin/templates/collection">
+                <LayoutTemplateIcon className="size-3.5" />
+                Page layout
+              </AppLink>
+            </Button>
             <Button asChild variant="outline" size="sm">
               <a
                 href={`https://admin.shopify.com/store/${process.env.SHOPIFY_STORE_DOMAIN?.replace(".myshopify.com", "")}/collections/${collection.param}`}
@@ -85,9 +93,13 @@ export default async function CollectionDetailPage({ params }: PageProps<"/admin
       />
 
       <CollectionForm
+        // A save changes updatedAt, so the refreshed page mounts a form seeded from what
+        // Shopify stored — never one still comparing against the values from before it.
+        key={collection.updatedAt}
         mode="edit"
         id={collection.id}
         initial={initial}
+        currentImage={collection.image}
         sortOrderOptions={SORT_ORDER_OPTIONS}
         ruleSet={collection.ruleSet}
       />

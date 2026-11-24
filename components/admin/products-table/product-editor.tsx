@@ -71,17 +71,19 @@ export function ProductEditor({ productId, initialCore, specs, vendors, productT
   const [saving, setSaving] = React.useState(false);
   const [tagDraft, setTagDraft] = React.useState("");
 
-  const initialValues = React.useMemo(
-    () => Object.fromEntries(specs.map((spec) => [spec.key, spec.initialValue])),
-    [specs],
+  // Compared against what was loaded, then against what was last saved — so a saved form is
+  // clean at once, whatever Shopify hands back (see `CollectionForm`).
+  const [savedCore, setSavedCore] = React.useState(initialCore);
+  const [initialValues, setInitialValues] = React.useState<Record<string, string>>(() =>
+    Object.fromEntries(specs.map((spec) => [spec.key, spec.initialValue])),
   );
 
   const coreDirty = React.useMemo(
     () =>
       (Object.keys(core) as (keyof ProductCore)[]).filter(
-        (key) => JSON.stringify(core[key]) !== JSON.stringify(initialCore[key]),
+        (key) => JSON.stringify(core[key]) !== JSON.stringify(savedCore[key]),
       ),
-    [core, initialCore],
+    [core, savedCore],
   );
 
   const specDirty = React.useMemo(
@@ -105,6 +107,8 @@ export function ProductEditor({ productId, initialCore, specs, vendors, productT
 
   async function save() {
     setSaving(true);
+    const sentCore = core;
+    const sentValues = values;
 
     const payload: Record<string, unknown> = { operation: "productUpdate", id: productId };
 
@@ -138,6 +142,8 @@ export function ProductEditor({ productId, initialCore, specs, vendors, productT
         throw new Error(detail?.message ?? `Save failed (${response.status})`);
       }
 
+      setSavedCore(sentCore);
+      setInitialValues(sentValues);
       toast.success("Saved", {
         description: `${coreDirty.length + specDirty.length} field(s) updated.`,
       });
@@ -366,7 +372,7 @@ export function ProductEditor({ productId, initialCore, specs, vendors, productT
         saving={saving}
         onSave={() => void save()}
         onDiscard={() => {
-          setCore(initialCore);
+          setCore(savedCore);
           setValues(initialValues);
         }}
       />

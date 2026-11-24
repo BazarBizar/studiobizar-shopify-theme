@@ -1,4 +1,4 @@
-import { PlusIcon } from "lucide-react";
+import { LayoutTemplateIcon, PlusIcon } from "lucide-react";
 
 import { AppLink } from "@/components/admin/app-link";
 import { PageHeader } from "@/components/admin/page-header";
@@ -34,6 +34,22 @@ export default async function PagesScreen() {
           </Button>
         }
       />
+
+      {/* Product, collection, project and designer pages are not pages of their own:
+          one template each draws all of them. Said here, where people look for them. */}
+      <div className="bg-muted/40 flex flex-col gap-3 rounded-lg border px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-muted-foreground">
+          <span className="text-foreground font-medium">Looking for a product, collection, project or designer page?</span>{" "}
+          They share one layout per kind — change it once under Templates and every page of that kind follows. The
+          shop, search and list pages are there too.
+        </p>
+        <Button asChild size="sm" variant="outline" className="shrink-0">
+          <AppLink href="/admin/templates">
+            <LayoutTemplateIcon />
+            Open Templates
+          </AppLink>
+        </Button>
+      </div>
 
       <PagesTable pages={pages} routeFor={routeForPageHandle} />
     </div>

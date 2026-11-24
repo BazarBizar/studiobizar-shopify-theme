@@ -1839,6 +1839,95 @@ ${REFERENCE_PREVIEW}
     `,
   },
 
+  /* ------------------------------------------------------------------ templates */
+
+  /**
+   * One template's three copies on the SHOP (`lib/admin/templates.ts`), and whether the
+   * published copy has its definition yet — the definition is what lets the Storefront
+   * API read it. Keys come in as variables: one document for every kind.
+   */
+  templateDocuments: {
+    kind: "read",
+    document: `
+      query AdminTemplateDocuments($published: String!, $draft: String!, $previous: String!) {
+        shop {
+          id
+          published: metafield(namespace: "custom", key: $published) {
+            value
+          }
+          draft: metafield(namespace: "custom", key: $draft) {
+            value
+          }
+          previous: metafield(namespace: "custom", key: $previous) {
+            value
+          }
+        }
+        metafieldDefinitions(first: 1, ownerType: SHOP, namespace: "custom", key: $published) {
+          nodes {
+            id
+          }
+        }
+      }
+    `,
+  },
+
+  /** Every template's published and draft copy at once — Website → Templates, the list. */
+  templateList: {
+    kind: "read",
+    document: `
+      query AdminTemplateList($keys: [String!]!) {
+        shop {
+          metafields(first: 32, keys: $keys) {
+            nodes {
+              key
+              value
+            }
+          }
+        }
+      }
+    `,
+  },
+
+  /** A template's copies, written together — one `metafieldsSet`, all or nothing. */
+  templateSet: {
+    kind: "write",
+    document: `
+      mutation AdminTemplateSet($metafields: [MetafieldsSetInput!]!) {
+        metafieldsSet(metafields: $metafields) {
+          metafields {
+            key
+          }
+          userErrors {
+            field
+            message
+            code
+          }
+        }
+      }
+    `,
+  },
+
+  /**
+   * "Stop using this template": the PUBLISHED copy is removed, so its pages go back to
+   * the layout in the site's code. Only ever called with a template's published key.
+   */
+  templateClear: {
+    kind: "write",
+    document: `
+      mutation AdminTemplateClear($metafields: [MetafieldIdentifierInput!]!) {
+        metafieldsDelete(metafields: $metafields) {
+          deletedMetafields {
+            key
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    `,
+  },
+
   /* ------------------------------------------------------------------ redirects */
 
   /** Website → Redirects (`lib/admin/redirects.ts`): every URL redirect, newest first. */

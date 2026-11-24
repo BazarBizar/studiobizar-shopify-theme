@@ -44,6 +44,29 @@ import {
   videoSection,
 } from "./sections-landing";
 import { customSection } from "./sections-custom";
+import {
+  collectionDesigner,
+  collectionHero,
+  collectionIdea,
+  collectionInContext,
+  collectionProducts,
+  collectionsMain,
+  designerProducts,
+  designerProfile,
+  productCollection,
+  productDesigner,
+  productIdea,
+  productMain,
+  productRecommendations,
+  projectDetails,
+  projectFeatured,
+  projectHero,
+  projectOthers,
+  projectsMain,
+  searchMain,
+  shopMain,
+} from "./sections-template";
+import { TEMPLATE_CATEGORIES, type TemplateKind } from "./template-kinds";
 
 /**
  * THE list of sections the builder offers. The panel's Add section menu, the
@@ -97,6 +120,27 @@ export const SECTIONS = {
   [newsletter.type]: newsletter,
   // Built block by block — see sections-custom.ts.
   [customSection.type]: customSection,
+  // The templates' own sections — offered only in their template; see sections-template.ts.
+  [productMain.type]: productMain,
+  [productIdea.type]: productIdea,
+  [productDesigner.type]: productDesigner,
+  [productCollection.type]: productCollection,
+  [productRecommendations.type]: productRecommendations,
+  [collectionHero.type]: collectionHero,
+  [collectionIdea.type]: collectionIdea,
+  [collectionDesigner.type]: collectionDesigner,
+  [collectionProducts.type]: collectionProducts,
+  [collectionInContext.type]: collectionInContext,
+  [projectHero.type]: projectHero,
+  [projectDetails.type]: projectDetails,
+  [projectFeatured.type]: projectFeatured,
+  [projectOthers.type]: projectOthers,
+  [designerProfile.type]: designerProfile,
+  [designerProducts.type]: designerProducts,
+  [shopMain.type]: shopMain,
+  [searchMain.type]: searchMain,
+  [collectionsMain.type]: collectionsMain,
+  [projectsMain.type]: projectsMain,
 } as const;
 
 export type SectionType = keyof typeof SECTIONS;
@@ -105,6 +149,8 @@ export type SettingsFor<T extends SectionType> = ReturnType<(typeof SECTIONS)[T]
 
 /** The order categories appear in Add section. */
 export const SECTION_CATEGORIES: readonly SectionCategory[] = [
+  // First in a template's Add section — and never shown on a page (see `sectionTypesFor`).
+  ...TEMPLATE_CATEGORIES,
   "Build your own",
   "Banners",
   "Intro",
@@ -125,4 +171,19 @@ export function isSectionType(value: unknown): value is SectionType {
 /** Widened for callers that hold a type as a plain string. */
 export function sectionDefinition(type: string): SectionDefinition | null {
   return isSectionType(type) ? (SECTIONS[type] as unknown as SectionDefinition) : null;
+}
+
+/**
+ * The section types a document may hold: every ordinary section, plus — in a
+ * template — that template's own. `null` is a page (or the header and footer).
+ */
+export function isSectionAllowedIn(type: string, template: TemplateKind | null): boolean {
+  const definition = sectionDefinition(type);
+  if (!definition) return false;
+  return definition.template === null || definition.template === template;
+}
+
+/** The types NOT offered in Add section here — what `AddSectionDialog`'s `exclude` takes. */
+export function sectionTypesExcludedFrom(template: TemplateKind | null): SectionType[] {
+  return SECTION_TYPES.filter((type) => !isSectionAllowedIn(type, template));
 }

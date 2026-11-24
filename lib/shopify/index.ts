@@ -1,5 +1,7 @@
 import "server-only";
 
+import { cache } from "react";
+
 import { shopifyFetch } from "./client";
 import {
   METAFIELD_NAMESPACE,
@@ -11,6 +13,8 @@ import {
   SITE_SETTINGS_HANDLE,
   SITE_SETTINGS_TYPE,
   TAGS,
+  pageTag,
+  templateTag,
   resolveCollectionSort,
   resolveSort,
 } from "./constants";
@@ -38,7 +42,10 @@ import {
   getSiteTextsQuery,
   getProductDetailsQuery,
   getShopQuery,
+  getTemplateDocumentQuery,
 } from "./queries/content";
+import { parsePageDocument, type PageDocument } from "@/lib/page-builder/document";
+import { templateMetafields, type TemplateKind } from "@/lib/page-builder/template-kinds";
 import { parseThemeLayout, type ThemeLayout } from "@/lib/theme-builder/layout";
 import { DEFAULT_CATEGORIES, parseShopCategories, type Category } from "./categories";
 import { DEFAULT_PRODUCT_DETAILS, parseProductDetails, type ProductDetails } from "./product-details";
@@ -126,7 +133,8 @@ export async function countProducts(query: string): Promise<number> {
   return data.search.totalCount;
 }
 
-export async function getProduct(handle: string): Promise<Maybe<Product>> {
+/** Memoised per request (`cache`): the page and its `generateMetadata` both ask, and a POST fetch is not deduplicated by Next. */
+export const getProduct = cache(async (handle: string): Promise<Maybe<Product>> => {
   // The fields Content → Product details added beyond the fixed list ride along.
   const details = await getProductDetails();
   const fixed = new Set<string>(PRODUCT_DETAIL_METAFIELDS);
@@ -139,7 +147,7 @@ export async function getProduct(handle: string): Promise<Maybe<Product>> {
   });
 
   return data.product ? normalizeProduct(data.product) : null;
-}
+});
 
 export async function getProductRecommendations(productHandle: string): Promise<ProductCard[]> {
   const data = await shopifyFetch<{ productRecommendations: Maybe<ShopifyProductCard[]> }>({
@@ -195,9 +203,14 @@ export async function getCollections({
   after,
   query,
 }: { first?: number; after?: string; query?: string } = {}): Promise<Paginated<CollectionCard>> {
+  return collectionsPage(first, after ?? null, query ?? null);
+}
+
+/** Primitive arguments, so `cache` can memoise it — several sections on one page list the same collections. */
+const collectionsPage = cache(async (first: number, after: string | null, query: string | null): Promise<Paginated<CollectionCard>> => {
   const data = await shopifyFetch<{ collections: Connection<ShopifyCollection> }>({
     query: getCollectionsQuery,
-    variables: { first, after: after ?? null, query: query ?? null },
+    variables: { first, after, query },
     tags: [TAGS.collections],
     revalidate: REVALIDATE.collections,
   });
@@ -206,7 +219,7 @@ export async function getCollections({
     items: data.collections.nodes.map(normalizeCollectionCard),
     pageInfo: data.collections.pageInfo,
   };
-}
+});
 
 /** Shopify auto-creates this for the theme's home page; it is not a collection. */
 const HIDDEN_COLLECTION_HANDLES = new Set(["frontpage"]);
@@ -243,7 +256,7 @@ function byCuratedOrder(a: CollectionCard, b: CollectionCard) {
   return left - right || a.title.localeCompare(b.title);
 }
 
-export async function getCollection(handle: string): Promise<Maybe<Collection>> {
+export const getCollection = cache(async (handle: string): Promise<Maybe<Collection>> => {
   const data = await shopifyFetch<{ collection: Maybe<ShopifyCollection> }>({
     query: getCollectionQuery,
     variables: { handle },
@@ -252,7 +265,7 @@ export async function getCollection(handle: string): Promise<Maybe<Collection>> 
   });
 
   return data.collection ? normalizeCollection(data.collection) : null;
-}
+});
 
 export async function getCollectionProducts({
   handle,
@@ -316,20 +329,24 @@ export async function getMetaobjects(
   type: string,
   { first = 100, after }: { first?: number; after?: string } = {},
 ): Promise<Paginated<ShopifyMetaobject>> {
+  return metaobjectsPage(type, first, after ?? null);
+}
+
+const metaobjectsPage = cache(async (type: string, first: number, after: string | null): Promise<Paginated<ShopifyMetaobject>> => {
   const data = await shopifyFetch<{ metaobjects: Connection<ShopifyMetaobject> }>({
     query: getMetaobjectsQuery,
-    variables: { type, first, after: after ?? null },
+    variables: { type, first, after },
     tags: [TAGS.metaobjects],
     revalidate: REVALIDATE.metaobjects,
   });
 
   return { items: data.metaobjects.nodes, pageInfo: data.metaobjects.pageInfo };
-}
+});
 
-export async function getMetaobject(
+export const getMetaobject = cache(async (
   type: string,
   handle: string,
-): Promise<Maybe<ShopifyMetaobject>> {
+): Promise<Maybe<ShopifyMetaobject>> => {
   const data = await shopifyFetch<{ metaobject: Maybe<ShopifyMetaobject> }>({
     query: getMetaobjectQuery,
     variables: { handle: { type, handle } },
@@ -338,7 +355,7 @@ export async function getMetaobject(
   });
 
   return data.metaobject;
-}
+});
 
 /**
  * The `site_settings` singleton — store-wide copy an operator edits in the panel
@@ -378,16 +395,16 @@ export async function getSiteIdentity(): Promise<SiteIdentity> {
  * Content — pages, menus, shop
  * -------------------------------------------------------------------------- */
 
-export async function getPage(handle: string): Promise<Maybe<ShopifyPage>> {
+export const getPage = cache(async (handle: string): Promise<Maybe<ShopifyPage>> => {
   const data = await shopifyFetch<{ page: Maybe<ShopifyPage> }>({
     query: getPageQuery,
     variables: { handle },
-    tags: [TAGS.content],
+    tags: [TAGS.content, pageTag(handle)],
     revalidate: REVALIDATE.content,
   });
 
   return data.page;
-}
+});
 
 /**
  * What the Storefront API is serving RIGHT NOW for a page's published builder
@@ -412,7 +429,7 @@ export async function getLivePageBuilderDocument(
  * first publishes, and when the stored copy cannot be read. Either way the shell then
  * draws its original header and footer. Cached with the rest of the content.
  */
-export async function getThemeLayout(): Promise<ThemeLayout | null> {
+export const getThemeLayout = cache(async (): Promise<ThemeLayout | null> => {
   try {
     const data = await shopifyFetch<{ shop: { layout: Maybe<{ value: string }> } }>({
       query: getThemeLayoutQuery,
@@ -428,13 +445,48 @@ export async function getThemeLayout(): Promise<ThemeLayout | null> {
     // The shell must render even when Shopify is unreachable.
     return null;
   }
+});
+
+/**
+ * A template's published document, or null — null until it is first published, and
+ * when the stored copy cannot be read. Either way the route then draws the layout in
+ * its own code. Cached per template (`templateTag`) and with the rest of the content.
+ */
+export const getPublishedTemplate = cache(async (kind: TemplateKind): Promise<PageDocument | null> => {
+  try {
+    const data = await shopifyFetch<{ shop: { template: Maybe<{ value: string }> } }>({
+      query: getTemplateDocumentQuery,
+      variables: { key: templateMetafields(kind).published },
+      tags: [TAGS.content, templateTag(kind)],
+      revalidate: REVALIDATE.content,
+    });
+    const parsed = parsePageDocument(data.shop.template?.value);
+    if (!parsed.ok && parsed.reason === "invalid") {
+      console.error(`[templates] the published ${kind} template is not readable — drawing the page's own layout.`);
+    }
+    return parsed.ok ? parsed.doc : null;
+  } catch {
+    // The page must render even when Shopify is unreachable — with its own layout.
+    return null;
+  }
+});
+
+/** What the Storefront API serves RIGHT NOW for a template — uncached, for "has my publish landed yet?". */
+export async function getLiveTemplateStamp(kind: TemplateKind): Promise<string | null> {
+  const data = await shopifyFetch<{ shop: { template: Maybe<{ value: string }> } }>({
+    query: getTemplateDocumentQuery,
+    variables: { key: templateMetafields(kind).published },
+    revalidate: false,
+  });
+  const parsed = parsePageDocument(data.shop.template?.value);
+  return parsed.ok ? parsed.doc.meta.publishedAt : null;
 }
 
 /**
  * Shop All's category chips: the list saved in the admin, else the original one. A
  * list that cannot be read falls back too, so the Shop page always has its chips.
  */
-export async function getShopCategories(): Promise<readonly Category[]> {
+export const getShopCategories = cache(async (): Promise<readonly Category[]> => {
   try {
     const data = await shopifyFetch<{ shop: { categories: Maybe<{ value: string }> } }>({
       query: getShopCategoriesQuery,
@@ -448,13 +500,13 @@ export async function getShopCategories(): Promise<readonly Category[]> {
   } catch {
     return DEFAULT_CATEGORIES;
   }
-}
+});
 
 /**
  * The site's fixed texts: the originals with whatever was changed under Settings →
  * Site texts on top. Never throws — a page, a form or an email always has its words.
  */
-export async function getSiteTexts(): Promise<SiteTexts> {
+export const getSiteTexts = cache(async (): Promise<SiteTexts> => {
   try {
     const data = await shopifyFetch<{ shop: { texts: Maybe<{ value: string }> } }>({
       query: getSiteTextsQuery,
@@ -468,13 +520,13 @@ export async function getSiteTexts(): Promise<SiteTexts> {
   } catch {
     return DEFAULT_SITE_TEXTS;
   }
-}
+});
 
 /**
  * Which fields the product page shows and under what labels: the list saved in the admin,
  * else the page as it was built. Never throws.
  */
-export async function getProductDetails(): Promise<ProductDetails> {
+export const getProductDetails = cache(async (): Promise<ProductDetails> => {
   try {
     const data = await shopifyFetch<{ shop: { details: Maybe<{ value: string }> } }>({
       query: getProductDetailsQuery,
@@ -488,7 +540,7 @@ export async function getProductDetails(): Promise<ProductDetails> {
   } catch {
     return DEFAULT_PRODUCT_DETAILS;
   }
-}
+});
 
 /** What the Storefront API serves RIGHT NOW — uncached, for "has my publish landed yet?". */
 export async function getLiveThemeLayoutStamp(): Promise<string | null> {
@@ -504,14 +556,14 @@ export async function getPages(first = 50): Promise<ShopifyPage[]> {
   const data = await shopifyFetch<{ pages: { nodes: ShopifyPage[] } }>({
     query: getPagesQuery,
     variables: { first },
-    tags: [TAGS.content],
+    tags: [TAGS.content, TAGS.pages],
     revalidate: REVALIDATE.content,
   });
 
   return data.pages.nodes;
 }
 
-export async function getMenu(handle: string): Promise<MenuLink[]> {
+export const getMenu = cache(async (handle: string): Promise<MenuLink[]> => {
   const data = await shopifyFetch<{ menu: Maybe<ShopifyMenu> }>({
     query: getMenuQuery,
     variables: { handle },
@@ -520,7 +572,7 @@ export async function getMenu(handle: string): Promise<MenuLink[]> {
   });
 
   return (data.menu?.items ?? []).map(normalizeMenuItem);
-}
+});
 
 export async function getShop() {
   const data = await shopifyFetch<{

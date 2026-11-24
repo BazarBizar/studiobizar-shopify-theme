@@ -1,16 +1,23 @@
 {
   "sections": {
-    "main": {
-      "type": "sb-main-designer",
+    "designer-profile-1": {
+      "type": "sb-t-designer-profile",
+      "settings": {}
+    },
+    "designer-products-2": {
+      "type": "sb-t-designer-products",
+      "settings": {}
+    },
+    "go-back-3": {
+      "type": "sb-go-back",
       "settings": {
-        "show_products": true,
-        "product_limit": 8,
-        "surface": "mocha",
-        "rhythm": "theme"
+        "href": "/designers"
       }
     }
   },
   "order": [
-    "main"
+    "designer-profile-1",
+    "designer-products-2",
+    "go-back-3"
   ]
 }

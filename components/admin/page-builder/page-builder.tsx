@@ -3,6 +3,7 @@
 import {
   CopyPlusIcon,
   EllipsisVerticalIcon,
+  EyeOffIcon,
   ExternalLinkIcon,
   HistoryIcon,
   Loader2Icon,
@@ -31,6 +32,9 @@ import {
   draftRevisionRequest,
   RequestError,
   saveDraftRequest,
+  templateActionRequest,
+  templateRevisionRequest,
+  templateSaveRequest,
 } from "@/lib/admin/queries";
 import { STAFF_LOGIN_PATH } from "@/lib/admin/cookie";
 import {
@@ -46,6 +50,8 @@ import { canConvertToCustom, convertToCustom } from "@/lib/page-builder/convert-
 import { NO_EXAMPLE_MEDIA, withExamples } from "@/lib/page-builder/examples";
 import { findTextPath, withText } from "@/lib/page-builder/inline-edit";
 import { sectionFromPreset, type SectionPreset } from "@/lib/page-builder/presets";
+import { sectionDefinition, sectionTypesExcludedFrom } from "@/lib/page-builder/registry";
+import { TEMPLATES, type TemplateKind } from "@/lib/page-builder/template-kinds";
 import { cn } from "@/lib/utils/cn";
 
 import { PageEditorBar } from "@/components/admin/pages-table/page-editor-bar";
@@ -74,8 +80,20 @@ import { SectionList } from "./section-list";
 type Panel = { kind: "list" } | { kind: "section"; id: string } | { kind: "page" };
 /** `signedOut`: the session ended — saving waits for the editor to sign in again. */
 type SaveState = "idle" | "saving" | "error" | "conflict" | "signedOut";
-type Busy = null | "publish" | "discard" | "rollback";
-type Confirm = null | "discard" | "rollback";
+type Busy = null | "publish" | "discard" | "rollback" | "unpublish";
+type Confirm = null | "discard" | "rollback" | "unpublish";
+
+/**
+ * Editing a TEMPLATE (Website → Templates) rather than a page: the same editor, saved
+ * to the template's copies on the shop, previewed with an item the operator picks.
+ */
+export type TemplateEditorInfo = {
+  kind: TemplateKind;
+  /** Items the preview can be drawn with — products, collections… — and their live pages. */
+  samples: { value: string; label: string; href: string }[];
+  /** The item the preview starts with ("" for the lists, a search word for Search results). */
+  sample: string;
+};
 
 export type PageBuilderProps = {
   page: {
@@ -98,13 +116,51 @@ export type PageBuilderProps = {
   /** Link destinations and FAQ categories, for the form's pick-lists. */
   lookups: EditorLookups;
   publicPath: string;
+  /** Set when this edits a template instead of a page. */
+  template?: TemplateEditorInfo;
 };
 
 /** Quiet long enough to be a pause, short enough that the preview feels live. */
 const AUTOSAVE_MS = 1200;
 
-export function PageBuilder({ page, initial, collections, lookups, publicPath }: PageBuilderProps) {
+export function PageBuilder({ page, initial, collections, lookups, publicPath, template }: PageBuilderProps) {
   const router = useRouter();
+
+  /**
+   * Where this editor saves: a page's documents, or a template's. Everything else —
+   * the list, the forms, the preview, undo — is the same for both.
+   */
+  const target = React.useMemo(() => {
+    const kind = template?.kind;
+    return kind
+      ? {
+          save: (baseRevision: number, content: unknown) => templateSaveRequest({ kind, baseRevision, content }),
+          revision: () => templateRevisionRequest(kind),
+          action: (action: "publish" | "discard" | "rollback" | "unpublish", baseRevision: number) =>
+            templateActionRequest(
+              action === "publish"
+                ? "templatePublish"
+                : action === "discard"
+                  ? "templateDiscard"
+                  : action === "rollback"
+                    ? "templateRollback"
+                    : "templateUnpublish",
+              { kind, baseRevision },
+            ),
+        }
+      : {
+          save: (baseRevision: number, content: unknown) => saveDraftRequest({ id: page.id, baseRevision, content }),
+          revision: () => draftRevisionRequest(page.id),
+          action: (action: "publish" | "discard" | "rollback" | "unpublish", baseRevision: number) =>
+            builderActionRequest(
+              action === "publish" ? "builderPublish" : action === "discard" ? "builderDiscard" : "builderRollback",
+              { id: page.id, baseRevision },
+            ),
+        };
+  }, [template?.kind, page.id]);
+  /** The item a template's preview is drawn with. */
+  const [sample, setSample] = React.useState(template?.sample ?? "");
+  const excluded = React.useMemo(() => sectionTypesExcludedFrom(template?.kind ?? null), [template?.kind]);
 
   const [history, dispatch] = React.useReducer(historyReducer, initial.content, initialHistory);
   const content = history.present;
@@ -192,7 +248,7 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
     const run = (async () => {
       setSaveState("saving");
       try {
-        const result = await saveDraftRequest({ id: page.id, baseRevision: revisionRef.current, content: snapshot });
+        const result = await target.save(revisionRef.current, snapshot);
         revisionRef.current = result.revision;
         // Set at once, not only through the effect below: a leave that follows this
         // save must see it as saved, or the unmount would send it a second time.
@@ -221,7 +277,7 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
     const ok = await run;
     inflightRef.current = null;
     return ok;
-  }, [page.id]);
+  }, [target]);
 
   React.useEffect(() => {
     conflictRef.current = saveState === "conflict";
@@ -254,9 +310,9 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
     const revision = revisionRef;
     return () => {
       if (conflict.current || JSON.stringify(content.current) === saved.current) return;
-      void saveDraftRequest({ id: page.id, baseRevision: revision.current, content: content.current }).catch(() => undefined);
+      void target.save(revision.current, content.current).catch(() => undefined);
     };
-  }, [page.id]);
+  }, [target]);
 
   /**
    * Is this the version that is really there? Back and Forward restore the editor
@@ -266,7 +322,8 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
    */
   React.useEffect(() => {
     let cancelled = false;
-    draftRevisionRequest(page.id)
+    target
+      .revision()
       .then(({ revision }) => {
         if (!cancelled && revision !== initial.revision) router.refresh();
       })
@@ -274,7 +331,7 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
     return () => {
       cancelled = true;
     };
-  }, [page.id, initial.revision, router]);
+  }, [target, initial.revision, router]);
 
   // Autosave: a pause after the last change. A conflict stops it — saving over
   // someone else's newer draft is exactly what the conflict is there to prevent.
@@ -335,7 +392,9 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
     [post],
   );
   React.useEffect(() => {
-    const timer = window.setTimeout(sendContent, 150);
+    // 300 ms: a pause in typing, not every keystroke — each redraw is a full server render.
+    // A Style change does not wait for it; it is applied in the preview at once (below).
+    const timer = window.setTimeout(sendContent, 300);
     return () => window.clearTimeout(timer);
   }, [content, sendContent]);
   React.useEffect(() => {
@@ -395,13 +454,18 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
   const addSection = (preset: SectionPreset) => {
     // Filled with example content, so the new section is plainly THERE — in the list,
     // in the preview — and shows what it can hold.
-    const section = withExamples(sectionFromPreset(preset), lookups.examples ?? NO_EXAMPLE_MEDIA);
+    // A template's own section shows the item's content, so it gets none of its own.
+    const fresh = sectionFromPreset(preset);
+    const own = sectionDefinition(preset.type)?.template != null;
+    const section = own ? fresh : withExamples(fresh, lookups.examples ?? NO_EXAMPLE_MEDIA);
     dispatch({ kind: "insert", section, index: insertionIndex(content, selectedId) });
     setPanel({ kind: "section", id: section.id });
     // A section just added is filled in first — never opened on the Style tab left
     // over from the last one.
     setEditorTab("content");
-    toast.success(`${preset.label} added`, { description: "It holds example content — replace it with your own." });
+    toast.success(`${preset.label} added`, {
+      description: own ? "It shows each page's own content." : "It holds example content — replace it with your own.",
+    });
   };
 
   const duplicate = (id: string) => {
@@ -466,10 +530,7 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
         if (!saved) return;
       }
 
-      const result = await builderActionRequest("builderPublish", {
-        id: page.id,
-        baseRevision: revisionRef.current,
-      });
+      const result = await target.action("publish", revisionRef.current);
       revisionRef.current = result.revision;
 
       setCanRollback(hasPublished);
@@ -481,6 +542,12 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
       // Shopify takes up to about half a minute to serve a change. Saying so stops
       // someone reloading at once and concluding the publish failed. A page published
       // for the first time is in no menu yet — say that too, with the way there.
+      if (template) {
+        toast.success("Published", {
+          description: `Every page at ${TEMPLATES[template.kind].path} uses it within about half a minute.`,
+        });
+        return;
+      }
       toast.success("Published", {
         description: hasPublished
           ? `${publicPath} shows it within about half a minute.`
@@ -511,13 +578,18 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
     setBusy(action);
 
     try {
-      await builderActionRequest(action === "discard" ? "builderDiscard" : "builderRollback", {
-        id: page.id,
-        baseRevision: revisionRef.current,
-      });
-      toast.success(action === "discard" ? "Changes discarded" : "Previous version loaded", {
-        description: action === "rollback" ? "It is your draft now. Check it, then publish to put it back on the site." : undefined,
-      });
+      await target.action(action, revisionRef.current);
+      toast.success(
+        action === "discard" ? "Changes discarded" : action === "unpublish" ? "Template no longer used" : "Previous version loaded",
+        {
+          description:
+            action === "rollback"
+              ? "It is your draft now. Check it, then publish to put it back on the site."
+              : action === "unpublish"
+                ? "The pages show their original layout again within about half a minute. Your draft is kept."
+                : undefined,
+        },
+      );
       router.refresh();
     } catch (error) {
       if (error instanceof RequestError && error.code === "CONFLICT") setSaveState("conflict");
@@ -545,7 +617,11 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
             ? "Unsaved changes"
             : "Draft saved";
 
-  const previewSrc = `/preview/pages/${page.param}`;
+  const previewSrc = template
+    ? `/preview/templates/${template.kind}${sample ? `?item=${encodeURIComponent(sample)}` : ""}`
+    : `/preview/pages/${page.param}`;
+  /** A template's live page for the item shown — or a page's own address. */
+  const liveHref = template ? (template.samples.find((item) => item.value === sample)?.href ?? publicPath) : publicPath;
   const canPublish = busy === null && saveState !== "conflict" && (dirty || hasUnpublished || !hasPublished);
 
   return (
@@ -556,7 +632,17 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
         <PageEditorBar
           title={page.title}
           path={publicPath}
-          param={page.param}
+          param={template ? undefined : page.param}
+          back={template ? { href: "/admin/templates", label: "Back to templates" } : undefined}
+          status={
+            template
+              ? !hasPublished
+                ? { label: "Not in use yet", tone: "waiting", hint: "Visitors still see the original layout. Press Publish to use this template." }
+                : hasUnpublished || dirty
+                  ? { label: "Changes not published", tone: "waiting", hint: "Visitors still see the published template. Press Publish to show your changes." }
+                  : { label: "In use", tone: "live", hint: `Every page at ${publicPath} is drawn with this template.` }
+              : undefined
+          }
           active="content"
           isPublished={isLive}
           content={!hasPublished ? "draft" : hasUnpublished || dirty ? "changes" : "published"}
@@ -599,6 +685,10 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
               </Button>
             </div>
 
+            {template && (template.samples.length > 0 || TEMPLATES[template.kind].sample === "query") ? (
+              <SamplePicker template={template} value={sample} onChange={setSample} />
+            ) : null}
+
             <DeviceSwitch className="hidden lg:flex" />
 
             <Button asChild variant="outline" size="sm">
@@ -622,28 +712,37 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
               <DropdownMenuContent align="end" className="w-60">
                 {isLive && hasPublished && (
                   <DropdownMenuItem asChild>
-                    <a href={publicPath} target="_blank" rel="noopener noreferrer">
+                    <a href={liveHref} target="_blank" rel="noopener noreferrer">
                       <ExternalLinkIcon />
                       View live page
                     </a>
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem disabled={busy !== null || saveState === "conflict"} onSelect={() => setDuplicating(true)}>
-                  <CopyPlusIcon />
-                  Duplicate page
-                </DropdownMenuItem>
+                {template ? null : (
+                  <DropdownMenuItem disabled={busy !== null || saveState === "conflict"} onSelect={() => setDuplicating(true)}>
+                    <CopyPlusIcon />
+                    Duplicate page
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  disabled={!hasPublished || (!hasUnpublished && !dirty) || busy !== null}
+                  // A template that was never published can still go back to the original layout.
+                  disabled={(!hasPublished && !template) || (!hasUnpublished && !dirty) || busy !== null}
                   onSelect={() => setConfirm("discard")}
                 >
                   <RotateCcwIcon />
-                  Discard unpublished changes
+                  {template && !hasPublished ? "Start again from the original layout" : "Discard unpublished changes"}
                 </DropdownMenuItem>
                 <DropdownMenuItem disabled={!canRollback || busy !== null} onSelect={() => setConfirm("rollback")}>
                   <HistoryIcon />
                   Load previously published version
                 </DropdownMenuItem>
+                {template && hasPublished ? (
+                  <DropdownMenuItem disabled={busy !== null || saveState === "conflict"} onSelect={() => setConfirm("unpublish")}>
+                    <EyeOffIcon />
+                    Stop using this template
+                  </DropdownMenuItem>
+                ) : null}
               </DropdownMenuContent>
             </DropdownMenu>
         </PageEditorBar>
@@ -734,7 +833,7 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
               {panel.kind === "page" ? (
                 <PageSettingsEditor
                   settings={content.page}
-                  settingsHref={`/admin/pages/${page.id.split("/").pop()}`}
+                  settingsHref={template ? undefined : `/admin/pages/${page.id.split("/").pop()}`}
                   onBack={() => setPanel({ kind: "list" })}
                   onChange={(key, value) => dispatch({ kind: "page", key, value })}
                 />
@@ -767,6 +866,7 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
               ) : (
                 <SectionList
                   sections={content.sections}
+                  exclude={excluded}
                   selectedId={selectedId}
                   incompleteIds={incompleteIds}
                   onAdd={addSection}
@@ -810,29 +910,99 @@ export function PageBuilder({ page, initial, collections, lookups, publicPath }:
 
         {/* The copy is of what is on screen: anything typed but not yet autosaved is
             saved first. */}
-        <DuplicatePageDialog
-          duplicateOf={{ id: page.id, title: page.title }}
-          open={duplicating}
-          onOpenChange={setDuplicating}
-          beforeCreate={() => (dirty || inflightRef.current ? flush() : Promise.resolve(true))}
-        />
+        {template ? null : (
+          <DuplicatePageDialog
+            duplicateOf={{ id: page.id, title: page.title }}
+            open={duplicating}
+            onOpenChange={setDuplicating}
+            beforeCreate={() => (dirty || inflightRef.current ? flush() : Promise.resolve(true))}
+          />
+        )}
 
         {/* ---------------- confirmations ---------------- */}
         <ConfirmDialog
           open={confirm !== null}
           onOpenChange={(open) => !open && setConfirm(null)}
-          destructive={confirm === "discard"}
-          title={confirm === "rollback" ? "Load the previously published version?" : "Discard unpublished changes?"}
+          destructive={confirm === "discard" || confirm === "unpublish"}
+          title={
+            confirm === "rollback"
+              ? "Load the previously published version?"
+              : confirm === "unpublish"
+                ? "Stop using this template?"
+                : template && !hasPublished
+                  ? "Start again from the original layout?"
+                  : "Discard unpublished changes?"
+          }
           description={
             confirm === "rollback"
               ? "Your draft is replaced by the version that was live before the last publish. Nothing changes on the site until you publish."
-              : "Your draft goes back to what is live now. Changes since the last publish are lost."
+              : confirm === "unpublish"
+                ? `Every page at ${publicPath} goes back to its original layout. Your draft stays here, and “Load previously published version” brings this one back.`
+                : template && !hasPublished
+                  ? "Your changes are thrown away and the template becomes the original layout again."
+                  : "Your draft goes back to what is live now. Changes since the last publish are lost."
           }
-          confirmLabel={confirm === "rollback" ? "Load it" : "Discard changes"}
+          confirmLabel={confirm === "rollback" ? "Load it" : confirm === "unpublish" ? "Stop using it" : "Discard changes"}
           onConfirm={() => (confirm ? runConfirmed(confirm) : undefined)}
         />
       </div>
     </EditorDeviceContext.Provider>
     </EditorLookupsContext.Provider>
+  );
+}
+
+/**
+ * "Preview with": which product (collection, project…) the template's preview draws —
+ * a template has no content of its own to show without one. Search results take a
+ * word instead.
+ */
+function SamplePicker({
+  template,
+  value,
+  onChange,
+}: {
+  template: TemplateEditorInfo;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [typed, setTyped] = React.useState(value);
+  if (TEMPLATES[template.kind].sample === "query") {
+    return (
+      <form
+        className="hidden items-center gap-1.5 xl:flex"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onChange(typed.trim());
+        }}
+      >
+        <label htmlFor="pb-sample" className="text-muted-foreground text-xs whitespace-nowrap">
+          Preview a search for
+        </label>
+        <input
+          id="pb-sample"
+          value={typed}
+          onChange={(event) => setTyped(event.target.value)}
+          onBlur={() => onChange(typed.trim())}
+          maxLength={60}
+          className="border-input bg-background h-8 w-32 rounded-md border px-2 text-sm"
+        />
+      </form>
+    );
+  }
+  return (
+    <label className="hidden items-center gap-1.5 xl:flex">
+      <span className="text-muted-foreground text-xs whitespace-nowrap">Preview with</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="border-input bg-background h-8 max-w-[12rem] rounded-md border px-2 text-sm"
+      >
+        {template.samples.map((item) => (
+          <option key={item.value} value={item.value}>
+            {item.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }

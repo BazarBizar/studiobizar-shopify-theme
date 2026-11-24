@@ -117,7 +117,9 @@ export async function POST(request: Request) {
     });
 
     if (rest.handle !== undefined) await releaseAddress(routeForPageHandle(updated.handle));
-    await revalidateForType("page");
+    // A new handle leaves the old address cached under a handle we no longer have, so a
+    // rename drops every page; any other edit drops only this page.
+    await revalidateForType("page", rest.handle === undefined ? { handle: updated.handle } : {});
     return NextResponse.json(updated);
   } catch (error) {
     audit({ action: "page.update", actor: staff.email, outcome: "error", reason: "UPSTREAM", ip });

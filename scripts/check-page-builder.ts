@@ -12,6 +12,7 @@ import {
   documentContentSchema,
   duplicateSection,
   emptyDocument,
+  misplacedSections,
   parsePageDocument,
   publishProblems,
   sameContent,
@@ -52,6 +53,10 @@ import {
   readPopups,
 } from "../lib/theme-builder/promo";
 import { PAGE_TEMPLATES, documentFromTemplate } from "../lib/page-builder/templates";
+import { defaultTemplateContent } from "../lib/page-builder/template-defaults";
+import { TEMPLATE_KINDS, TEMPLATES } from "../lib/page-builder/template-kinds";
+import { isSectionAllowedIn, sectionTypesExcludedFrom } from "../lib/page-builder/registry";
+import { AREA_EXCLUDED_SECTIONS } from "../lib/theme-builder/layout";
 
 let failures = 0;
 
@@ -950,6 +955,46 @@ check(
   check("crop: the saved section is not changed", section.settings.columns[0]!.settings.image.url === photo.url);
   const plain = { ...section, settings: { ...section.settings, columns: [section.settings.columns[1]!], design: {} } };
   check("crop: a section with no crop is not copied", withCrops(plain) === plain);
+}
+
+/* ---------------- one setting, one name ---------------- */
+{
+  // A section's own field with the name of a universal one (a Style tab colour, say)
+  // shares its value: changing one changes the other, and the Liquid schema would hold
+  // the same id twice, which Shopify refuses.
+  for (const type of SECTION_TYPES) {
+    const keys = SECTIONS[type].fields.map((field) => field.key);
+    const twice = keys.filter((key, index) => keys.indexOf(key) !== index);
+    check(`${type}: every setting has its own name${twice.length ? ` (twice: ${twice.join(", ")})` : ""}`, twice.length === 0);
+  }
+}
+
+/* ---------------- templates (Website → Templates) ---------------- */
+{
+  for (const kind of TEMPLATE_KINDS) {
+    const content = defaultTemplateContent(kind);
+    check(`template ${kind}: its original layout passes the write schema`, documentContentSchema.safeParse(content).success);
+    check(`template ${kind}: its original layout is ready to publish`, publishProblems(content).length === 0);
+    check(`template ${kind}: its original layout uses only sections allowed in it`, misplacedSections(content.sections, kind).length === 0);
+    const own = SECTION_TYPES.filter((type) => SECTIONS[type].template === kind);
+    check(
+      `template ${kind}: has sections of its own, offered under “${TEMPLATES[kind].category}”`,
+      own.length > 0 && own.every((type) => SECTIONS[type].category === TEMPLATES[kind].category),
+    );
+    check(`template ${kind}: its own sections are not offered on a page`, own.every((type) => sectionTypesExcludedFrom(null).includes(type)));
+    check(`template ${kind}: nor in the header and footer`, own.every((type) => AREA_EXCLUDED_SECTIONS.includes(type)));
+    check(
+      `template ${kind}: its original layout draws the page's one main heading`,
+      content.sections.some((section) => SECTIONS[section.type].heading),
+    );
+  }
+  check(
+    "an ordinary section is allowed in every template and on a page",
+    isSectionAllowedIn("rich_text", null) && TEMPLATE_KINDS.every((kind) => isSectionAllowedIn("rich_text", kind)),
+  );
+  check("a product's section is refused in the collection template", !isSectionAllowedIn("product_main", "collection"));
+  check("a product's section on a page is reported as misplaced", misplacedSections([createSection("product_main")], null).length === 1);
+  check("a Page heading counts as the page's main heading", SECTIONS.page_heading.heading);
 }
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll page builder checks passed.");

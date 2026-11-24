@@ -8,6 +8,8 @@
 @import "../styles/sb-design.css";
 @import "../styles/sb-carousel.css";
 @import "../styles/sb-blocks.css";
+@import "../styles/sb-template-look.css";
+@import "../styles/sb-popup.css";
 @source "../theme/**/*.liquid";
 @source "../theme/**/*.json";
 
@@ -644,4 +646,13 @@
   &::marker {
     content: none;
   }
+}
+
+/**
+ * A photo's own focal point (snippets/sb-image.liquid): what stays in view when a frame
+ * cuts the photo. One class deep, so a section's Style → Images focus
+ * (`[data-sb-imgpos][data-sb-imgpos] img`) still wins over it.
+ */
+.sb-focal {
+  object-position: var(--sb-focal);
 }

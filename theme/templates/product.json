@@ -1,15 +1,80 @@
 {
   "sections": {
-    "main": {
-      "type": "sb-main-product",
-      "settings": {
-        "surface": "light",
-        "idea_surface": "olive",
-        "rhythm": "theme"
-      }
+    "product-main-1": {
+      "type": "sb-t-product-main",
+      "settings": {},
+      "blocks": {
+        "breadcrumb-1": {
+          "type": "breadcrumb",
+          "settings": {}
+        },
+        "title-2": {
+          "type": "title",
+          "settings": {}
+        },
+        "designer-3": {
+          "type": "designer",
+          "settings": {}
+        },
+        "description-4": {
+          "type": "description",
+          "settings": {}
+        },
+        "in_context-5": {
+          "type": "in_context",
+          "settings": {}
+        },
+        "specs-6": {
+          "type": "specs",
+          "settings": {}
+        },
+        "price-7": {
+          "type": "price",
+          "settings": {}
+        },
+        "inquiry-8": {
+          "type": "inquiry",
+          "settings": {}
+        },
+        "panels-9": {
+          "type": "panels",
+          "settings": {}
+        }
+      },
+      "block_order": [
+        "breadcrumb-1",
+        "title-2",
+        "designer-3",
+        "description-4",
+        "in_context-5",
+        "specs-6",
+        "price-7",
+        "inquiry-8",
+        "panels-9"
+      ]
+    },
+    "product-idea-2": {
+      "type": "sb-t-product-idea",
+      "settings": {}
+    },
+    "product-designer-3": {
+      "type": "sb-t-product-designer",
+      "settings": {}
+    },
+    "product-collection-4": {
+      "type": "sb-t-product-collection",
+      "settings": {}
+    },
+    "product-recommendations-5": {
+      "type": "sb-t-product-recommendations",
+      "settings": {}
     }
   },
   "order": [
-    "main"
+    "product-main-1",
+    "product-idea-2",
+    "product-designer-3",
+    "product-collection-4",
+    "product-recommendations-5"
   ]
 }

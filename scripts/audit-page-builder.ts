@@ -465,6 +465,9 @@ async function main() {
   let tried = 0;
   for (const preset of SECTION_PRESETS as { id: string; type: string }[]) {
     if (only && !only.has(preset.type)) continue;
+    // A template's own sections draw the item a template page shows; without one they draw
+    // nothing, so they are tried by `check:templates` instead.
+    if ((SECTIONS[preset.type] as { template?: string | null }).template) continue;
     const definition = SECTIONS[preset.type] as { fields: readonly Field[] };
     const fields = definition.fields.filter((field) => !skip.has(field.key));
     const liquidFile = LIQUID_SECTIONS[preset.type] as string | undefined;

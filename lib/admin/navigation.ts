@@ -98,6 +98,7 @@ const RESERVED_SLUGS = new Set([
   "customers",
   "pages",
   "page-builder",
+  "templates",
   "shop-categories",
   "site-texts",
   "redirects",
@@ -168,6 +169,15 @@ const BESPOKE: { group: GroupKey; item: NavItem }[] = [
      * page builder) and Settings (title, address, visibility, SEO, delete).
      */
     item: { href: "/admin/pages", label: "Pages", readOnly: false, type: null },
+  },
+  {
+    group: "pages",
+    /**
+     * The layouts of the pages drawn from an item — every product, collection, project
+     * and designer page, the shop, search and the lists — built with the page builder.
+     * See `lib/page-builder/template-kinds.ts`.
+     */
+    item: { href: "/admin/templates", label: "Templates", readOnly: false, type: null },
   },
   {
     group: "pages",

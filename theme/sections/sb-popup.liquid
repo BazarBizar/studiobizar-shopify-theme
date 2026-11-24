@@ -1,0 +1,2975 @@
+{% comment %}
+  A pop-up — the theme's twin of Appearance → Pop-ups (lib/theme-builder/promo.ts,
+  components/layout/popups.tsx). One section per pop-up, in the `overlay-group` section
+  group (layout/theme.liquid renders it at the end of the page).
+
+  Ready-made (photograph, heading, text, button, newsletter sign-up) or built from the
+  Custom section's blocks (snippets/sb-custom-blocks.liquid). A <dialog>: the box in the
+  middle is modal, the corner box and the bar leave the page usable. When and where it
+  opens — after some seconds, after scrolling, on leaving; once per visit, every few
+  days, once ever; its dates and pages — is decided in the browser by assets/sb-promo.js,
+  because the page is cached. In the theme editor it opens at once.
+
+  The schema is generated from the panel's pop-up settings (`yarn liquid:schemas`).
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+  assign built = false
+  if s.build == 'blocks'
+    assign built = true
+  endif
+  assign layout = s.layout | default: 'center'
+
+  capture hide_class
+    render 'sb-hide-on', hide_on: s.hide_on
+  endcapture
+
+  comment
+    The photograph, where it sits and its shape (ready-made only).
+  endcomment
+  assign image = blank
+  unless built
+    assign image = s.image
+  endunless
+  assign placed = 'top'
+  if layout == 'center'
+    assign placed = s.image_position | default: 'top'
+  endif
+  assign side = false
+  if image != blank
+    if placed == 'side' or placed == 'right'
+      assign side = true
+    endif
+  endif
+  assign below = false
+  if image != blank and layout == 'center' and placed == 'bottom'
+    assign below = true
+  endif
+  assign close_room = false
+  if image == blank or below or placed == 'side'
+    assign close_room = true
+  endif
+  case s.image_ratio
+    when 'landscape', 'square', 'portrait', 'adapt'
+      assign ratio = s.image_ratio
+    else
+      if side
+        assign ratio = 'portrait'
+      else
+        assign ratio = 'landscape'
+      endif
+  endcase
+  case s.image_share
+    when 'third'
+      if placed == 'right'
+        assign share_class = 'sm:grid-cols-[2fr_1fr]'
+      else
+        assign share_class = 'sm:grid-cols-[1fr_2fr]'
+      endif
+    when 'twothirds'
+      if placed == 'right'
+        assign share_class = 'sm:grid-cols-[1fr_2fr]'
+      else
+        assign share_class = 'sm:grid-cols-[2fr_1fr]'
+      endif
+    else
+      assign share_class = 'sm:grid-cols-2'
+  endcase
+  case s.content_align
+    when 'middle'
+      assign sits_class = 'justify-center'
+    when 'bottom'
+      assign sits_class = 'justify-end'
+    else
+      assign sits_class = ''
+  endcase
+  case s.align
+    when 'left'
+      assign align_class = 'items-start text-left'
+      assign actions_class = 'items-start'
+      assign bar_align = ''
+    when 'right'
+      assign align_class = 'items-end text-right'
+      assign actions_class = 'items-end'
+      assign bar_align = 'justify-end text-right'
+    else
+      assign align_class = 'items-center text-center'
+      assign actions_class = 'items-center'
+      assign bar_align = 'justify-center text-center'
+  endcase
+
+  comment
+    The box: where it sits, its width, ground, text colour, line, shadow, the page
+    behind it, how it comes in.
+  endcomment
+  case layout
+    when 'corner'
+      if s.corner == 'left'
+        assign layout_class = 'fixed inset-auto bottom-[var(--sb-pop-off,1rem)] z-50 m-0 w-[calc(100%-2*var(--sb-pop-off,1rem))] sm:max-w-sm left-[var(--sb-pop-off,1rem)]'
+      else
+        assign layout_class = 'fixed inset-auto bottom-[var(--sb-pop-off,1rem)] z-50 m-0 w-[calc(100%-2*var(--sb-pop-off,1rem))] sm:max-w-sm right-[var(--sb-pop-off,1rem)] left-auto'
+      endif
+    when 'bar'
+      assign layout_class = 'fixed top-auto right-auto bottom-[var(--sb-pop-off,0px)] left-[var(--sb-pop-off,0px)] z-50 m-0 w-[calc(100%-2*var(--sb-pop-off,0px))] max-w-none'
+    else
+      case s.width
+        when 'small'
+          assign width_class = 'sm:max-w-sm'
+        when 'large'
+          assign width_class = 'sm:max-w-3xl'
+        when 'custom'
+          assign width_class = ''
+        else
+          assign width_class = 'sm:max-w-lg'
+      endcase
+      if s.dim
+        assign backdrop_class = 'backdrop:bg-[var(--sb-popup-backdrop,rgb(0_0_0/0.5))]'
+      else
+        assign backdrop_class = 'backdrop:bg-transparent'
+      endif
+      assign layout_class = 'fixed inset-0 m-auto w-[calc(100%-2*var(--sb-pop-off,1rem))] ' | append: width_class | append: ' ' | append: backdrop_class
+  endcase
+  case s.animation
+    when 'fade'
+      assign animation_class = 'sb-popup-fade'
+    when 'zoom'
+      assign animation_class = 'sb-popup-zoom'
+    when 'slide'
+      assign animation_class = 'sb-popup-slide'
+    when 'none'
+      assign animation_class = ''
+    else
+      assign animation_class = 'sb-popup-in'
+  endcase
+
+  assign style = ''
+  assign pop = ''
+  if s.background != blank
+    assign style = style | append: 'background-color:' | append: s.background | append: ';--sb-background:' | append: s.background | append: ';--sb-surface:' | append: s.background | append: ';'
+  endif
+  if s.color != blank
+    assign ground = s.background | default: 'var(--sb-background)'
+    if ground == blank
+      assign ground = 'var(--sb-background)'
+    endif
+    assign style = style | append: 'color:' | append: s.color | append: ';--sb-foreground:' | append: s.color | append: ';--sb-muted:color-mix(in srgb, ' | append: s.color | append: ' 60%, transparent);--sb-border:color-mix(in srgb, ' | append: s.color | append: ' 26%, transparent);--sb-primary:' | append: s.color | append: ';--sb-primary-foreground:' | append: ground | append: ';'
+  endif
+  if s.border_width > 0
+    assign line_width = s.border_width
+    if s.border_style == 'double' and line_width < 3
+      assign line_width = 3
+    endif
+    assign line_colour = s.border_color | default: 'currentColor'
+    if line_colour == blank
+      assign line_colour = 'currentColor'
+    endif
+    assign style = style | append: 'border:' | append: line_width | append: 'px ' | append: s.border_style | append: ' ' | append: line_colour | append: ';'
+  endif
+  case s.shadow
+    when 'none'
+      assign style = style | append: 'box-shadow:none;'
+    when 'soft'
+      assign style = style | append: 'box-shadow:0 1px 3px rgb(0 0 0 / 0.08), 0 4px 12px rgb(0 0 0 / 0.06);'
+    when 'medium'
+      assign style = style | append: 'box-shadow:0 4px 10px rgb(0 0 0 / 0.1), 0 12px 32px rgb(0 0 0 / 0.1);'
+    when 'strong'
+      assign style = style | append: 'box-shadow:0 10px 24px rgb(0 0 0 / 0.16), 0 24px 64px rgb(0 0 0 / 0.18);'
+  endcase
+  assign backdrop_colour = s.overlay | default: '#000000'
+  if backdrop_colour == blank
+    assign backdrop_colour = '#000000'
+  endif
+  assign style = style | append: '--sb-popup-backdrop:color-mix(in srgb, ' | append: backdrop_colour | append: ' ' | append: s.overlay_opacity | append: '%, transparent);'
+  assign blur = 0
+  if layout == 'center'
+    assign blur = s.blur
+  endif
+  if blur > 0
+    assign style = style | append: '--sb-popup-blur:' | append: blur | append: 'px;'
+  endif
+  case s.speed
+    when 'slow'
+      assign style = style | append: 'animation-duration:0.7s;'
+    when 'fast'
+      assign style = style | append: 'animation-duration:0.18s;'
+  endcase
+  if layout == 'center' and s.vertical == 'top'
+    assign style = style | append: 'margin-top:var(--sb-pop-off, 1rem);margin-bottom:auto;'
+  elsif layout == 'center' and s.vertical == 'bottom'
+    assign style = style | append: 'margin-top:auto;margin-bottom:var(--sb-pop-off, 1rem);'
+  endif
+
+  comment
+    Sizes, the same on every screen here (the panel can set them per device): the
+    custom width, the space inside and the corners — through the shared
+    `data-sb-pop` rules in styles/sb-popup.css.
+  endcomment
+  if layout == 'center' and s.width == 'custom'
+    assign pop = pop | append: 'w '
+    assign style = style | append: '--sb-pop-w-d:' | append: s.custom_width | append: 'px;--sb-pop-w-t:' | append: s.custom_width | append: 'px;--sb-pop-w-m:' | append: s.custom_width | append: 'px;'
+  endif
+  if s.padding != 32
+    assign pop = pop | append: 'pad '
+    assign style = style | append: '--sb-pop-pad-d:' | append: s.padding | append: 'px;--sb-pop-pad-t:' | append: s.padding | append: 'px;--sb-pop-pad-m:' | append: s.padding | append: 'px;'
+  endif
+  if s.radius > 0
+    assign pop = pop | append: 'r '
+    assign style = style | append: '--sb-pop-r-d:' | append: s.radius | append: 'px;--sb-pop-r-t:' | append: s.radius | append: 'px;--sb-pop-r-m:' | append: s.radius | append: 'px;'
+  endif
+  assign pop = pop | strip
+
+  case s.close_size
+    when 'small'
+      assign close_box = 'size-7'
+      assign close_icon = 'size-3.5'
+    when 'large'
+      assign close_box = 'size-10'
+      assign close_icon = 'size-5'
+    else
+      assign close_box = 'size-8'
+      assign close_icon = 'size-4'
+  endcase
+  assign close_style = ''
+  if s.close_color != blank
+    assign close_style = close_style | append: 'color:' | append: s.close_color | append: ';'
+  endif
+  if s.close_style != 'plain' and s.close_background != blank
+    assign close_style = close_style | append: 'background-color:' | append: s.close_background | append: ';'
+  endif
+
+  assign inset = 0
+  if layout != 'bar'
+    assign inset = s.image_inset
+  endif
+
+  assign has_button = false
+  if s.button_label != blank and s.button_url != blank
+    assign has_button = true
+  endif
+
+  assign content_count = 0
+  if built
+    for block in section.blocks
+      unless block.type == 'column' or block.type == 'space' or block.type == 'line'
+        assign content_count = content_count | plus: 1
+      endunless
+    endfor
+  else
+    if s.heading != blank or s.text != blank or image != blank or has_button or s.newsletter
+      assign content_count = 1
+    endif
+  endif
+
+  assign label = s.heading | default: 'Announcement'
+-%}
+
+{%- capture words -%}
+  {%- if s.heading != blank or s.text != blank -%}
+    <div data-sb-pop-words class="flex flex-col gap-2{% if layout == 'bar' %} min-w-0{% endif %}">
+      {%- if s.heading != blank -%}<h2 class="{% if layout == 'bar' %}text-body font-medium{% else %}text-h3{% endif %}">{{ s.heading | escape }}</h2>{%- endif -%}
+      {%- if s.text != blank -%}<p class="whitespace-pre-line {% if layout == 'bar' %}text-tertiary{% else %}text-secondary{% endif %}">{{ s.text | escape }}</p>{%- endif -%}
+    </div>
+  {%- endif -%}
+{%- endcapture -%}
+
+{%- capture actions -%}
+  {%- if has_button or s.newsletter -%}
+    <div class="flex w-full flex-col gap-4 sm:w-auto {{ actions_class }}">
+      {%- if s.newsletter -%}
+        {%- assign form_id = 'sb-popup-newsletter-' | append: section.id -%}
+        {%- assign input_id = 'sb-popup-email-' | append: section.id -%}
+        {%- form 'customer', id: form_id, class: 'w-full max-w-[26.25rem] text-left' -%}
+          <input type="hidden" name="contact[tags]" value="newsletter">
+          <div class="flex items-center gap-4 border-b border-current pb-2">
+            <label for="{{ input_id }}" class="sr-only">{{ 'newsletter.email_label' | t }}</label>
+            <input id="{{ input_id }}" type="email" name="contact[email]" value="{{ form.email }}" placeholder="{{ 'newsletter.placeholder' | t }}" autocomplete="email" required class="text-secondary w-full bg-transparent placeholder:text-current placeholder:opacity-70 focus:outline-none">
+            <button type="submit" class="text-secondary shrink-0 transition-opacity hover:opacity-70">{{ 'newsletter.submit' | t }}</button>
+          </div>
+          {%- if form.posted_successfully? -%}
+            <p role="status" class="text-tertiary mt-2 opacity-80">{{ 'newsletter.success' | t }}</p>
+          {%- endif -%}
+        {%- endform -%}
+      {%- endif -%}
+      {%- if has_button -%}
+        {%- if s.button_url contains '://' -%}{%- assign external = true -%}{%- else -%}{%- assign external = false -%}{%- endif -%}
+        <span class="inline-flex">{%- render 'sb-button', label: s.button_label, href: s.button_url, variant: s.button_style, external: external -%}</span>
+      {%- endif -%}
+    </div>
+  {%- endif -%}
+{%- endcapture -%}
+
+{%- capture photo -%}
+  {%- if image != blank -%}
+    <div class="{% if side %}sm:h-full{% endif %}{% if placed == 'right' %} sm:order-last{% endif %}"{% if inset > 0 %} style="padding: {{ inset }}px"{% endif %}>
+      {%- if side -%}
+        {%- render 'sb-picture', image: image, ratio: ratio, sizes: '(min-width: 640px) 384px, 100vw', class: 'sm:h-full' -%}
+      {%- else -%}
+        {%- render 'sb-picture', image: image, ratio: ratio, sizes: '(min-width: 640px) 768px, 100vw' -%}
+      {%- endif -%}
+    </div>
+  {%- endif -%}
+{%- endcapture -%}
+
+{%- if content_count > 0 -%}
+  <dialog
+    data-sb-popup
+    data-id="{{ section.id }}"
+    data-layout="{{ layout }}"
+    data-trigger="{{ s.trigger }}"
+    data-delay="{{ s.delay }}"
+    data-scroll="{{ s.scroll }}"
+    data-frequency="{{ s.frequency }}"
+    data-days="{{ s.days }}"
+    data-starts="{{ s.starts_at | escape }}"
+    data-ends="{{ s.ends_at | escape }}"
+    data-pages="{{ s.pages }}"
+    data-paths="{{ s.paths | escape }}"
+    {% if request.design_mode %}data-preview{% endif %}
+    {% if pop != '' %}data-sb-pop="{{ pop }}"{% endif %}
+    {% if blur > 0 %}data-sb-pop-blur{% endif %}
+    aria-label="{{ label | escape }}"
+    data-surface="light"
+    class="bg-background text-foreground max-h-[calc(100svh-2rem)] overflow-y-auto p-0{% if s.shadow == 'default' %} shadow-xl{% endif %} {{ animation_class }} {{ layout_class }} {{ hide_class }}"
+    style="{{ style | escape }}"
+    {{ section.shopify_attributes }}
+  >
+    <button
+      type="button"
+      data-sb-popup-close
+      aria-label="Close"
+      class="absolute top-2 right-2 z-10 flex items-center justify-center rounded-full opacity-80 transition-opacity hover:opacity-100 {{ close_box }}{% if s.close_style != 'plain' and s.close_background == blank %} bg-background/80{% endif %}"
+      {% if close_style != '' %}style="{{ close_style | escape }}"{% endif %}
+    >
+      {%- render 'sb-icon', icon: 'close', class: close_icon, size: 1.5 -%}
+    </button>
+
+    {%- if built -%}
+      <div data-sb-pop-body class="{% if layout == 'bar' %}px-4 py-4 pe-12 sm:px-8{% else %}p-6 sm:p-8{% if close_room %} pt-10{% endif %}{% endif %}">
+        <div class="sb-blocks" data-align="{{ s.align }}" data-cgap="{{ s.column_gap }}">
+          {%- render 'sb-custom-blocks', blocks: section.blocks -%}
+        </div>
+      </div>
+    {%- elsif layout == 'bar' -%}
+      <div data-sb-pop-body class="flex flex-wrap items-center gap-x-6 gap-y-3 px-4 py-4 pe-12 sm:px-8 {{ bar_align }}">
+        {{- words -}}
+        {{- actions -}}
+      </div>
+    {%- else -%}
+      <div class="{% if side %}sm:grid {{ share_class }}{% endif %}">
+        {%- unless below -%}{{ photo }}{%- endunless -%}
+        <div data-sb-pop-body class="flex flex-col gap-4 p-6 sm:p-8 {{ align_class }}{% if side %} {{ sits_class }}{% endif %}{% if close_room %} pt-10{% endif %}">
+          {{- words -}}
+          {{- actions -}}
+        </div>
+        {%- if below -%}{{ photo }}{%- endif -%}
+      </div>
+    {%- endif -%}
+  </dialog>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Pop-up",
+  "tag": "section",
+  "class": "sb-section-popup",
+  "settings": [
+    {
+      "type": "select",
+      "id": "build",
+      "label": "Content",
+      "options": [
+        {
+          "value": "ready",
+          "label": "Ready-made"
+        },
+        {
+          "value": "blocks",
+          "label": "Build it yourself"
+        }
+      ],
+      "default": "ready"
+    },
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "Photograph"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading"
+    },
+    {
+      "type": "textarea",
+      "id": "text",
+      "label": "Text"
+    },
+    {
+      "type": "text",
+      "id": "button_label",
+      "label": "Button text",
+      "info": "Optional. Closes the pop-up and goes to the page."
+    },
+    {
+      "type": "url",
+      "id": "button_url",
+      "label": "Button link"
+    },
+    {
+      "type": "select",
+      "id": "button_style",
+      "label": "Button style",
+      "options": [
+        {
+          "value": "solid",
+          "label": "Filled"
+        },
+        {
+          "value": "outline",
+          "label": "Outlined"
+        },
+        {
+          "value": "text",
+          "label": "Underlined text"
+        }
+      ],
+      "default": "solid"
+    },
+    {
+      "type": "checkbox",
+      "id": "newsletter",
+      "label": "Add the newsletter sign-up",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "layout",
+      "label": "Shape",
+      "options": [
+        {
+          "value": "center",
+          "label": "Box in the middle"
+        },
+        {
+          "value": "corner",
+          "label": "Small box in a corner"
+        },
+        {
+          "value": "bar",
+          "label": "Bar along the bottom"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "select",
+      "id": "corner",
+      "label": "Corner",
+      "options": [
+        {
+          "value": "right",
+          "label": "Bottom right"
+        },
+        {
+          "value": "left",
+          "label": "Bottom left"
+        }
+      ],
+      "default": "right"
+    },
+    {
+      "type": "header",
+      "content": "Style"
+    },
+    {
+      "type": "select",
+      "id": "width",
+      "label": "Size",
+      "options": [
+        {
+          "value": "small",
+          "label": "Small"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "large",
+          "label": "Large"
+        },
+        {
+          "value": "custom",
+          "label": "Custom"
+        }
+      ],
+      "default": "medium"
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "vertical",
+      "label": "Position on the screen",
+      "options": [
+        {
+          "value": "top",
+          "label": "Top"
+        },
+        {
+          "value": "middle",
+          "label": "Middle"
+        },
+        {
+          "value": "bottom",
+          "label": "Bottom"
+        }
+      ],
+      "default": "middle"
+    },
+    {
+      "type": "select",
+      "id": "image_position",
+      "label": "Photograph",
+      "options": [
+        {
+          "value": "top",
+          "label": "Above the text"
+        },
+        {
+          "value": "bottom",
+          "label": "Below the text"
+        },
+        {
+          "value": "side",
+          "label": "On the left"
+        },
+        {
+          "value": "right",
+          "label": "On the right"
+        }
+      ],
+      "default": "top"
+    },
+    {
+      "type": "select",
+      "id": "image_share",
+      "label": "Photograph's width",
+      "options": [
+        {
+          "value": "third",
+          "label": "A third"
+        },
+        {
+          "value": "half",
+          "label": "Half"
+        },
+        {
+          "value": "twothirds",
+          "label": "Two thirds"
+        }
+      ],
+      "default": "half"
+    },
+    {
+      "type": "select",
+      "id": "content_align",
+      "label": "Text sits",
+      "options": [
+        {
+          "value": "top",
+          "label": "Top"
+        },
+        {
+          "value": "middle",
+          "label": "Middle"
+        },
+        {
+          "value": "bottom",
+          "label": "Bottom"
+        }
+      ],
+      "default": "top"
+    },
+    {
+      "type": "header",
+      "content": "Style"
+    },
+    {
+      "type": "select",
+      "id": "image_ratio",
+      "label": "Photograph's shape",
+      "options": [
+        {
+          "value": "auto",
+          "label": "To suit the layout"
+        },
+        {
+          "value": "landscape",
+          "label": "Landscape"
+        },
+        {
+          "value": "square",
+          "label": "Square"
+        },
+        {
+          "value": "portrait",
+          "label": "Tall"
+        },
+        {
+          "value": "adapt",
+          "label": "As the photograph is"
+        }
+      ],
+      "default": "auto"
+    },
+    {
+      "type": "range",
+      "id": "image_inset",
+      "label": "Space around the photograph",
+      "min": 0,
+      "max": 64,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "select",
+      "id": "column_gap",
+      "label": "Space between columns",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "sm",
+          "label": "S"
+        },
+        {
+          "value": "md",
+          "label": "M"
+        },
+        {
+          "value": "lg",
+          "label": "L"
+        },
+        {
+          "value": "xl",
+          "label": "XL"
+        }
+      ],
+      "default": "md",
+      "info": "Only when the pop-up has Column blocks."
+    },
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "select",
+      "id": "align",
+      "label": "Text",
+      "options": [
+        {
+          "value": "center",
+          "label": "Centre"
+        },
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "right",
+          "label": "Right"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "header",
+      "content": "Style"
+    },
+    {
+      "type": "color",
+      "id": "background",
+      "label": "Own colour",
+      "info": "Empty: the site's light background."
+    },
+    {
+      "type": "color",
+      "id": "color",
+      "label": "Text colour"
+    },
+    {
+      "type": "range",
+      "id": "border_width",
+      "label": "Line around it",
+      "min": 0,
+      "max": 8,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "info": "0: no line."
+    },
+    {
+      "type": "select",
+      "id": "border_style",
+      "label": "Line",
+      "options": [
+        {
+          "value": "solid",
+          "label": "Solid"
+        },
+        {
+          "value": "dashed",
+          "label": "Dashed"
+        },
+        {
+          "value": "dotted",
+          "label": "Dotted"
+        },
+        {
+          "value": "double",
+          "label": "Double"
+        }
+      ],
+      "default": "solid"
+    },
+    {
+      "type": "color",
+      "id": "border_color",
+      "label": "Line colour",
+      "info": "Empty: the text colour."
+    },
+    {
+      "type": "select",
+      "id": "shadow",
+      "label": "Shadow",
+      "options": [
+        {
+          "value": "default",
+          "label": "Default"
+        },
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "soft",
+          "label": "Soft"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "strong",
+          "label": "Strong"
+        }
+      ],
+      "default": "default"
+    },
+    {
+      "type": "checkbox",
+      "id": "dim",
+      "label": "Darken the page behind it",
+      "default": true
+    },
+    {
+      "type": "color",
+      "id": "overlay",
+      "label": "Colour behind it",
+      "info": "Empty: black."
+    },
+    {
+      "type": "range",
+      "id": "overlay_opacity",
+      "label": "How dark",
+      "min": 0,
+      "max": 90,
+      "step": 1,
+      "unit": "%",
+      "default": 50
+    },
+    {
+      "type": "range",
+      "id": "blur",
+      "label": "Blur the page behind it",
+      "min": 0,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "info": "0: sharp."
+    },
+    {
+      "type": "select",
+      "id": "close_style",
+      "label": "Look",
+      "options": [
+        {
+          "value": "circle",
+          "label": "On a circle"
+        },
+        {
+          "value": "plain",
+          "label": "Plain"
+        }
+      ],
+      "default": "circle"
+    },
+    {
+      "type": "select",
+      "id": "close_size",
+      "label": "Size",
+      "options": [
+        {
+          "value": "small",
+          "label": "Small"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "large",
+          "label": "Large"
+        }
+      ],
+      "default": "medium"
+    },
+    {
+      "type": "color",
+      "id": "close_color",
+      "label": "Colour",
+      "info": "Empty: the text colour."
+    },
+    {
+      "type": "color",
+      "id": "close_background",
+      "label": "Circle colour",
+      "info": "Empty: the background, slightly see-through."
+    },
+    {
+      "type": "select",
+      "id": "animation",
+      "label": "How it appears",
+      "options": [
+        {
+          "value": "rise",
+          "label": "Rise and fade in"
+        },
+        {
+          "value": "fade",
+          "label": "Fade in"
+        },
+        {
+          "value": "zoom",
+          "label": "Zoom in"
+        },
+        {
+          "value": "slide",
+          "label": "Slide up from below"
+        },
+        {
+          "value": "none",
+          "label": "At once"
+        }
+      ],
+      "default": "rise"
+    },
+    {
+      "type": "select",
+      "id": "speed",
+      "label": "Speed",
+      "options": [
+        {
+          "value": "slow",
+          "label": "Slow"
+        },
+        {
+          "value": "normal",
+          "label": "Normal"
+        },
+        {
+          "value": "fast",
+          "label": "Fast"
+        }
+      ],
+      "default": "normal"
+    },
+    {
+      "type": "header",
+      "content": "Advanced"
+    },
+    {
+      "type": "select",
+      "id": "trigger",
+      "label": "Opens",
+      "options": [
+        {
+          "value": "delay",
+          "label": "After a few seconds"
+        },
+        {
+          "value": "scroll",
+          "label": "After scrolling down"
+        },
+        {
+          "value": "exit",
+          "label": "When the visitor is about to leave"
+        }
+      ],
+      "default": "delay"
+    },
+    {
+      "type": "range",
+      "id": "delay",
+      "label": "Seconds after the page opens",
+      "min": 0,
+      "max": 120,
+      "step": 2,
+      "unit": "s",
+      "default": 5
+    },
+    {
+      "type": "range",
+      "id": "scroll",
+      "label": "How far down the page",
+      "min": 5,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "default": 40
+    },
+    {
+      "type": "select",
+      "id": "frequency",
+      "label": "How often",
+      "options": [
+        {
+          "value": "session",
+          "label": "Once per visit"
+        },
+        {
+          "value": "days",
+          "label": "Once every few days"
+        },
+        {
+          "value": "once",
+          "label": "Only once, ever"
+        },
+        {
+          "value": "always",
+          "label": "Every time a page opens"
+        }
+      ],
+      "default": "session"
+    },
+    {
+      "type": "range",
+      "id": "days",
+      "label": "Days before it shows again",
+      "min": 1,
+      "max": 365,
+      "step": 4,
+      "default": 7
+    },
+    {
+      "type": "header",
+      "content": "Size and space"
+    },
+    {
+      "type": "range",
+      "id": "custom_width",
+      "label": "Custom width",
+      "min": 240,
+      "max": 1200,
+      "step": 12,
+      "unit": "px",
+      "default": 560,
+      "info": "When Size is Custom."
+    },
+    {
+      "type": "range",
+      "id": "padding",
+      "label": "Space inside",
+      "min": 0,
+      "max": 200,
+      "step": 2,
+      "unit": "px",
+      "default": 32
+    },
+    {
+      "type": "range",
+      "id": "radius",
+      "label": "Rounded corners",
+      "min": 0,
+      "max": 48,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "header",
+      "content": "When and where"
+    },
+    {
+      "type": "text",
+      "id": "starts_at",
+      "label": "Show from",
+      "placeholder": "2026-12-01 09:00",
+      "info": "Optional. The visitor's own clock."
+    },
+    {
+      "type": "text",
+      "id": "ends_at",
+      "label": "Show until",
+      "placeholder": "2026-12-24 23:59",
+      "info": "Optional."
+    },
+    {
+      "type": "select",
+      "id": "pages",
+      "label": "Pages",
+      "options": [
+        {
+          "value": "all",
+          "label": "Every page"
+        },
+        {
+          "value": "home",
+          "label": "The home page only"
+        },
+        {
+          "value": "only",
+          "label": "Only the pages listed"
+        },
+        {
+          "value": "except",
+          "label": "Every page but those listed"
+        }
+      ],
+      "default": "all"
+    },
+    {
+      "type": "textarea",
+      "id": "paths",
+      "label": "Pages listed",
+      "placeholder": "/our-story\n/collections/*",
+      "info": "One address per line. /collections/* covers every page under /collections."
+    },
+    {
+      "type": "select",
+      "id": "hide_on",
+      "label": "Show on",
+      "options": [
+        {
+          "value": "none",
+          "label": "All devices"
+        },
+        {
+          "value": "mobile",
+          "label": "Desktop only"
+        },
+        {
+          "value": "desktop",
+          "label": "Mobile only"
+        }
+      ],
+      "default": "none"
+    }
+  ],
+  "max_blocks": 24,
+  "blocks": [
+    {
+      "type": "heading",
+      "name": "Heading",
+      "settings": [
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Heading"
+        },
+        {
+          "type": "select",
+          "id": "size",
+          "label": "Size",
+          "options": [
+            {
+              "value": "h4",
+              "label": "XS"
+            },
+            {
+              "value": "h3",
+              "label": "S"
+            },
+            {
+              "value": "h2",
+              "label": "M"
+            },
+            {
+              "value": "h1",
+              "label": "L"
+            },
+            {
+              "value": "display",
+              "label": "XL"
+            }
+          ],
+          "default": "h2"
+        },
+        {
+          "type": "select",
+          "id": "tag",
+          "label": "Heading level",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Automatic"
+            },
+            {
+              "value": "h1",
+              "label": "H1"
+            },
+            {
+              "value": "h2",
+              "label": "H2"
+            },
+            {
+              "value": "h3",
+              "label": "H3"
+            },
+            {
+              "value": "h4",
+              "label": "H4"
+            }
+          ],
+          "default": "auto",
+          "info": "For search engines; it does not change the look. Use H1 only for the page's main title, once."
+        },
+        {
+          "type": "select",
+          "id": "align",
+          "label": "Alignment",
+          "options": [
+            {
+              "value": "inherit",
+              "label": "As the section"
+            },
+            {
+              "value": "left",
+              "label": "Left"
+            },
+            {
+              "value": "center",
+              "label": "Centre"
+            },
+            {
+              "value": "right",
+              "label": "Right"
+            }
+          ],
+          "default": "inherit"
+        },
+        {
+          "type": "select",
+          "id": "space",
+          "label": "Space above",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Normal"
+            },
+            {
+              "value": "none",
+              "label": "None"
+            },
+            {
+              "value": "sm",
+              "label": "Small"
+            },
+            {
+              "value": "lg",
+              "label": "Large"
+            },
+            {
+              "value": "xl",
+              "label": "Extra large"
+            }
+          ],
+          "default": "auto",
+          "info": "Normal is the section's “Space between blocks”."
+        },
+        {
+          "type": "select",
+          "id": "hide_on",
+          "label": "Show on",
+          "options": [
+            {
+              "value": "none",
+              "label": "All devices"
+            },
+            {
+              "value": "mobile",
+              "label": "Desktop only"
+            },
+            {
+              "value": "desktop",
+              "label": "Mobile only"
+            }
+          ],
+          "default": "none"
+        }
+      ]
+    },
+    {
+      "type": "eyebrow",
+      "name": "Small label",
+      "settings": [
+        {
+          "type": "text",
+          "id": "eyebrow",
+          "label": "Label",
+          "info": "A few words above a heading, in small capitals."
+        },
+        {
+          "type": "select",
+          "id": "align",
+          "label": "Alignment",
+          "options": [
+            {
+              "value": "inherit",
+              "label": "As the section"
+            },
+            {
+              "value": "left",
+              "label": "Left"
+            },
+            {
+              "value": "center",
+              "label": "Centre"
+            },
+            {
+              "value": "right",
+              "label": "Right"
+            }
+          ],
+          "default": "inherit"
+        },
+        {
+          "type": "select",
+          "id": "space",
+          "label": "Space above",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Normal"
+            },
+            {
+              "value": "none",
+              "label": "None"
+            },
+            {
+              "value": "sm",
+              "label": "Small"
+            },
+            {
+              "value": "lg",
+              "label": "Large"
+            },
+            {
+              "value": "xl",
+              "label": "Extra large"
+            }
+          ],
+          "default": "auto",
+          "info": "Normal is the section's “Space between blocks”."
+        },
+        {
+          "type": "select",
+          "id": "hide_on",
+          "label": "Show on",
+          "options": [
+            {
+              "value": "none",
+              "label": "All devices"
+            },
+            {
+              "value": "mobile",
+              "label": "Desktop only"
+            },
+            {
+              "value": "desktop",
+              "label": "Mobile only"
+            }
+          ],
+          "default": "none"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "name": "Text",
+      "settings": [
+        {
+          "type": "richtext",
+          "id": "body",
+          "label": "Text"
+        },
+        {
+          "type": "select",
+          "id": "size",
+          "label": "Size",
+          "options": [
+            {
+              "value": "small",
+              "label": "Small"
+            },
+            {
+              "value": "body",
+              "label": "Normal"
+            },
+            {
+              "value": "lead",
+              "label": "Large"
+            }
+          ],
+          "default": "body"
+        },
+        {
+          "type": "checkbox",
+          "id": "narrow",
+          "label": "Short lines",
+          "default": false,
+          "info": "Keeps lines to a comfortable reading length on wide screens."
+        },
+        {
+          "type": "select",
+          "id": "align",
+          "label": "Alignment",
+          "options": [
+            {
+              "value": "inherit",
+              "label": "As the section"
+            },
+            {
+              "value": "left",
+              "label": "Left"
+            },
+            {
+              "value": "center",
+              "label": "Centre"
+            },
+            {
+              "value": "right",
+              "label": "Right"
+            }
+          ],
+          "default": "inherit"
+        },
+        {
+          "type": "select",
+          "id": "space",
+          "label": "Space above",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Normal"
+            },
+            {
+              "value": "none",
+              "label": "None"
+            },
+            {
+              "value": "sm",
+              "label": "Small"
+            },
+            {
+              "value": "lg",
+              "label": "Large"
+            },
+            {
+              "value": "xl",
+              "label": "Extra large"
+            }
+          ],
+          "default": "auto",
+          "info": "Normal is the section's “Space between blocks”."
+        },
+        {
+          "type": "select",
+          "id": "hide_on",
+          "label": "Show on",
+          "options": [
+            {
+              "value": "none",
+              "label": "All devices"
+            },
+            {
+              "value": "mobile",
+              "label": "Desktop only"
+            },
+            {
+              "value": "desktop",
+              "label": "Mobile only"
+            }
+          ],
+          "default": "none"
+        }
+      ]
+    },
+    {
+      "type": "button",
+      "name": "Button",
+      "settings": [
+        {
+          "type": "text",
+          "id": "link_label",
+          "label": "Button text"
+        },
+        {
+          "type": "url",
+          "id": "link_url",
+          "label": "Button link"
+        },
+        {
+          "type": "select",
+          "id": "style",
+          "label": "Style",
+          "options": [
+            {
+              "value": "solid",
+              "label": "Filled"
+            },
+            {
+              "value": "outline",
+              "label": "Outlined"
+            },
+            {
+              "value": "text",
+              "label": "Underlined text"
+            }
+          ],
+          "default": "solid"
+        },
+        {
+          "type": "text",
+          "id": "second_label",
+          "label": "Second button text",
+          "info": "Optional — shown beside the first."
+        },
+        {
+          "type": "url",
+          "id": "second_url",
+          "label": "Second button link"
+        },
+        {
+          "type": "select",
+          "id": "second_style",
+          "label": "Second button style",
+          "options": [
+            {
+              "value": "solid",
+              "label": "Filled"
+            },
+            {
+              "value": "outline",
+              "label": "Outlined"
+            },
+            {
+              "value": "text",
+              "label": "Underlined text"
+            }
+          ],
+          "default": "outline"
+        },
+        {
+          "type": "checkbox",
+          "id": "stretch",
+          "label": "Full width on phones",
+          "default": false
+        },
+        {
+          "type": "select",
+          "id": "align",
+          "label": "Alignment",
+          "options": [
+            {
+              "value": "inherit",
+              "label": "As the section"
+            },
+            {
+              "value": "left",
+              "label": "Left"
+            },
+            {
+              "value": "center",
+              "label": "Centre"
+            },
+            {
+              "value": "right",
+              "label": "Right"
+            }
+          ],
+          "default": "inherit"
+        },
+        {
+          "type": "select",
+          "id": "space",
+          "label": "Space above",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Normal"
+            },
+            {
+              "value": "none",
+              "label": "None"
+            },
+            {
+              "value": "sm",
+              "label": "Small"
+            },
+            {
+              "value": "lg",
+              "label": "Large"
+            },
+            {
+              "value": "xl",
+              "label": "Extra large"
+            }
+          ],
+          "default": "auto",
+          "info": "Normal is the section's “Space between blocks”."
+        },
+        {
+          "type": "select",
+          "id": "hide_on",
+          "label": "Show on",
+          "options": [
+            {
+              "value": "none",
+              "label": "All devices"
+            },
+            {
+              "value": "mobile",
+              "label": "Desktop only"
+            },
+            {
+              "value": "desktop",
+              "label": "Mobile only"
+            }
+          ],
+          "default": "none"
+        }
+      ]
+    },
+    {
+      "type": "image",
+      "name": "Image",
+      "settings": [
+        {
+          "type": "image_picker",
+          "id": "image",
+          "label": "Image"
+        },
+        {
+          "type": "text",
+          "id": "caption",
+          "label": "Caption",
+          "info": "Optional — a line under the photo."
+        },
+        {
+          "type": "url",
+          "id": "href",
+          "label": "Link",
+          "info": "Optional — makes the photo clickable."
+        },
+        {
+          "type": "select",
+          "id": "size",
+          "label": "Image width",
+          "options": [
+            {
+              "value": "100",
+              "label": "100%"
+            },
+            {
+              "value": "75",
+              "label": "75%"
+            },
+            {
+              "value": "50",
+              "label": "50%"
+            },
+            {
+              "value": "25",
+              "label": "25%"
+            }
+          ],
+          "default": "100",
+          "info": "Of the column it is in."
+        },
+        {
+          "type": "select",
+          "id": "align",
+          "label": "Alignment",
+          "options": [
+            {
+              "value": "inherit",
+              "label": "As the section"
+            },
+            {
+              "value": "left",
+              "label": "Left"
+            },
+            {
+              "value": "center",
+              "label": "Centre"
+            },
+            {
+              "value": "right",
+              "label": "Right"
+            }
+          ],
+          "default": "inherit"
+        },
+        {
+          "type": "select",
+          "id": "space",
+          "label": "Space above",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Normal"
+            },
+            {
+              "value": "none",
+              "label": "None"
+            },
+            {
+              "value": "sm",
+              "label": "Small"
+            },
+            {
+              "value": "lg",
+              "label": "Large"
+            },
+            {
+              "value": "xl",
+              "label": "Extra large"
+            }
+          ],
+          "default": "auto",
+          "info": "Normal is the section's “Space between blocks”."
+        },
+        {
+          "type": "select",
+          "id": "hide_on",
+          "label": "Show on",
+          "options": [
+            {
+              "value": "none",
+              "label": "All devices"
+            },
+            {
+              "value": "mobile",
+              "label": "Desktop only"
+            },
+            {
+              "value": "desktop",
+              "label": "Mobile only"
+            }
+          ],
+          "default": "none"
+        }
+      ]
+    },
+    {
+      "type": "icon",
+      "name": "Icon & text",
+      "settings": [
+        {
+          "type": "select",
+          "id": "icon",
+          "label": "Icon",
+          "options": [
+            {
+              "value": "none",
+              "label": "No icon"
+            },
+            {
+              "value": "leaf",
+              "label": "Leaf"
+            },
+            {
+              "value": "sparkles",
+              "label": "Sparkles"
+            },
+            {
+              "value": "gem",
+              "label": "Gem"
+            },
+            {
+              "value": "award",
+              "label": "Award"
+            },
+            {
+              "value": "star",
+              "label": "Star"
+            },
+            {
+              "value": "heart",
+              "label": "Heart"
+            },
+            {
+              "value": "hammer",
+              "label": "Craft"
+            },
+            {
+              "value": "ruler",
+              "label": "Measure"
+            },
+            {
+              "value": "palette",
+              "label": "Palette"
+            },
+            {
+              "value": "sofa",
+              "label": "Sofa"
+            },
+            {
+              "value": "lamp",
+              "label": "Lamp"
+            },
+            {
+              "value": "truck",
+              "label": "Delivery"
+            },
+            {
+              "value": "package",
+              "label": "Package"
+            },
+            {
+              "value": "shield",
+              "label": "Guarantee"
+            },
+            {
+              "value": "recycle",
+              "label": "Recycle"
+            },
+            {
+              "value": "globe",
+              "label": "Globe"
+            },
+            {
+              "value": "map-pin",
+              "label": "Location"
+            },
+            {
+              "value": "clock",
+              "label": "Time"
+            },
+            {
+              "value": "calendar",
+              "label": "Calendar"
+            },
+            {
+              "value": "phone",
+              "label": "Phone"
+            },
+            {
+              "value": "mail",
+              "label": "Mail"
+            },
+            {
+              "value": "message",
+              "label": "Message"
+            },
+            {
+              "value": "check",
+              "label": "Check"
+            }
+          ],
+          "default": "sparkles"
+        },
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Heading"
+        },
+        {
+          "type": "richtext",
+          "id": "body",
+          "label": "Text"
+        },
+        {
+          "type": "text",
+          "id": "link_label",
+          "label": "Link text"
+        },
+        {
+          "type": "url",
+          "id": "link_url",
+          "label": "Link link"
+        },
+        {
+          "type": "select",
+          "id": "layout",
+          "label": "Icon",
+          "options": [
+            {
+              "value": "above",
+              "label": "Above the text"
+            },
+            {
+              "value": "beside",
+              "label": "Beside the text"
+            }
+          ],
+          "default": "above"
+        },
+        {
+          "type": "select",
+          "id": "icon_size",
+          "label": "Icon size",
+          "options": [
+            {
+              "value": "sm",
+              "label": "Small"
+            },
+            {
+              "value": "md",
+              "label": "Medium"
+            },
+            {
+              "value": "lg",
+              "label": "Large"
+            }
+          ],
+          "default": "md"
+        },
+        {
+          "type": "select",
+          "id": "align",
+          "label": "Alignment",
+          "options": [
+            {
+              "value": "inherit",
+              "label": "As the section"
+            },
+            {
+              "value": "left",
+              "label": "Left"
+            },
+            {
+              "value": "center",
+              "label": "Centre"
+            },
+            {
+              "value": "right",
+              "label": "Right"
+            }
+          ],
+          "default": "inherit"
+        },
+        {
+          "type": "select",
+          "id": "space",
+          "label": "Space above",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Normal"
+            },
+            {
+              "value": "none",
+              "label": "None"
+            },
+            {
+              "value": "sm",
+              "label": "Small"
+            },
+            {
+              "value": "lg",
+              "label": "Large"
+            },
+            {
+              "value": "xl",
+              "label": "Extra large"
+            }
+          ],
+          "default": "auto",
+          "info": "Normal is the section's “Space between blocks”."
+        },
+        {
+          "type": "select",
+          "id": "hide_on",
+          "label": "Show on",
+          "options": [
+            {
+              "value": "none",
+              "label": "All devices"
+            },
+            {
+              "value": "mobile",
+              "label": "Desktop only"
+            },
+            {
+              "value": "desktop",
+              "label": "Mobile only"
+            }
+          ],
+          "default": "none"
+        }
+      ]
+    },
+    {
+      "type": "card",
+      "name": "Card",
+      "settings": [
+        {
+          "type": "image_picker",
+          "id": "image",
+          "label": "Image"
+        },
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Heading"
+        },
+        {
+          "type": "richtext",
+          "id": "body",
+          "label": "Text"
+        },
+        {
+          "type": "text",
+          "id": "link_label",
+          "label": "Link text"
+        },
+        {
+          "type": "url",
+          "id": "link_url",
+          "label": "Link link"
+        },
+        {
+          "type": "select",
+          "id": "style",
+          "label": "Style",
+          "options": [
+            {
+              "value": "plain",
+              "label": "Plain"
+            },
+            {
+              "value": "panel",
+              "label": "Soft panel"
+            },
+            {
+              "value": "outline",
+              "label": "Line around"
+            }
+          ],
+          "default": "plain"
+        },
+        {
+          "type": "select",
+          "id": "align",
+          "label": "Alignment",
+          "options": [
+            {
+              "value": "inherit",
+              "label": "As the section"
+            },
+            {
+              "value": "left",
+              "label": "Left"
+            },
+            {
+              "value": "center",
+              "label": "Centre"
+            },
+            {
+              "value": "right",
+              "label": "Right"
+            }
+          ],
+          "default": "inherit"
+        },
+        {
+          "type": "select",
+          "id": "space",
+          "label": "Space above",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Normal"
+            },
+            {
+              "value": "none",
+              "label": "None"
+            },
+            {
+              "value": "sm",
+              "label": "Small"
+            },
+            {
+              "value": "lg",
+              "label": "Large"
+            },
+            {
+              "value": "xl",
+              "label": "Extra large"
+            }
+          ],
+          "default": "auto",
+          "info": "Normal is the section's “Space between blocks”."
+        },
+        {
+          "type": "select",
+          "id": "hide_on",
+          "label": "Show on",
+          "options": [
+            {
+              "value": "none",
+              "label": "All devices"
+            },
+            {
+              "value": "mobile",
+              "label": "Desktop only"
+            },
+            {
+              "value": "desktop",
+              "label": "Mobile only"
+            }
+          ],
+          "default": "none"
+        }
+      ]
+    },
+    {
+      "type": "list",
+      "name": "List",
+      "settings": [
+        {
+          "type": "textarea",
+          "id": "items",
+          "label": "Items",
+          "info": "One item per line."
+        },
+        {
+          "type": "select",
+          "id": "marker",
+          "label": "Marker",
+          "options": [
+            {
+              "value": "dot",
+              "label": "Dots"
+            },
+            {
+              "value": "check",
+              "label": "Ticks"
+            },
+            {
+              "value": "number",
+              "label": "Numbers"
+            },
+            {
+              "value": "dash",
+              "label": "Dashes"
+            }
+          ],
+          "default": "dot"
+        },
+        {
+          "type": "select",
+          "id": "align",
+          "label": "Alignment",
+          "options": [
+            {
+              "value": "inherit",
+              "label": "As the section"
+            },
+            {
+              "value": "left",
+              "label": "Left"
+            },
+            {
+              "value": "center",
+              "label": "Centre"
+            },
+            {
+              "value": "right",
+              "label": "Right"
+            }
+          ],
+          "default": "inherit"
+        },
+        {
+          "type": "select",
+          "id": "space",
+          "label": "Space above",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Normal"
+            },
+            {
+              "value": "none",
+              "label": "None"
+            },
+            {
+              "value": "sm",
+              "label": "Small"
+            },
+            {
+              "value": "lg",
+              "label": "Large"
+            },
+            {
+              "value": "xl",
+              "label": "Extra large"
+            }
+          ],
+          "default": "auto",
+          "info": "Normal is the section's “Space between blocks”."
+        },
+        {
+          "type": "select",
+          "id": "hide_on",
+          "label": "Show on",
+          "options": [
+            {
+              "value": "none",
+              "label": "All devices"
+            },
+            {
+              "value": "mobile",
+              "label": "Desktop only"
+            },
+            {
+              "value": "desktop",
+              "label": "Mobile only"
+            }
+          ],
+          "default": "none"
+        }
+      ]
+    },
+    {
+      "type": "quote",
+      "name": "Quote",
+      "settings": [
+        {
+          "type": "textarea",
+          "id": "quote",
+          "label": "Quote"
+        },
+        {
+          "type": "text",
+          "id": "author",
+          "label": "Who said it"
+        },
+        {
+          "type": "text",
+          "id": "role",
+          "label": "Their role or company"
+        },
+        {
+          "type": "select",
+          "id": "size",
+          "label": "Size",
+          "options": [
+            {
+              "value": "body",
+              "label": "Normal"
+            },
+            {
+              "value": "large",
+              "label": "Large"
+            }
+          ],
+          "default": "body"
+        },
+        {
+          "type": "select",
+          "id": "align",
+          "label": "Alignment",
+          "options": [
+            {
+              "value": "inherit",
+              "label": "As the section"
+            },
+            {
+              "value": "left",
+              "label": "Left"
+            },
+            {
+              "value": "center",
+              "label": "Centre"
+            },
+            {
+              "value": "right",
+              "label": "Right"
+            }
+          ],
+          "default": "inherit"
+        },
+        {
+          "type": "select",
+          "id": "space",
+          "label": "Space above",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Normal"
+            },
+            {
+              "value": "none",
+              "label": "None"
+            },
+            {
+              "value": "sm",
+              "label": "Small"
+            },
+            {
+              "value": "lg",
+              "label": "Large"
+            },
+            {
+              "value": "xl",
+              "label": "Extra large"
+            }
+          ],
+          "default": "auto",
+          "info": "Normal is the section's “Space between blocks”."
+        },
+        {
+          "type": "select",
+          "id": "hide_on",
+          "label": "Show on",
+          "options": [
+            {
+              "value": "none",
+              "label": "All devices"
+            },
+            {
+              "value": "mobile",
+              "label": "Desktop only"
+            },
+            {
+              "value": "desktop",
+              "label": "Mobile only"
+            }
+          ],
+          "default": "none"
+        }
+      ]
+    },
+    {
+      "type": "fold",
+      "name": "Fold-out text",
+      "settings": [
+        {
+          "type": "text",
+          "id": "title",
+          "label": "Title"
+        },
+        {
+          "type": "richtext",
+          "id": "body",
+          "label": "Text"
+        },
+        {
+          "type": "checkbox",
+          "id": "open",
+          "label": "Open at first",
+          "default": false
+        },
+        {
+          "type": "select",
+          "id": "align",
+          "label": "Alignment",
+          "options": [
+            {
+              "value": "inherit",
+              "label": "As the section"
+            },
+            {
+              "value": "left",
+              "label": "Left"
+            },
+            {
+              "value": "center",
+              "label": "Centre"
+            },
+            {
+              "value": "right",
+              "label": "Right"
+            }
+          ],
+          "default": "inherit"
+        },
+        {
+          "type": "select",
+          "id": "space",
+          "label": "Space above",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Normal"
+            },
+            {
+              "value": "none",
+              "label": "None"
+            },
+            {
+              "value": "sm",
+              "label": "Small"
+            },
+            {
+              "value": "lg",
+              "label": "Large"
+            },
+            {
+              "value": "xl",
+              "label": "Extra large"
+            }
+          ],
+          "default": "auto",
+          "info": "Normal is the section's “Space between blocks”."
+        },
+        {
+          "type": "select",
+          "id": "hide_on",
+          "label": "Show on",
+          "options": [
+            {
+              "value": "none",
+              "label": "All devices"
+            },
+            {
+              "value": "mobile",
+              "label": "Desktop only"
+            },
+            {
+              "value": "desktop",
+              "label": "Mobile only"
+            }
+          ],
+          "default": "none"
+        }
+      ]
+    },
+    {
+      "type": "video",
+      "name": "Video",
+      "settings": [
+        {
+          "type": "video_url",
+          "id": "url",
+          "label": "Video",
+          "accept": [
+            "youtube",
+            "vimeo"
+          ]
+        },
+        {
+          "type": "image_picker",
+          "id": "cover",
+          "label": "Cover image",
+          "info": "Shown until play is pressed. Nothing loads from YouTube or Vimeo before that."
+        },
+        {
+          "type": "text",
+          "id": "caption",
+          "label": "Caption"
+        },
+        {
+          "type": "select",
+          "id": "ratio",
+          "label": "Shape",
+          "options": [
+            {
+              "value": "16:9",
+              "label": "16:9"
+            },
+            {
+              "value": "4:3",
+              "label": "4:3"
+            },
+            {
+              "value": "9:16",
+              "label": "Upright"
+            }
+          ],
+          "default": "16:9"
+        },
+        {
+          "type": "select",
+          "id": "align",
+          "label": "Alignment",
+          "options": [
+            {
+              "value": "inherit",
+              "label": "As the section"
+            },
+            {
+              "value": "left",
+              "label": "Left"
+            },
+            {
+              "value": "center",
+              "label": "Centre"
+            },
+            {
+              "value": "right",
+              "label": "Right"
+            }
+          ],
+          "default": "inherit"
+        },
+        {
+          "type": "select",
+          "id": "space",
+          "label": "Space above",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Normal"
+            },
+            {
+              "value": "none",
+              "label": "None"
+            },
+            {
+              "value": "sm",
+              "label": "Small"
+            },
+            {
+              "value": "lg",
+              "label": "Large"
+            },
+            {
+              "value": "xl",
+              "label": "Extra large"
+            }
+          ],
+          "default": "auto",
+          "info": "Normal is the section's “Space between blocks”."
+        },
+        {
+          "type": "select",
+          "id": "hide_on",
+          "label": "Show on",
+          "options": [
+            {
+              "value": "none",
+              "label": "All devices"
+            },
+            {
+              "value": "mobile",
+              "label": "Desktop only"
+            },
+            {
+              "value": "desktop",
+              "label": "Mobile only"
+            }
+          ],
+          "default": "none"
+        }
+      ]
+    },
+    {
+      "type": "line",
+      "name": "Line",
+      "settings": [
+        {
+          "type": "select",
+          "id": "length",
+          "label": "Length",
+          "options": [
+            {
+              "value": "full",
+              "label": "Full"
+            },
+            {
+              "value": "half",
+              "label": "Half"
+            },
+            {
+              "value": "short",
+              "label": "Short"
+            }
+          ],
+          "default": "full"
+        },
+        {
+          "type": "range",
+          "id": "thickness",
+          "label": "Thickness",
+          "min": 1,
+          "max": 8,
+          "step": 1,
+          "unit": "px",
+          "default": 1
+        },
+        {
+          "type": "color",
+          "id": "color",
+          "label": "Colour",
+          "info": "Leave empty for a soft line in the text colour."
+        },
+        {
+          "type": "select",
+          "id": "align",
+          "label": "Alignment",
+          "options": [
+            {
+              "value": "inherit",
+              "label": "As the section"
+            },
+            {
+              "value": "left",
+              "label": "Left"
+            },
+            {
+              "value": "center",
+              "label": "Centre"
+            },
+            {
+              "value": "right",
+              "label": "Right"
+            }
+          ],
+          "default": "inherit"
+        },
+        {
+          "type": "select",
+          "id": "space",
+          "label": "Space above",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Normal"
+            },
+            {
+              "value": "none",
+              "label": "None"
+            },
+            {
+              "value": "sm",
+              "label": "Small"
+            },
+            {
+              "value": "lg",
+              "label": "Large"
+            },
+            {
+              "value": "xl",
+              "label": "Extra large"
+            }
+          ],
+          "default": "auto",
+          "info": "Normal is the section's “Space between blocks”."
+        },
+        {
+          "type": "select",
+          "id": "hide_on",
+          "label": "Show on",
+          "options": [
+            {
+              "value": "none",
+              "label": "All devices"
+            },
+            {
+              "value": "mobile",
+              "label": "Desktop only"
+            },
+            {
+              "value": "desktop",
+              "label": "Mobile only"
+            }
+          ],
+          "default": "none"
+        }
+      ]
+    },
+    {
+      "type": "space",
+      "name": "Empty space",
+      "settings": [
+        {
+          "type": "range",
+          "id": "height",
+          "label": "Height on desktop",
+          "min": 0,
+          "max": 240,
+          "step": 3,
+          "unit": "px",
+          "default": 48
+        },
+        {
+          "type": "range",
+          "id": "height_mobile",
+          "label": "Height on phones",
+          "min": 0,
+          "max": 240,
+          "step": 3,
+          "unit": "px",
+          "default": 24
+        },
+        {
+          "type": "select",
+          "id": "hide_on",
+          "label": "Show on",
+          "options": [
+            {
+              "value": "none",
+              "label": "All devices"
+            },
+            {
+              "value": "mobile",
+              "label": "Desktop only"
+            },
+            {
+              "value": "desktop",
+              "label": "Mobile only"
+            }
+          ],
+          "default": "none"
+        }
+      ]
+    },
+    {
+      "type": "column",
+      "name": "Column",
+      "settings": [
+        {
+          "type": "select",
+          "id": "width",
+          "label": "Width on desktop",
+          "options": [
+            {
+              "value": "equal",
+              "label": "Auto"
+            },
+            {
+              "value": "100",
+              "label": "100%"
+            },
+            {
+              "value": "75",
+              "label": "75%"
+            },
+            {
+              "value": "67",
+              "label": "66%"
+            },
+            {
+              "value": "50",
+              "label": "50%"
+            },
+            {
+              "value": "33",
+              "label": "33%"
+            },
+            {
+              "value": "25",
+              "label": "25%"
+            },
+            {
+              "value": "20",
+              "label": "20%"
+            }
+          ],
+          "default": "equal",
+          "info": "Auto columns share the row equally. Columns that do not fit move to the next row."
+        },
+        {
+          "type": "select",
+          "id": "width_tablet",
+          "label": "Width on tablets",
+          "options": [
+            {
+              "value": "same",
+              "label": "As desktop"
+            },
+            {
+              "value": "equal",
+              "label": "Auto"
+            },
+            {
+              "value": "100",
+              "label": "100%"
+            },
+            {
+              "value": "75",
+              "label": "75%"
+            },
+            {
+              "value": "67",
+              "label": "66%"
+            },
+            {
+              "value": "50",
+              "label": "50%"
+            },
+            {
+              "value": "33",
+              "label": "33%"
+            },
+            {
+              "value": "25",
+              "label": "25%"
+            },
+            {
+              "value": "20",
+              "label": "20%"
+            }
+          ],
+          "default": "same"
+        },
+        {
+          "type": "select",
+          "id": "width_mobile",
+          "label": "Width on phones",
+          "options": [
+            {
+              "value": "equal",
+              "label": "Auto"
+            },
+            {
+              "value": "100",
+              "label": "100%"
+            },
+            {
+              "value": "75",
+              "label": "75%"
+            },
+            {
+              "value": "67",
+              "label": "66%"
+            },
+            {
+              "value": "50",
+              "label": "50%"
+            },
+            {
+              "value": "33",
+              "label": "33%"
+            },
+            {
+              "value": "25",
+              "label": "25%"
+            },
+            {
+              "value": "20",
+              "label": "20%"
+            }
+          ],
+          "default": "100"
+        },
+        {
+          "type": "select",
+          "id": "position",
+          "label": "Content position",
+          "options": [
+            {
+              "value": "top",
+              "label": "Top"
+            },
+            {
+              "value": "middle",
+              "label": "Middle"
+            },
+            {
+              "value": "bottom",
+              "label": "Bottom"
+            }
+          ],
+          "default": "top",
+          "info": "Where the blocks sit when the column next to it is taller."
+        },
+        {
+          "type": "checkbox",
+          "id": "mobile_first",
+          "label": "Show first on phones",
+          "default": false,
+          "info": "On phones the columns are stacked. Turn on to put this one on top — a photo on the right then comes above its text."
+        },
+        {
+          "type": "color",
+          "id": "background",
+          "label": "Background colour"
+        },
+        {
+          "type": "select",
+          "id": "padding",
+          "label": "Space inside",
+          "options": [
+            {
+              "value": "none",
+              "label": "None"
+            },
+            {
+              "value": "sm",
+              "label": "Small"
+            },
+            {
+              "value": "md",
+              "label": "Medium"
+            },
+            {
+              "value": "lg",
+              "label": "Large"
+            }
+          ],
+          "default": "none",
+          "info": "Room between the column's edge and its blocks — useful with a background colour or a line."
+        },
+        {
+          "type": "checkbox",
+          "id": "border",
+          "label": "Line around",
+          "default": false
+        },
+        {
+          "type": "range",
+          "id": "radius",
+          "label": "Rounded corners",
+          "min": 0,
+          "max": 48,
+          "step": 1,
+          "unit": "px",
+          "default": 0
+        },
+        {
+          "type": "select",
+          "id": "hide_on",
+          "label": "Show on",
+          "options": [
+            {
+              "value": "none",
+              "label": "All devices"
+            },
+            {
+              "value": "mobile",
+              "label": "Desktop only"
+            },
+            {
+              "value": "desktop",
+              "label": "Mobile only"
+            }
+          ],
+          "default": "none"
+        }
+      ]
+    },
+    {
+      "type": "newsletter",
+      "name": "Newsletter sign-up",
+      "settings": [
+        {
+          "type": "select",
+          "id": "align",
+          "label": "Alignment",
+          "options": [
+            {
+              "value": "inherit",
+              "label": "As the section"
+            },
+            {
+              "value": "left",
+              "label": "Left"
+            },
+            {
+              "value": "center",
+              "label": "Centre"
+            },
+            {
+              "value": "right",
+              "label": "Right"
+            }
+          ],
+          "default": "inherit"
+        },
+        {
+          "type": "select",
+          "id": "space",
+          "label": "Space above",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Normal"
+            },
+            {
+              "value": "none",
+              "label": "None"
+            },
+            {
+              "value": "sm",
+              "label": "Small"
+            },
+            {
+              "value": "lg",
+              "label": "Large"
+            },
+            {
+              "value": "xl",
+              "label": "Extra large"
+            }
+          ],
+          "default": "auto",
+          "info": "Normal is the section's “Space between blocks”."
+        },
+        {
+          "type": "select",
+          "id": "hide_on",
+          "label": "Show on",
+          "options": [
+            {
+              "value": "none",
+              "label": "All devices"
+            },
+            {
+              "value": "mobile",
+              "label": "Desktop only"
+            },
+            {
+              "value": "desktop",
+              "label": "Mobile only"
+            }
+          ],
+          "default": "none"
+        }
+      ]
+    }
+  ],
+  "enabled_on": {
+    "groups": [
+      "custom.overlay"
+    ]
+  },
+  "presets": [
+    {
+      "name": "Pop-up",
+      "settings": {
+        "heading": "Join our newsletter",
+        "text": "New collections and projects, a few times a year.",
+        "newsletter": true
+      }
+    }
+  ]
+}
+{% endschema %}

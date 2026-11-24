@@ -54,10 +54,11 @@ app side.
 **Admin uses `metaobjectByHandle`, Storefront uses `metaobject(handle:)`.** The same lookup, two
 different field names on the two APIs.
 
-**Seeding does not appear until the ISR cache turns over.** Products cache for 15 minutes, so the
-freshly seeded data was invisible for a while and looked like a bug in the queries. `POST
-/api/revalidate` drops one tag or all of them — which is what the cache tags on every
-`shopifyFetch` were added for. In production, point a Shopify webhook at it.
+**Seeding does not appear until the ISR cache turns over.** Pages cache for a day, so freshly
+seeded data stays invisible until its tag is dropped: `POST /api/revalidate?tag=<tag>` (or
+`?tag=all`) with the `x-revalidate-secret` header. In production, Shopify's product, collection
+and metaobject webhooks to `/api/webhooks/shopify` do it automatically — see
+`docs/modules/caching.md`.
 
 ## File uploads
 

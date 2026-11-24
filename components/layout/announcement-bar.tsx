@@ -32,9 +32,10 @@ function readClosed(): string | null {
  * messages, one at a time or moving across, each with its own link and dates.
  *
  * The dates and "closed" are decided here, in the browser — the page is cached, so
- * the server's clock would be up to a cache period late. The first render uses the
- * moment the server drew the page (`renderedAt`), so the browser's first render
- * matches it; the real clock takes over straight after.
+ * the server's clock would be up to a cache period late. The first render uses a
+ * moment from the server (`renderedAt` — the last start or end date passed when the
+ * page was drawn, see `scheduleMoment`), so the browser's first render matches it;
+ * the real clock takes over straight after.
  *
  * In the editor's preview every message shows, scheduled or not, and closing it
  * is not remembered.

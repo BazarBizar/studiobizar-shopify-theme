@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 
 import { PageShell } from "@/components/layout/page-shell";
+import { BuilderPage } from "@/components/page-builder/builder-page";
 import { ProjectCard } from "@/components/project/project-card";
 import { ProjectControls } from "@/components/project/project-controls";
 import { Container } from "@/components/ui/container";
-import { METAOBJECT_TYPES, getMetaobjects, getPage, getSiteTexts } from "@/lib/shopify";
+import { METAOBJECT_TYPES, getMetaobjects, getPage, getPublishedTemplate, getSiteTexts } from "@/lib/shopify";
 import { normalizeProjectCard, sortProjects } from "@/lib/shopify/entities";
 
 export const metadata: Metadata = {
@@ -15,7 +16,11 @@ export const metadata: Metadata = {
 };
 
 export default async function ProjectsPage({ searchParams }: PageProps<"/projects">) {
-  const params = await searchParams;
+  const [params, template] = await Promise.all([searchParams, getPublishedTemplate("projects")]);
+
+  // Website → Templates → All projects, once published; until then the layout below.
+  if (template) return <BuilderPage doc={template} title="Projects" record={{ kind: "projects", params }} />;
+
   const category = typeof params.category === "string" ? params.category : undefined;
   const view = params.view === "l" ? "l" : "m";
 

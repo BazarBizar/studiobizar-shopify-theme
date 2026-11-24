@@ -181,6 +181,7 @@ export function SectionList({
   handlers,
   onAdd,
   onOpenPageSettings,
+  exclude,
 }: {
   sections: SectionInstance[];
   selectedId: string | null;
@@ -188,6 +189,8 @@ export function SectionList({
   handlers: SectionListHandlers;
   onAdd: (preset: SectionPreset) => void;
   onOpenPageSettings: () => void;
+  /** Section types Add section leaves out here — another template's own sections. */
+  exclude?: readonly string[];
 }) {
   // dnd-kit numbers its screen-reader ids from a module counter, which the server and the
   // browser count differently — a hydration mismatch on every drag handle. A stable id fixes it.
@@ -247,7 +250,7 @@ export function SectionList({
           </DndContext>
         )}
 
-        <AddSectionDialog onAdd={onAdd} disabled={sections.length >= MAX_SECTIONS} />
+        <AddSectionDialog onAdd={onAdd} disabled={sections.length >= MAX_SECTIONS} exclude={exclude} />
       </div>
 
       <div className="border-t p-2">

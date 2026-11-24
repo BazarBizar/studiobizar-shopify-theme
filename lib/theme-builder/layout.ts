@@ -23,6 +23,7 @@ import {
   toggle,
   type LeafFieldDef,
 } from "@/lib/page-builder/fields";
+import { sectionTypesExcludedFrom } from "@/lib/page-builder/registry";
 
 import { announcementSchema, defaultAnnouncement, popupsSchema, readAnnouncement, readPopups, type Announcement, type Popup } from "./promo";
 
@@ -342,7 +343,12 @@ export const MAX_AREA_SECTIONS = 8;
  * Sections not offered under the header or in the footer: Page heading draws the
  * page's one `h1`, and Go back is about the page it sits on.
  */
-export const AREA_EXCLUDED_SECTIONS: readonly string[] = ["page_heading", "go_back"];
+export const AREA_EXCLUDED_SECTIONS: readonly string[] = [
+  "page_heading",
+  "go_back",
+  // A template's own sections draw a product, a collection… — the header and footer have none.
+  ...sectionTypesExcludedFrom(null),
+];
 
 /* -------------------------------------------------------------------------- *
  * Default — what the site shows today

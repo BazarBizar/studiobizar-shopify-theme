@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { STAFF_COOKIE, STAFF_LOGIN_PATH } from "@/lib/admin/cookie";
+import { isPublishedBuilderPage } from "@/lib/builder-page-handles";
+import { APP_ROUTE_SEGMENTS, isBuilderHandle } from "@/lib/page-builder/handle-rules";
 import { findRedirect } from "@/lib/redirect-map";
 import { shopifyAddressRoute } from "@/lib/redirects";
 
@@ -13,15 +15,17 @@ import { shopifyAddressRoute } from "@/lib/redirects";
  *
  *  1. A strict, per-request, nonce-based CSP for `/admin/**` and `/staff/**`.
  *  2. An OPTIMISTIC auth gate for `/admin/**`.
- *  3. On the storefront, REDIRECTS ONLY (`storefront()` below): the URL redirects
- *     kept in Shopify (Website → Redirects), and Shopify's own addresses
- *     (`/products/x` → `/shop/x`).
+ *  3. On the storefront (`storefront()` below): scanner probes answered with a bare
+ *     404, the URL redirects kept in Shopify (Website → Redirects) and Shopify's own
+ *     addresses (`/products/x` → `/shop/x`), and unknown one-segment addresses sent
+ *     to the one shared not-found page.
  *
  * WHY THE STOREFRONT GETS NOTHING ELSE HERE. Its security headers come statically
  * from `next.config.ts`. Minting a nonce for public traffic would — because a nonce
  * requires dynamic rendering — risk pulling prerendered pages into per-request
  * rendering; the storefront branch therefore never touches request or response
- * headers, it either redirects or lets the request through untouched. A storefront
+ * headers, it answers a probe, redirects, rewrites to the not-found page or lets the
+ * request through untouched. A storefront
  * CSP, if one is ever added here, must be its OWN policy — never the admin one
  * loosened to suit analytics or chat widgets.
  */
@@ -70,27 +74,75 @@ function adminCsp(nonce: string, { preview = false }: { preview?: boolean } = {}
 const PANEL = /^\/(admin|staff|preview)(\/|$)/;
 
 /**
- * A redirect, or straight through. Pages, not files: an address with an extension
- * (`/brand/logo.svg`) and anything but GET/HEAD pass untouched. A redirect is 308 — the
- * permanent kind, which tells Google to move the old address's ranking to the new one —
- * and keeps the visitor's query string unless the destination has its own.
+ * Requests for software this site does not run — WordPress, PHP, config and backup files,
+ * dot-folders (`/.env`, `/.git/config`). Vulnerability scanners send hundreds of these to
+ * every public site. They are answered here with a bare 404: no page is rendered, nothing
+ * is cached, and nothing about the stack is given away. `/.well-known/` stays reachable.
+ */
+const PROBE_SEGMENT = /^(?:wp-.*|wordpress|xmlrpc.*|cgi-bin|phpmyadmin|pma|\.(?!well-known$).*)$/i;
+const PROBE_EXTENSION =
+  /\.(?:php\d?|phtml|asp|aspx|ashx|asmx|jsp|jspx|cgi|pl|sh|bash|env|ini|conf|cfg|bak|backup|old|orig|save|swp|sql|sqlite|db|mdb|log|tar|tgz|gz|zip|rar|7z|git|svn|htaccess|htpasswd|ya?ml|toml|pem|key|crt)$/i;
+
+function isProbe(segments: string[]): boolean {
+  return segments.some((segment) => PROBE_SEGMENT.test(segment)) || PROBE_EXTENSION.test(segments.at(-1) ?? "");
+}
+
+const probeResponse = () =>
+  new NextResponse(null, { status: 404, headers: { "Cache-Control": "public, max-age=86400", "X-Robots-Tag": "noindex" } });
+
+/** Top-level folders that are routes of their own (kept honest by `yarn check:handles`). */
+const ROUTE_SEGMENTS = new Set<string>(APP_ROUTE_SEGMENTS);
+/** Files at the root of `public/`, listed at build time by `next.config.ts`. */
+const PUBLIC_ROOT_FILES = new Set((process.env.PUBLIC_ROOT_FILES ?? "").split("/").filter(Boolean));
+/**
+ * Answered by `app/(storefront)/[handle]` with the storefront's own not-found page and a
+ * 404 status — `not-found` is a reserved handle, so it can never be a real page. Every
+ * unknown address shares this ONE cached page instead of each being rendered and stored.
+ */
+const NOT_FOUND_PATH = "/not-found";
+
+/**
+ * The storefront's front door:
+ *
+ *  1. scanner probes get a bare 404 (any method);
+ *  2. a redirect kept in Shopify, or Shopify's own address (`/products/x` → `/shop/x`) —
+ *     308, the permanent kind, which tells Google to move the old address's ranking to
+ *     the new one, keeping the visitor's query string unless the destination has its own;
+ *  3. a one-segment address that is not a route, not a file in `public/` and not a
+ *     published page builder page is shown the shared not-found page (still a 404, still
+ *     the site's own design — a mistyped address gets the same friendly page as before).
+ *
+ * Everything else passes untouched. Only GET/HEAD are redirected or rewritten.
  */
 async function storefront(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
-  if ((request.method !== "GET" && request.method !== "HEAD") || /\.[a-z0-9]+$/i.test(pathname)) {
-    return NextResponse.next();
+  const segments = pathname.split("/").filter(Boolean);
+
+  if (isProbe(segments)) return probeResponse();
+  if (request.method !== "GET" && request.method !== "HEAD") return NextResponse.next();
+
+  // Pages, not files: an address with an extension is never looked up as a redirect.
+  if (!/\.[a-z0-9]+$/i.test(pathname)) {
+    const target = (await findRedirect(pathname)) ?? shopifyAddressRoute(pathname);
+    if (target) {
+      const url = new URL(target, request.url);
+      if (!url.search && search) url.search = search;
+      // Never onto itself: a redirect whose destination is its own address would loop.
+      const self = url.origin === request.nextUrl.origin && url.pathname.toLowerCase() === pathname.toLowerCase();
+      if (!self) return NextResponse.redirect(url, 308);
+    }
   }
 
-  const target = (await findRedirect(pathname)) ?? shopifyAddressRoute(pathname);
-  if (!target) return NextResponse.next();
-
-  const url = new URL(target, request.url);
-  if (!url.search && search) url.search = search;
-  // Never onto itself: a redirect whose destination is its own address would loop.
-  if (url.origin === request.nextUrl.origin && url.pathname.toLowerCase() === pathname.toLowerCase()) {
-    return NextResponse.next();
+  if (segments.length === 1) {
+    const segment = segments[0]!;
+    if (ROUTE_SEGMENTS.has(segment) || PUBLIC_ROOT_FILES.has(segment)) return NextResponse.next();
+    // `null` means the list of published pages is not known right now: let it through,
+    // so a Shopify hiccup can never turn a real page into a 404.
+    if (isBuilderHandle(segment) && (await isPublishedBuilderPage(segment)) !== false) return NextResponse.next();
+    return NextResponse.rewrite(new URL(NOT_FOUND_PATH, request.url));
   }
-  return NextResponse.redirect(url, 308);
+
+  return NextResponse.next();
 }
 
 export async function proxy(request: NextRequest) {
@@ -163,10 +215,25 @@ export const config = {
         { type: "header", key: "purpose", value: "prefetch" },
       ],
     },
-    /**
-     * The storefront, for `storefront()` above: every page address, without Next's own
-     * files, the API (its routes are not pages) and the panel (the two entries above).
-     */
-    "/((?!api/|_next/|admin|staff|preview|favicon.ico|robots.txt|sitemap.xml).*)",
+    {
+      /**
+       * The storefront, for `storefront()` above: every page address, without Next's own
+       * files, the API (its routes are not pages), the panel (the two entries above) and
+       * the site's own assets in sub-folders (`/brand/logo.svg`) — those never redirect
+       * and are served straight from the CDN. A root-level file still comes here, so a
+       * probe like `/wp-login.php` is caught; `/administrator` is the storefront's, not
+       * the panel's.
+       *
+       * Not for prefetches, like the panel entries: a prefetch is the app asking for its
+       * own links, which are current addresses — running the proxy for each one would be
+       * a function call per link on screen.
+       */
+      source:
+        "/((?!api/|_next/|(?:admin|staff|preview)(?:/|$)|favicon\\.ico$|robots\\.txt$|sitemap\\.xml$|[^/]+/.+\\.(?:avif|css|gif|ico|jpe?g|js|json|map|mp4|otf|pdf|png|svg|ttf|txt|webm|webmanifest|webp|woff2?|xml)$).*)",
+      missing: [
+        { type: "header", key: "next-router-prefetch" },
+        { type: "header", key: "purpose", value: "prefetch" },
+      ],
+    },
   ],
 };

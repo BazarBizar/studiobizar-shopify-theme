@@ -46,6 +46,8 @@ type Props = {
   sortOrderOptions: { value: string; label: string }[];
   /** Shown as read-only context; the panel never writes rules. */
   ruleSet: { appliedDisjunctively: boolean; rules: { column: string; relation: string; condition: string }[] } | null;
+  /** The image the collection has now — Shopify gives its address, not a file the picker can show. */
+  currentImage?: { url: string; altText: string | null } | null;
 };
 
 const humanise = (value: string) => value.toLowerCase().replace(/_/g, " ");
@@ -56,9 +58,15 @@ export function CollectionForm({
   initial,
   sortOrderOptions,
   ruleSet,
+  currentImage,
 }: Props) {
   const router = useRouter();
   const [form, setForm] = React.useState<CollectionFormState>(initial);
+  // What the form is compared against: the loaded values, then whatever was last saved.
+  // Shopify returns some values differently from how they were sent (the image comes back
+  // as an address, never as the file chosen), so comparing with the reloaded page alone
+  // left a saved form "unsaved" — and leaving asked "Leave without saving?".
+  const [baseline, setBaseline] = React.useState<CollectionFormState>(initial);
   const [saving, setSaving] = React.useState(false);
   const [errors, setErrors] = React.useState<Record<string, string>>({});
 
@@ -69,9 +77,9 @@ export function CollectionForm({
   const dirtyKeys = React.useMemo(
     () =>
       (Object.keys(form) as (keyof CollectionFormState)[]).filter(
-        (key) => JSON.stringify(form[key]) !== JSON.stringify(initial[key]),
+        (key) => JSON.stringify(form[key]) !== JSON.stringify(baseline[key]),
       ),
-    [form, initial],
+    [form, baseline],
   );
 
   const isDirty = dirtyKeys.length > 0;
@@ -87,6 +95,7 @@ export function CollectionForm({
     setSaving(true);
 
     // Only what changed. On create everything goes, since there is nothing to diff.
+    const sent = form;
     const keys = mode === "create" ? (Object.keys(form) as (keyof CollectionFormState)[]) : dirtyKeys;
     const payload: Record<string, unknown> = {};
     for (const key of keys) payload[key] = form[key];
@@ -112,6 +121,7 @@ export function CollectionForm({
       }
 
       const saved = (await response.json()) as { id: string; handle: string };
+      setBaseline(sent);
 
       toast.success("Saved", {
         description: mode === "create" ? "The new collection is created." : "Your changes are live on the site.",
@@ -193,6 +203,17 @@ export function CollectionForm({
 
             <div className="space-y-1.5">
               <Label>Image</Label>
+              {currentImage && !form.imageGid ? (
+                <div className="flex items-center gap-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- a small admin preview from Shopify's CDN */}
+                  <img
+                    src={`${currentImage.url}${currentImage.url.includes("?") ? "&" : "?"}width=160`}
+                    alt={currentImage.altText ?? ""}
+                    className="size-20 rounded-md border object-cover"
+                  />
+                  <p className="text-muted-foreground text-xs">The collection’s image now. Choose another below to replace it.</p>
+                </div>
+              ) : null}
               <MediaField
                 label="Collection image"
                 kind="image"
@@ -285,7 +306,7 @@ export function CollectionForm({
           dirty={isDirty || mode === "create"}
           saving={saving}
           saveLabel={mode === "create" ? "Create" : "Save"}
-          onDiscard={() => setForm(initial)}
+          onDiscard={() => setForm(baseline)}
         />
       </fieldset>
     </form>

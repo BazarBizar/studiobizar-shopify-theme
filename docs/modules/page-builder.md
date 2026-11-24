@@ -230,6 +230,11 @@ size and shape, and the visitor downloads only that part. **No "Image shape" set
 Custom section's Image and Card blocks, Next and theme): each photo is drawn in its own shape, and
 **Change crop** is how its shape is chosen. A value stored before is dropped on read (`lenient`).
 The video's Shape stays — it is the video's.
+**In the Liquid theme** a photo has no stored crop (an image picker holds only the image), so the
+theme follows Shopify's own equivalent: the photo's **focal point**, set on the photo in Shopify
+(Content → Files, or the theme editor's image picker). `snippets/sb-image.liquid` keeps it in view
+whenever a frame cuts the photo (`--sb-focal`, `.sb-focal`); a section's Style → Images focus still
+wins. `check:liquid-render` checks both.
 **A crop is also the photo's shape**: a
 photo frame that has a shape of its own (`Picture` — columns, custom section, steps, tabs,
 collapsible, the large collage tile — Media & text, three photos, full-width image) takes the
@@ -583,8 +588,9 @@ page's current metafields into the builder document that draws the same page.
 | `/contact`, `/` (page `home`) | migration ready, route opted in |
 
 Every page with its own Shopify page now has a migration. `/legal/*` render the Shopify page body
-and need none; the catalogue routes (`/shop`, `/collections/[handle]`, …) are templates over
-product data, not pages, and are outside MVP-2.
+and need none. The catalogue routes (`/shop`, `/shop/[handle]`, `/collections/[handle]`, projects,
+designers, `/search`) are TEMPLATES over item data, edited under Website → Templates with this same
+builder — see `docs/modules/templates.md`.
 
 What the migrations carry over: the page's rich text metafields as they are; its
 `captioned_image` lists resolved into image snapshots (alt text and caption included, positions

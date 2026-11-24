@@ -1,0 +1,110 @@
+{% comment %}
+  The templates' card settings — `cardLook` in lib/page-builder/template-look.ts, as
+  attributes for a wrapper. Prints NOTHING while every setting is as designed, so a
+  template section left alone draws exactly what it did. `styles/sb-template-look.css`
+  (in both builds) reads the attributes.
+
+  Capture it, then put it on a wrapper only when it is not blank:
+
+    {%- capture look -%}{%- render 'sb-template-look', columns_desktop: s.columns_desktop, … -%}{%- endcapture -%}
+    {%- if look != blank -%}<div {{ look }}>{%- endif -%}
+
+  Accepts (each optional; the section passes the ones it has):
+    columns_desktop, columns_mobile, gap, image_shape, image_radius, image_overlay,
+    overlay_color, overlay_opacity, card_style, card_color, card_border_color,
+    title_size, title_color, card_align
+{% endcomment %}
+
+{%- liquid
+  assign attrs = ''
+  assign style = ''
+
+  if columns_desktop != blank and columns_desktop != 'auto'
+    assign attrs = attrs | append: ' data-tl-cols-d'
+    assign style = style | append: '--tl-cols-d:' | append: columns_desktop | append: ';'
+  endif
+  if columns_mobile != blank and columns_mobile != 'auto'
+    assign attrs = attrs | append: ' data-tl-cols-m'
+    assign style = style | append: '--tl-cols-m:' | append: columns_mobile | append: ';'
+  endif
+  case gap
+    when 'none'
+      assign attrs = attrs | append: ' data-tl-gap'
+      assign style = style | append: '--tl-gap:0px;'
+    when 'tight'
+      assign attrs = attrs | append: ' data-tl-gap'
+      assign style = style | append: '--tl-gap:0.25rem;'
+    when 'roomy'
+      assign attrs = attrs | append: ' data-tl-gap'
+      assign style = style | append: '--tl-gap:2.5rem;'
+  endcase
+
+  assign ratio = ''
+  case image_shape
+    when 'portrait'
+      assign ratio = '3 / 4'
+    when 'tall'
+      assign ratio = '2 / 3'
+    when 'square'
+      assign ratio = '1 / 1'
+    when 'landscape'
+      assign ratio = '4 / 3'
+    when 'wide'
+      assign ratio = '16 / 9'
+  endcase
+  if ratio != ''
+    assign attrs = attrs | append: ' data-tl-shape'
+    assign style = style | append: '--tl-ratio:' | append: ratio | append: ';'
+  endif
+  if image_radius != blank and image_radius > 0
+    assign attrs = attrs | append: ' data-tl-radius'
+    assign style = style | append: '--tl-radius:' | append: image_radius | append: 'px;'
+  endif
+  if image_overlay == 'color'
+    comment
+      Black until another colour is picked: choosing "A colour" shows at once.
+    endcomment
+    assign tint_color = overlay_color | default: '#000000'
+    if tint_color == blank
+      assign tint_color = '#000000'
+    endif
+    assign tint_strength = overlay_opacity | default: 30
+    assign attrs = attrs | append: ' data-tl-overlay'
+    assign style = style | append: '--tl-overlay:color-mix(in srgb, ' | append: tint_color | append: ' ' | append: tint_strength | append: '%, transparent);'
+  endif
+
+  if card_style != blank and card_style != 'plain'
+    assign attrs = attrs | append: ' data-tl-card="' | append: card_style | append: '"'
+    if card_style == 'card' and card_color != blank
+      assign style = style | append: '--tl-card:' | append: card_color | append: ';'
+    endif
+    if card_style == 'box' or card_style == 'lines'
+      if card_border_color != blank
+        assign style = style | append: '--tl-border:' | append: card_border_color | append: ';'
+      endif
+    endif
+  endif
+
+  case title_size
+    when 'small'
+      assign attrs = attrs | append: ' data-tl-title'
+      assign style = style | append: '--tl-title:var(--fs-tertiary);'
+    when 'standard'
+      assign attrs = attrs | append: ' data-tl-title'
+      assign style = style | append: '--tl-title:var(--fs-h4);'
+    when 'large'
+      assign attrs = attrs | append: ' data-tl-title'
+      assign style = style | append: '--tl-title:var(--fs-h3);'
+    when 'xlarge'
+      assign attrs = attrs | append: ' data-tl-title'
+      assign style = style | append: '--tl-title:var(--fs-h2);'
+  endcase
+  if title_color != blank
+    assign attrs = attrs | append: ' data-tl-title-color'
+    assign style = style | append: '--tl-title-color:' | append: title_color | append: ';'
+  endif
+  if card_align == 'left' or card_align == 'center'
+    assign attrs = attrs | append: ' data-tl-align="' | append: card_align | append: '"'
+  endif
+-%}
+{%- if attrs != '' -%}data-tl{{ attrs }}{% if style != '' %} style="{{ style | escape }}"{% endif %}{%- endif -%}

@@ -14,6 +14,7 @@ import {
   type ThemeLayoutContent,
   type Zones,
 } from "@/lib/theme-builder/layout";
+import { scheduleMoment, type Announcement } from "@/lib/theme-builder/promo";
 import { cn } from "@/lib/utils/cn";
 
 import { AnnouncementBar } from "./announcement-bar";
@@ -60,8 +61,12 @@ export function headerMenus(header: HeaderLayout): MenuRef[] {
   return [...new Set(all.filter((element) => element.type === "menu").map((element) => element.settings.menu as MenuRef))];
 }
 
-/** When this page was drawn — the announcement bar's dates start from it (see `AnnouncementBar`). */
-const renderedAt = () => Date.now();
+/**
+ * The moment the announcement bar's first render uses (see `AnnouncementBar`): not the
+ * clock, but the last start or end date passed — the same messages, without making every
+ * re-draw of a cached page differ (`scheduleMoment`).
+ */
+const renderedAt = (announcement: Announcement) => scheduleMoment(announcement.messages);
 
 const ZONE_CLASS = { left: "justify-start", center: "justify-center", right: "justify-end" } as const;
 
@@ -121,7 +126,7 @@ export async function ThemeHeader({ content, preview = false }: { content: Theme
       {announcement.enabled ? (
         <AnnouncementBar
           announcement={announcement}
-          renderedAt={renderedAt()}
+          renderedAt={renderedAt(announcement)}
           className={hideClasses(announcement.hide)}
           style={{
             ...(color(announcement.background) ? { backgroundColor: announcement.background } : {}),

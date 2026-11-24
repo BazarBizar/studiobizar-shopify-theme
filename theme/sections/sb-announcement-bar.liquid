@@ -1,0 +1,255 @@
+{% comment %}
+  The announcement bar above the header — the theme's twin of Appearance → Header →
+  Announcement bar (lib/theme-builder/promo.ts, components/layout/announcement-bar.tsx).
+
+  Messages are blocks: text, an optional link (the message itself is the link) and
+  optional start / end dates. One at a time with arrows, or all moving across. Every
+  message is in the page; what depends on the visitor — the date, a bar they closed —
+  is decided in the browser by assets/sb-promo.js, because the page is cached.
+
+  Dates are typed as 2026-12-01 09:00 (the visitor's own clock), either may be empty.
+{% endcomment %}
+
+{%- liquid
+  assign s = section.settings
+
+  capture hide_class
+    render 'sb-hide-on', hide_on: s.hide_on
+  endcapture
+
+  case s.size
+    when 'secondary'
+      assign size_class = 'text-secondary'
+    when 'caption'
+      assign size_class = 'text-caption'
+    else
+      assign size_class = 'text-tertiary'
+  endcase
+  case s.speed
+    when 'slow'
+      assign duration = '60s'
+    when 'fast'
+      assign duration = '18s'
+    else
+      assign duration = '35s'
+  endcase
+  case s.separator
+    when 'dash'
+      assign mark = '—'
+    when 'star'
+      assign mark = '✦'
+    when 'none'
+      assign mark = ''
+    else
+      assign mark = '·'
+  endcase
+
+  assign count = 0
+  assign fingerprint = ''
+  for block in section.blocks
+    if block.settings.text != blank
+      assign count = count | plus: 1
+      assign fingerprint = fingerprint | append: block.settings.text | append: block.settings.link
+    endif
+  endfor
+  assign fingerprint = fingerprint | md5 | slice: 0, 10
+
+  assign colours = ''
+  if s.background != blank
+    assign colours = colours | append: 'background:' | append: s.background | append: ';'
+  endif
+  if s.color != blank
+    assign colours = colours | append: 'color:' | append: s.color | append: ';'
+  endif
+-%}
+
+{%- if count > 0 -%}
+  <div
+    role="region"
+    aria-label="Announcement"
+    class="bg-off-black text-earth relative {{ size_class }} {{ hide_class }}"
+    data-sb-announcement
+    data-mode="{{ s.mode }}"
+    data-interval="{{ s.interval }}"
+    data-key="{{ fingerprint }}"
+    {% if s.dismissible %}data-dismissible{% endif %}
+    {% if request.design_mode %}data-preview{% endif %}
+    {% if colours != '' %}style="{{ colours | escape }}"{% endif %}
+    {{ section.shopify_attributes }}
+  >
+    {%- if s.mode == 'scroll' -%}
+      <div class="overflow-hidden py-2{% if s.dismissible %} pe-8{% endif %}">
+        <ul class="sr-only">
+          {%- for block in section.blocks -%}
+            {%- if block.settings.text != blank -%}
+              <li data-sb-message data-starts="{{ block.settings.starts_at | escape }}" data-ends="{{ block.settings.ends_at | escape }}">
+                {%- if block.settings.link != blank -%}<a href="{{ block.settings.link }}" class="sb-underline">{{ block.settings.text | escape }}</a>{%- else -%}{{ block.settings.text | escape }}{%- endif -%}
+              </li>
+            {%- endif -%}
+          {%- endfor -%}
+        </ul>
+        {%- assign rounds = 6 | divided_by: count | plus: 1 -%}
+        {%- if rounds < 2 -%}{%- assign rounds = 2 -%}{%- endif -%}
+        <div
+          class="sb-marquee flex w-max hover:[animation-play-state:paused]{% if s.direction == 'right' %} [animation-direction:reverse]{% endif %}"
+          style="--sb-marquee-duration: {{ duration }}"
+        >
+          {%- for copy in (1..2) -%}
+            <ul aria-hidden="true" class="flex shrink-0 items-center">
+              {%- for round in (1..rounds) -%}
+                {%- for block in section.blocks -%}
+                  {%- if block.settings.text != blank -%}
+                    <li class="flex items-center whitespace-nowrap" data-sb-message data-starts="{{ block.settings.starts_at | escape }}" data-ends="{{ block.settings.ends_at | escape }}">
+                      <span class="px-6">
+                        {%- if block.settings.link != blank -%}<a href="{{ block.settings.link }}" class="sb-underline" tabindex="-1">{{ block.settings.text | escape }}</a>{%- else -%}{{ block.settings.text | escape }}{%- endif -%}
+                      </span>
+                      {%- if mark != '' -%}<span class="opacity-50">{{ mark }}</span>{%- endif -%}
+                    </li>
+                  {%- endif -%}
+                {%- endfor -%}
+              {%- endfor -%}
+            </ul>
+          {%- endfor -%}
+        </div>
+      </div>
+    {%- else -%}
+      <div class="flex items-center gap-2 py-2 {% if count > 1 %}px-2{% else %}px-4{% endif %}{% if s.dismissible %} pe-10{% endif %}">
+        {%- if count > 1 -%}
+          <button type="button" data-sb-announcement-prev aria-label="Previous announcement" class="shrink-0 opacity-60 hover:opacity-100">
+            {%- render 'sb-icon', icon: 'arrow-left', class: 'size-3.5', size: 1.5 -%}
+          </button>
+        {%- endif -%}
+        <div class="grid min-w-0 flex-1 text-center" aria-live="off">
+          {%- assign shown = false -%}
+          {%- for block in section.blocks -%}
+            {%- if block.settings.text != blank -%}
+              <p
+                class="[grid-area:1/1] transition-opacity duration-500 {% if shown %}invisible opacity-0{% else %}opacity-100{% endif %}"
+                data-sb-message
+                data-starts="{{ block.settings.starts_at | escape }}"
+                data-ends="{{ block.settings.ends_at | escape }}"
+                {{ block.shopify_attributes }}
+              >
+                {%- if block.settings.link != blank -%}<a href="{{ block.settings.link }}" class="sb-underline">{{ block.settings.text | escape }}</a>{%- else -%}{{ block.settings.text | escape }}{%- endif -%}
+              </p>
+              {%- assign shown = true -%}
+            {%- endif -%}
+          {%- endfor -%}
+        </div>
+        {%- if count > 1 -%}
+          <button type="button" data-sb-announcement-next aria-label="Next announcement" class="shrink-0 opacity-60 hover:opacity-100">
+            {%- render 'sb-icon', icon: 'arrow-right', class: 'size-3.5', size: 1.5 -%}
+          </button>
+        {%- endif -%}
+      </div>
+    {%- endif -%}
+
+    {%- if s.dismissible -%}
+      <button
+        type="button"
+        data-sb-announcement-close
+        aria-label="Close the announcement"
+        class="absolute inset-y-0 inset-e-1 flex w-8 items-center justify-center opacity-70 transition-opacity hover:opacity-100"
+      >
+        {%- render 'sb-icon', icon: 'close', class: 'size-3.5', size: 1.5 -%}
+      </button>
+    {%- endif -%}
+  </div>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Announcement bar",
+  "tag": "section",
+  "class": "sb-section-announcement-bar",
+  "max_blocks": 8,
+  "settings": [
+    {
+      "type": "select",
+      "id": "mode",
+      "label": "Messages",
+      "options": [
+        { "value": "rotate", "label": "One at a time" },
+        { "value": "scroll", "label": "All moving across" }
+      ],
+      "default": "rotate"
+    },
+    { "type": "range", "id": "interval", "label": "Seconds per message", "min": 2, "max": 30, "step": 1, "unit": "s", "default": 5 },
+    {
+      "type": "select",
+      "id": "speed",
+      "label": "Speed",
+      "options": [
+        { "value": "slow", "label": "Slow" },
+        { "value": "normal", "label": "Normal" },
+        { "value": "fast", "label": "Fast" }
+      ],
+      "default": "normal",
+      "info": "When the messages move across."
+    },
+    {
+      "type": "select",
+      "id": "direction",
+      "label": "Direction",
+      "options": [
+        { "value": "left", "label": "To the left" },
+        { "value": "right", "label": "To the right" }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "select",
+      "id": "separator",
+      "label": "Between messages",
+      "options": [
+        { "value": "dot", "label": "·" },
+        { "value": "dash", "label": "—" },
+        { "value": "star", "label": "✦" },
+        { "value": "none", "label": "Nothing" }
+      ],
+      "default": "dot"
+    },
+    {
+      "type": "select",
+      "id": "size",
+      "label": "Text size",
+      "options": [
+        { "value": "secondary", "label": "Standard" },
+        { "value": "tertiary", "label": "Small" },
+        { "value": "caption", "label": "Extra small" }
+      ],
+      "default": "tertiary"
+    },
+    { "type": "checkbox", "id": "dismissible", "label": "Visitors can close it", "default": false, "info": "It comes back when the messages change." },
+    { "type": "color", "id": "background", "label": "Background colour", "info": "Empty: off-black." },
+    { "type": "color", "id": "color", "label": "Text colour", "info": "Empty: earth." },
+    {
+      "type": "select",
+      "id": "hide_on",
+      "label": "Show on",
+      "options": [
+        { "value": "none", "label": "All devices" },
+        { "value": "mobile", "label": "Desktop only" },
+        { "value": "desktop", "label": "Mobile only" }
+      ],
+      "default": "none"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "message",
+      "name": "Message",
+      "settings": [
+        { "type": "text", "id": "text", "label": "Message" },
+        { "type": "url", "id": "link", "label": "Link", "info": "Optional. The message itself becomes the link." },
+        { "type": "text", "id": "starts_at", "label": "Show from", "placeholder": "2026-12-01 09:00", "info": "Optional. The visitor's own clock." },
+        { "type": "text", "id": "ends_at", "label": "Show until", "placeholder": "2026-12-24 23:59", "info": "Optional." }
+      ]
+    }
+  ],
+  "enabled_on": { "groups": ["header"] },
+  "presets": [
+    { "name": "Announcement bar", "blocks": [{ "type": "message", "settings": { "text": "Write your announcement here" } }] }
+  ]
+}
+{% endschema %}

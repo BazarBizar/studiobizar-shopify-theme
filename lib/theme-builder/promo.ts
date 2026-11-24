@@ -64,6 +64,29 @@ export function isScheduledNow(schedule: Schedule, now = Date.now()): boolean {
   return now >= starts && now < ends;
 }
 
+/**
+ * A moment that shows EXACTLY the messages `now` shows, but only moves when that set
+ * changes: the latest start or end date already passed (0 when none has).
+ *
+ * The announcement bar's first render must match the server's, so the server hands it
+ * a moment. Handing it `Date.now()` made every re-draw of a cached page differ by the
+ * clock alone — and Vercel stores (and bills) a re-drawn page whenever it differs. With
+ * this, a re-drawn page is identical until a message actually starts or ends.
+ *
+ * Exact because nothing changes between two dates: every `startsAt <= moment` is also
+ * `<= now`, and no `endsAt` lies in between.
+ */
+export function scheduleMoment(schedules: readonly Schedule[], now = Date.now()): number {
+  let moment = 0;
+  for (const schedule of schedules) {
+    for (const value of [schedule.startsAt, schedule.endsAt]) {
+      const time = value ? Date.parse(value) : Number.NaN;
+      if (time <= now && time > moment) moment = time;
+    }
+  }
+  return moment;
+}
+
 /** "Ended", "Starts 3 Dec", or null when it is showing (or has no dates). For the editor's lists. */
 export function scheduleNote(schedule: Schedule, now = Date.now()): string | null {
   const day = (value: string) => new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "short" });

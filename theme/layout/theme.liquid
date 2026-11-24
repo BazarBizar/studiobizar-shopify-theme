@@ -92,6 +92,8 @@
       nothing on a page without one of them.
     {%- endcomment -%}
     <script src="{{ 'sb-sections.js' | asset_url }}" defer></script>
+    {%- comment -%} The announcement bar and the pop-ups: dates, a closed bar, "already seen". {%- endcomment -%}
+    <script src="{{ 'sb-promo.js' | asset_url }}" defer></script>
     {%- comment -%}
       Only where there is a grid to drive. The other three are shell-wide: the
       nav and the inquiry badge are in the header on every page.
@@ -113,7 +115,7 @@
       The carousel is on the landing page and can be added to any page, so it
       loads on both. It does nothing when there is no track on the page.
     {%- endcomment -%}
-    {%- if template.name == 'index' or template.name == 'page' or template.name == 'product' or template.name == 'collection' -%}
+    {%- if template.name == 'index' or template.name == 'page' or template.name == 'product' or template.name == 'collection' or template.name == 'metaobject' or template.name == 'search' -%}
       <script src="{{ 'sb-carousel.js' | asset_url }}" defer></script>
     {%- endif -%}
 
@@ -147,6 +149,8 @@
     </main>
 
     {% sections 'footer-group' %}
+    {%- comment -%} Pop-ups (sections/sb-popup.liquid), one section each. {%- endcomment -%}
+    {% sections 'overlay-group' %}
 
     {%- render 'sb-back-to-top' -%}
 

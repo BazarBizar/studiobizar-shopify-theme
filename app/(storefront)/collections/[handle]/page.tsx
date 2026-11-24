@@ -5,12 +5,13 @@ import { notFound } from "next/navigation";
 
 import { CollectionHighlightGrid } from "@/components/collection/collection-highlight-grid";
 import { PageShell } from "@/components/layout/page-shell";
+import { BuilderPage } from "@/components/page-builder/builder-page";
 import { ContactCta } from "@/components/sections/contact-cta";
 import { MediaText } from "@/components/sections/media-text";
 import { Carousel } from "@/components/ui/carousel";
 import { Container } from "@/components/ui/container";
 import { GoBack } from "@/components/ui/go-back";
-import { getCollection, getCollectionProducts, getSiteTexts } from "@/lib/shopify";
+import { getCollection, getCollectionProducts, getPublishedTemplate, getSiteTexts } from "@/lib/shopify";
 import {
   cdnImage,
   fieldImage,
@@ -22,6 +23,17 @@ import {
   metafieldText,
   toFieldMap,
 } from "@/lib/shopify/transforms";
+
+/**
+ * Empty `generateStaticParams`: nothing is built ahead, but each collection page is drawn on
+ * its first visit and then served from the cache (ISR) — not drawn again for every
+ * visitor and every crawler, as it was while this route was dynamic. A change reaches it
+ * through its cache tag (the panel's writes, Shopify's webhooks); `REVALIDATE` is only
+ * the safety net. An unknown handle is a cached 404 like any other page.
+ */
+export function generateStaticParams() {
+  return [];
+}
 
 export async function generateMetadata({
   params,
@@ -46,8 +58,15 @@ export async function generateMetadata({
 
 export default async function CollectionPage({ params }: PageProps<"/collections/[handle]">) {
   const { handle } = await params;
-  const [collection, texts] = await Promise.all([getCollection(handle), getSiteTexts()]);
+  const [collection, texts, template] = await Promise.all([
+    getCollection(handle),
+    getSiteTexts(),
+    getPublishedTemplate("collection"),
+  ]);
   if (!collection) notFound();
+
+  // Website → Templates → Collection page, once published; until then the layout below.
+  if (template) return <BuilderPage doc={template} title={collection.title} record={{ kind: "collection", collection }} />;
 
   // The mosaic below shows at most 10 — the top of the collection, not every
   // product in it (Shop All is where the whole catalogue pages through).

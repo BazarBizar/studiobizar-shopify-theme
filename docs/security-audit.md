@@ -12,7 +12,7 @@ settings, and dependencies. `yarn check:security` keeps the fixes below tested (
 | Login throttle keyed by `email:ip`, where the ip is the caller-supplied `x-forwarded-for` — a new made-up ip per guess meant unlimited guesses at one address | A second bucket keyed by the email alone (`loginAccount`: 20, then one a minute) — `lib/admin/auth.ts`, `lib/admin/rate-limit.ts`. |
 | The limiter's clean-up dropped any bucket idle 10 minutes, quietly shortening every slower limit | Dropped only once it has refilled. |
 | Public forms (contact, inquiry, newsletter): no rate limit, body read whole, inquiry items unbounded. The inquiry confirmation goes to the address typed in, carrying visitor text — usable to send mail in the shop's name | `lib/public-form.ts`: per visitor, per form (a ceiling no made-up ip escapes), per recipient address (3, then one per 20 min); body capped as it streams; inquiry: at most 100 products, every field length-bounded. |
-| `/api/revalidate`: secret only in the query string (lands in access logs), compared with `!==` | Header `x-revalidate-secret` (query still accepted), constant-time compare. |
+| `/api/revalidate`: secret only in the query string (lands in access logs), compared with `!==` | Header `x-revalidate-secret` only (query form removed 2026-11-13), constant-time compare; `?tag=all` must be explicit. |
 | Liquid `sb-design`: one select value written into an attribute unescaped (merchant-only) | Escaped. |
 
 ## Checked and sound

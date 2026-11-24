@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 
 import { CollectionGrid } from "@/components/collection/collection-grid";
 import { PageShell } from "@/components/layout/page-shell";
+import { BuilderPage } from "@/components/page-builder/builder-page";
 import { Container } from "@/components/ui/container";
-import { getListedCollections, getPage, getSiteTexts } from "@/lib/shopify";
+import { getListedCollections, getPage, getPublishedTemplate, getSiteTexts } from "@/lib/shopify";
 
 export const metadata: Metadata = {
   title: "Collections",
@@ -13,6 +14,10 @@ export const metadata: Metadata = {
 };
 
 export default async function CollectionsPage() {
+  // Website → Templates → All collections, once published; until then the layout below.
+  const template = await getPublishedTemplate("collections");
+  if (template) return <BuilderPage doc={template} title="Collections" record={{ kind: "collections" }} />;
+
   const [collections, intro, texts] = await Promise.all([
     getListedCollections(),
     getPage("collections").catch(() => null),

@@ -15,7 +15,8 @@ const PAGE_ROUTES: Record<string, string> = {
   "our-story": "/our-story",
   "our-services": "/services",
   projects: "/projects",
-  professionals: "/professionals",
+  /** Rendered by `/designers` (`app/(storefront)/designers` reads `getPage("professionals")`). There is no `/professionals` route. */
+  professionals: "/designers",
   faq: "/faq",
   careers: "/careers",
   contact: "/contact",

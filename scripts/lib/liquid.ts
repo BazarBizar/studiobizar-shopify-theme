@@ -27,6 +27,9 @@ import { STYLE_KEYS } from "../../lib/page-builder/define-section";
 import type { FieldDef, LeafFieldDef } from "../../lib/page-builder/fields";
 import { SECTION_PRESETS, type PresetBlock } from "../../lib/page-builder/presets";
 import { SECTIONS, type SectionType } from "../../lib/page-builder/registry";
+import { TEMPLATE_SECTIONS } from "../../lib/page-builder/sections-template";
+import type { TemplateKind } from "../../lib/page-builder/template-kinds";
+import { MAX_POPUP_BLOCKS, POPUP_BLOCKS, POPUP_FIELDS } from "../../lib/theme-builder/promo";
 
 import { designSettings, themeDesignParts } from "./liquid-design";
 
@@ -49,6 +52,28 @@ export const LIQUID_SECTIONS: Partial<Record<SectionType, string>> = {
   spacer: "sb-spacer",
   newsletter: "sb-newsletter",
   custom_section: "sb-custom",
+  // Website → Templates: each template section has its theme twin, `sb-t-<type>`.
+  ...(Object.fromEntries(
+    TEMPLATE_SECTIONS.map((definition) => [definition.type, `sb-t-${definition.type.replace(/_/g, "-")}`]),
+  ) as Partial<Record<SectionType, string>>),
+};
+
+/**
+ * Where a template's sections may be added in the theme editor (`enabled_on`): the
+ * Shopify template that draws the same pages. Shop All is the `all` collection, so the
+ * collection templates (`collection.shop.json` holds its layout); the projects list is
+ * a page (`page.projects-list.json`).
+ */
+export const TEMPLATE_THEME_TEMPLATES: Record<TemplateKind, string> = {
+  product: "product",
+  collection: "collection",
+  // Shopify's `enabled_on` names metaobject templates only as a whole.
+  project: "metaobject",
+  designer: "metaobject",
+  shop: "collection",
+  search: "search",
+  collections: "list-collections",
+  projects: "page",
 };
 
 export const snake = (key: string) => key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
@@ -229,6 +254,11 @@ function presetSettings(fields: readonly FieldDef[], values: Record<string, unkn
   return out;
 }
 
+/** Shopify allows a section name of at most 25 characters; these are shortened in the theme. */
+const THEME_NAMES: Partial<Record<SectionType, string>> = {
+  collection_in_context: "Projects with collection",
+};
+
 /** The `{% schema %}` a theme section must carry for a builder section. */
 export function schemaFor(type: SectionType): Json {
   const definition = SECTIONS[type];
@@ -255,10 +285,11 @@ export function schemaFor(type: SectionType): Json {
   });
 
   return {
-    name: definition.label,
+    name: THEME_NAMES[type] ?? definition.label,
     tag: "section",
     class: `sb-section-${type.replace(/_/g, "-")}`,
     settings: settingsList(fields, type),
+    ...(definition.template ? { enabled_on: { templates: [TEMPLATE_THEME_TEMPLATES[definition.template]] } } : {}),
     ...(blocksField && blocksField.kind === "blocks"
       ? {
           max_blocks: blocksField.max,
@@ -269,7 +300,9 @@ export function schemaFor(type: SectionType): Json {
           })),
         }
       : {}),
-    presets,
+    // A template's section has no ready-made variants; one preset lets it be added
+    // back in the theme editor after it was removed.
+    presets: definition.template && presets.length === 0 ? [{ name: definition.label }] : presets,
   };
 }
 
@@ -277,4 +310,83 @@ export const SCHEMA_PATTERN = /\{%-?\s*schema\s*-?%\}[\s\S]*?\{%-?\s*endschema\s
 
 export function schemaBlock(type: SectionType): string {
   return `{% schema %}\n${JSON.stringify(schemaFor(type), null, 2)}\n{% endschema %}`;
+}
+
+/* -------------------------------------------------------------------------- *
+ * Pop-ups (Appearance → Pop-ups) — sections/sb-popup.liquid
+ * -------------------------------------------------------------------------- */
+
+export const POPUP_FILE = "sb-popup";
+
+/**
+ * The theme's pop-up: one section per pop-up, in the `overlay-group` section group.
+ * Its settings are the panel's (`POPUP_FIELDS` in lib/theme-builder/promo.ts) run
+ * through the same field → setting table, then what a pop-up holds beside its
+ * settings in Next — its size and space inside (`box`, desktop's value here), its
+ * dates, the pages it shows on and the devices — as plain settings. "Build it
+ * yourself" blocks are the Custom section's blocks plus the newsletter sign-up.
+ */
+export function popupSchema(): Json {
+  const settings: Json[] = [];
+  let group: string | undefined = "content";
+  for (const field of POPUP_FIELDS as readonly FieldDef[]) {
+    if (field.kind === "blocks" || field.kind === "design") continue;
+    const next = field.group ?? "content";
+    if (next !== group) {
+      settings.push({ type: "header", content: GROUP_HEADER[next as keyof typeof GROUP_HEADER] });
+      group = next;
+    }
+    settings.push(...settingsFor(field as LeafFieldDef));
+  }
+  settings.push(
+    { type: "header", content: "Size and space" },
+    { type: "range", id: "custom_width", label: "Custom width", min: 240, max: 1200, step: 12, unit: "px", default: 560, info: "When Size is Custom." },
+    { type: "range", id: "padding", label: "Space inside", min: 0, max: 200, step: 2, unit: "px", default: 32 },
+    { type: "range", id: "radius", label: "Rounded corners", min: 0, max: 48, step: 1, unit: "px", default: 0 },
+    { type: "header", content: "When and where" },
+    { type: "text", id: "starts_at", label: "Show from", placeholder: "2026-12-01 09:00", info: "Optional. The visitor's own clock." },
+    { type: "text", id: "ends_at", label: "Show until", placeholder: "2026-12-24 23:59", info: "Optional." },
+    {
+      type: "select",
+      id: "pages",
+      label: "Pages",
+      options: [
+        { value: "all", label: "Every page" },
+        { value: "home", label: "The home page only" },
+        { value: "only", label: "Only the pages listed" },
+        { value: "except", label: "Every page but those listed" },
+      ],
+      default: "all",
+    },
+    { type: "textarea", id: "paths", label: "Pages listed", placeholder: "/our-story\n/collections/*", info: "One address per line. /collections/* covers every page under /collections." },
+    {
+      type: "select",
+      id: "hide_on",
+      label: "Show on",
+      options: [
+        { value: "none", label: "All devices" },
+        { value: "mobile", label: "Desktop only" },
+        { value: "desktop", label: "Mobile only" },
+      ],
+      default: "none",
+    },
+  );
+  return {
+    name: "Pop-up",
+    tag: "section",
+    class: "sb-section-popup",
+    settings,
+    max_blocks: MAX_POPUP_BLOCKS,
+    blocks: POPUP_BLOCKS.map((block) => ({
+      type: block.type,
+      name: block.label,
+      settings: block.fields.flatMap((field) => settingsFor(field)),
+    })),
+    enabled_on: { groups: ["custom.overlay"] },
+    presets: [{ name: "Pop-up", settings: { heading: "Join our newsletter", text: "New collections and projects, a few times a year.", newsletter: true } }],
+  };
+}
+
+export function popupSchemaBlock(): string {
+  return `{% schema %}\n${JSON.stringify(popupSchema(), null, 2)}\n{% endschema %}`;
 }

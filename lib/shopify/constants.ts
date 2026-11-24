@@ -90,20 +90,49 @@ export const METAOBJECT_TYPES = {
   location: "location",
 } as const;
 
-/** Cache tags, so a webhook can revalidate one entity class at a time. */
+/** Cache tags, so a write or a webhook can revalidate one entity class at a time. */
 export const TAGS = {
   products: "products",
   collections: "collections",
   metaobjects: "metaobjects",
   content: "content",
+  /** The list of pages (the sitemap) — a publish or delete changes it, an edit does not. */
+  pages: "pages",
 } as const;
 
-/** ISR windows in seconds. Catalogue moves slowly; CMS copy moves less. */
+/**
+ * One page's own document (`getPage(handle)`), so publishing a page refreshes that page
+ * and not every page on the site. `getPage` also carries `content`, so the site-wide
+ * drops (menus, header and footer, site texts) still reach it.
+ */
+export const pageTag = (handle: string) => `page:${handle}`;
+
+/**
+ * One template's published document (`getPublishedTemplate`) — publishing the product
+ * template refreshes the product pages, not every page on the site. Read under
+ * `content` too, so the site-wide drops still reach it.
+ */
+export const templateTag = (kind: string) => `template:${kind}`;
+
+/**
+ * ISR windows in seconds — A SAFETY NET, NOT THE WAY CHANGES ARRIVE.
+ *
+ * Every change made in the panel drops the matching tag at once (`lib/admin/revalidate.ts`),
+ * and Shopify's product, collection and metaobject webhooks do the same for changes made in
+ * Shopify itself (`app/api/webhooks/shopify`). So the window only decides how long
+ * something changed BEHIND both of them can stay old — and how often every cached page is
+ * re-drawn for nothing. A day keeps that cost low.
+ *
+ * All four are the same on purpose: a page is re-drawn at the SHORTEST window of anything
+ * on it, and every page carries the header and footer (`content`, `metaobjects`), so one
+ * shorter window would quietly set the pace for the whole site.
+ */
+const DAY = 60 * 60 * 24;
 export const REVALIDATE = {
-  products: 60 * 15,
-  collections: 60 * 30,
-  metaobjects: 60 * 30,
-  content: 60 * 60,
+  products: DAY,
+  collections: DAY,
+  metaobjects: DAY,
+  content: DAY,
 } as const;
 
 /**
