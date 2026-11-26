@@ -83,6 +83,7 @@ import {
   isFieldFilled,
   isSafeHref,
   newBlockId,
+  parseVideoFile,
   parseVideoUrl,
   type BlockDef,
   type BlockLayout,
@@ -195,32 +196,8 @@ export function FieldControl({ field, value, onChange, inputId, collections }: C
     case "url":
       return <HrefField inputId={inputId} href={(value as string) ?? ""} onChange={(href) => onChange(href)} />;
 
-    case "video": {
-      const address = (value as string) ?? "";
-      const parsed = address ? parseVideoUrl(address) : null;
-      return (
-        <div className="space-y-1">
-          <Input
-            id={inputId}
-            value={address}
-            maxLength={512}
-            placeholder="Paste a YouTube or Vimeo link"
-            aria-invalid={address !== "" && !parsed}
-            onChange={(event) => onChange(event.target.value.trim())}
-          />
-          {address !== "" &&
-            (parsed ? (
-              <p className="text-muted-foreground text-xs">
-                {parsed.provider === "youtube" ? "YouTube" : "Vimeo"} video found.
-              </p>
-            ) : (
-              <p className="text-destructive text-xs" role="alert">
-                This doesn’t look like a YouTube or Vimeo link. Copy it from the video’s Share button.
-              </p>
-            ))}
-        </div>
-      );
-    }
+    case "video":
+      return <VideoField inputId={inputId} value={(value as string) ?? ""} onChange={onChange} files={field.files === true} />;
 
     case "blocks":
       return (
@@ -515,6 +492,80 @@ function AltInput({
 }
 
 /** One image — the shared `MediaSlot` and `MediaPicker`, as on every form in the panel. */
+/**
+ * A video: a YouTube or Vimeo link pasted in — or, where the section allows it (`files`),
+ * a video uploaded to Media, chosen in the same picker as photos and stored as its MP4 on
+ * Shopify's CDN.
+ */
+function VideoField({
+  inputId,
+  value,
+  onChange,
+  files,
+}: {
+  inputId: string;
+  value: string;
+  onChange: (value: string) => void;
+  files: boolean;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const embed = value ? parseVideoUrl(value) : null;
+  const file = files && value ? parseVideoFile(value) : null;
+  const valid = !value || embed || file;
+  return (
+    <div className="space-y-2">
+      {files && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
+            {file ? "Choose another video" : "Choose from Media"}
+          </Button>
+          {value && (
+            <Button type="button" variant="ghost" size="sm" onClick={() => onChange("")}>
+              Remove
+            </Button>
+          )}
+        </div>
+      )}
+      {file ? (
+        <video src={file.url} muted playsInline preload="metadata" className="bg-muted aspect-video w-full rounded-md object-cover" />
+      ) : (
+        <Input
+          id={inputId}
+          value={value}
+          maxLength={512}
+          placeholder={files ? "…or paste a YouTube or Vimeo link" : "Paste a YouTube or Vimeo link"}
+          aria-invalid={!valid}
+          onChange={(event) => onChange(event.target.value.trim())}
+        />
+      )}
+      {value !== "" &&
+        (file ? (
+          <p className="text-muted-foreground text-xs">Video from Media — it plays muted, by itself, in a loop.</p>
+        ) : embed ? (
+          <p className="text-muted-foreground text-xs">{embed.provider === "youtube" ? "YouTube" : "Vimeo"} video found.</p>
+        ) : (
+          <p className="text-destructive text-xs" role="alert">
+            This doesn’t look like a YouTube or Vimeo link. Copy it from the video’s Share button
+            {files ? ", or choose a video from Media" : ""}.
+          </p>
+        ))}
+      {files && (
+        <MediaPicker
+          open={open}
+          onOpenChange={setOpen}
+          title="video"
+          kind="video"
+          onSelect={([pick]) => {
+            const url = pick?.file?.url ?? "";
+            if (parseVideoFile(url)) onChange(url);
+            else toast.error("Shopify is still preparing this video. Try again in a minute.");
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
 export function ImageField({
   value,
   onChange,

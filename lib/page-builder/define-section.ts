@@ -246,6 +246,12 @@ export function defineSection<
   template?: TemplateKind;
   /** See `SectionDefinition.heading`. */
   heading?: boolean;
+  /**
+   * Settings saved in an older shape, turned into today's before they are read — so a
+   * field that changed what it holds keeps what was saved. Must be pure and give the
+   * same result every time (a draft and its published copy are compared as text).
+   */
+  upgrade?: (settings: Record<string, unknown>) => Record<string, unknown>;
 }): SectionDefinition<T, SettingsOf<F> & UniversalSettings> {
   type S = SettingsOf<F> & UniversalSettings;
 
@@ -272,7 +278,8 @@ export function defineSection<
   const lenientShape = z.object(Object.fromEntries(all.map((field) => [field.key, lenientFieldSchema(field)])));
 
   const lenient = (input: unknown): S => {
-    const parsed = lenientShape.safeParse(input && typeof input === "object" ? input : {});
+    const raw = input && typeof input === "object" ? (input as Record<string, unknown>) : {};
+    const parsed = lenientShape.safeParse(definition.upgrade ? definition.upgrade(raw) : raw);
     return (parsed.success ? parsed.data : defaults()) as S;
   };
 

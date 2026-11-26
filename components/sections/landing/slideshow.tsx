@@ -72,12 +72,14 @@ export function Slideshow({
   priority?: boolean;
 }) {
   const [index, setIndex] = React.useState(0);
-  const [chosen, setPlaying] = React.useState(autoplay);
+  // Only whether the visitor pressed pause is kept: "Change slides automatically" is read each
+  // draw, so switching it in the editor takes effect at once.
+  const [paused, setPaused] = React.useState(false);
   const [held, setHeld] = React.useState(false);
   const count = slides.length;
   // Read, not copied into state: the preference can change while the page is open.
   const reduced = React.useSyncExternalStore(subscribeReduced, () => window.matchMedia(REDUCED).matches, () => true);
-  const playing = chosen && !reduced;
+  const playing = autoplay && !paused && !reduced;
 
   React.useEffect(() => {
     if (!playing || held || count < 2) return;
@@ -194,7 +196,7 @@ export function Slideshow({
               <button
                 type="button"
                 aria-label={playing ? "Pause the slideshow" : "Play the slideshow"}
-                onClick={() => setPlaying((value) => !value)}
+                onClick={() => setPaused((value) => !value)}
                 className="flex size-9 items-center justify-center opacity-80 hover:opacity-100"
               >
                 {playing ? <Pause className="size-4" strokeWidth={1.5} /> : <Play className="size-4" strokeWidth={1.5} />}

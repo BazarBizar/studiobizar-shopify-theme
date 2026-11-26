@@ -37,6 +37,7 @@ import {
   getProducts,
   getProductsByDesigner,
   getProductsByIds,
+  getProjectsByDesigner,
   getShopCategories,
   getSiteTexts,
   searchProducts,
@@ -878,6 +879,63 @@ const designerProducts = renderer<"designer_products", Awaited<ReturnType<typeof
   },
 });
 
+const designerCollections = renderer<"designer_collections", Awaited<ReturnType<typeof loadDesignerWork>>>({
+  // The same (cached) lookup as the profile and the products.
+  load: (_, context) => loadDesignerWork(8, context),
+  render: (s, data, { preview }) => {
+    if (!data) return null;
+    if (data.collections.length === 0) return <Absent preview={preview}>Their collections — no collection names this designer.</Absent>;
+    return (
+      <Container className="pb-section">
+        <h2 className={`${headingLook(s, "text-h2").className} mb-8`} style={headingLook(s, "text-h2").style}>
+          {pick(s.title, "Collections")}
+        </h2>
+        <Look s={s}>
+          {/* The card was drawn for the light Collections page: its texts take this page's colours. */}
+          <div className="[&_article_h2]:text-foreground [&_[data-byline]]:text-muted">
+            <CollectionGrid collections={data.collections} />
+          </div>
+        </Look>
+      </Container>
+    );
+  },
+});
+
+async function loadDesignerProjects(limit: number, context: RenderContext) {
+  const record = recordOf(context, "designer");
+  if (!record) return null;
+  const projects = await getProjectsByDesigner(record.designer.handle, { first: limit }).catch((error: unknown) => {
+    console.error(`[templates/designer] projects lookup failed`, error);
+    return [];
+  });
+  return { projects };
+}
+
+const designerProjects = renderer<"designer_projects", Awaited<ReturnType<typeof loadDesignerProjects>>>({
+  load: (s, context) => loadDesignerProjects(s.limit, context),
+  render: (s, data, { preview }) => {
+    if (!data) return null;
+    if (data.projects.length === 0)
+      return <Absent preview={preview}>Projects with their pieces — no project lists one of this designer’s products yet.</Absent>;
+    return (
+      <Container className="pb-section">
+        <h2 className={`${headingLook(s, "text-h2").className} mb-8`} style={headingLook(s, "text-h2").style}>
+          {pick(s.title, "Projects")}
+        </h2>
+        <Look s={s}>
+          <ul className="grid gap-grid-gap gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
+            {data.projects.map((project) => (
+              <li key={project.handle}>
+                <ProjectCard project={project} view="m" />
+              </li>
+            ))}
+          </ul>
+        </Look>
+      </Container>
+    );
+  },
+});
+
 /* -------------------------------------------------------------------------- *
  * The lists
  * -------------------------------------------------------------------------- */
@@ -1138,6 +1196,8 @@ export const TEMPLATE_RENDERERS = {
   project_others: projectOthers,
   designer_profile: designerProfile,
   designer_products: designerProducts,
+  designer_collections: designerCollections,
+  designer_projects: designerProjects,
   shop_main: shopMain,
   search_main: searchMain,
   collections_main: collectionsMain,

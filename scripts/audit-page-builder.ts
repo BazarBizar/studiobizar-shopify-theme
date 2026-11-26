@@ -397,6 +397,12 @@ const loaded = new Map<string, unknown>();
 const EXPLAINED: { section: string; field: RegExp; where?: "Next" | "Liquid"; problem?: RegExp; why: string }[] = [
   { section: "*", field: /Arrows move|Change slides automatically|Seconds per slide/, why: "used by the carousel's script in the browser, not in the page's HTML" },
   { section: "slideshow", field: /Change between slides/, where: "Next", why: "the sideways slide is chosen in the browser (it respects “reduce motion”)" },
+  {
+    section: "hero",
+    field: /Play by itself|Pause while the mouse|After the last slide|How fast a slide changes|Visitors can turn a video's sound on|Change between slides/,
+    where: "Next",
+    why: "how the slideshow moves, decided in the browser (it respects “reduce motion”) — checked by driving it in Chromium",
+  },
   { section: "*", field: /^Placement$/, why: "decides whether the section sits inside the Page heading above it — a page-level pairing" },
   { section: "*", field: /Video address|→ Video → Video$/, where: "Next", why: "nothing is loaded from YouTube/Vimeo until the visitor presses play (privacy, speed)" },
   { section: "faq", field: /^Category$/, why: "a filter on the FAQ entries, not text that is shown" },

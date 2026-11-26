@@ -96,3 +96,8 @@
 [data-tl-byline-color] :is(li, .min-w-0.shrink-0) [data-byline] {
   color: var(--tl-byline-color);
 }
+
+/* Every photo in the cards in black and white (the designers' portraits, as designed). */
+[data-tl-gray] :is(li, .min-w-0.shrink-0) img {
+  filter: grayscale(1);
+}

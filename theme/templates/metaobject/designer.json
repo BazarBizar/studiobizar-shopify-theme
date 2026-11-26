@@ -13,11 +13,21 @@
       "settings": {
         "href": "/designers"
       }
+    },
+    "designer-collections-3": {
+      "type": "sb-t-designer-collections",
+      "settings": {}
+    },
+    "designer-projects-4": {
+      "type": "sb-t-designer-projects",
+      "settings": {}
     }
   },
   "order": [
     "designer-profile-1",
     "designer-products-2",
+    "designer-collections-3",
+    "designer-projects-4",
     "go-back-3"
   ]
 }

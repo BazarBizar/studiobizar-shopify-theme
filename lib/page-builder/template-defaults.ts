@@ -58,6 +58,8 @@ const LAYOUTS: Record<TemplateKind, { surface: PageSurface; parts: Part[] }> = {
     parts: [
       { type: "designer_profile" },
       { type: "designer_products" },
+      { type: "designer_collections" },
+      { type: "designer_projects" },
       { type: "go_back", settings: { fallback: "/designers" } },
     ],
   },

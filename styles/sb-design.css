@@ -78,6 +78,9 @@
 /* A banner's own box (`data-sb-fill-height`): the exact height sizes it — taller or shorter than its
    quick choice — not only the frame around it. (In the theme the box IS the frame.) */
 [data-sb-minh~="d"] [data-sb-fill-height] { min-height: var(--sb-minh); }
+/* A box with a fixed shape (the Photo slideshow, as designed) gives the shape up where an exact
+   height applies, so the height can also be lower than the shape would be. */
+[data-sb-minh~="d"] [data-sb-fill-aspect] { aspect-ratio: auto; }
 [data-sb-valign] { display: flex; flex-direction: column; }
 [data-sb-valign="center"] { justify-content: center; }
 [data-sb-valign="bottom"] { justify-content: flex-end; }
@@ -163,6 +166,7 @@
   [data-sb-maxw~="t"] .sb-container { max-width: var(--sb-maxw-t); margin-inline: auto; }
   [data-sb-minh~="t"] { min-height: var(--sb-minh-t); }
   [data-sb-minh~="t"] [data-sb-fill-height] { min-height: var(--sb-minh-t); }
+  [data-sb-minh~="t"] [data-sb-fill-aspect] { aspect-ratio: auto; }
   [data-sb-rad~="t"] { --sb-rad: var(--sb-rad-t); }
   [data-sb-imgw~="t"] img:not([data-nimg="fill"], .absolute),
   [data-sb-imgw~="t"] :has(> img:is([data-nimg="fill"], .absolute), > picture > img:is([data-nimg="fill"], .absolute)):not([data-section-id], section) { width: min(100%, var(--sb-imgw-t)); }
@@ -217,6 +221,7 @@
   [data-sb-maxw~="m"] .sb-container { max-width: var(--sb-maxw-m); margin-inline: auto; }
   [data-sb-minh~="m"] { min-height: var(--sb-minh-m); }
   [data-sb-minh~="m"] [data-sb-fill-height] { min-height: var(--sb-minh-m); }
+  [data-sb-minh~="m"] [data-sb-fill-aspect] { aspect-ratio: auto; }
   [data-sb-rad~="m"] { --sb-rad: var(--sb-rad-m); }
   [data-sb-imgw~="m"] img:not([data-nimg="fill"], .absolute),
   [data-sb-imgw~="m"] :has(> img:is([data-nimg="fill"], .absolute), > picture > img:is([data-nimg="fill"], .absolute)):not([data-section-id], section) { width: min(100%, var(--sb-imgw-m)); }

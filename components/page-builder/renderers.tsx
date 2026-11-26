@@ -14,7 +14,7 @@ import { CollectionCarousel } from "@/components/sections/collection-carousel";
 import { ContactCta } from "@/components/sections/contact-cta";
 import { FaqGroups } from "@/components/sections/faq-groups";
 import { FullBleedImage } from "@/components/sections/full-bleed-image";
-import { HeroSlider } from "@/components/sections/hero-slider";
+import { PhotoSlideshow, type PhotoSlide } from "@/components/sections/photo-slideshow";
 import { InstagramRow } from "@/components/sections/instagram-row";
 import { ProjectCarousel } from "@/components/sections/project-carousel";
 import { IntroBlock, IntroBody } from "@/components/sections/intro-block";
@@ -29,7 +29,7 @@ import { Container } from "@/components/ui/container";
 import { GoBack } from "@/components/ui/go-back";
 import { getInstagramPosts } from "@/lib/instagram/behold";
 import { carouselView, DESIGNED } from "@/lib/page-builder/carousel";
-import { isSafeHref, type CaptionedImageValue } from "@/lib/page-builder/fields";
+import { isSafeHref, parseVideoFile, parseVideoUrl, type CaptionedImageValue, type ImageRef } from "@/lib/page-builder/fields";
 import type { SectionType } from "@/lib/page-builder/registry";
 import { shopifyUrlToRoute } from "@/lib/routes";
 import {
@@ -144,7 +144,38 @@ export const RENDERERS = {
   }),
 
   hero: renderer<"hero">({
-    render: (s, _, { id }) => <HeroSlider slides={toCaptioned(id, s.slides)} />,
+    render: (s) => (
+      <PhotoSlideshow
+        slides={s.slides.map((slide): PhotoSlide => {
+          if (slide.type === "video") {
+            const settings = slide.settings as { video: string; poster: ImageRef | null; href: string };
+            const file = parseVideoFile(settings.video);
+            const embed = file ? null : parseVideoUrl(settings.video);
+            return {
+              id: slide.id,
+              image: null,
+              video: file ? { kind: "file", url: file.url } : embed ? { kind: embed.provider, id: embed.id } : null,
+              poster: settings.poster,
+              href: settings.href || null,
+            };
+          }
+          const settings = slide.settings as { image: ImageRef | null; mobileImage: ImageRef | null; href: string };
+          return { id: slide.id, image: settings.image, mobileImage: settings.mobileImage, href: settings.href || null };
+        })}
+        height={s.height}
+        heightMobile={s.heightMobile}
+        fit={s.fit}
+        autoplay={s.autoplay}
+        interval={s.interval}
+        pauseOnHover={s.pauseOnHover}
+        transition={s.transition}
+        speed={s.speed}
+        loop={s.loop}
+        controls={s.controls}
+        controlsTone={s.controlsTone}
+        videoSound={s.videoSound}
+      />
+    ),
   }),
 
   text_block: renderer<"text_block">({
@@ -375,13 +406,17 @@ export const RENDERERS = {
     render: (s, designers, { inline }) =>
       inline ? (
         designers.length > 0 ? (
-          <DesignerGrid designers={designers} className="mt-12" />
+          <Look s={s}>
+            <DesignerGrid designers={designers} className="mt-12" showStudio={s.showStudio} />
+          </Look>
         ) : (
           <Empty className="mt-16">No designers published yet.</Empty>
         )
       ) : designers.length > 0 ? (
         <Titled title={s.title}>
-          <DesignerGrid designers={designers} />
+          <Look s={s}>
+            <DesignerGrid designers={designers} showStudio={s.showStudio} />
+          </Look>
         </Titled>
       ) : null,
   }),

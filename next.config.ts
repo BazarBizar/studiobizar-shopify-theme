@@ -32,7 +32,8 @@ function publicRootFiles(): string {
  *
  * What the shop really loads from elsewhere, and nothing more: photographs from the
  * Shopify CDN and the Instagram feed's hosts (the same list as `images.remotePatterns`),
- * and the two video players `parseVideoUrl` allows, framed only once play is pressed.
+ * and the two video players `parseVideoUrl` allows — framed once play is pressed in the Video
+ * section, at once (muted, like a moving photo) for a Photo slideshow's video slide.
  * Adding analytics, a map or chat means adding its hosts here, on purpose.
  */
 function storefrontCsp(): string {
