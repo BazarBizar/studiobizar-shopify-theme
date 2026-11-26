@@ -2,7 +2,7 @@ import { carouselViewFields } from "./carousel";
 import { defineSection } from "./define-section";
 import { block, blocks, color, number, richText, select, text, textarea, toggle } from "./fields";
 import { TEMPLATES } from "./template-kinds";
-import { cardFields, headingFields, overlayFields } from "./template-look";
+import { cardFields, collectionTextFields, headingFields, overlayFields } from "./template-look";
 
 /**
  * THE TEMPLATES' OWN SECTIONS — each draws part of the item the visitor opened:
@@ -545,7 +545,8 @@ export const collectionsMain = defineSection({
     text("title", "Heading", { help: SITE_TEXT }),
     textarea("intro", "Intro", { max: 600, help: INTRO_HELP }),
     ...headingFields(),
-    ...cardFields({ columns: true }),
+    ...collectionTextFields(),
+    ...cardFields({ columns: true, names: false }),
   ],
   universal: ["surface", "hideOn"],
   source: from(collectionItems.label, collectionItems.href),

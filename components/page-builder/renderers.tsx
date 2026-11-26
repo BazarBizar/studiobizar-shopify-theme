@@ -1,6 +1,7 @@
 import "server-only";
 
 import { CollectionGrid } from "@/components/collection/collection-grid";
+import { Look } from "@/components/page-builder/card-look";
 import { CollectionHighlightGrid } from "@/components/collection/collection-highlight-grid";
 import { ContactDetails } from "@/components/contact/contact-details";
 import { ContactForm } from "@/components/contact/contact-form";
@@ -359,7 +360,9 @@ export const RENDERERS = {
     render: (s, collections) =>
       collections.length > 0 ? (
         <Titled title={s.title}>
-          <CollectionGrid collections={collections} />
+          <Look s={s}>
+            <CollectionGrid collections={collections} />
+          </Look>
         </Titled>
       ) : null,
   }),
@@ -411,13 +414,15 @@ export const RENDERERS = {
       return s.collections.flatMap((ref) => byId.get(ref.id) ?? []);
     },
     render: (s, collections) => (
-      <CollectionCarousel
-        title={s.title}
-        collections={collections.slice(0, s.maxItems)}
-        viewAllHref={s.viewAll ? s.moreLink?.href || "/collections" : undefined}
-        viewAllLabel={s.moreLink?.label || undefined}
-        view={carouselView(s, DESIGNED.row)}
-      />
+      <Look s={s}>
+        <CollectionCarousel
+          title={s.title}
+          collections={collections.slice(0, s.maxItems)}
+          viewAllHref={s.viewAll ? s.moreLink?.href || "/collections" : undefined}
+          viewAllLabel={s.moreLink?.label || undefined}
+          view={carouselView(s, DESIGNED.row)}
+        />
+      </Look>
     ),
   }),
 

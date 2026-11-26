@@ -63,7 +63,7 @@
 
     <h2 class="text-dark-wood mt-3">{{ collection.title }}</h2>
     {%- if byline != blank -%}
-      <p class="text-tertiary mt-1 text-slate">{{ 'collection.by_designer' | t: name: byline }}</p>
+      <p data-byline class="text-tertiary mt-1 text-slate">{{ 'collection.by_designer' | t: name: byline }}</p>
     {%- endif -%}
   </a>
 </article>

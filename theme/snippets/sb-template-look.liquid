@@ -12,7 +12,8 @@
   Accepts (each optional; the section passes the ones it has):
     columns_desktop, columns_mobile, gap, image_shape, image_radius, image_overlay,
     overlay_color, overlay_opacity, card_style, card_color, card_border_color,
-    title_size, title_color, card_align
+    title_size, title_color, card_align, mark_size, mark_color, byline_size,
+    byline_color
 {% endcomment %}
 
 {%- liquid
@@ -105,6 +106,51 @@
   endif
   if card_align == 'left' or card_align == 'center'
     assign attrs = attrs | append: ' data-tl-align="' | append: card_align | append: '"'
+  endif
+
+  comment
+    What a collection card lays over its photo: its name's size (and its logo's width),
+    and its colour — MARK in template-look.ts.
+  endcomment
+  case mark_size
+    when 'small'
+      assign attrs = attrs | append: ' data-tl-mark'
+      assign style = style | append: '--tl-mark:var(--fs-h2);--tl-mark-logo:40%;'
+    when 'standard'
+      assign attrs = attrs | append: ' data-tl-mark'
+      assign style = style | append: '--tl-mark:var(--fs-h1);--tl-mark-logo:50%;'
+    when 'large'
+      assign attrs = attrs | append: ' data-tl-mark'
+      assign style = style | append: '--tl-mark:var(--fs-display);--tl-mark-logo:70%;'
+    when 'xlarge'
+      assign attrs = attrs | append: ' data-tl-mark'
+      assign style = style | append: '--tl-mark:var(--fs-display-lg);--tl-mark-logo:85%;'
+  endcase
+  if mark_color != blank
+    assign attrs = attrs | append: ' data-tl-mark-color'
+    assign style = style | append: '--tl-mark-color:' | append: mark_color | append: ';'
+  endif
+
+  comment
+    The designer under a collection's name — BYLINE in template-look.ts.
+  endcomment
+  case byline_size
+    when 'small'
+      assign attrs = attrs | append: ' data-tl-byline'
+      assign style = style | append: '--tl-byline:var(--fs-caption);'
+    when 'standard'
+      assign attrs = attrs | append: ' data-tl-byline'
+      assign style = style | append: '--tl-byline:var(--fs-tertiary);'
+    when 'large'
+      assign attrs = attrs | append: ' data-tl-byline'
+      assign style = style | append: '--tl-byline:var(--fs-secondary);'
+    when 'xlarge'
+      assign attrs = attrs | append: ' data-tl-byline'
+      assign style = style | append: '--tl-byline:var(--fs-body);'
+  endcase
+  if byline_color != blank
+    assign attrs = attrs | append: ' data-tl-byline-color'
+    assign style = style | append: '--tl-byline-color:' | append: byline_color | append: ';'
   endif
 -%}
 {%- if attrs != '' -%}data-tl{{ attrs }}{% if style != '' %} style="{{ style | escape }}"{% endif %}{%- endif -%}

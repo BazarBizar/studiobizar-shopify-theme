@@ -27,7 +27,7 @@
     render 'sb-template-heading', size: s.heading_size, align: s.heading_align, fallback: 'text-h1'
   endcapture
   capture look
-    render 'sb-template-look', columns_desktop: s.columns_desktop, columns_mobile: s.columns_mobile, gap: s.gap, image_shape: s.image_shape, image_radius: s.image_radius, image_overlay: s.image_overlay, overlay_color: s.overlay_color, overlay_opacity: s.overlay_opacity, card_style: s.card_style, card_color: s.card_color, card_border_color: s.card_border_color, title_size: s.title_size, title_color: s.title_color, card_align: s.card_align
+    render 'sb-template-look', columns_desktop: s.columns_desktop, columns_mobile: s.columns_mobile, gap: s.gap, image_shape: s.image_shape, image_radius: s.image_radius, image_overlay: s.image_overlay, overlay_color: s.overlay_color, overlay_opacity: s.overlay_opacity, card_style: s.card_style, card_color: s.card_color, card_border_color: s.card_border_color, title_size: s.title_size, title_color: s.title_color, card_align: s.card_align, mark_size: s.mark_size, mark_color: s.mark_color, byline_size: s.byline_size, byline_color: s.byline_color
   endcapture
   assign hidden = 'frontpage,all'
 -%}
@@ -137,6 +137,111 @@
         }
       ],
       "default": "auto"
+    },
+    {
+      "type": "select",
+      "id": "mark_size",
+      "label": "Title on the photo — size",
+      "options": [
+        {
+          "value": "auto",
+          "label": "As designed"
+        },
+        {
+          "value": "small",
+          "label": "Small"
+        },
+        {
+          "value": "standard",
+          "label": "Medium"
+        },
+        {
+          "value": "large",
+          "label": "Large"
+        },
+        {
+          "value": "xlarge",
+          "label": "Extra large"
+        }
+      ],
+      "default": "auto",
+      "info": "The collection's name, or its logo, laid over the photo."
+    },
+    {
+      "type": "color",
+      "id": "mark_color",
+      "label": "Title on the photo — colour",
+      "info": "Leave empty for the light colour it is designed in."
+    },
+    {
+      "type": "select",
+      "id": "title_size",
+      "label": "Collection name — size",
+      "options": [
+        {
+          "value": "auto",
+          "label": "As designed"
+        },
+        {
+          "value": "small",
+          "label": "Small"
+        },
+        {
+          "value": "standard",
+          "label": "Medium"
+        },
+        {
+          "value": "large",
+          "label": "Large"
+        },
+        {
+          "value": "xlarge",
+          "label": "Extra large"
+        }
+      ],
+      "default": "auto",
+      "info": "The name under the photo."
+    },
+    {
+      "type": "color",
+      "id": "title_color",
+      "label": "Collection name — colour",
+      "info": "Leave empty for the section's text colour."
+    },
+    {
+      "type": "select",
+      "id": "byline_size",
+      "label": "Designer — size",
+      "options": [
+        {
+          "value": "auto",
+          "label": "As designed"
+        },
+        {
+          "value": "small",
+          "label": "Small"
+        },
+        {
+          "value": "standard",
+          "label": "Medium"
+        },
+        {
+          "value": "large",
+          "label": "Large"
+        },
+        {
+          "value": "xlarge",
+          "label": "Extra large"
+        }
+      ],
+      "default": "auto",
+      "info": "“by” and the designer under the name."
+    },
+    {
+      "type": "color",
+      "id": "byline_color",
+      "label": "Designer — colour",
+      "info": "Leave empty for the section's text colour."
     },
     {
       "type": "select",
@@ -320,40 +425,6 @@
       "id": "card_border_color",
       "label": "Border colour",
       "info": "Empty: a soft line in the text colour."
-    },
-    {
-      "type": "select",
-      "id": "title_size",
-      "label": "Name size",
-      "options": [
-        {
-          "value": "auto",
-          "label": "As designed"
-        },
-        {
-          "value": "small",
-          "label": "Small"
-        },
-        {
-          "value": "standard",
-          "label": "Standard"
-        },
-        {
-          "value": "large",
-          "label": "Large"
-        },
-        {
-          "value": "xlarge",
-          "label": "Extra large"
-        }
-      ],
-      "default": "auto"
-    },
-    {
-      "type": "color",
-      "id": "title_color",
-      "label": "Name colour",
-      "info": "Leave empty for the section's text colour."
     },
     {
       "type": "select",

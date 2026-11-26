@@ -60,7 +60,16 @@ export const TITLE_SIZES = [
  * The cards in a list or a row: their photos, their frame, their names. `columns` only
  * where the cards sit on a grid (a scrolling row has its own "Items across").
  */
-export const cardFields = ({ columns, columnsWhen }: { columns: boolean; columnsWhen?: { field: string; is: readonly string[] } }) =>
+export const cardFields = ({
+  columns,
+  columnsWhen,
+  names = true,
+}: {
+  columns: boolean;
+  columnsWhen?: { field: string; is: readonly string[] };
+  /** The name's size and colour. Off for collection cards: `collectionTextFields` has them, with the card's other texts. */
+  names?: boolean;
+}) =>
   [
     ...(columns
       ? ([
@@ -105,14 +114,41 @@ export const cardFields = ({ columns, columnsWhen }: { columns: boolean; columns
     ),
     color("cardColor", "Card colour", { ...LAYOUT, when: { field: "cardStyle", is: ["card"] }, help: "Empty: a light tint of the text colour." }),
     color("cardBorderColor", "Border colour", { ...LAYOUT, when: { field: "cardStyle", is: ["box", "lines"] }, help: "Empty: a soft line in the text colour." }),
-    select("titleSize", "Name size", TITLE_SIZES, LAYOUT),
-    color("titleColor", "Name colour", { ...LAYOUT, help: "Leave empty for the section's text colour." }),
+    ...(names
+      ? ([
+          select("titleSize", "Name size", TITLE_SIZES, LAYOUT),
+          color("titleColor", "Name colour", { ...LAYOUT, help: "Leave empty for the section's text colour." }),
+        ] as const)
+      : ([] as const)),
     select(
       "cardAlign",
       "Text in the cards",
       [AUTO, { value: "left", label: "Left" }, { value: "center", label: "Centre" }],
       { ...LAYOUT, display: "buttons" },
     ),
+  ] as const;
+
+/**
+ * A collection card's three texts, each with its size and colour — the title on the photo
+ * (the collection's name in large letters, or its logo), the collection's name under the
+ * photo, and the designer under that. Same four sizes for each, so it stays simple.
+ */
+const TEXT_SIZES = [
+  AUTO,
+  { value: "small", label: "Small" },
+  { value: "standard", label: "Medium" },
+  { value: "large", label: "Large" },
+  { value: "xlarge", label: "Extra large" },
+] as const;
+
+export const collectionTextFields = () =>
+  [
+    select("markSize", "Title on the photo — size", TEXT_SIZES, { ...LAYOUT, help: "The collection's name, or its logo, laid over the photo." }),
+    color("markColor", "Title on the photo — colour", { ...LAYOUT, help: "Leave empty for the light colour it is designed in." }),
+    select("titleSize", "Collection name — size", TEXT_SIZES, { ...LAYOUT, help: "The name under the photo." }),
+    color("titleColor", "Collection name — colour", { ...LAYOUT, help: "Leave empty for the section's text colour." }),
+    select("bylineSize", "Designer — size", TEXT_SIZES, { ...LAYOUT, help: "“by” and the designer under the name." }),
+    color("bylineColor", "Designer — colour", { ...LAYOUT, help: "Leave empty for the section's text colour." }),
   ] as const;
 
 /** A photograph with something drawn over it (a collection's photo, a project's). */
@@ -142,6 +178,15 @@ export function headingLook(
 const RATIO = { portrait: "3 / 4", tall: "2 / 3", square: "1 / 1", landscape: "4 / 3", wide: "16 / 9" } as const;
 const GAP = { none: "0px", tight: "0.25rem", roomy: "2.5rem" } as const;
 const TITLE = { small: "var(--fs-tertiary)", standard: "var(--fs-h4)", large: "var(--fs-h3)", xlarge: "var(--fs-h2)" } as const;
+/** The name on the photo: its letters, and — when the collection has a logo — the logo's width. */
+const MARK = {
+  small: { size: "var(--fs-h2)", logo: "40%" },
+  standard: { size: "var(--fs-h1)", logo: "50%" },
+  large: { size: "var(--fs-display)", logo: "70%" },
+  xlarge: { size: "var(--fs-display-lg)", logo: "85%" },
+} as const;
+/** The designer under a collection's name. */
+const BYLINE = { small: "var(--fs-caption)", standard: "var(--fs-tertiary)", large: "var(--fs-secondary)", xlarge: "var(--fs-body)" } as const;
 
 type CardSettings = {
   columnsDesktop?: string;
@@ -158,6 +203,10 @@ type CardSettings = {
   titleSize?: string;
   titleColor?: string;
   cardAlign?: string;
+  markSize?: string;
+  markColor?: string;
+  bylineSize?: string;
+  bylineColor?: string;
 };
 
 export const tint = (hex: string, percent: number) => `color-mix(in srgb, ${hex} ${percent}%, transparent)`;
@@ -208,5 +257,22 @@ export function cardLook(s: CardSettings): { attrs: Record<string, string>; styl
     style["--tl-title-color"] = s.titleColor;
   }
   if (s.cardAlign && s.cardAlign !== "auto") attrs["data-tl-align"] = s.cardAlign;
+  if (s.markSize && s.markSize in MARK) {
+    attrs["data-tl-mark"] = "";
+    style["--tl-mark"] = MARK[s.markSize as keyof typeof MARK].size;
+    style["--tl-mark-logo"] = MARK[s.markSize as keyof typeof MARK].logo;
+  }
+  if (s.markColor) {
+    attrs["data-tl-mark-color"] = "";
+    style["--tl-mark-color"] = s.markColor;
+  }
+  if (s.bylineSize && s.bylineSize in BYLINE) {
+    attrs["data-tl-byline"] = "";
+    style["--tl-byline"] = BYLINE[s.bylineSize as keyof typeof BYLINE];
+  }
+  if (s.bylineColor) {
+    attrs["data-tl-byline-color"] = "";
+    style["--tl-byline-color"] = s.bylineColor;
+  }
   return Object.keys(attrs).length ? { attrs: { "data-tl": "", ...attrs }, style } : null;
 }

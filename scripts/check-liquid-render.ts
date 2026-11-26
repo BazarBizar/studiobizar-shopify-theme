@@ -498,6 +498,10 @@ async function renderAll() {
         titleSize: "large",
         titleColor: "#47515c",
         cardAlign: "center",
+        markSize: "standard",
+        markColor: "#ffffff",
+        bylineSize: "large",
+        bylineColor: "#a65a3f",
       };
       const settings = {
         ...settingsFrom(schema.settings, {}),
@@ -873,6 +877,21 @@ async function main() {
     );
 
     await designDrawn(tab, label);
+    if (label === "desktop") {
+      // The colour over the photos tints the photo only: the collection's name laid over
+      // it stays above the colour, and is not tinted a second time.
+      const layers = await tab.evaluate(() => {
+        const card = document.querySelector('[data-shot="sb-t-collections-main--card-look"] li');
+        const name = card?.querySelector('[data-surface="dark"]') as HTMLElement | null;
+        const photo = name?.parentElement;
+        return {
+          photo: photo ? getComputedStyle(photo, "::after").zIndex : null,
+          name: name ? getComputedStyle(name).zIndex : null,
+          nameTinted: name ? getComputedStyle(name, "::after").content !== "none" : null,
+        };
+      });
+      check("card look: the colour is over the photo, under the collection's name", layers.photo === "0" && layers.name === "1" && layers.nameTinted === false, JSON.stringify(layers));
+    }
     if (label === "desktop") await interactions(tab);
     await context.close();
   }

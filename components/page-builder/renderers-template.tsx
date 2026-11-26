@@ -20,7 +20,7 @@ import { Accordion } from "@/components/ui/accordion";
 import { Carousel } from "@/components/ui/carousel";
 import { Container } from "@/components/ui/container";
 import { carouselView, DESIGNED } from "@/lib/page-builder/carousel";
-import { cardLook, headingLook, tint } from "@/lib/page-builder/template-look";
+import { headingLook, tint } from "@/lib/page-builder/template-look";
 import { richTextToHtml } from "@/lib/shopify/transforms";
 import {
   DEFAULT_SORT,
@@ -69,6 +69,7 @@ import {
 import type { MetafieldMap } from "@/lib/shopify/types";
 import { cn } from "@/lib/utils/cn";
 
+import { Look } from "./card-look";
 import { renderer, type RenderContext, type SearchParams, type TemplateRecord } from "./renderer-kit";
 
 /**
@@ -106,16 +107,6 @@ function Absent({ preview, children }: { preview?: boolean; children: React.Reac
 
 const pick = (value: string, fallback: string) => value.trim() || fallback;
 
-/** The card settings' wrapper — none while they are all as designed (see `template-look.ts`). */
-function Look({ s, children }: { s: Parameters<typeof cardLook>[0]; children: React.ReactNode }) {
-  const look = cardLook(s);
-  if (!look) return children;
-  return (
-    <div {...look.attrs} style={look.style as React.CSSProperties}>
-      {children}
-    </div>
-  );
-}
 
 /** A colour laid over a photograph, under whatever is drawn on it. */
 function Overlay({ s, className }: { s: { overlay: string; overlayColor: string; overlayOpacity: number }; className?: string }) {
