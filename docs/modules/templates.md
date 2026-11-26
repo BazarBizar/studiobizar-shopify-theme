@@ -35,6 +35,13 @@ Each template section has, beside what it shows, the layout controls the landing
   - a colour over the photos, with its strength;
   - card style: plain, on a coloured card, with a border, or divided by lines; plus the card or border colour;
   - name size, name colour, and text alignment.
+- **Collection cards' three texts**, each with a size (Small, Medium, Large, Extra large) and a
+  colour: *Title on the photo* (the name in large letters, or the logo's width), *Collection name*
+  (under the photo) and *Designer* (the "by …" line, `data-byline`). They replace the generic Name
+  size / colour on collection lists (`collectionTextFields`; `cardFields({ names: false })`). Also on
+  the page sections *Collection carousel* and *Collection grid*, with the card settings above, through
+  the shared `Look` wrapper (`components/page-builder/card-look.tsx`). The colour over the photos is
+  drawn under the title, so it makes the title readable instead of dimming it.
 - **Product rows:** “view all” on or off, its text, and its position.
 - **Photo beside text** (The idea, About the designer): photo width, photo shape, text position,
   width, and link style.

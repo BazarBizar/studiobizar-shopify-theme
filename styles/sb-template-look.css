@@ -20,21 +20,28 @@
   gap: var(--tl-gap);
 }
 
-/* The photo */
-[data-tl-shape] :is(li, .min-w-0.shrink-0) div:has(> img) {
+/* The photo. The card's photo box is the OUTERMOST box holding an <img>: a logo laid over
+   the photo is an <img> in a box of its own, inside it, and must not be reshaped or tinted. */
+[data-tl-shape] :is(li, .min-w-0.shrink-0) div:has(> img):not(div:has(> img) *) {
   aspect-ratio: var(--tl-ratio);
   height: auto;
 }
-[data-tl-radius] :is(li, .min-w-0.shrink-0) div:has(> img) {
+[data-tl-radius] :is(li, .min-w-0.shrink-0) div:has(> img):not(div:has(> img) *) {
   border-radius: var(--tl-radius);
   overflow: hidden;
 }
-[data-tl-overlay] :is(li, .min-w-0.shrink-0) div:has(> img)::after {
+/* The colour goes over the photo only: under what is laid on it (a collection's name or
+   logo, a product's label), which it is there to make readable. */
+[data-tl-overlay] :is(li, .min-w-0.shrink-0) div:has(> img):not(div:has(> img) *)::after {
   content: "";
   position: absolute;
   inset: 0;
+  z-index: 0;
   background: var(--tl-overlay);
   pointer-events: none;
+}
+[data-tl-overlay] :is(li, .min-w-0.shrink-0) div:has(> img):not(div:has(> img) *) > :not(img) {
+  z-index: 1;
 }
 
 /* The card */
@@ -69,4 +76,23 @@
 }
 [data-tl-align="left"] :is(li, .min-w-0.shrink-0) {
   text-align: left;
+}
+
+/* What a collection card lays over its photo (the dark layer): its name's size and colour,
+   or its logo's width. */
+[data-tl-mark] :is(li, .min-w-0.shrink-0) [data-surface="dark"] > span {
+  font-size: var(--tl-mark);
+}
+[data-tl-mark] :is(li, .min-w-0.shrink-0) [data-surface="dark"] > img {
+  width: var(--tl-mark-logo);
+}
+[data-tl-mark-color] :is(li, .min-w-0.shrink-0) [data-surface="dark"] > span {
+  color: var(--tl-mark-color);
+}
+/* The designer under a collection's name (`data-byline` on the card). */
+[data-tl-byline] :is(li, .min-w-0.shrink-0) [data-byline] {
+  font-size: var(--tl-byline);
+}
+[data-tl-byline-color] :is(li, .min-w-0.shrink-0) [data-byline] {
+  color: var(--tl-byline-color);
 }

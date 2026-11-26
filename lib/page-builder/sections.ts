@@ -17,6 +17,7 @@ import {
   toggle,
   url,
 } from "./fields";
+import { cardFields, collectionTextFields } from "./template-look";
 
 /**
  * For a list section that, on the page it came from, sits in the same band as the
@@ -427,6 +428,8 @@ export const collectionCarousel = defineSection({
     ...carouselViewFields(),
     toggle("viewAll", "Show “view all”", { default: true }),
     showMoreLinkField("Its text and link. Empty: “view all”, to all collections.", { field: "viewAll", is: [true] }),
+    ...collectionTextFields(),
+    ...cardFields({ columns: false, names: false }),
   ],
   universal: ["hideOn"],
   omitStyle: OWN_GROUND,
@@ -516,6 +519,8 @@ export const collectionGrid = defineSection({
       { value: "picked", label: "Collections I choose" },
     ]),
     collections("collections", "Collections", { max: 24, required: true, when: { field: "source", is: ["picked"] } }),
+    ...collectionTextFields(),
+    ...cardFields({ columns: true, names: false }),
   ],
   summaryKey: "title",
   source: (s) => s.source === "picked" ? null : SOURCES.collections,

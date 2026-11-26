@@ -68,7 +68,7 @@ export function CollectionCard({
         </div>
 
         <h2 className="text-dark-wood mt-3">{collection.title}</h2>
-        {byline && <p className="text-tertiary mt-1 text-slate">by {byline}</p>}
+        {byline && <p data-byline="" className="text-tertiary mt-1 text-slate">by {byline}</p>}
       </Link>
     </article>
   );
