@@ -16,6 +16,7 @@ import {
   textarea,
   toggle,
   url,
+  video,
 } from "./fields";
 import { cardFields, collectionTextFields } from "./template-look";
 
@@ -110,23 +111,150 @@ export const pageHeading = defineSection({
   heading: true,
 });
 
+const SLIDE_LINK = { help: "Optional — the whole slide opens this page." } as const;
+
+/**
+ * Photo slideshow: the heights it can have. "As designed" is its own shape: tall on phones, wide on
+ * screens. An exact height in px is the editor's "Or set an exact height" (design.minHeight).
+ */
+const HERO_HEIGHTS = [
+  { value: "designed", label: "As designed" },
+  { value: "small", label: "Small" },
+  { value: "medium", label: "Medium" },
+  { value: "large", label: "Large" },
+  { value: "screen", label: "Full screen" },
+] as const;
+
+/**
+ * Saved before slides could be videos: a plain list of photos. Each becomes a Photo slide,
+ * with an id from its place, so the same save always reads the same way.
+ */
+function heroSlidesFromPhotos(settings: Record<string, unknown>): Record<string, unknown> {
+  const slides = settings.slides;
+  if (!Array.isArray(slides) || !slides.some((item) => item && typeof item === "object" && !("type" in item))) return settings;
+  return {
+    ...settings,
+    slides: slides.map((item, index) =>
+      item && typeof item === "object" && "type" in item
+        ? item
+        : { id: `b_heroslide${index}`, type: "photo", settings: { image: (item as { image?: unknown } | null)?.image ?? null, mobileImage: null, href: "" } },
+    ),
+  };
+}
+
 export const hero = defineSection({
   type: "hero",
   label: "Photo slideshow",
-  description: "Full-width photographs only, no text, at the top of a page. One image is a still; several play in turn. For text and buttons on the photos, use Hero slider.",
+  description: "Full-width photos and videos, no text, at the top of a page. One is a still; several play in turn. For text and buttons on them, use Hero slider.",
   category: "Intro",
   fields: [
-    // No caption: the hero is image-only by design, so a caption would be text the
-    // operator types and nobody sees. Each slide's alt text says what it shows.
-    imageList("slides", "Slides", {
+    // No captions: the slideshow shows photos and videos only. Each photo's description
+    // (alt text) says what it shows.
+    blocks("slides", "Slides", {
       max: 8,
       required: true,
-      captions: false,
-      help: "Fill in each photo's Image description — this section shows photos only, no text.",
+      defaults: ["photo", "photo"],
+      help: "Photos and videos, in this order. Fill in each photo's Image description — this section shows no text.",
+      blocks: [
+        block(
+          "photo",
+          "Photo",
+          [
+            image("image", "Photo", { required: true }),
+            image("mobileImage", "Photo on phones", { help: "Optional — a taller crop for narrow screens. Empty uses the photo above." }),
+            url("href", "Link", SLIDE_LINK),
+          ],
+          { description: "A photograph, edge to edge." },
+        ),
+        block(
+          "video",
+          "Video",
+          [
+            video("video", "Video", {
+              files: true,
+              required: true,
+              help: "Upload it under Media first. It plays muted, by itself, in a loop.",
+            }),
+            image("poster", "Photo while it loads", {
+              help: "Shown until the video plays — and instead of it to visitors who ask their device for less motion.",
+            }),
+            url("href", "Link", SLIDE_LINK),
+          ],
+          { description: "A video from Media, YouTube or Vimeo, playing silently like a moving photo." },
+        ),
+      ],
     }),
+
+    // Size
+    // One control per device in the editor, with "Or set an exact height in px" (the design's
+    // minHeight) — as on the Hero slider.
+    select("height", "Height", HERO_HEIGHTS, { default: "designed", group: "layout" }),
+    select("heightMobile", "Height on phones", [{ value: "same", label: "Same as desktop" }, ...HERO_HEIGHTS], {
+      default: "same",
+      group: "layout",
+    }),
+    select(
+      "fit",
+      "Photos and videos",
+      [
+        { value: "cover", label: "Fill the space" },
+        { value: "contain", label: "Show them whole" },
+      ],
+      { group: "layout", display: "buttons", help: "Fill the space cuts the edges off to fit the height; Show them whole leaves bands beside or above." },
+    ),
+
+    // Playing
+    toggle("autoplay", "Play by itself", { default: false, group: "layout" }),
+    number("interval", "Seconds per slide", { min: 2, max: 15, default: 6, group: "layout", when: { field: "autoplay", is: [true] } }),
+    toggle("pauseOnHover", "Pause while the mouse is over it", { default: true, group: "layout", when: { field: "autoplay", is: [true] } }),
+    select(
+      "transition",
+      "Change between slides",
+      [
+        { value: "slide", label: "Slide sideways" },
+        { value: "fade", label: "Fade" },
+        { value: "zoom", label: "Fade, with a slow zoom" },
+      ],
+      { group: "layout", help: "Visitors who ask their device for less motion always get a plain fade." },
+    ),
+    select(
+      "controls",
+      "Controls",
+      [
+        { value: "both", label: "Arrows and bars" },
+        { value: "arrows", label: "Arrows" },
+        { value: "dots", label: "Bars" },
+        { value: "none", label: "None" },
+      ],
+      { group: "layout", help: "None: visitors swipe on phones; it should then play by itself." },
+    ),
+
+    // Rarely changed
+    select(
+      "speed",
+      "How fast a slide changes",
+      [
+        { value: "normal", label: "Normal" },
+        { value: "slow", label: "Slow" },
+        { value: "fast", label: "Fast" },
+      ],
+      { group: "advanced", display: "buttons" },
+    ),
+    toggle("loop", "After the last slide, start again", { default: true, group: "advanced" }),
+    select(
+      "controlsTone",
+      "Controls colour",
+      [
+        { value: "light", label: "Light" },
+        { value: "dark", label: "Dark" },
+      ],
+      { group: "advanced", display: "buttons", help: "Dark reads better over pale photos." },
+    ),
+    toggle("videoSound", "Visitors can turn a video's sound on", { default: false, group: "advanced", help: "A small speaker button on video slides." }),
   ],
   universal: ["hideOn"],
   omitStyle: OWN_GROUND,
+  upgrade: heroSlidesFromPhotos,
 });
 
 export const textBlock = defineSection({
@@ -535,6 +663,9 @@ export const designerGrid = defineSection({
     text("title", "Heading", { when: { field: "placement", is: ["band"] } }),
     number("limit", "How many", { min: 4, max: 200, default: 12 }),
     PLACEMENT_FIELD,
+    toggle("showStudio", "Show the studio under the name", { default: true, group: "layout" }),
+    toggle("grayscale", "Photos in black and white", { group: "layout", help: "Every portrait in black and white, as in the design." }),
+    ...cardFields({ columns: true }),
   ],
   summaryKey: "title",
   source: () => SOURCES.designers,

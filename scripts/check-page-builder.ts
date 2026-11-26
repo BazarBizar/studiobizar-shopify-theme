@@ -17,7 +17,7 @@ import {
   publishProblems,
   sameContent,
 } from "../lib/page-builder/document";
-import { isSafeHref, parseVideoUrl } from "../lib/page-builder/fields";
+import { isSafeHref, parseVideoFile, parseVideoUrl } from "../lib/page-builder/fields";
 import { canConvertToCustom, convertToCustom, CONVERTIBLE_TYPES } from "../lib/page-builder/convert-custom";
 import { withExamples } from "../lib/page-builder/examples";
 import { findTextPath, withText } from "../lib/page-builder/inline-edit";
@@ -955,6 +955,27 @@ check(
   check("crop: the saved section is not changed", section.settings.columns[0]!.settings.image.url === photo.url);
   const plain = { ...section, settings: { ...section.settings, columns: [section.settings.columns[1]!], design: {} } };
   check("crop: a section with no crop is not copied", withCrops(plain) === plain);
+}
+
+/* ---------------- Photo slideshow: photos and videos ---------------- */
+{
+  const hero = SECTIONS.hero;
+  const photo = { id: "gid://shopify/MediaImage/1", url: "https://cdn.shopify.com/s/files/1/a.jpg", altText: "A room", width: 1600, height: 1000 };
+  // Saved before slides could be videos: a list of photos.
+  const old = { slides: [{ image: photo, caption: "" }, { image: { ...photo, id: "gid://shopify/MediaImage/2" }, caption: "" }] };
+  const read = hero.lenient(old) as unknown as { slides: { id: string; type: string; settings: { image: { id: string } } }[]; height: string; autoplay: boolean };
+  check("photo slideshow: photos saved before become Photo slides", read.slides.length === 2 && read.slides.every((slide) => slide.type === "photo"));
+  check("photo slideshow: each keeps its photo, in order", read.slides[1]?.settings.image.id === "gid://shopify/MediaImage/2");
+  check("photo slideshow: the same save always reads the same way", JSON.stringify(hero.lenient(old)) === JSON.stringify(read));
+  check("photo slideshow: an old save looks as it did (as designed, moved by hand)", read.height === "designed" && read.autoplay === false);
+  check("photo slideshow: the upgraded slides pass the write schema", hero.strict.safeParse(read).success);
+
+  const videoSlide = (address: string) => ({ ...read, slides: [{ id: "b_videoslide1", type: "video", settings: { video: address, poster: null, href: "" } }] });
+  check("photo slideshow: a video from Media is accepted", hero.strict.safeParse(videoSlide("https://cdn.shopify.com/videos/c/o/v/abc123.mp4")).success);
+  check("photo slideshow: a YouTube link is accepted", hero.strict.safeParse(videoSlide("https://youtu.be/aqz-KE-bpKQ")).success);
+  check("photo slideshow: a video from another site is refused", !hero.strict.safeParse(videoSlide("https://example.com/videos/a.mp4")).success);
+  check("video: a section without files still takes only YouTube or Vimeo", !SECTIONS.video.strict.safeParse({ ...SECTIONS.video.defaults(), url: "https://cdn.shopify.com/videos/c/o/v/abc123.mp4" }).success);
+  check("parseVideoFile: Shopify's CDN only, https only", parseVideoFile("https://cdn.shopify.com/videos/c/o/v/x.mp4") !== null && parseVideoFile("http://cdn.shopify.com/videos/x.mp4") === null && parseVideoFile("https://cdn.shopify.com.evil.com/videos/x.mp4") === null);
 }
 
 /* ---------------- one setting, one name ---------------- */

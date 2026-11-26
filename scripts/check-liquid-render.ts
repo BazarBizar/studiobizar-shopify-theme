@@ -287,6 +287,8 @@ const storeProduct = (handle: string, title: string) => ({
   },
 });
 const products = Array.from({ length: 10 }, (_, index) => storeProduct(`piece-${index + 1}`, `The Piece ${index + 1}`));
+/** A collection crediting the designer, as a product's `collections` lists it. */
+const storeCollectionRef = { handle: "arc-teak", metafields: { custom: { designer: { value: designerEntry } } } };
 const projectEntry = (handle: string) => ({
   system: { id: `gid://shopify/Metaobject/p-${handle}`, handle, url: `/pages/project/${handle}` },
   title: "Casa Vitro",
@@ -302,7 +304,8 @@ const projectEntry = (handle: string) => ({
   hero_image: { value: image() },
   card_image: { value: image() },
   gallery: { value: [{ image: image(), caption: "The terrace", alt_text: "", credit: "" }, { image: image(), caption: "", alt_text: "", credit: "" }] },
-  featured_items: { value: products.slice(0, 5) },
+  // The first piece is the designer's, so "Projects with their pieces" finds these.
+  featured_items: { value: products.slice(0, 5).map((item, index) => (index === 0 ? { ...item, collections: [storeCollectionRef] } : item)) },
   related_projects: { value: [] },
 });
 const storeCollection = {

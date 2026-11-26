@@ -196,9 +196,15 @@ const contactPage = (input: MigrationInput): SectionInstance[] => [
 const homePage = (input: MigrationInput): SectionInstance[] => {
   const m = input.metafields;
   // The hero has no visible caption; a slide's caption was its alt text.
-  const slides = imagesOf(input, "hero_slides", 0, undefined, 8).map((slide) => ({
-    image: { ...slide.image, altText: slide.image.altText ?? (slide.caption || null) },
-    caption: "",
+  // Photo slideshow slides are blocks (a photo or a video); these are all photos.
+  const slides = imagesOf(input, "hero_slides", 0, undefined, 8).map((slide, index) => ({
+    id: `b_heroslide${index}`,
+    type: "photo" as const,
+    settings: {
+      image: { ...slide.image, altText: slide.image.altText ?? (slide.caption || null) },
+      mobileImage: null,
+      href: "",
+    },
   }));
   const features = imagesOf(input, "feature_images");
   const newIn = input.collections.new_in ?? null;

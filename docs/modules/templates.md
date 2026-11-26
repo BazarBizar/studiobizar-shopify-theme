@@ -9,7 +9,7 @@ calls these Theme Builder templates; Shopify calls them `templates/product.json`
 | Product page | `/shop/<product>` | Product details (photos + parts: path, name, designer, description, photos in a room, details, price note, inquiry button, fold-out panels, your own text), The idea, About the designer, More from the collection, You may also like |
 | Collection page | `/collections/<collection>` | Collection photo and name, The idea, About the designer, Collection pieces, Projects with this collection |
 | Project page | `/projects/<project>` | Project photo, Project story, Pieces in this project, Other projects |
-| Designer page | `/designers/<designer>` | Designer profile, Pieces by the designer |
+| Designer page | `/designers/<designer>` | Designer profile, Pieces by the designer, Their collections, Projects with their pieces |
 | All products | `/shop` (filters, sort) | Products with filters |
 | Search results | `/search` | Search box and results |
 | All collections | `/collections` | Collections list |
@@ -72,6 +72,16 @@ Each section reads the item from `context.record` (`TemplateRecord` in
 `components/page-builder/renderer-kit.ts`). Where an item lacks what a section shows (a product with
 no designer), the live page leaves the section out, as the route did. The editor's preview shows a
 dashed note instead, so a section never seems to vanish.
+
+## How a designer is linked
+
+A product and a collection each name a designer (`custom.designer`). A project names none: it lists the
+products it used (`featured_items`). So a designer's **collections** are those that name them, their
+**products** those collections' products, and their **projects** those listing one of those products
+(`getProductsByDesigner`, `getProjectsByDesigner` in `lib/shopify`; the theme checks a product's own
+designer and its collections'). The designers list (`/designers`, the builder page `professionals`,
+section *Designers*) has the card settings too, plus *Show the studio under the name* and *Photos in
+black and white*.
 
 ## Data
 

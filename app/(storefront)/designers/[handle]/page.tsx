@@ -3,12 +3,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { CollectionGrid } from "@/components/collection/collection-grid";
 import { PageShell } from "@/components/layout/page-shell";
 import { BuilderPage } from "@/components/page-builder/builder-page";
 import { ProductCardGrid } from "@/components/product/product-card-grid";
+import { ProjectCard } from "@/components/project/project-card";
 import { Container } from "@/components/ui/container";
 import { GoBack } from "@/components/ui/go-back";
-import { METAOBJECT_TYPES, getMetaobject, getProductsByDesigner, getPublishedTemplate } from "@/lib/shopify";
+import { METAOBJECT_TYPES, getMetaobject, getProductsByDesigner, getProjectsByDesigner, getPublishedTemplate } from "@/lib/shopify";
 import { normalizeDesigner, type Designer } from "@/lib/shopify/entities";
 import { cdnImage } from "@/lib/shopify/transforms";
 
@@ -90,12 +92,17 @@ export default async function DesignerPage({ params }: PageProps<"/designers/[ha
 
   // No metafield filter exists on the Storefront product query, so a designer's
   // work is reached through the collections that credit them.
-  const { products, collections } = await getProductsByDesigner(handle, { first: 8 }).catch(
-    (error: unknown) => {
+  const [{ products, collections }, projects] = await Promise.all([
+    getProductsByDesigner(handle, { first: 8 }).catch((error: unknown) => {
       console.error(`[designers/${handle}] products lookup failed`, error);
       return { products: [], collections: [] };
-    },
-  );
+    }),
+    // Projects that use their pieces (Website → Templates → Designer page draws the same).
+    getProjectsByDesigner(handle, { first: 6 }).catch((error: unknown) => {
+      console.error(`[designers/${handle}] projects lookup failed`, error);
+      return [];
+    }),
+  ]);
 
   return (
     <PageShell surface="mocha">
@@ -150,6 +157,29 @@ export default async function DesignerPage({ params }: PageProps<"/designers/[ha
         <Container className="pb-section">
           <h2 className="text-h2 mb-8">Designed by {designer.name}</h2>
           <ProductCardGrid products={products} />
+        </Container>
+      )}
+
+      {collections.length > 0 && (
+        <Container className="pb-section">
+          <h2 className="text-h2 mb-8">Collections</h2>
+          {/* The card was drawn for the light Collections page: its texts take this page's colours. */}
+          <div className="[&_article_h2]:text-foreground [&_[data-byline]]:text-muted">
+            <CollectionGrid collections={collections} />
+          </div>
+        </Container>
+      )}
+
+      {projects.length > 0 && (
+        <Container className="pb-section">
+          <h2 className="text-h2 mb-8">Projects</h2>
+          <ul className="grid gap-grid-gap gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
+            {projects.map((project) => (
+              <li key={project.handle}>
+                <ProjectCard project={project} view="m" />
+              </li>
+            ))}
+          </ul>
         </Container>
       )}
 

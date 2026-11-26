@@ -486,6 +486,38 @@ export const designerProducts = defineSection({
   source: from(designerItems.label, designerItems.href),
 });
 
+export const designerCollections = defineSection({
+  type: "designer_collections",
+  label: "Their collections",
+  description: "The collections the designer made, as cards. Hidden when there are none.",
+  category: "Designer page",
+  template: "designer",
+  fields: [
+    text("title", "Heading", { help: "Leave empty for “Collections”." }),
+    ...headingFields(),
+    ...collectionTextFields(),
+    ...cardFields({ columns: true, names: false }),
+  ],
+  universal: ["surface", "hideOn"],
+  source: () => ({ label: "Collections", href: "/admin/collections" }),
+});
+
+export const designerProjects = defineSection({
+  type: "designer_projects",
+  label: "Projects with their pieces",
+  description: "The projects that use the designer’s pieces — found from the products chosen on each project. Hidden when there are none.",
+  category: "Designer page",
+  template: "designer",
+  fields: [
+    text("title", "Heading", { help: "Leave empty for “Projects”." }),
+    number("limit", "How many", { min: 1, max: 12, default: 6 }),
+    ...headingFields(),
+    ...cardFields({ columns: true }),
+  ],
+  universal: ["surface", "hideOn"],
+  source: from(projectItems.label, projectItems.href),
+});
+
 /* -------------------------------------------------------------------------- *
  * The lists
  * -------------------------------------------------------------------------- */
@@ -587,6 +619,8 @@ export const TEMPLATE_SECTIONS = [
   projectOthers,
   designerProfile,
   designerProducts,
+  designerCollections,
+  designerProjects,
   shopMain,
   searchMain,
   collectionsMain,

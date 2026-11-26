@@ -57,8 +57,8 @@ function adminCsp(nonce: string, { preview = false }: { preview?: boolean } = {}
     // Development only: the dev server's live reload is a websocket on another local
     // port. Without it the panel never picks up a code change until a hard reload.
     `connect-src 'self'${isDevelopment ? " ws://localhost:* ws://127.0.0.1:*" : ""}`,
-    // The builder frames its own preview; the preview's Video section frames the
-    // two players `parseVideoUrl` allows — and only after play is pressed.
+    // The builder frames its own preview; the preview's Video section and Photo slideshow
+    // frame the two players `parseVideoUrl` allows.
     `frame-src 'self'${preview ? " https://www.youtube-nocookie.com https://player.vimeo.com" : ""}`,
     "object-src 'none'",
     "base-uri 'self'",

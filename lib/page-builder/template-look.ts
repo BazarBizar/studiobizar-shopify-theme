@@ -207,6 +207,7 @@ type CardSettings = {
   markColor?: string;
   bylineSize?: string;
   bylineColor?: string;
+  grayscale?: boolean;
 };
 
 export const tint = (hex: string, percent: number) => `color-mix(in srgb, ${hex} ${percent}%, transparent)`;
@@ -270,6 +271,7 @@ export function cardLook(s: CardSettings): { attrs: Record<string, string>; styl
     attrs["data-tl-byline"] = "";
     style["--tl-byline"] = BYLINE[s.bylineSize as keyof typeof BYLINE];
   }
+  if (s.grayscale) attrs["data-tl-gray"] = "";
   if (s.bylineColor) {
     attrs["data-tl-byline-color"] = "";
     style["--tl-byline-color"] = s.bylineColor;

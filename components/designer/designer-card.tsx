@@ -8,7 +8,16 @@ import type { Designer } from "@/lib/shopify/entities";
  * Portrait with the name beneath, on the same 4-up grid as products — the row
  * pitch on `DESK - Our Designers.pdf` is 496, identical to Shop All.
  */
-export function DesignerCard({ designer, priority = false }: { designer: Designer; priority?: boolean }) {
+export function DesignerCard({
+  designer,
+  priority = false,
+  showStudio = true,
+}: {
+  designer: Designer;
+  priority?: boolean;
+  /** The studio under the name — the design shows the name only. */
+  showStudio?: boolean;
+}) {
   return (
     <article>
       <Link href={`/designers/${designer.handle}`} className="group block">
@@ -26,7 +35,7 @@ export function DesignerCard({ designer, priority = false }: { designer: Designe
         </div>
 
         <h2 className="text-secondary mt-3">{designer.name}</h2>
-        {designer.studio && designer.studio !== designer.name && (
+        {showStudio && designer.studio && designer.studio !== designer.name && (
           <p className="text-tertiary mt-1 text-muted">{designer.studio}</p>
         )}
       </Link>

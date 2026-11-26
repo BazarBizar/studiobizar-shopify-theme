@@ -92,7 +92,7 @@ export type LeafFieldDef<K extends string = string> =
   | (Base<K> & { kind: "imageList"; max: number; captions: boolean })
   | (Base<K> & { kind: "link" })
   | (Base<K> & { kind: "url"; default: string })
-  | (Base<K> & { kind: "video" })
+  | (Base<K> & { kind: "video"; files?: boolean })
   | (Base<K> & { kind: "select"; options: readonly SelectOption[]; default: string; display?: SelectDisplay })
   | (Base<K> & { kind: "toggle"; default: boolean })
   | (Base<K> & { kind: "number"; min: number; max: number; default: number })
@@ -291,8 +291,11 @@ export const select = <K extends string, const V extends string>(
   default: opts.default ?? options[0]!.value,
 });
 
-/** A YouTube or Vimeo address — see `parseVideoUrl`. Nothing else is embeddable. */
-export const video = <K extends string>(key: K, label: string, opts: Opts = {}) => ({
+/**
+ * A YouTube or Vimeo address — see `parseVideoUrl`. With `files`, also a video uploaded
+ * to Shopify (Media), stored as its MP4 address on Shopify's CDN — see `parseVideoFile`.
+ */
+export const video = <K extends string>(key: K, label: string, opts: Opts & { files?: boolean } = {}) => ({
   ...opts,
   key,
   label,
@@ -430,6 +433,22 @@ export function isSafeHref(href: string): boolean {
  * address field cannot smuggle a different host or parameters into the iframe.
  */
 export type VideoRef = { provider: "youtube" | "vimeo"; id: string };
+
+/**
+ * A video uploaded to Shopify (Content → Files, or the panel's Media): its MP4 or MOV
+ * rendition on Shopify's CDN — the one address the storefront's CSP lets a <video> load
+ * (`media-src https://cdn.shopify.com`). null for anything else.
+ */
+export function parseVideoFile(value: string): { url: string } | null {
+  let url: URL;
+  try {
+    url = new URL(value.trim());
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:" || url.hostname !== "cdn.shopify.com") return null;
+  return /\/videos\/|\.(mp4|mov|m4v|webm)$/i.test(url.pathname) ? { url: url.toString() } : null;
+}
 
 export function parseVideoUrl(value: string): VideoRef | null {
   let url: URL;
@@ -605,7 +624,10 @@ export function fieldSchema(field: FieldDef): z.ZodType {
       return z
         .string()
         .max(512)
-        .refine((value) => value === "" || parseVideoUrl(value) !== null, "Paste a YouTube or Vimeo address.");
+        .refine(
+          (value) => value === "" || parseVideoUrl(value) !== null || (field.files === true && parseVideoFile(value) !== null),
+          field.files ? "Choose a video from Media, or paste a YouTube or Vimeo address." : "Paste a YouTube or Vimeo address.",
+        );
     case "select":
       return z.enum(field.options.map((option) => option.value) as [string, ...string[]]);
     case "toggle":

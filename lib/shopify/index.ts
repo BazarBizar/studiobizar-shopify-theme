@@ -12,6 +12,7 @@ import {
   SITE_IDENTITY_TYPE,
   SITE_SETTINGS_HANDLE,
   SITE_SETTINGS_TYPE,
+  METAOBJECT_TYPES,
   TAGS,
   pageTag,
   templateTag,
@@ -21,8 +22,12 @@ import {
 import {
   EMPTY_SITE_IDENTITY,
   EMPTY_SITE_SETTINGS,
+  normalizeProject,
+  normalizeProjectCard,
   normalizeSiteIdentity,
   normalizeSiteSettings,
+  sortProjects,
+  type ProjectCard,
   type SiteIdentity,
   type SiteSettings,
 } from "./entities";
@@ -675,4 +680,20 @@ export async function getProductsByDesigner(
   });
 
   return { products: products.slice(0, first), collections };
+}
+
+/**
+ * The projects a designer's work is in: a project lists the products it used
+ * (`featured_items`), and a designer's products are those of the collections that
+ * credit them — there is no project → designer field. In the projects' own order.
+ */
+export async function getProjectsByDesigner(designerHandle: string, { first = 12 }: { first?: number } = {}): Promise<ProjectCard[]> {
+  const [{ products }, page] = await Promise.all([
+    getProductsByDesigner(designerHandle, { first: 250 }),
+    getMetaobjects(METAOBJECT_TYPES.project, { first: 100 }),
+  ]);
+  if (products.length === 0) return [];
+  const theirs = new Set(products.map((product) => product.id));
+  const projects = page.items.filter((entry) => normalizeProject(entry).featuredProductIds.some((id) => theirs.has(id)));
+  return sortProjects(projects.map(normalizeProjectCard)).slice(0, first);
 }

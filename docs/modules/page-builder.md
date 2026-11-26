@@ -348,12 +348,33 @@ sideways slide, or fade with a slow zoom (reduced motion: always a fade).
 `lib/page-builder/**` is pure — no React, no `server-only` — because the panel's client editor,
 the admin API and the storefront renderer all import it.
 
+## Photo slideshow (`hero`)
+
+Full-width photos and videos, no text (`components/sections/photo-slideshow.tsx`). Slides are
+blocks: **Photo** (photo, photo on phones, link) and **Video** (a video from Media — its MP4 on
+Shopify's CDN — or a YouTube / Vimeo link; a photo while it loads; link). Videos play muted, in a
+loop, like a moving photo; YouTube and Vimeo without their controls.
+
+Settings: Height per device (As designed — 2:3 / 16:10 / 16:7 — Small, Medium, Large, Full
+screen) with the editor's "Or set an exact height in px" (`data-sb-fill-height`; the designed
+shape gives way where one applies, `data-sb-fill-aspect` in `styles/sb-design.css`); photos fill
+the space or show whole; Play by itself, seconds per slide, pause on hover; slide / fade / fade
+with a slow zoom; arrows and bars, arrows, bars or none (swipe always works); under Advanced the
+change speed, starting again after the last slide, the controls' colour and a sound button for
+videos. Left as it is, it draws the hero as before: moved by hand, arrows and bars.
+
+Saved before slides could be videos, `slides` was a list of photos; `upgrade` in its definition
+(`defineSection({ upgrade })`) reads each as a Photo block with an id from its place, so the same
+save always reads the same way. The video setting takes uploaded videos only where a section
+allows it (`video(…, { files: true })`, `parseVideoFile`). Next only: the theme's home hero is
+still `sb-hero-slider`.
+
 ## Sections
 
 | Category | Type | Draws with | Blocks |
 |---|---|---|---|
 | Intro | `page_heading` | `PageHeading` | — |
-| | `hero` | `HeroSlider` | — |
+| | `hero` (Photo slideshow) | `PhotoSlideshow` | photo · video |
 | Text & media | `text_block` | `IntroBlock` | — |
 | | `rich_text` | `RichContent` (= theme `sb-rich-text`) | heading · text · button |
 | | `media_text` | `MediaText` | — |
